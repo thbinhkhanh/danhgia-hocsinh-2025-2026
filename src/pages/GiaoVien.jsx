@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from "react";
 import { 
-  Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack 
+  Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, Checkbox,  FormControlLabel, 
 } from "@mui/material";
 //import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
+import { onSnapshot } from "firebase/firestore";
 
 
 export default function GiaoVien() {
@@ -24,50 +25,61 @@ export default function GiaoVien() {
   const { config, setConfig } = useContext(ConfigContext);
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [systemLocked, setSystemLocked] = useState(false);
-
+  const [isCongNghe, setIsCongNghe] = useState(false);
+  
   useEffect(() => {
-    const initConfig = async () => {
-      try {
-        const docRef = doc(db, "CONFIG", "config");
-        const docSnap = await getDoc(docRef);
+    //console.log("🌀 useEffect initConfig chạy lại (mount)");
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const tuan = data.tuan || 1;
-          const hethong = data.hethong ?? false;
-          const lopConfig = data.lop || ""; // <-- Lấy field lop
+    const docRef = doc(db, "CONFIG", "config");
 
-          // Cập nhật local state
-          setSelectedWeek(tuan);
-          setSystemLocked(hethong === false);
-          setSelectedClass(lopConfig); // <-- đặt selectedClass
+    // 👂 Lắng nghe realtime Firestore
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      //console.log("📡 Firestore gửi cập nhật mới...");
 
-          // Cập nhật context
-          setConfig({ tuan, hethong, lop: lopConfig });
-        } else {
-          setSelectedWeek(1);
-          setSystemLocked(false);
-          setSelectedClass("");
-          setConfig({ tuan: 1, hethong: false, lop: "" });
-        }
-      } catch (err) {
-        console.error("❌ Lỗi lấy config từ Firestore:", err);
-        setSelectedWeek(1);
-        setSystemLocked(false);
-        setSelectedClass("");
-        setConfig({ tuan: 1, hethong: false, lop: "" });
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+
+        const tuan = data.tuan || 1;
+        const hethong = data.hethong ?? false;
+        const lopConfig = data.lop || "";
+        const congnghe = data.congnghe === true;
+        const giaovien = data.giaovien === true;
+
+        // Log rõ từng giá trị
+        //console.log("🔍 Firestore config raw:", data);
+        //console.log(`🔸 tuan: ${tuan}, hethong: ${hethong}, lop: ${lopConfig}, congnghe: ${congnghe}, giaovien: ${giaovien}`);
+
+        // Cập nhật local state
+        setSelectedWeek(tuan);
+        setSystemLocked(hethong === false);
+        setSelectedClass(lopConfig);
+
+        // Cập nhật context
+        setConfig({
+          tuan,
+          hethong,
+          lop: lopConfig,
+          congnghe,
+          giaovien,
+        });
+
+      } else {
+        console.warn("⚠️ Không tìm thấy tài liệu CONFIG/config trong Firestore!");
       }
+    });
+
+    // 🧹 Cleanup listener khi component unmount
+    return () => {
+      //console.log("🧹 Gỡ bỏ listener Firestore CONFIG/config");
+      unsubscribe();
     };
-
-    initConfig();
-  }, []); // chỉ chạy 1 lần khi mount
-
+  }, []); // ✅ chỉ setup listener 1 lần
 
 
   // 🔹 Lấy danh sách lớp (ưu tiên cache từ context)
   useEffect(() => {
     if (classData && classData.length > 0) {
-      console.log("📦 Dữ liệu lớp lấy từ context (cache):", classData);
+      //console.log("📦 Dữ liệu lớp lấy từ context (cache):", classData);
       setClasses(classData);
       if (classData.length > 0) setSelectedClass(classData[0]);
       return;
@@ -75,11 +87,11 @@ export default function GiaoVien() {
 
   const fetchClasses = async () => {
     try {
-      console.log("🌐 Đang tải danh sách lớp từ Firestore...");
+      //console.log("🌐 Đang tải danh sách lớp từ Firestore...");
       const snapshot = await getDocs(collection(db, "DANHSACH"));
       const classList = snapshot.docs.map((doc) => doc.id);
 
-      console.log("✅ Đã tải danh sách lớp từ Firestore:", classList);
+      //console.log("✅ Đã tải danh sách lớp từ Firestore:", classList);
 
       // Lưu vào context và local state
       setClassData(classList);
@@ -102,7 +114,7 @@ useEffect(() => {
   const cached = studentData[selectedClass];
   if (cached && cached.length > 0) {
     // 🟢 Dùng cache nếu có
-    console.log(`📦 Dữ liệu học sinh lớp "${selectedClass}" lấy từ context:`, cached);
+    //console.log(`📦 Dữ liệu học sinh lớp "${selectedClass}" lấy từ context:`, cached);
     setStudents(cached);
     return;
   }
@@ -110,7 +122,7 @@ useEffect(() => {
   // 🔵 Nếu chưa có trong context thì tải từ Firestore
   const fetchStudents = async () => {
     try {
-      console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
+      //console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
       const classDocRef = doc(db, "DANHSACH", selectedClass);
       const classSnap = await getDoc(classDocRef);
       if (classSnap.exists()) {
@@ -129,7 +141,7 @@ useEffect(() => {
 
         studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-        console.log(`✅ Đã tải học sinh lớp "${selectedClass}" từ Firestore:`, studentList);
+        //console.log(`✅ Đã tải học sinh lớp "${selectedClass}" từ Firestore:`, studentList);
 
         // ⬇️ Lưu vào context và state
         setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
@@ -168,22 +180,32 @@ useEffect(() => {
   const saveStudentStatus = async (studentId, hoVaTen, status) => {
     if (!selectedWeek || !selectedClass) return;
 
+    // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
+    const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
+
+    //console.log("🔍 saveStudentStatus() gọi với:");
+    //console.log("   - selectedClass:", selectedClass);
+    //console.log("   - classKey:", classKey);
+    //console.log("   - config.congnghe:", config?.congnghe);
+    //console.log("   - selectedWeek:", selectedWeek);
+
     const docRef = doc(db, "DANHGIA_GV", `tuan_${selectedWeek}`);
 
     try {
       const docSnap = await getDoc(docRef);
       const data = docSnap.exists() ? docSnap.data() : {};
-      const classData = data[selectedClass] || {};
+      const classData = data[classKey] || {}; // ✅ dùng classKey thay vì selectedClass
 
       // Ghi hoVaTen + status
       classData[studentId] = { hoVaTen, status };
 
-      await setDoc(docRef, { ...data, [selectedClass]: classData });
-      console.log(`✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${selectedClass}`);
+      await setDoc(docRef, { ...data, [classKey]: classData }); // ✅ dùng classKey
+      //console.log(`✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`);
     } catch (err) {
       console.error("❌ Lỗi lưu trạng thái học sinh:", err);
     }
   };
+
 
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
     setStudentStatus((prev) => {
@@ -199,6 +221,46 @@ useEffect(() => {
       return updated;
     });
   };
+
+  // Khi config thay đổi → đồng bộ lại checkbox
+useEffect(() => {
+  setIsCongNghe(config?.congnghe === true);
+}, [config?.congnghe]);
+
+// ✅ Hàm toggle checkbox (bật/tắt công nghệ)
+const handleCongNgheToggle = async (e) => {
+  const newValue = e.target.checked;
+  setIsCongNghe(newValue);
+
+  try {
+    const docRef = doc(db, "CONFIG", "config");
+    await setDoc(docRef, { congnghe: newValue }, { merge: true }); // Lưu Firestore
+    setConfig((prev) => ({ ...prev, congnghe: newValue })); // Cập nhật context
+    //console.log(`⚙️ Cập nhật Công nghệ: ${newValue}`);
+  } catch (err) {
+    console.error("❌ Lỗi cập nhật Công nghệ:", err);
+  }
+};
+
+const handleCongNgheChange = async (e) => {
+  const newCongNghe = e.target.checked;
+  setIsCongNghe(newCongNghe);
+
+  try {
+    const docRef = doc(db, "CONFIG", "config");
+    await setDoc(docRef, { congnghe: newCongNghe }, { merge: true });
+
+    // ✅ Cập nhật context
+    setConfig((prev) => ({
+      ...prev,
+      congnghe: newCongNghe,
+    }));
+
+    //console.log("✅ Đã cập nhật trạng thái Công nghệ:", newCongNghe);
+  } catch (err) {
+    console.error("❌ Lỗi cập nhật Công nghệ:", err);
+  }
+};
 
   const statusColors = {
     "Chưa hoàn thành": { bg: "#e0e0e0", text: "#616161" },
@@ -246,57 +308,78 @@ useEffect(() => {
 
         {/* Nhãn và dropdown */}
         <Box
-            sx={{
+          sx={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",  // căn giữa ngang
+            justifyContent: "center",
             gap: 2,
             mb: 4,
-            }}
+          }}
         >
-            <Typography
+          <Typography
             variant="body1"
             fontWeight={500}
             color="text.primary"
             sx={{ whiteSpace: "nowrap" }}
-            >
+          >
             Lớp:
-            </Typography>
+          </Typography>
 
-            <Select
+          <Select
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
             size="small"
             sx={{
-                width: 80,
-                height: 40,
-                borderRadius: 2,
-                bgcolor: "transparent",     // bỏ nền xám
-                "& .MuiSelect-select": {
+              width: 80,
+              height: 40,
+              borderRadius: 2,
+              bgcolor: "transparent",
+              "& .MuiSelect-select": {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 px: 1,
-                },
-                "&:hover": { bgcolor: "#e0e0e0" }, // chỉ nền hover
+              },
+              "&:hover": { bgcolor: "#e0e0e0" },
             }}
-            >
+          >
             {classes.map((cls) => (
-                <MenuItem
+              <MenuItem
                 key={cls}
                 value={cls}
                 sx={{
-                    fontSize: 14,
-                    minHeight: 40,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                  fontSize: 14,
+                  minHeight: 40,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-                >
+              >
                 {cls}
-                </MenuItem>
+              </MenuItem>
             ))}
-            </Select>
+          </Select>
+
+          {/* ✅ Hiển thị checkbox "Công nghệ" chỉ khi config.congnghe === true */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!config?.congnghe}         // ép kiểu boolean an toàn
+                onChange={handleCongNgheChange}      // ✅ Gọi hàm bạn đã định nghĩa
+                sx={{ transform: "scale(1.1)" }}
+              />
+            }
+            label={
+              <Typography variant="body2" color="text.primary">
+                Công nghệ
+              </Typography>
+            }
+            sx={{
+              ml: 1,
+              "& .MuiTypography-root": { fontSize: 14 },
+            }}
+          />
+
         </Box>
 
         {/* Grid học sinh */}

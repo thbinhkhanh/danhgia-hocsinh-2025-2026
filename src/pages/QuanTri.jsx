@@ -17,6 +17,7 @@ import {
   FormControlLabel,
   Grid,
   Tooltip,
+  Checkbox,
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -48,30 +49,52 @@ export default function QuanTri() {
   const [weekFrom, setWeekFrom] = useState(1);
   const [weekTo, setWeekTo] = useState(1);
 
+  const [isGiaoVien, setIsGiaoVien] = useState(false);
+  const [isCongNghe, setIsCongNghe] = useState(false);
 
-  // ✅ Khi load component, kiểm tra context → nếu trống thì fetch từ Firestore
-  useEffect(() => {
-    const initConfig = async () => {
-      if (config.tuan !== undefined && config.hethong !== undefined) {
-        setSelectedWeek(config.tuan);
-        setSystemLocked(config.hethong === false);
-      } else {
-        try {
-          const docRef = doc(db, "CONFIG", "config");
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setSelectedWeek(data.tuan || 1);
-            setSystemLocked(data.hethong === false);
-            setConfig({ tuan: data.tuan || 1, hethong: data.hethong ?? false });
-          }
-        } catch (err) {
-          console.error("Lỗi lấy config từ Firestore:", err);
+  // ✅ Khi load component, ưu tiên dùng context; nếu trống thì fetch từ Firestore
+useEffect(() => {
+  const initConfig = async () => {
+    if (
+      config &&
+      (config.tuan !== undefined || config.giaovien !== undefined || config.congnghe !== undefined)
+    ) {
+      // 🔹 Load từ context (ưu tiên)
+      setSelectedWeek(config.tuan || 1);
+      setSystemLocked(config.hethong === false);
+      setIsGiaoVien(config.giaovien === true);
+      setIsCongNghe(config.congnghe === true);
+    } else {
+      // 🔹 Nếu chưa có context thì fetch từ Firestore
+      try {
+        const docRef = doc(db, "CONFIG", "config");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+
+          // Cập nhật state local
+          setSelectedWeek(data.tuan || 1);
+          setSystemLocked(data.hethong === false);
+          setIsGiaoVien(data.giaovien === true);
+          setIsCongNghe(data.congnghe === true);
+
+          // Lưu lại vào context để tái sử dụng lần sau
+          setConfig({
+            tuan: data.tuan || 1,
+            hethong: data.hethong ?? false,
+            giaovien: data.giaovien === true,
+            congnghe: data.congnghe === true,
+          });
         }
+      } catch (err) {
+        console.error("Lỗi lấy config từ Firestore:", err);
       }
-    };
-    initConfig();
-  }, [config, setConfig]);
+    }
+  };
+
+  initConfig();
+}, [config, setConfig]);
+
 
   // 🔹 Lấy danh sách lớp: ưu tiên context, fallback Firestore
   useEffect(() => {
@@ -263,6 +286,47 @@ export default function QuanTri() {
     }
   };
 
+  const handleGiaoVienChange = async (e) => {
+    const newGiaoVien = e.target.checked;
+    setIsGiaoVien(newGiaoVien);
+
+    try {
+      const docRef = doc(db, "CONFIG", "config");
+      await setDoc(docRef, { giaovien: newGiaoVien }, { merge: true });
+
+      // ✅ Cập nhật context (sau khi Firestore lưu thành công)
+      setConfig(prev => ({
+        ...prev,
+        giaovien: newGiaoVien
+      }));
+
+      //console.log("✅ Đã cập nhật trạng thái Giáo viên:", newGiaoVien);
+    } catch (err) {
+      console.error("❌ Lỗi cập nhật Giáo viên:", err);
+    }
+  };
+
+  const handleCongNgheChange = async (e) => {
+    const newCongNghe = e.target.checked;
+    setIsCongNghe(newCongNghe);
+
+    try {
+      const docRef = doc(db, "CONFIG", "config");
+      await setDoc(docRef, { congnghe: newCongNghe }, { merge: true });
+
+      // ✅ Cập nhật context (sau khi Firestore lưu thành công)
+      setConfig(prev => ({
+        ...prev,
+        congnghe: newCongNghe
+      }));
+
+      //console.log("✅ Đã cập nhật trạng thái Công nghệ:", newCongNghe);
+    } catch (err) {
+      console.error("❌ Lỗi cập nhật Công nghệ:", err);
+    }
+  };
+
+
   const toggleSystemLock = async () => {
     const newState = !systemLocked;
     setSystemLocked(newState);
@@ -286,10 +350,10 @@ export default function QuanTri() {
         maxWidth: 660,
         mx: 'auto',
         mt: 3,
-        position: 'relative', // cần để đặt nút absolute
+        position: 'relative',
       }}
     >
-      {/* Nút Close ở góc trên bên phải */}
+      {/* Nút Close */}
       <Tooltip title="Đăng xuất" arrow>
         <Button
           onClick={handleLogout}
@@ -299,7 +363,7 @@ export default function QuanTri() {
             right: 8,
             minWidth: 'auto',
             padding: 0.5,
-            color: 'red', // icon màu đỏ
+            color: 'red',
           }}
         >
           <LogoutIcon />
@@ -319,7 +383,7 @@ export default function QuanTri() {
       <Divider sx={{ mb: 4 }} />
 
       <Grid container spacing={3} justifyContent="center">
-        {/* Cột trái: Tải danh sách */}
+        {/* Cột trái */}
         <Grid item>
           <Box sx={{ width: 300 }}>
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
@@ -328,7 +392,6 @@ export default function QuanTri() {
 
             <Stack spacing={2}>
               <Stack direction="row" spacing={1} alignItems="center">
-                {/* Chọn tuần từ – đến */}
                 <FormControl size="small" sx={{ flex: 1 }}>
                   <InputLabel>Tuần từ</InputLabel>
                   <Select
@@ -360,6 +423,17 @@ export default function QuanTri() {
                 </FormControl>
               </Stack>
 
+              {/* Checkbox Giáo viên */}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isGiaoVien}
+                    onChange={handleGiaoVienChange} // dùng handler mới
+                  />
+                }
+                label="Giáo viên"
+              />
+
               {/* Nút xuất đánh giá */}
               <Button
                 variant="contained"
@@ -370,9 +444,9 @@ export default function QuanTri() {
               >
                 Xuất đánh giá
               </Button>
-              
+
               <Divider sx={{ mt: 2.5, mb: 2 }} />
-              
+
               {/* Chọn file Excel */}
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
                 Chọn file Excel
@@ -400,18 +474,11 @@ export default function QuanTri() {
                   {message}
                 </Alert>
               )}
-
-              
-
-              
-              
-
             </Stack>
           </Box>
         </Grid>
 
-
-        {/* Cột phải: Cài đặt hệ thống */}
+        {/* Cột phải */}
         <Grid item>
           <Box sx={{ width: 300 }}>
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
@@ -419,7 +486,6 @@ export default function QuanTri() {
             </Typography>
 
             <Stack spacing={2}>
-              {/* Ô Tuần + Lớp cùng hàng */}
               <Box sx={{ display: "flex", gap: 2 }}>
                 <FormControl size="small" sx={{ flex: 1 }}>
                   <InputLabel>Tuần</InputLabel>
@@ -444,11 +510,16 @@ export default function QuanTri() {
                 </FormControl>
               </Box>
 
-              {/* Switch hệ thống */}
-              {/*<FormControlLabel
-                control={<Switch checked={!systemLocked} onChange={toggleSystemLock} />}
-                label={!systemLocked ? "🟢 Hệ thống đang mở" : "🔒 Hệ thống đang khóa"}
-              />*/}
+              {/* Checkbox Công nghệ */}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isCongNghe}
+                    onChange={handleCongNgheChange} // dùng handler mới
+                  />
+                }
+                label="Công nghệ"
+              />
 
               {/* Nút Đánh giá HS */}
               <Button

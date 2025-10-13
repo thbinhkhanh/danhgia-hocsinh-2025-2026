@@ -7,6 +7,7 @@ import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
+import { onSnapshot } from "firebase/firestore";
 
 
 export default function Home() {
@@ -26,48 +27,75 @@ export default function Home() {
   const [systemLocked, setSystemLocked] = useState(false);
 
   useEffect(() => {
-    const initConfig = async () => {
-      try {
-        const docRef = doc(db, "CONFIG", "config");
-        const docSnap = await getDoc(docRef);
+    //console.log("🌀 useEffect initConfig chạy (mount)");
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const tuan = data.tuan || 1;
-          const hethong = data.hethong ?? false;
-          const lopConfig = data.lop || ""; // <-- Lấy field lop
+    const docRef = doc(db, "CONFIG", "config");
 
-          // Cập nhật local state
-          setSelectedWeek(tuan);
-          setSystemLocked(hethong === false);
-          setSelectedClass(lopConfig); // <-- đặt selectedClass
+    // 👂 Lắng nghe realtime thay đổi từ Firestore
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
 
-          // Cập nhật context
-          setConfig({ tuan, hethong, lop: lopConfig });
-        } else {
-          setSelectedWeek(1);
-          setSystemLocked(false);
-          setSelectedClass("");
-          setConfig({ tuan: 1, hethong: false, lop: "" });
-        }
-      } catch (err) {
-        console.error("❌ Lỗi lấy config từ Firestore:", err);
+        const tuan = data.tuan || 1;
+        const hethong = data.hethong ?? false;
+        const lopConfig = data.lop || "";
+        const congnghe = data.congnghe === true;
+        const giaovien = data.giaovien === true;
+
+        // 🪵 Log chi tiết
+        //console.log("📡 Firestore cập nhật CONFIG:", data);
+
+        // 🔹 Cập nhật local state
+        setSelectedWeek(tuan);
+        setSystemLocked(hethong === false);
+        setSelectedClass(lopConfig);
+
+        // 🔹 Cập nhật context (ConfigContext)
+        setConfig({
+          tuan,
+          hethong,
+          lop: lopConfig,
+          congnghe,
+          giaovien,
+        });
+
+        //console.log("✅ Context setConfig() với:", {
+        //  tuan,
+        //  hethong,
+        //  lop: lopConfig,
+        //  congnghe,
+        //  giaovien,
+        //});
+      } else {
+        console.warn("⚠️ Không tìm thấy tài liệu CONFIG/config trong Firestore!");
+        // ⛔ Nếu document chưa tồn tại → tạo mặc định
+        const defaultConfig = {
+          tuan: 1,
+          hethong: false,
+          lop: "",
+          congnghe: false,
+          giaovien: false,
+        };
+        setConfig(defaultConfig);
         setSelectedWeek(1);
         setSystemLocked(false);
         setSelectedClass("");
-        setConfig({ tuan: 1, hethong: false, lop: "" });
       }
+    }, (err) => {
+      console.error("❌ Lỗi khi lắng nghe CONFIG/config:", err);
+    });
+
+    // 🧹 Cleanup khi component bị unmount
+    return () => {
+      //console.log("🧹 Gỡ listener Firestore CONFIG/config");
+      unsubscribe();
     };
-
-    initConfig();
-  }, []); // chỉ chạy 1 lần khi mount
-
-
+  }, []); // ✅ Chỉ chạy một lần khi mount
 
   // 🔹 Lấy danh sách lớp (ưu tiên cache từ context)
   useEffect(() => {
     if (classData && classData.length > 0) {
-      console.log("📦 Dữ liệu lớp lấy từ context (cache):", classData);
+      //console.log("📦 Dữ liệu lớp lấy từ context (cache):", classData);
       setClasses(classData);
       if (classData.length > 0) setSelectedClass(classData[0]);
       return;
@@ -75,11 +103,11 @@ export default function Home() {
 
   const fetchClasses = async () => {
     try {
-      console.log("🌐 Đang tải danh sách lớp từ Firestore...");
+      //console.log("🌐 Đang tải danh sách lớp từ Firestore...");
       const snapshot = await getDocs(collection(db, "DANHSACH"));
       const classList = snapshot.docs.map((doc) => doc.id);
 
-      console.log("✅ Đã tải danh sách lớp từ Firestore:", classList);
+      //console.log("✅ Đã tải danh sách lớp từ Firestore:", classList);
 
       // Lưu vào context và local state
       setClassData(classList);
@@ -102,7 +130,7 @@ useEffect(() => {
   const cached = studentData[selectedClass];
   if (cached && cached.length > 0) {
     // 🟢 Dùng cache nếu có
-    console.log(`📦 Dữ liệu học sinh lớp "${selectedClass}" lấy từ context:`, cached);
+    //console.log(`📦 Dữ liệu học sinh lớp "${selectedClass}" lấy từ context:`, cached);
     setStudents(cached);
     return;
   }
@@ -110,7 +138,7 @@ useEffect(() => {
   // 🔵 Nếu chưa có trong context thì tải từ Firestore
   const fetchStudents = async () => {
     try {
-      console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
+      //console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
       const classDocRef = doc(db, "DANHSACH", selectedClass);
       const classSnap = await getDoc(classDocRef);
       if (classSnap.exists()) {
@@ -129,7 +157,7 @@ useEffect(() => {
 
         studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-        console.log(`✅ Đã tải học sinh lớp "${selectedClass}" từ Firestore:`, studentList);
+        //console.log(`✅ Đã tải học sinh lớp "${selectedClass}" từ Firestore:`, studentList);
 
         // ⬇️ Lưu vào context và state
         setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
@@ -166,24 +194,39 @@ useEffect(() => {
   };
 
   const saveStudentStatus = async (studentId, hoVaTen, status) => {
-    if (!selectedWeek || !selectedClass) return;
+  if (!selectedWeek || !selectedClass) return;
 
-    const docRef = doc(db, "DANHGIA", `tuan_${selectedWeek}`);
+  // ✅ Kiểm tra config.congnghe
+  //console.log("🔍 saveStudentStatus() gọi với:");
+  //console.log("   - selectedClass:", selectedClass);
+  //console.log("   - config.congnghe:", config?.congnghe);
+  //console.log("   - selectedWeek:", selectedWeek);
 
-    try {
-      const docSnap = await getDoc(docRef);
-      const data = docSnap.exists() ? docSnap.data() : {};
-      const classData = data[selectedClass] || {};
+  // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
+  const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
+  //console.log("👉 classKey được sử dụng:", classKey);
 
-      // Ghi hoVaTen + status
-      classData[studentId] = { hoVaTen, status };
+  const docRef = doc(db, "DANHGIA", `tuan_${selectedWeek}`);
 
-      await setDoc(docRef, { ...data, [selectedClass]: classData });
-      console.log(`✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${selectedClass}`);
-    } catch (err) {
-      console.error("❌ Lỗi lưu trạng thái học sinh:", err);
-    }
-  };
+  try {
+    const docSnap = await getDoc(docRef);
+    const data = docSnap.exists() ? docSnap.data() : {};
+
+    // ⚠️ dùng classKey ở đây thay vì selectedClass
+    const classData = data[classKey] || {};
+
+    // Ghi hoVaTen + status
+    classData[studentId] = { hoVaTen, status };
+
+    await setDoc(docRef, { ...data, [classKey]: classData });
+    //console.log(
+    //  `✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`
+    //);
+  } catch (err) {
+    console.error("❌ Lỗi lưu trạng thái học sinh:", err);
+  }
+};
+
 
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
     setStudentStatus((prev) => {
