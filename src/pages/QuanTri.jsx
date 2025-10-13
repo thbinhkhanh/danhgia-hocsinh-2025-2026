@@ -531,6 +531,8 @@ useEffect(() => {
                 📝 Đánh giá HS
               </Button>
 
+              <Divider sx={{ mt: 2.5, mb: 2 }} />
+
               {/* Nút Tổng hợp đánh giá */}
               <Button
                 variant="contained"
