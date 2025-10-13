@@ -515,7 +515,7 @@ useEffect(() => {
                 control={
                   <Checkbox
                     checked={isCongNghe}
-                    onChange={handleCongNgheChange}
+                    onChange={handleCongNgheChange} // dùng handler mới
                   />
                 }
                 label="Công nghệ"
@@ -530,21 +530,9 @@ useEffect(() => {
               >
                 📝 Đánh giá HS
               </Button>
-
-              {/* Nút Tổng hợp đánh giá */}
-              <Button
-                variant="contained"
-                color="secondary"
-                fullWidth
-                onClick={() => navigate("/tonghopdanhgia")}
-              >
-                🗂️ Tổng hợp đánh giá
-              </Button>
-
             </Stack>
           </Box>
         </Grid>
-
       </Grid>
     </Card>
   </Box>

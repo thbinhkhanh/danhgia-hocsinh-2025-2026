@@ -7,6 +7,8 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import QuanTri from "./pages/QuanTri";
 import GiaoVien from "./pages/GiaoVien";
+import TongHopDanhGia from "./pages/TongHopDanhGia";
+
 
 // 🧠 Import Context
 import { StudentProvider } from "./context/StudentContext";
@@ -107,6 +109,7 @@ function AppContent() {
           <Route path="/quan-tri" element={<QuanTri />} />
           <Route path="/login" element={<Login />} />
           <Route path="/giaovien" element={<GiaoVien />} />
+          <Route path="/tonghopdanhgia" element={<TongHopDanhGia />} />
         </Routes>
       </Box>
     </>
