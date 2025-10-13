@@ -26,92 +26,93 @@ export default function Home() {
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [systemLocked, setSystemLocked] = useState(false);
 
-  // 🔹 useEffect chỉ quản lý config chung (tuan, hethong, congnghe, giaovien)
-useEffect(() => {
-  const docRef = doc(db, "CONFIG", "config");
+  useEffect(() => {
+    //console.log("🌀 useEffect initConfig chạy (mount)");
 
-  const unsubscribe = onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data();
+    const docRef = doc(db, "CONFIG", "config");
 
-      const tuan = data.tuan || 1;
-      const hethong = data.hethong ?? false;
-      const congnghe = data.congnghe === true;
-      const giaovien = data.giaovien === true;
+    // 👂 Lắng nghe realtime thay đổi từ Firestore
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
 
-      // 🔹 Cập nhật local state các phần config khác
-      setSelectedWeek(tuan);
-      setSystemLocked(!hethong);
+        const tuan = data.tuan || 1;
+        const hethong = data.hethong ?? false;
+        const lopConfig = data.lop || "";
+        const congnghe = data.congnghe === true;
+        const giaovien = data.giaovien === true;
 
-      // 🔹 Cập nhật ConfigContext (không bao gồm lop)
-      setConfig((prev) => ({
-        ...prev,
-        tuan,
-        hethong,
-        congnghe,
-        giaovien,
-      }));
-    } else {
-      console.warn("⚠️ Không tìm thấy CONFIG/config trong Firestore, dùng mặc định");
-      setSelectedWeek(1);
-      setSystemLocked(false);
-      setConfig({
-        tuan: 1,
-        hethong: false,
-        lop: "",
-        congnghe: false,
-        giaovien: false,
-      });
-    }
-  }, (err) => {
-    console.error("❌ Lỗi khi lắng nghe CONFIG/config:", err);
-  });
+        // 🪵 Log chi tiết
+        //console.log("📡 Firestore cập nhật CONFIG:", data);
 
-  return () => unsubscribe();
-}, []);
+        // 🔹 Cập nhật local state
+        setSelectedWeek(tuan);
+        setSystemLocked(hethong === false);
+        setSelectedClass(lopConfig);
 
-// 🔹 useEffect riêng chỉ fetch lop từ Firestore
-useEffect(() => {
-  const docRef = doc(db, "CONFIG", "config");
+        // 🔹 Cập nhật context (ConfigContext)
+        setConfig({
+          tuan,
+          hethong,
+          lop: lopConfig,
+          congnghe,
+          giaovien,
+        });
 
-  const unsubscribe = onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const lopConfig = data.lop || "";
+        //console.log("✅ Context setConfig() với:", {
+        //  tuan,
+        //  hethong,
+        //  lop: lopConfig,
+        //  congnghe,
+        //  giaovien,
+        //});
+      } else {
+        console.warn("⚠️ Không tìm thấy tài liệu CONFIG/config trong Firestore!");
+        // ⛔ Nếu document chưa tồn tại → tạo mặc định
+        const defaultConfig = {
+          tuan: 1,
+          hethong: false,
+          lop: "",
+          congnghe: false,
+          giaovien: false,
+        };
+        setConfig(defaultConfig);
+        setSelectedWeek(1);
+        setSystemLocked(false);
+        setSelectedClass("");
+      }
+    }, (err) => {
+      console.error("❌ Lỗi khi lắng nghe CONFIG/config:", err);
+    });
 
-      // 🔹 Cập nhật lớp realtime
-      setSelectedClass(lopConfig);
-
-      // 🔹 Cập nhật ConfigContext với lop
-      setConfig((prev) => ({
-        ...prev,
-        lop: lopConfig,
-      }));
-    } else {
-      setSelectedClass("");
-      setConfig((prev) => ({ ...prev, lop: "" }));
-    }
-  }, (err) => {
-    console.error("❌ Lỗi khi lắng nghe CONFIG/config (lop):", err);
-  });
-
-  return () => unsubscribe();
-}, []);
+    // 🧹 Cleanup khi component bị unmount
+    return () => {
+      //console.log("🧹 Gỡ listener Firestore CONFIG/config");
+      unsubscribe();
+    };
+  }, []); // ✅ Chỉ chạy một lần khi mount
 
   // 🔹 Lấy danh sách lớp (ưu tiên cache từ context)
-useEffect(() => {
+  useEffect(() => {
+    if (classData && classData.length > 0) {
+      //console.log("📦 Dữ liệu lớp lấy từ context (cache):", classData);
+      setClasses(classData);
+      if (classData.length > 0) setSelectedClass(classData[0]);
+      return;
+    }
+
   const fetchClasses = async () => {
     try {
+      //console.log("🌐 Đang tải danh sách lớp từ Firestore...");
       const snapshot = await getDocs(collection(db, "DANHSACH"));
       const classList = snapshot.docs.map((doc) => doc.id);
 
+      //console.log("✅ Đã tải danh sách lớp từ Firestore:", classList);
+
+      // Lưu vào context và local state
       setClassData(classList);
       setClasses(classList);
-
-      // ✅ Chọn lớp từ config trước, nếu không có mới dùng lớp đầu tiên
-      if (classList.length > 0) {
-        setSelectedClass((prev) => prev || config.lop || classList[0]);
-      }
+      if (classList.length > 0) setSelectedClass(classList[0]);
     } catch (err) {
       console.error("❌ Lỗi khi lấy danh sách lớp:", err);
       setClasses([]);
@@ -120,8 +121,7 @@ useEffect(() => {
   };
 
   fetchClasses();
-}, [config.lop]); // ✅ phụ thuộc config.lop để set lớp đúng
-
+}, []); // Chỉ chạy 1 lần khi mount
 
 // 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
 useEffect(() => {
@@ -244,8 +244,8 @@ useEffect(() => {
   };
 
   const statusColors = {
-    "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff" }, // cam, chữ trắng
-    "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },       // tím, chữ trắng
+    "Chưa hoàn thành": { bg: "#e0e0e0", text: "#616161" },
+    "Hoàn thành": { bg: "#c8e6c9", text: "#388e3c" },
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },
   };
 
@@ -394,49 +394,38 @@ useEffect(() => {
                             width: "100%",
                             p: 2,
                             borderRadius: 2,
-                            bgcolor: "#e0e0e0", // nền xám toàn vùng mở rộng
+                            bgcolor: "white", // luôn trắng khi mở overlay
                             color: "black",
+                            boxShadow: 3,
                             zIndex: 10,
                           }}
                         >
-                          <Box
-                            sx={{
-                              //bgcolor: "white", // nền trắng bao quanh các mức đánh giá
-                              bgcolor: "#e3f2fd",
-                              borderRadius: 2,
-                              boxShadow: 3,
-                              p: 2,
-                              border: "2px solid #2196f3", // viền xanh xung quanh vùng trắng
-                            }}
-                          >
-                            <Stack spacing={1}>
-                              {["Chưa hoàn thành", "Hoàn thành", "Hoàn thành tốt"].map((s) => (
-                                <Button
-                                  key={s}
-                                  size="small"
-                                  sx={{
-                                    bgcolor: status === s ? "#e0e0e0" : "#f9f9f9",
-                                    color: "black",
-                                    borderRadius: 1,
-                                    textTransform: "none",
-                                    justifyContent: "flex-start",
-                                    fontSize: 15,
-                                    border: "1px solid",
-                                    borderColor: status === s ? "#bdbdbd" : "#ccc",
-                                    width: "100%",
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(student.maDinhDanh, student.hoVaTen, s);
-                                    setExpandedStudent(null);
-                                  }}
-                                >
-                                  {status === s ? "✅ " : ""}
-                                  {s}
-                                </Button>
-                              ))}
-                            </Stack>
-                          </Box>
+                          <Stack spacing={1}>
+                            {["Chưa hoàn thành", "Hoàn thành", "Hoàn thành tốt"].map((s) => (
+                              <Button
+                                key={s}
+                                size="small"
+                                sx={{
+                                  bgcolor: status === s ? "#e0e0e0" : "#f5f5f5", // màu nền mặc định mới
+                                  color: "black",
+                                  borderRadius: 1,
+                                  textTransform: "none",
+                                  justifyContent: "flex-start",
+                                  fontSize: 15,
+                                  border: "1px solid",
+                                  borderColor: status === s ? "#bdbdbd" : "#ccc",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(student.maDinhDanh, student.hoVaTen, s);
+                                  setExpandedStudent(null);
+                                }}
+                              >
+                                {status === s ? "✅ " : ""}
+                                {s}
+                              </Button>
+                            ))}
+                        </Stack>
                         </Box>
                       )}
                     </Box>

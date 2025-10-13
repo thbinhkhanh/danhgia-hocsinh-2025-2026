@@ -75,21 +75,28 @@ export default function GiaoVien() {
     };
   }, []); // ✅ chỉ setup listener 1 lần
 
-  // 🔹 Lấy danh sách lớp (ưu tiên lớp từ config, fallback cache, fallback lớp đầu tiên)
-useEffect(() => {
+
+  // 🔹 Lấy danh sách lớp (ưu tiên cache từ context)
+  useEffect(() => {
+    if (classData && classData.length > 0) {
+      //console.log("📦 Dữ liệu lớp lấy từ context (cache):", classData);
+      setClasses(classData);
+      if (classData.length > 0) setSelectedClass(classData[0]);
+      return;
+    }
+
   const fetchClasses = async () => {
     try {
+      //console.log("🌐 Đang tải danh sách lớp từ Firestore...");
       const snapshot = await getDocs(collection(db, "DANHSACH"));
       const classList = snapshot.docs.map((doc) => doc.id);
+
+      //console.log("✅ Đã tải danh sách lớp từ Firestore:", classList);
 
       // Lưu vào context và local state
       setClassData(classList);
       setClasses(classList);
-
-      // ✅ Chọn lớp từ config trước, nếu không có mới dùng lớp đầu tiên
-      if (classList.length > 0) {
-        setSelectedClass((prev) => prev || config.lop || classList[0]);
-      }
+      if (classList.length > 0) setSelectedClass(classList[0]);
     } catch (err) {
       console.error("❌ Lỗi khi lấy danh sách lớp:", err);
       setClasses([]);
@@ -98,8 +105,7 @@ useEffect(() => {
   };
 
   fetchClasses();
-}, [config.lop]); // Chạy lại nếu config.lop thay đổi
-
+}, []); // Chỉ chạy 1 lần khi mount
 
 // 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
 useEffect(() => {
@@ -256,21 +262,6 @@ const handleCongNgheChange = async (e) => {
   }
 };
 
-// ✅ Hàm thay đổi lớp: cập nhật state, context và Firestore
-const handleClassChange = async (e) => {
-  const newClass = e.target.value;
-  setSelectedClass(newClass);
-
-  try {
-    const docRef = doc(db, "CONFIG", "config");
-    await setDoc(docRef, { lop: newClass }, { merge: true }); // lưu vào field 'lop'
-    setConfig(prev => ({ ...prev, lop: newClass })); // cập nhật context
-  } catch (err) {
-    console.error("❌ Lỗi cập nhật lớp:", err);
-  }
-};
-
-
   const statusColors = {
     "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff" }, // cam, chữ trắng
     "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },       // tím, chữ trắng
@@ -336,8 +327,7 @@ const handleClassChange = async (e) => {
 
           <Select
             value={selectedClass}
-            //onChange={(e) => setSelectedClass(e.target.value)}
-            onChange={handleClassChange}
+            onChange={(e) => setSelectedClass(e.target.value)}
             size="small"
             sx={{
               width: 80,
