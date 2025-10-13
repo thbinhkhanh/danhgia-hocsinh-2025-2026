@@ -362,6 +362,7 @@ useEffect(() => {
                         elevation={3}
                         sx={{
                           minWidth: 120,
+                          width: { xs: "75vw", sm: "auto" }, // 📱 chỉ trên điện thoại: rộng 75% màn hình
                           p: 2,
                           borderRadius: 2,
                           cursor: "pointer",
@@ -375,6 +376,7 @@ useEffect(() => {
                             bgcolor: !status ? "#e3f2fd" : undefined,
                           },
                         }}
+
                         onClick={() => toggleExpand(student.maDinhDanh)}
                         onMouseEnter={() => setExpandedStudent(null)} // <-- ẩn overlay khi hover vào học sinh khác
                       >

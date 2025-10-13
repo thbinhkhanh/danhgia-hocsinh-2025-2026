@@ -398,20 +398,22 @@ const handleCongNgheChange = async (e) => {
                         <Paper
                             elevation={3}
                             sx={{
-                                minWidth: 120,
-                                p: 2,
-                                borderRadius: 2,
-                                cursor: "pointer",
-                                transition: "all 0.3s",
-                                textAlign: "left",
-                                bgcolor: !isExpanded ? (status ? colors.bg : "white") : "white",
-                                color: status ? colors.text : "black",
-                                "&:hover": {
+                              minWidth: 120,
+                              width: { xs: "75vw", sm: "auto" }, // 📱 chỉ áp dụng 75% chiều rộng trên điện thoại
+                              p: 2,
+                              borderRadius: 2,
+                              cursor: "pointer",
+                              transition: "all 0.3s",
+                              textAlign: "left",
+                              bgcolor: !isExpanded ? (status ? colors.bg : "white") : "white",
+                              color: status ? colors.text : "black",
+                              "&:hover": {
                                 transform: "translateY(-2px)",
                                 boxShadow: 4,
                                 bgcolor: !status ? "#e3f2fd" : undefined,
-                                },
+                              },
                             }}
+
                             onClick={() => toggleExpand(student.maDinhDanh)}
                             onMouseEnter={() => setExpandedStudent(null)} // <-- ẩn overlay khi hover vào học sinh khác
                             >
