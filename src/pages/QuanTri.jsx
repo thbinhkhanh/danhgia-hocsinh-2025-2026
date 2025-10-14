@@ -23,7 +23,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import LogoutIcon from '@mui/icons-material/Logout';
 import * as XLSX from 'xlsx';
-import { doc, writeBatch, setDoc, getDoc } from "firebase/firestore";
+import { doc, writeBatch, setDoc, getDoc, getDocs, collection } from "firebase/firestore";
+
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { ConfigContext } from "../context/ConfigContext";
@@ -354,7 +355,7 @@ useEffect(() => {
       }}
     >
       {/* Nút Close */}
-      <Tooltip title="Đăng xuất" arrow>
+      {/*<Tooltip title="Đăng xuất" arrow>
         <Button
           onClick={handleLogout}
           sx={{
@@ -368,7 +369,7 @@ useEffect(() => {
         >
           <LogoutIcon />
         </Button>
-      </Tooltip>
+      </Tooltip>*/}
 
       <Typography
         variant="h5"
@@ -391,7 +392,7 @@ useEffect(() => {
             </Typography>
 
             <Stack spacing={2}>
-              <Stack direction="row" spacing={1} alignItems="center">
+              {/*<Stack direction="row" spacing={1} alignItems="center">
                 <FormControl size="small" sx={{ flex: 1 }}>
                   <InputLabel>Tuần từ</InputLabel>
                   <Select
@@ -424,7 +425,7 @@ useEffect(() => {
               </Stack>
 
               {/* Checkbox Giáo viên */}
-              <FormControlLabel
+              {/*<FormControlLabel
                 control={
                   <Checkbox
                     checked={isGiaoVien}
@@ -435,7 +436,7 @@ useEffect(() => {
               />
 
               {/* Nút xuất đánh giá */}
-              <Button
+              {/*<Button
                 variant="contained"
                 color="primary"
                 startIcon={<UploadFileIcon />}
@@ -445,7 +446,7 @@ useEffect(() => {
                 Xuất đánh giá
               </Button>
 
-              <Divider sx={{ mt: 2.5, mb: 2 }} />
+              <Divider sx={{ mt: 2.5, mb: 2 }} />*/}
 
               {/* Chọn file Excel */}
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
@@ -488,22 +489,22 @@ useEffect(() => {
             <Stack spacing={2}>
               <Box sx={{ display: "flex", gap: 2 }}>
                 <FormControl size="small" sx={{ flex: 1 }}>
-                  <InputLabel>Tuần</InputLabel>
-                  <Select value={selectedWeek} onChange={handleWeekChange} label="Tuần">
-                    {[...Array(35)].map((_, i) => (
-                      <MenuItem key={i + 1} value={i + 1}>
-                        Tuần {i + 1}
+                  <InputLabel>Lớp</InputLabel>
+                  <Select value={selectedClass} onChange={handleClassChange} label="Lớp">
+                    {classes.map((cls) => (
+                      <MenuItem key={cls} value={cls}>
+                        {cls}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
 
                 <FormControl size="small" sx={{ flex: 1 }}>
-                  <InputLabel>Lớp</InputLabel>
-                  <Select value={selectedClass} onChange={handleClassChange} label="Lớp">
-                    {classes.map((cls) => (
-                      <MenuItem key={cls} value={cls}>
-                        {cls}
+                  <InputLabel>Tuần</InputLabel>
+                  <Select value={selectedWeek} onChange={handleWeekChange} label="Tuần">
+                    {[...Array(35)].map((_, i) => (
+                      <MenuItem key={i + 1} value={i + 1}>
+                        Tuần {i + 1}
                       </MenuItem>
                     ))}
                   </Select>
@@ -522,7 +523,7 @@ useEffect(() => {
               />
 
               {/* Nút Đánh giá HS */}
-              <Button
+              {/*<Button
                 variant="contained"
                 color="primary"
                 fullWidth
@@ -534,14 +535,14 @@ useEffect(() => {
               <Divider sx={{ mt: 2.5, mb: 2 }} />
 
               {/* Nút Tổng hợp đánh giá */}
-              <Button
+              {/*<Button
                 variant="contained"
                 color="secondary"
                 fullWidth
                 onClick={() => navigate("/tonghopdanhgia")}
               >
                 🗂️ Tổng hợp đánh giá
-              </Button>
+              </Button>*/}
 
             </Stack>
           </Box>

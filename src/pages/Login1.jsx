@@ -2,8 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { Box, Typography, TextField, Button, Stack, Card } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { ConfigContext } from "../context/ConfigContext";
-//import { doc, getDoc } from "firebase/firestore"; // 🔹 import firestore
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore"; // 🔹 import firestore
 import { db } from "../firebase"; // 🔹 import db
 
 const DEFAULT_USERNAME = "Admin";
@@ -43,34 +42,10 @@ export default function Login() {
     fetchConfig();
   }, [setConfig]);
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     if (username === DEFAULT_USERNAME && password === DEFAULT_PASSWORD) {
       localStorage.setItem("loggedIn", "true");
       localStorage.setItem("account", DEFAULT_USERNAME);
-
-      // ✅ Ghi login: true vào Firestore
-      try {
-        const docRef = doc(db, "CONFIG", "config");
-        await updateDoc(docRef, { login: true });
-        console.log("✅ Đã ghi login: true vào Firestore");
-      } catch (error) {
-        console.error("❌ Lỗi khi ghi login vào Firestore:", error);
-      }
-
-      // ✅ Cập nhật login: true vào localStorage và context
-      const storedConfig = localStorage.getItem("appConfig");
-      const parsedConfig = storedConfig ? JSON.parse(storedConfig) : {};
-
-      const updatedConfig = {
-        ...parsedConfig,
-        login: true,
-      };
-
-      localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
-      setConfig(updatedConfig);
-
-      console.log("✅ Config sau đăng nhập:", updatedConfig);
-
       navigate("/quan-tri");
     } else {
       alert("❌ Tài khoản hoặc mật khẩu sai!");

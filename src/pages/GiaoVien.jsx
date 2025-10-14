@@ -55,13 +55,14 @@ export default function GiaoVien() {
         setSelectedClass(lopConfig);
 
         // Cập nhật context
-        setConfig({
-          tuan,
-          hethong,
-          lop: lopConfig,
-          congnghe,
-          giaovien,
-        });
+        setConfig((prev) => ({
+        ...prev,
+        tuan,
+        hethong,
+        lop: lopConfig,
+        congnghe,
+        giaovien,
+      }));
 
       } else {
         console.warn("⚠️ Không tìm thấy tài liệu CONFIG/config trong Firestore!");
