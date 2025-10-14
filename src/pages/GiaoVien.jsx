@@ -193,7 +193,12 @@ useEffect(() => {
       // Ghi hoVaTen + status
       classData[studentId] = { hoVaTen, status };
 
-      await setDoc(docRef, { ...data, [classKey]: classData }); // ✅ dùng classKey
+      //await setDoc(docRef, { ...data, [classKey]: classData }); // ✅ dùng classKey
+      await setDoc(
+        docRef,
+        { [`${classKey}.${studentId}`]: { hoVaTen, status } },
+        { merge: true }
+      );
       //console.log(`✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`);
     } catch (err) {
       console.error("❌ Lỗi lưu trạng thái học sinh:", err);
@@ -456,8 +461,8 @@ const handleClassChange = async (e) => {
                                       border: "2px solid #2196f3", // viền xanh xung quanh vùng trắng
                                     }}
                                   >
-                                    <Stack spacing={1}>
-                                      {["Chưa hoàn thành", "Hoàn thành", "Hoàn thành tốt"].map((s) => (
+                                    <Stack spacing={1}>                                      
+                                      {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành" ].map((s) => (
                                         <Button
                                           key={s}
                                           size="small"

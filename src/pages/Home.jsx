@@ -250,9 +250,9 @@ useEffect(() => {
   };
 
   const statusColors = {
-    "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff" }, // cam, chữ trắng
-    "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },       // tím, chữ trắng
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },
+    "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },       // tím, chữ trắng
+    "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff" }, // cam, chữ trắng
   };
 
   return (
@@ -416,7 +416,7 @@ useEffect(() => {
                             }}
                           >
                             <Stack spacing={1}>
-                              {["Chưa hoàn thành", "Hoàn thành", "Hoàn thành tốt"].map((s) => (
+                              {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành" ].map((s) => (
                                 <Button
                                   key={s}
                                   size="small"

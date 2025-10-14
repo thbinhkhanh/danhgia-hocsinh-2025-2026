@@ -84,6 +84,70 @@ useEffect(() => {
       }
 
       const studentsData = classSnap.data();
+      let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
+        hoVaTen: info.hoVaTen || "",
+        statusByWeek: {},
+      }));
+
+      // 2️⃣ Lấy tất cả tuần trong DANHGIA
+      const weeksSnapshot = await getDocs(collection(db, "DANHGIA"));
+
+      for (const weekDoc of weeksSnapshot.docs) {
+        const weekId = weekDoc.id; // ví dụ: tuan_4
+        const weekData = weekDoc.data();
+
+        // Duyệt qua tất cả key trong document (mỗi key là 1 học sinh)
+        for (const [key, value] of Object.entries(weekData)) {
+          // key ví dụ: "5.1.7965625085" hoặc "4.5_CN.4070235011"
+          if (!key.startsWith(selectedClass)) continue;
+
+          // tách mã học sinh (sau dấu chấm cuối)
+          const maHS = key.split(".").pop();
+          const student = studentList.find(s => s.maDinhDanh === maHS);
+          if (student) {
+            student.statusByWeek[weekId] = value.status || "-";
+          }
+        }
+      }
+
+      // 3️⃣ Sắp xếp theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+      studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+      // 4️⃣ Lưu vào state & context
+      setStudentData(prev => ({ ...prev, [selectedClass]: studentList }));
+      setStudents(studentList);
+
+    } catch (err) {
+      console.error(`❌ Lỗi khi lấy học sinh + đánh giá lớp "${selectedClass}":`, err);
+      setStudents([]);
+    }
+  };
+
+  fetchStudentsAndStatus();
+}, [selectedClass, setStudentData]);
+
+{/*useEffect(() => {
+  if (!selectedClass) return;
+
+  const fetchStudentsAndStatus = async () => {
+    try {
+      // 1️⃣ Lấy danh sách học sinh từ DANHSACH
+      const classDocRef = doc(db, "DANHSACH", selectedClass);
+      const classSnap = await getDoc(classDocRef);
+      if (!classSnap.exists()) {
+        setStudents([]);
+        setStudentData(prev => ({ ...prev, [selectedClass]: [] }));
+        return;
+      }
+
+      const studentsData = classSnap.data();
       let studentList = Object.entries(studentsData).map(([maDinhDanh, info], idx) => ({
         maDinhDanh,
         hoVaTen: info.hoVaTen || "",
@@ -125,7 +189,7 @@ useEffect(() => {
   };
 
   fetchStudentsAndStatus();
-}, [selectedClass, setStudentData]);
+}, [selectedClass, setStudentData]);*/}
 
 
   const handleCongNgheChange = (e) => setIsCongNghe(e.target.checked);
