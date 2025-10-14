@@ -218,7 +218,9 @@ useEffect(() => {
     // Ghi hoVaTen + status
     classData[studentId] = { hoVaTen, status };
 
-    await setDoc(docRef, { ...data, [classKey]: classData });
+    //await setDoc(docRef, { ...data, [classKey]: classData });
+    await setDoc(docRef, { [classKey]: { [studentId]: { hoVaTen, status } } }, { merge: true });
+
     //console.log(
     //  `✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`
     //);
