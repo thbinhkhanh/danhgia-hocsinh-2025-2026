@@ -13,7 +13,7 @@ import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import DownloadIcon from "@mui/icons-material/Download";
 import { exportEvaluationToExcel } from "../utils/exportExcel";
 import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
-
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 export default function TongHopDanhGia() {
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
@@ -172,6 +172,48 @@ const handleDownload = async () => {
   }
 };
 
+// --- Hàm thống kê tổng hợp ---
+const getStatistics = () => {
+  let totalT = 0;
+  let totalH = 0;
+  let totalC = 0;
+
+  const weekId = `tuan_${selectedWeek}`;
+
+  students.forEach((student) => {
+    const status = student.statusByWeek?.[weekId] || "";
+    const short =
+      status === "Hoàn thành tốt"
+        ? "T"
+        : status === "Hoàn thành"
+        ? "H"
+        : status === "Chưa hoàn thành"
+        ? "C"
+        : "";
+
+    if (short === "T") totalT++;
+    else if (short === "H") totalH++;
+    else if (short === "C") totalC++;
+  });
+
+  const totalCells = students.length; // mỗi học sinh có 1 ô cho tuần này
+  const totalBlank = Math.max(0, totalCells - (totalT + totalH + totalC));
+
+  return { totalT, totalH, totalC, totalBlank };
+};
+
+const { totalT, totalH, totalC, totalBlank } = getStatistics();
+
+const handleRefresh = async () => {
+  try {
+    setLoading(true);
+    await fetchStudentsData(); // 🔹 hoặc hàm nào đang load dữ liệu Firestore
+    setLoading(false);
+  } catch (error) {
+    console.error("❌ Lỗi khi làm mới dữ liệu:", error);
+    setLoading(false);
+  }
+};
 
 const handleCongNgheChange = (e) => setIsCongNghe(e.target.checked);
 const borderStyle = "1px solid #e0e0e0"; // màu nhạt như đường mặc định
@@ -189,13 +231,19 @@ return (
       }}
     >
       {/* 🔹 Nút tải Excel */}
+      <Box
+      sx={{
+        position: "absolute",
+        top: 12,
+        left: 12,
+        display: "flex",
+        gap: 1,
+      }}
+    >
       <Tooltip title="Tải xuống Excel" arrow>
         <IconButton
           onClick={handleDownload}
           sx={{
-            position: "absolute",
-            top: 12,
-            left: 12,
             color: "primary.main",
             bgcolor: "white",
             boxShadow: 2,
@@ -205,6 +253,22 @@ return (
           <DownloadIcon fontSize="small" />
         </IconButton>
       </Tooltip>
+
+      <Tooltip title="Làm mới thống kê" arrow>
+        <IconButton
+          onClick={handleRefresh}
+          sx={{
+            color: "primary.main",
+            bgcolor: "white",
+            boxShadow: 2,
+            "&:hover": { bgcolor: "primary.light", color: "white" },
+          }}
+        >
+          <RefreshIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </Box>
+
 
       {/* ===== Header ===== */}
       <Typography
@@ -216,6 +280,64 @@ return (
       >
         TỔNG HỢP ĐÁNH GIÁ
       </Typography>
+
+      {/* --- Bảng thống kê góc phải --- */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          backgroundColor: "#f1f8e9",
+          borderRadius: 2,
+          border: "1px solid #e0e0e0",
+          p: 2,
+          minWidth: 260,
+          boxShadow: 2,
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={1}
+        >
+          <Typography variant="subtitle1" fontWeight="bold" color="primary">
+            Thống kê:
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 100 }}>
+            <InputLabel>Tuần</InputLabel>
+            <Select
+              value={selectedWeek}
+              label="Tuần"
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            >
+              {[...Array(35)].map((_, i) => (
+                <MenuItem key={i + 1} value={i + 1}>
+                  Tuần {i + 1}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Hoàn thành tốt (T):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalT}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Hoàn thành (H):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalH}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Chưa hoàn thành (C):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalC}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Chưa đánh giá:</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
+        </Stack>
+      </Box>
+
 
       {/* ===== Row tuần ===== */}
       <Stack

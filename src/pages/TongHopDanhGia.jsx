@@ -13,7 +13,7 @@ import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import DownloadIcon from "@mui/icons-material/Download";
 import { exportEvaluationToExcel } from "../utils/exportExcel";
 import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
-
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 export default function TongHopDanhGia() {
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
@@ -83,86 +83,83 @@ export default function TongHopDanhGia() {
     }, [setClassData]); // chỉ dependency là setClassData
 
 
-useEffect(() => {
+// 🧩 Định nghĩa ngoài useEffect
+const fetchStudentsAndStatus = async () => {
   if (!selectedClass) return;
+  try {
+    // 1️⃣ Lấy danh sách học sinh
+    const classDocRef = doc(db, "DANHSACH", selectedClass);
+    const classSnap = await getDoc(classDocRef);
+    if (!classSnap.exists()) {
+      setStudents([]);
+      setStudentData(prev => ({ ...prev, [selectedClass]: [] }));
+      return;
+    }
 
-  const fetchStudentsAndStatus = async () => {
-    try {
-      // 1️⃣ Lấy danh sách học sinh từ DANHSACH
-      const classDocRef = doc(db, "DANHSACH", selectedClass);
-      const classSnap = await getDoc(classDocRef);
-      if (!classSnap.exists()) {
-        setStudents([]);
-        setStudentData(prev => ({ ...prev, [selectedClass]: [] }));
-        return;
-      }
+    const studentsData = classSnap.data();
+    let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
+      maDinhDanh,
+      hoVaTen: info.hoVaTen || "",
+      statusByWeek: {},
+    }));
 
-      const studentsData = classSnap.data();
-      let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
-        maDinhDanh,
-        hoVaTen: info.hoVaTen || "",
-        statusByWeek: {},
-      }));
+    // ✅ Chọn collection
+    const collectionName = isTeacherChecked ? "DANHGIA_GV" : "DANHGIA";
 
-      // ✅ Chọn collection tùy theo checkbox "Giáo viên"
-      const collectionName = isTeacherChecked ? "DANHGIA_GV" : "DANHGIA";
+    // ✅ Lấy dữ liệu trong khoảng tuần
+    const weekPromises = [];
+    for (let i = weekFrom; i <= weekTo; i++) {
+      const weekId = `tuan_${i}`;
+      weekPromises.push(
+        getDoc(doc(db, collectionName, weekId)).then((snap) => ({ weekId, snap }))
+      );
+    }
 
-      // ✅ Lấy dữ liệu trong khoảng tuần song song để tối ưu tốc độ
-      const weekPromises = [];
-      for (let i = weekFrom; i <= weekTo; i++) {
-        const weekId = `tuan_${i}`;
-        weekPromises.push(getDoc(doc(db, collectionName, weekId)).then((snap) => ({ weekId, snap })));
-      }
+    const weekResults = await Promise.all(weekPromises);
 
-      const weekResults = await Promise.all(weekPromises);
+    // 2️⃣ Gộp dữ liệu từng tuần
+    for (const { weekId, snap } of weekResults) {
+      if (!snap.exists()) continue;
+      const weekData = snap.data();
 
-      // 2️⃣ Xử lý dữ liệu từng tuần
-      for (const { weekId, snap } of weekResults) {
-        if (!snap.exists()) continue;
+      for (const [key, value] of Object.entries(weekData)) {
+        const isCN = key.includes("_CN.");
+        if (isCongNghe && !isCN) continue;
+        if (!isCongNghe && isCN) continue;
 
-        const weekData = snap.data();
+        const classPrefix = isCongNghe ? `${selectedClass}_CN` : selectedClass;
+        if (!key.startsWith(classPrefix)) continue;
 
-        for (const [key, value] of Object.entries(weekData)) {
-          // --- Lọc theo Công nghệ ---
-          const isCN = key.includes("_CN.");
-          if (isCongNghe && !isCN) continue; // chỉ lấy key có _CN
-          if (!isCongNghe && isCN) continue; // bỏ qua key _CN khi không bật CN
-
-          // --- Lọc theo lớp ---
-          // ví dụ key: "4.1_CN.7955284800" hoặc "4.1.7955284800"
-          const classPrefix = isCongNghe ? `${selectedClass}_CN` : selectedClass;
-          if (!key.startsWith(classPrefix)) continue;
-
-          const maHS = key.split(".").pop();
-          const student = studentList.find((s) => s.maDinhDanh === maHS);
-          if (student) {
-            student.statusByWeek[weekId] = value.status || "-";
-          }
+        const maHS = key.split(".").pop();
+        const student = studentList.find((s) => s.maDinhDanh === maHS);
+        if (student) {
+          student.statusByWeek[weekId] = value.status || "-";
         }
       }
-
-      // 3️⃣ Sắp xếp theo tên
-      studentList.sort((a, b) => {
-        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-        return nameA.localeCompare(nameB);
-      });
-
-      studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
-
-      // 4️⃣ Lưu vào state & context
-      setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
-      setStudents(studentList);
-
-    } catch (err) {
-      console.error(`❌ Lỗi khi lấy học sinh + đánh giá lớp "${selectedClass}":`, err);
-      setStudents([]);
     }
-  };
 
+    // 3️⃣ Sắp xếp
+    studentList.sort((a, b) => {
+      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+    studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+    // 4️⃣ Lưu lại
+    setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
+    setStudents(studentList);
+
+  } catch (err) {
+    console.error(`❌ Lỗi khi lấy dữ liệu lớp "${selectedClass}":`, err);
+    setStudents([]);
+  }
+};
+
+useEffect(() => {
   fetchStudentsAndStatus();
 }, [selectedClass, weekFrom, weekTo, setStudentData, isTeacherChecked, isCongNghe]);
-
 
 const handleDownload = async () => {
   try {
@@ -204,7 +201,6 @@ const getStatistics = () => {
 
 const { totalT, totalH, totalC, totalBlank } = getStatistics();
 
-
 const handleCongNgheChange = (e) => setIsCongNghe(e.target.checked);
 const borderStyle = "1px solid #e0e0e0"; // màu nhạt như đường mặc định
 
@@ -221,22 +217,43 @@ return (
       }}
     >
       {/* 🔹 Nút tải Excel */}
-      <Tooltip title="Tải xuống Excel" arrow>
-        <IconButton
-          onClick={handleDownload}
-          sx={{
-            position: "absolute",
-            top: 12,
-            left: 12,
-            color: "primary.main",
-            bgcolor: "white",
-            boxShadow: 2,
-            "&:hover": { bgcolor: "primary.light", color: "white" },
-          }}
-        >
-          <DownloadIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
+      <Box
+        sx={{
+          position: "absolute",
+          top: 12,
+          left: 12,
+          display: "flex",
+          gap: 1,
+        }}
+      >
+        <Tooltip title="Tải xuống Excel" arrow>
+          <IconButton
+            onClick={handleDownload}
+            sx={{
+              color: "primary.main",
+              bgcolor: "white",
+              boxShadow: 2,
+              "&:hover": { bgcolor: "primary.light", color: "white" },
+            }}
+          >
+            <DownloadIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Làm mới thống kê" arrow>
+          <IconButton
+            onClick={fetchStudentsAndStatus}
+            sx={{
+              color: "primary.main",
+              bgcolor: "white",
+              boxShadow: 2,
+              "&:hover": { bgcolor: "primary.light", color: "white" },
+            }}
+          >
+            <RefreshIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
       {/* ===== Header ===== */}
       <Typography
