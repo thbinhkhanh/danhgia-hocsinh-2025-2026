@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { 
-  Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, Checkbox,  FormControlLabel, 
-} from "@mui/material";
+import { Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, Checkbox, FormControlLabel, InputLabel, FormControl } from "@mui/material";
 //import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
@@ -376,12 +374,12 @@ const handleClassChange = async (e) => {
             ))}
           </Select>
 
-          {/* ✅ Hiển thị checkbox "Công nghệ" chỉ khi config.congnghe === true */}
+          {/* Hiển thị checkbox "Công nghệ" */}
           <FormControlLabel
             control={
               <Checkbox
                 checked={!!config?.congnghe}         // ép kiểu boolean an toàn
-                onChange={handleCongNgheChange}      // ✅ Gọi hàm bạn đã định nghĩa
+                onChange={handleCongNgheChange}      // hàm bạn đã định nghĩa
                 sx={{ transform: "scale(1.1)" }}
               />
             }
@@ -395,6 +393,38 @@ const handleClassChange = async (e) => {
               "& .MuiTypography-root": { fontSize: 14 },
             }}
           />
+
+          {/* ---------------------- Ô chọn Tuần ---------------------- */}
+          <FormControl size="small" sx={{ ml: 2, minWidth: 100 }}>
+            <Select
+              value={selectedWeek}
+              onChange={async (e) => {
+                const newWeek = Number(e.target.value); // ép kiểu số
+                setSelectedWeek(newWeek); // cập nhật state local
+
+                try {
+                  // Cập nhật Firestore
+                  const docRef = doc(db, "CONFIG", "config");
+                  await setDoc(docRef, { tuan: newWeek }, { merge: true });
+
+                  // Cập nhật context
+                  setConfig(prev => ({ ...prev, tuan: newWeek }));
+                } catch (err) {
+                  console.error("❌ Lỗi cập nhật tuần:", err);
+                }
+              }}
+              size="small"
+            >
+              {[...Array(35)].map((_, i) => (
+                <MenuItem key={i + 1} value={i + 1}>
+                  Tuần {i + 1}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+
+          
 
         </Box>
 

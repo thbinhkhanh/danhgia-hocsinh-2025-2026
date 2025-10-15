@@ -279,7 +279,7 @@ return (
         </IconButton>
       </Tooltip>
 
-      {/* ===== Header: title centered (1 dòng) ===== */}
+      {/* ===== Header ===== */}
       <Typography
         variant="h5"
         fontWeight="bold"
@@ -290,7 +290,7 @@ return (
         TỔNG HỢP ĐÁNH GIÁ
       </Typography>
 
-      {/* ===== Row under title: week selects centered on one row ===== */}
+      {/* ===== Row tuần ===== */}
       <Stack
         direction="row"
         spacing={2}
@@ -299,7 +299,6 @@ return (
         mb={2}
         flexWrap="wrap"
       >
-        {/* Tuần từ */}
         <FormControl size="small" sx={{ minWidth: 100 }}>
           <InputLabel>Tuần từ</InputLabel>
           <Select
@@ -315,7 +314,6 @@ return (
           </Select>
         </FormControl>
 
-        {/* Đến tuần */}
         <FormControl size="small" sx={{ minWidth: 100 }}>
           <InputLabel>Đến tuần</InputLabel>
           <Select
@@ -332,12 +330,11 @@ return (
         </FormControl>
       </Stack>
 
-
       <Divider sx={{ mb: 3 }} />
 
       {/* 🔹 Hàng chọn lớp và bộ lọc */}
       <Stack
-        direction={{ xs: "column", sm: "row" }}
+        direction="row"
         spacing={2}
         justifyContent="center"
         alignItems="center"
@@ -350,8 +347,12 @@ return (
           </Typography>
           <FormControl size="small" sx={{ minWidth: 80 }}>
             <Select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
+              value={config?.lop || selectedClass} // ưu tiên context
+              onChange={(e) => {
+                const newClass = e.target.value;
+                setSelectedClass(newClass);
+                setConfig((prev) => ({ ...prev, lop: newClass }));
+              }}
               size="small"
               sx={{
                 width: 80,
@@ -389,23 +390,14 @@ return (
           }
           label="Giáo viên"
         />
-
       </Stack>
 
       {/* --- Bảng dữ liệu --- */}
       <TableContainer
         component={Paper}
-        sx={{
-          maxHeight: "70vh",
-          overflowY: "auto",
-          overflowX: "auto",
-        }}
+        sx={{ maxHeight: "70vh", overflowY: "auto", overflowX: "auto" }}
       >
-        <Table
-          stickyHeader
-          size="small"
-          sx={{ tableLayout: "fixed", minWidth: 800 }}
-        >
+        <Table stickyHeader size="small" sx={{ tableLayout: "fixed", minWidth: 800 }}>
           <TableHead>
             <TableRow>
               <TableCell
@@ -429,27 +421,18 @@ return (
               </TableCell>
               <TableCell
                 align="center"
-                sx={{
-                  backgroundColor: "#1976d2",
-                  color: "white",
-                  width: 60,
-                }}
+                sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}
               >
                 LỚP
               </TableCell>
 
-              {/* 🔹 Hiển thị cột tuần được chọn */}
               {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
                 const weekNum = weekFrom + i;
                 return (
                   <TableCell
                     key={weekNum}
                     align="center"
-                    sx={{
-                      backgroundColor: "#1976d2",
-                      color: "white",
-                      width: 60,
-                    }}
+                    sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}
                   >
                     Tuần {weekNum}
                   </TableCell>
@@ -463,7 +446,7 @@ return (
               <TableRow key={student.maDinhDanh} hover>
                 <TableCell align="center">{student.stt}</TableCell>
                 <TableCell align="left">{student.hoVaTen}</TableCell>
-                <TableCell align="center">{selectedClass}</TableCell>
+                <TableCell align="center">{config?.lop || selectedClass}</TableCell>
                 {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
                   const weekNum = weekFrom + i;
                   const weekId = `tuan_${weekNum}`;

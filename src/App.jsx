@@ -21,21 +21,12 @@ function AppContent() {
   console.log("📦 Config trong AppContent:", config);
 
   // ✅ Hàm xử lý đăng xuất
-  const handleLogout = async () => {
+  const handleLogout = () => {
     // 1. Xóa thông tin đăng nhập khỏi localStorage
     localStorage.removeItem("loggedIn");
     localStorage.removeItem("account");
 
-    // 2. Cập nhật login: false vào Firestore
-    try {
-      const docRef = doc(db, "CONFIG", "config");
-      await setDoc(docRef, { login: false }, { merge: true });
-      console.log("✅ Đã ghi login: false vào Firestore");
-    } catch (err) {
-      console.error("❌ Lỗi khi ghi login: false vào Firestore:", err);
-    }
-
-    // 3. Cập nhật context và localStorage
+    // 2. Cập nhật context và localStorage ngay lập tức
     const updatedConfig = {
       ...config,
       login: false,
@@ -45,20 +36,30 @@ function AppContent() {
 
     console.log("🚪 Đã đăng xuất, config mới:", updatedConfig);
 
-    // 4. Điều hướng về trang đăng nhập
+    // 3. Điều hướng về trang đăng nhập ngay lập tức
     navigate("/login");
+
+    // 4. Ghi login: false vào Firestore trong background (không chặn UI)
+    setTimeout(() => {
+      const docRef = doc(db, "CONFIG", "config");
+      setDoc(docRef, { login: false }, { merge: true })
+        .then(() => console.log("✅ Đã ghi login: false vào Firestore"))
+        .catch((err) =>
+          console.error("❌ Lỗi khi ghi login: false vào Firestore:", err)
+        );
+    }, 0);
   };
 
   const navItems = [
-    { path: "/home", label: "ĐÁNH GIÁ" },
+    { path: "/home", label: "Học sinh" },
     ...(config.login
       ? [
-          { path: "/giaovien", label: "GIÁO VIÊN" },
-          { path: "/tonghopdanhgia", label: "TỔNG HỢP" },
-          { path: "/quan-tri", label: "HỆ THỐNG" }, // ✅ thêm menu mới
-          { label: "ĐĂNG XUẤT", onClick: handleLogout },
+          { path: "/giaovien", label: "Giáo viên" },
+          { path: "/tonghopdanhgia", label: "Tổng hợp" },
+          { path: "/quan-tri", label: "Hệ thống" }, // ✅ thêm menu mới
+          { label: "Đăng xuất", onClick: handleLogout },
         ]
-      : [{ path: "/login", label: "ĐĂNG NHẬP" }]),
+      : [{ path: "/login", label: "Đăng nhập" }]),
   ];
 
   return (

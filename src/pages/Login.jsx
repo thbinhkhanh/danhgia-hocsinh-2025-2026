@@ -1,23 +1,20 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Box, Typography, TextField, Button, Stack, Card } from "@mui/material";
+import { Box, Typography, TextField, Button, Stack, Card, IconButton } from "@mui/material";
+import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from "react-router-dom";
 import { ConfigContext } from "../context/ConfigContext";
-//import { doc, getDoc } from "firebase/firestore"; // 🔹 import firestore
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "../firebase"; // 🔹 import db
+import { db } from "../firebase";
 
 const DEFAULT_USERNAME = "Admin";
-//const DEFAULT_PASSWORD = "@minhduy123";
 const DEFAULT_PASSWORD = "1";
 
 export default function Login() {
   const [username, setUsername] = useState(DEFAULT_USERNAME);
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-
   const { setConfig } = useContext(ConfigContext);
 
-  // 🔹 Luôn fetch config từ Firestore khi Login mount
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -26,65 +23,64 @@ export default function Login() {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          const tuan = data.tuan || 1;
-          const hethong = data.hethong ?? false;
-
-          setConfig({ tuan, hethong });
+          setConfig({ tuan: data.tuan || 1, hethong: data.hethong ?? false });
         } else {
-          console.warn("⚠️ Không tìm thấy document config trong Firestore.");
           setConfig({ tuan: 1, hethong: false });
         }
       } catch (err) {
-        console.error("❌ Lỗi lấy config từ Firestore:", err);
+        console.error(err);
         setConfig({ tuan: 1, hethong: false });
       }
     };
-
     fetchConfig();
   }, [setConfig]);
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     if (username === DEFAULT_USERNAME && password === DEFAULT_PASSWORD) {
       localStorage.setItem("loggedIn", "true");
       localStorage.setItem("account", DEFAULT_USERNAME);
 
-      // ✅ Ghi login: true vào Firestore
-      try {
-        const docRef = doc(db, "CONFIG", "config");
-        await updateDoc(docRef, { login: true });
-        console.log("✅ Đã ghi login: true vào Firestore");
-      } catch (error) {
-        console.error("❌ Lỗi khi ghi login vào Firestore:", error);
-      }
-
-      // ✅ Cập nhật login: true vào localStorage và context
       const storedConfig = localStorage.getItem("appConfig");
       const parsedConfig = storedConfig ? JSON.parse(storedConfig) : {};
-
-      const updatedConfig = {
-        ...parsedConfig,
-        login: true,
-      };
-
+      const updatedConfig = { ...parsedConfig, login: true };
       localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
       setConfig(updatedConfig);
 
-      console.log("✅ Config sau đăng nhập:", updatedConfig);
+      navigate("/giaovien");
 
-      navigate("/quan-tri");
+      // Ghi login: true vào Firestore background
+      setTimeout(() => {
+        const docRef = doc(db, "CONFIG", "config");
+        updateDoc(docRef, { login: true })
+          .then(() => console.log("✅ Đã ghi login: true vào Firestore"))
+          .catch((error) => console.error(error));
+      }, 0);
     } else {
       alert("❌ Tài khoản hoặc mật khẩu sai!");
     }
   };
 
-  const handleBack = () => {
-    navigate(-1);
+  const handleClose = () => {
+    navigate("/home");
   };
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 4 }}>
-      <Box sx={{ width: { xs: "95%", sm: 400 }, mx: "auto" }}>
+      <Box sx={{ width: { xs: "95%", sm: 400 }, mx: "auto", position: "relative" }}>
         <Card elevation={10} sx={{ p: 3, borderRadius: 4 }}>
+          {/* Nút X góc trên phải */}
+          <IconButton
+            onClick={handleClose}
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              color: "red",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+
           <Stack spacing={3} alignItems="center">
             <div style={{ fontSize: 50 }}>🔐</div>
             <Typography variant="h5" fontWeight="bold" color="primary" textAlign="center">
@@ -109,26 +105,15 @@ export default function Login() {
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             />
 
-            <Stack direction="row" spacing={2} width="100%">
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleLogin}
-                fullWidth
-                sx={{ fontWeight: "bold", textTransform: "none", fontSize: "1rem" }}
-              >
-                🔐 Đăng nhập
-              </Button>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={handleBack}
-                fullWidth
-                sx={{ fontWeight: "bold", textTransform: "none", fontSize: "1rem" }}
-              >
-                🔙 Quay lại
-              </Button>
-            </Stack>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleLogin}
+              fullWidth
+              sx={{ fontWeight: "bold", textTransform: "none", fontSize: "1rem" }}
+            >
+              🔐 Đăng nhập
+            </Button>
           </Stack>
         </Card>
       </Box>
