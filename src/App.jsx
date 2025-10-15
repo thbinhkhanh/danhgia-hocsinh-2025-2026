@@ -1,17 +1,35 @@
 import React, { useContext } from "react";
-import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { AppBar, Toolbar, Button, Typography, Box } from "@mui/material";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase"; // 🔹 import db
 
+// 🔹 Import các trang
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import QuanTri from "./pages/QuanTri";
 import GiaoVien from "./pages/GiaoVien";
 import TongHopDanhGia from "./pages/TongHopDanhGia";
 
+// 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
 import { ConfigProvider, ConfigContext } from "./context/ConfigContext";
+
+// 🔹 Import icon
+//import HomeIcon from "@mui/icons-material/Home";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
+import SchoolIcon from "@mui/icons-material/School";
+import SummarizeIcon from "@mui/icons-material/Summarize";
+import SettingsIcon from "@mui/icons-material/Settings";
+import LoginIcon from "@mui/icons-material/Login";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 function AppContent() {
   const location = useLocation();
@@ -26,20 +44,15 @@ function AppContent() {
     localStorage.removeItem("loggedIn");
     localStorage.removeItem("account");
 
-    // 2. Cập nhật context và localStorage ngay lập tức
-    const updatedConfig = {
-      ...config,
-      login: false,
-    };
+    // 2. Cập nhật context và localStorage
+    const updatedConfig = { ...config, login: false };
     localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
     setConfig(updatedConfig);
 
-    console.log("🚪 Đã đăng xuất, config mới:", updatedConfig);
-
-    // 3. Điều hướng về trang đăng nhập ngay lập tức
+    // 3. Điều hướng về trang đăng nhập
     navigate("/login");
 
-    // 4. Ghi login: false vào Firestore trong background (không chặn UI)
+    // 4. Ghi login: false vào Firestore (nền)
     setTimeout(() => {
       const docRef = doc(db, "CONFIG", "config");
       setDoc(docRef, { login: false }, { merge: true })
@@ -50,16 +63,39 @@ function AppContent() {
     }, 0);
   };
 
+  // ✅ Danh sách menu
   const navItems = [
-    { path: "/home", label: "Học sinh" },
+    { path: "/home", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
     ...(config.login
       ? [
-          { path: "/giaovien", label: "Giáo viên" },
-          { path: "/tonghopdanhgia", label: "Tổng hợp" },
-          { path: "/quan-tri", label: "Hệ thống" }, // ✅ thêm menu mới
-          { label: "Đăng xuất", onClick: handleLogout },
+          {
+            path: "/giaovien",
+            label: "Giáo viên",
+            icon: <SchoolIcon fontSize="small" />,
+          },
+          {
+            path: "/tonghopdanhgia",
+            label: "Tổng hợp",
+            icon: <SummarizeIcon fontSize="small" />,
+          },
+          {
+            path: "/quan-tri",
+            label: "Hệ thống",
+            icon: <SettingsIcon fontSize="small" />,
+          },
+          {
+            label: "Đăng xuất",
+            onClick: handleLogout,
+            icon: <LogoutIcon fontSize="small" />,
+          },
         ]
-      : [{ path: "/login", label: "Đăng nhập" }]),
+      : [
+          {
+            path: "/login",
+            label: "Đăng nhập",
+            icon: <LoginIcon fontSize="small" />,
+          },
+        ]),
   ];
 
   return (
@@ -77,6 +113,7 @@ function AppContent() {
             position: "relative",
           }}
         >
+          {/* 🔹 Logo */}
           <Box
             component="img"
             src="/Logo.png"
@@ -84,6 +121,7 @@ function AppContent() {
             sx={{ height: 34, marginRight: 2, flexShrink: 0 }}
           />
 
+          {/* 🔹 Menu */}
           {navItems.map((item) => (
             <Button
               key={item.path || item.label}
@@ -93,12 +131,11 @@ function AppContent() {
               sx={{
                 color: "white",
                 textTransform: "none",
-                padding: "4px 12px",
-                minHeight: "auto",
+                padding: "4px 10px",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 0.5,
-                whiteSpace: "nowrap",
+                gap: 0.8,
+                minHeight: "auto",
                 flexShrink: 0,
                 borderBottom:
                   location.pathname === item.path
@@ -107,10 +144,14 @@ function AppContent() {
                 "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
               }}
             >
-              {item.icon || item.label}
+              {item.icon}
+              <Typography variant="body2" sx={{ ml: 0.3 }}>
+                {item.label}
+              </Typography>
             </Button>
           ))}
 
+          {/* 🔹 Hiển thị tuần ở giữa (hoặc cố định bên phải nếu muốn) */}
           <Typography
             variant="body2"
             sx={{
@@ -135,23 +176,33 @@ function AppContent() {
         </Toolbar>
       </AppBar>
 
+      {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<Home />} />
-          <Route path="/quan-tri" element={<QuanTri />} />
           <Route path="/login" element={<Login />} />
           <Route
             path="/giaovien"
-            element={config.login ? <GiaoVien /> : <Navigate to="/login" replace />}
+            element={
+              config.login ? <GiaoVien /> : <Navigate to="/login" replace />
+            }
           />
           <Route
             path="/tonghopdanhgia"
-            element={config.login ? <TongHopDanhGia /> : <Navigate to="/login" replace />}
+            element={
+              config.login ? (
+                <TongHopDanhGia />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
           />
           <Route
             path="/quan-tri"
-            element={config.login ? <QuanTri /> : <Navigate to="/login" replace />}
+            element={
+              config.login ? <QuanTri /> : <Navigate to="/login" replace />
+            }
           />
         </Routes>
       </Box>
