@@ -30,6 +30,12 @@ export default function TongHopDanhGia() {
   
   const [isTeacherChecked, setIsTeacherChecked] = useState(false);
 
+ // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
+  useEffect(() => {
+    if (config?.lop) {
+      setSelectedClass(config.lop);
+    }
+  }, [config?.lop]);
 
 
   // Lấy config tuần & công nghệ (chỉ hiển thị)
@@ -75,85 +81,6 @@ export default function TongHopDanhGia() {
 
     fetchClasses();
     }, [setClassData]); // chỉ dependency là setClassData
-
-
-  // Lấy danh sách học sinh 
-
-  {/*useEffect(() => {
-    if (!selectedClass) return;
-
-    const fetchStudentsAndStatus = async () => {
-      try {
-        // 1️⃣ Lấy danh sách học sinh từ DANHSACH
-        const classDocRef = doc(db, "DANHSACH", selectedClass);
-        const classSnap = await getDoc(classDocRef);
-        if (!classSnap.exists()) {
-          setStudents([]);
-          setStudentData(prev => ({ ...prev, [selectedClass]: [] }));
-          return;
-        }
-
-        const studentsData = classSnap.data();
-        let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
-          maDinhDanh,
-          hoVaTen: info.hoVaTen || "",
-          statusByWeek: {},
-        }));
-
-        // ✅ Chọn collection tùy theo checkbox "Giáo viên"
-        const collectionName = isTeacherChecked ? "DANHGIA_GV" : "DANHGIA";
-
-        // ✅ Lấy danh sách tuần cần fetch
-        const weekIds = Array.from(
-          { length: weekTo - weekFrom + 1 },
-          (_, i) => `tuan_${weekFrom + i}`
-        );
-
-        // ✅ Fetch song song tất cả tuần
-        const weekSnaps = await Promise.all(
-          weekIds.map((id) => getDoc(doc(db, collectionName, id)))
-        );
-
-        // ✅ Duyệt qua kết quả của tất cả tuần
-        weekSnaps.forEach((weekSnap, idx) => {
-          if (!weekSnap.exists()) return;
-          const weekId = weekIds[idx];
-          const weekData = weekSnap.data();
-
-          for (const [key, value] of Object.entries(weekData)) {
-            // key ví dụ: "5.1.7965625085" hoặc "4.5_CN.4070235011"
-            if (!key.startsWith(selectedClass)) continue;
-
-            const maHS = key.split(".").pop();
-            const student = studentList.find(s => s.maDinhDanh === maHS);
-            if (student) {
-              student.statusByWeek[weekId] = value?.status || "-";
-            }
-          }
-        });
-
-        // 3️⃣ Sắp xếp theo tên
-        studentList.sort((a, b) => {
-          const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-          const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
-
-        studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
-
-        // 4️⃣ Lưu vào state & context
-        setStudentData(prev => ({ ...prev, [selectedClass]: studentList }));
-        setStudents(studentList);
-
-      } catch (err) {
-        console.error(`❌ Lỗi khi lấy học sinh + đánh giá lớp "${selectedClass}":`, err);
-        setStudents([]);
-      }
-    };
-
-    fetchStudentsAndStatus();
-  }, [selectedClass, weekFrom, weekTo, setStudentData, isTeacherChecked]);*/}
-
 
 
 useEffect(() => {
@@ -347,11 +274,11 @@ return (
           </Typography>
           <FormControl size="small" sx={{ minWidth: 80 }}>
             <Select
-              value={config?.lop || selectedClass} // ưu tiên context
+              value={selectedClass}
               onChange={(e) => {
                 const newClass = e.target.value;
-                setSelectedClass(newClass);
-                setConfig((prev) => ({ ...prev, lop: newClass }));
+                setSelectedClass(newClass); // local state
+                setConfig((prev) => ({ ...prev, lop: newClass })); // cập nhật context
               }}
               size="small"
               sx={{
@@ -372,6 +299,7 @@ return (
               ))}
             </Select>
           </FormControl>
+
         </Stack>
 
         {/* Checkbox Công nghệ */}
@@ -447,7 +375,6 @@ return (
                 <TableCell align="center">{student.stt}</TableCell>
                 <TableCell align="left">{student.hoVaTen}</TableCell>
                 <TableCell align="center">{selectedClass}</TableCell>
-                //<TableCell align="center">{config?.lop || selectedClass}</TableCell>
                 {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
                   const weekNum = weekFrom + i;
                   const weekId = `tuan_${weekNum}`;
