@@ -28,7 +28,7 @@ export const ConfigProvider = ({ children }) => {
         login: parsed.login === true || false,
       };
       setConfig(restoredConfig);
-      console.log("🧠 ConfigContext từ localStorage:", restoredConfig);
+      //console.log("🧠 ConfigContext từ localStorage:", restoredConfig);
     }
     // nếu localStorage rỗng, lấy từ Firestore
     else if (Object.keys(config).length === 0) {
@@ -46,7 +46,7 @@ export const ConfigProvider = ({ children }) => {
               login: data.login === true || false,
             };
             setConfig(restoredConfig);
-            console.log("🧠 ConfigContext từ Firestore:", restoredConfig);
+            //console.log("🧠 ConfigContext từ Firestore:", restoredConfig);
           }
         } catch (error) {
           console.error("❌ Lỗi khi lấy config từ Firestore:", error);
