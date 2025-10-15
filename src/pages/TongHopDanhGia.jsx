@@ -446,7 +446,8 @@ return (
               <TableRow key={student.maDinhDanh} hover>
                 <TableCell align="center">{student.stt}</TableCell>
                 <TableCell align="left">{student.hoVaTen}</TableCell>
-                <TableCell align="center">{config?.lop || selectedClass}</TableCell>
+                <TableCell align="center">{selectedClass}</TableCell>
+                //<TableCell align="center">{config?.lop || selectedClass}</TableCell>
                 {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
                   const weekNum = weekFrom + i;
                   const weekId = `tuan_${weekNum}`;
