@@ -9,6 +9,9 @@ import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
 import { onSnapshot } from "firebase/firestore";
 
+import { deleteField } from "firebase/firestore";
+
+
 
 export default function Home() {
   // 🔹 Lấy context
@@ -249,6 +252,55 @@ useEffect(() => {
     });
   };
 
+
+  // 🧹 Xóa hậu tố "_CN" trong tất cả key của tuần hiện tại
+  const removeCNKeys = async () => {
+    const weekKey = "tuan_6"; // cố định
+    const docRef = doc(db, "DANHGIA", weekKey);
+
+    try {
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) {
+        alert(`⚠️ Không tìm thấy ${weekKey} trong Firestore`);
+        return;
+      }
+
+      const data = snap.data();
+      const updatedData = {};
+      const keysToDelete = {};
+
+      // Duyệt qua tất cả key lớp trong tuan_1
+      for (const [classKey, classValue] of Object.entries(data)) {
+        // Chỉ xử lý các lớp 4.x có hậu tố _CN
+        if (classKey.startsWith("4.1") && classKey.includes("_CN")) {
+          const newKey = classKey.replace("_CN", "");
+
+          // Gộp dữ liệu nếu key mới đã có
+          updatedData[newKey] = { ...(data[newKey] || {}), ...classValue };
+
+          // Đánh dấu key cũ để xóa
+          keysToDelete[classKey] = deleteField();
+        }
+      }
+
+      if (Object.keys(updatedData).length === 0) {
+        alert(`⚠️ Không tìm thấy key nào của lớp 4 có "_CN" trong ${weekKey}`);
+        return;
+      }
+
+      // Ghi dữ liệu mới (merge key không có _CN)
+      await setDoc(docRef, updatedData, { merge: true });
+
+      // Xóa key cũ có _CN
+      await setDoc(docRef, keysToDelete, { merge: true });
+
+      alert(`✅ Đã chuyển và xóa các key *_CN trong ${weekKey}`);
+    } catch (err) {
+      console.error("❌ Lỗi khi cập nhật Firestore:", err);
+      alert("❌ Lỗi khi xóa hậu tố _CN. Kiểm tra console để xem chi tiết.");
+    }
+  };
+
   const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },
     "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },       // tím, chữ trắng
@@ -295,6 +347,24 @@ useEffect(() => {
               : "DANH SÁCH HỌC SINH"}
           </Typography>
         </Box>
+        
+        {/* Nút XÓA _CN */}
+        {/*<Box sx={{ textAlign: "center", mb: 2 }}>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={removeCNKeys}
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              textTransform: "none",
+              fontWeight: "bold",
+            }}
+          >
+            🧹 Xóa _CN trong tuần {selectedWeek}
+          </Button>
+        </Box>*/}
+
 
         {/* Nhãn và dropdown */}
         {/*<Box
