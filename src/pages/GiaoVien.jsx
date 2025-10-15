@@ -315,7 +315,7 @@ const handleClassChange = async (e) => {
                 pb: 1,
                 }}
             >
-                ĐÁNH GIÁ NĂNG LỰC - PHẨM CHẤT
+                ĐÁNH GIÁ HỌC SINH
             </Typography>
         </Box>
 

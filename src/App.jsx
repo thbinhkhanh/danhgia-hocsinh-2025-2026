@@ -36,7 +36,7 @@ function AppContent() {
   const navigate = useNavigate();
   const { config, setConfig } = useContext(ConfigContext);
 
-  console.log("📦 Config trong AppContent:", config);
+  //console.log("📦 Config trong AppContent:", config);
 
   // ✅ Hàm xử lý đăng xuất
   const handleLogout = () => {
@@ -52,16 +52,13 @@ function AppContent() {
     // 3. Điều hướng về trang đăng nhập
     navigate("/login");
 
-    // 4. Ghi login: false vào Firestore (nền)
+    // 4. Ghi login: false vào Firestore (nền, không log)
     setTimeout(() => {
       const docRef = doc(db, "CONFIG", "config");
-      setDoc(docRef, { login: false }, { merge: true })
-        .then(() => console.log("✅ Đã ghi login: false vào Firestore"))
-        .catch((err) =>
-          console.error("❌ Lỗi khi ghi login: false vào Firestore:", err)
-        );
+      setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
     }, 0);
   };
+
 
   // ✅ Danh sách menu
   const navItems = [
@@ -118,7 +115,12 @@ function AppContent() {
             component="img"
             src="/Logo.png"
             alt="Logo"
-            sx={{ height: 34, marginRight: 2, flexShrink: 0 }}
+            sx={{
+              height: 34,
+              flexShrink: 0,
+              ml: { xs: -1, sm: -2 }, // 📱 xs (điện thoại): cách 1 đơn vị, 💻 sm+ (desktop): dính sát
+              mr: 1,                 // khoảng cách nhỏ bên phải logo
+            }}
           />
 
           {/* 🔹 Menu */}

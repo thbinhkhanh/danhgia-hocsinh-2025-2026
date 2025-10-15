@@ -48,12 +48,10 @@ export default function Login() {
 
       navigate("/giaovien");
 
-      // Ghi login: true vào Firestore background
+      // Ghi login: true vào Firestore (không log ra console)
       setTimeout(() => {
         const docRef = doc(db, "CONFIG", "config");
-        updateDoc(docRef, { login: true })
-          .then(() => console.log("✅ Đã ghi login: true vào Firestore"))
-          .catch((error) => console.error(error));
+        updateDoc(docRef, { login: true }).catch(() => {});
       }, 0);
     } else {
       alert("❌ Tài khoản hoặc mật khẩu sai!");
