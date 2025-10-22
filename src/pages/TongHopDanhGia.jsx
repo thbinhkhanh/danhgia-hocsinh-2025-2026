@@ -1,37 +1,189 @@
 import React, { useState, useEffect, useContext } from "react";
 import {
-  Box, Card, Typography, Divider, Stack,
-  FormControl, InputLabel, Select, MenuItem,
-  Checkbox, FormControlLabel, Table,
-  TableBody, TableCell, TableContainer, TableHead,
-  TableRow, Paper, IconButton, Tooltip,
+  Box,
+  Card,
+  Typography,
+  Divider,
+  Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox,
+  FormControlLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Tooltip,
+  LinearProgress,
+  useMediaQuery,
 } from "@mui/material";
+
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
-import { doc, getDoc, getDocs, collection } from "firebase/firestore";
-import DownloadIcon from "@mui/icons-material/Download";
-import { exportEvaluationToExcel } from "../utils/exportExcel";
-import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import { useMediaQuery } from "@mui/material";
+import { doc, getDoc, getDocs, setDoc, collection } from "firebase/firestore";
 
+import DownloadIcon from "@mui/icons-material/Download";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+
+import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
 
 export default function TongHopDanhGia() {
-  const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
+  // --- Context ---
+  const { setStudentData, classData, setClassData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
 
+  // --- State ---
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [isCongNghe, setIsCongNghe] = useState(false);
 
   const [weekFrom, setWeekFrom] = useState(1);
   const [weekTo, setWeekTo] = useState(9);
-  
+
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [isCongNghe, setIsCongNghe] = useState(false);
   const [isTeacherChecked, setIsTeacherChecked] = useState(false);
+
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const nhanXetTheoMuc = {
+    tot: [
+      "Em có ý thức học tập tốt, thao tác thành thạo và tích cực trong các hoạt động thực hành Tin học.",
+      "Em chủ động, tự tin, biết vận dụng CNTT vào học tập và đời sống.",
+      "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
+      "Em thể hiện kỹ năng sử dụng máy tính thành thạo, làm việc khoa học và hiệu quả.",
+      "Em yêu thích môn Tin học, chủ động khám phá và hỗ trợ bạn bè trong học tập.",
+      "Em có khả năng vận dụng kiến thức vào giải quyết tình huống thực tế liên quan đến CNTT.",
+      "Em thao tác nhanh, chính xác, sử dụng phần mềm đúng quy trình và sáng tạo.",
+      "Em có tư duy logic tốt, biết trình bày và lưu trữ sản phẩm học tập khoa học.",
+      "Em tiếp thu nhanh, thực hành thuần thục, hoàn thành tốt các nhiệm vụ học tập.",
+      "Em thể hiện tinh thần hợp tác, chia sẻ và giúp đỡ bạn trong hoạt động nhóm."
+    ],
+
+    kha: [
+      "Em có ý thức học tập tốt, biết sử dụng thiết bị và phần mềm cơ bản.",
+      "Em tiếp thu bài khá, cần chủ động hơn trong việc thực hành và vận dụng kiến thức.",
+      "Em làm bài cẩn thận, có tinh thần học hỏi nhưng cần rèn luyện thêm thao tác thực hành.",
+      "Em nắm được kiến thức trọng tâm, thực hiện thao tác tương đối chính xác.",
+      "Em có khả năng sử dụng máy tính ở mức khá, cần luyện tập thêm để tăng tốc độ thao tác.",
+      "Em có tinh thần học tập tích cực nhưng đôi khi còn thiếu tự tin khi thực hành.",
+      "Em đã biết áp dụng kiến thức để tạo sản phẩm học tập, cần sáng tạo hơn trong trình bày.",
+      "Em có tiến bộ rõ, cần phát huy thêm tính chủ động trong học tập Tin học.",
+      "Em biết hợp tác trong nhóm, hoàn thành nhiệm vụ được giao tương đối tốt.",
+      "Em thực hành đúng hướng dẫn, cần nâng cao hơn khả năng vận dụng vào tình huống mới."
+    ],
+
+    trungbinh: [
+      "Em hoàn thành các yêu cầu cơ bản, cần cố gắng hơn khi thực hành.",
+      "Em còn lúng túng trong thao tác, cần sự hỗ trợ thêm từ giáo viên.",
+      "Em có tiến bộ nhưng cần rèn luyện thêm kỹ năng sử dụng phần mềm.",
+      "Em hiểu bài nhưng thao tác chậm, cần rèn luyện thêm để nâng cao hiệu quả.",
+      "Em đôi khi còn quên thao tác cơ bản, cần ôn tập thường xuyên hơn.",
+      "Em hoàn thành nhiệm vụ học tập ở mức trung bình, cần chủ động hơn trong giờ thực hành.",
+      "Em có thái độ học tập đúng đắn nhưng cần tập trung hơn khi làm việc với máy tính.",
+      "Em nắm được một phần kiến thức, cần hỗ trợ thêm để vận dụng chính xác.",
+      "Em có cố gắng, tuy nhiên còn gặp khó khăn khi làm bài thực hành.",
+      "Em cần tăng cường luyện tập để cải thiện kỹ năng và độ chính xác khi thao tác."
+    ],
+
+    yeu: [
+      "Em chưa nắm chắc kiến thức, thao tác còn chậm, cần được hướng dẫn nhiều hơn.",
+      "Em cần cố gắng hơn trong học tập, đặc biệt là phần thực hành Tin học.",
+      //"Em cần tăng cường luyện tập để nắm vững kiến thức và thao tác máy tính.",
+      "Em còn gặp nhiều khó khăn khi sử dụng phần mềm, cần được hỗ trợ thường xuyên.",
+      "Em chưa chủ động trong học tập, cần khuyến khích và theo dõi thêm.",
+      "Em thao tác thiếu chính xác, cần rèn luyện thêm kỹ năng cơ bản.",
+      "Em tiếp thu chậm, cần sự kèm cặp sát sao để tiến bộ hơn.",
+      "Em cần dành nhiều thời gian hơn cho việc luyện tập trên máy tính.",
+      "Em chưa hoàn thành được yêu cầu bài học, cần hỗ trợ từ giáo viên và bạn bè.",
+      "Em cần được củng cố lại kiến thức nền tảng và hướng dẫn thực hành cụ thể hơn."
+    ]
+  };
+
+  // Chọn ngẫu nhiên một phần tử trong mảng
+  function randomItem(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  // Tính điểm trung bình từ tuần đến tuần, bỏ qua ô trống
+  // -> Trả thêm tỉ lệ số T (để xét ưu tiên xếp loại tốt)
+  function tinhDiemTrungBinhTheoKhoang(statusByWeek, from, to) {
+    const diemMap = { T: 3, H: 2, C: 1 };
+    let tong = 0, dem = 0, demT = 0;
+
+    for (let i = from; i <= to; i++) {
+      const weekId = `tuan_${i}`;
+      const status = statusByWeek?.[weekId] || "";
+      const short =
+        status === "Hoàn thành tốt"
+          ? "T"
+          : status === "Hoàn thành"
+          ? "H"
+          : status === "Chưa hoàn thành"
+          ? "C"
+          : "";
+
+      if (short && diemMap[short]) {
+        tong += diemMap[short];
+        dem++;
+        if (short === "T") demT++;
+      }
+    }
+
+    const diemTB = dem > 0 ? tong / dem : null;
+    const tyLeT = dem > 0 ? demT / dem : 0;
+
+    return { diemTB, tyLeT };
+  }
+
+  // Đánh giá học sinh & sinh nhận xét
+  function danhGiaHocSinh(student, from, to) {
+    const { diemTB, tyLeT } = tinhDiemTrungBinhTheoKhoang(student.statusByWeek, from, to);
+
+    if (diemTB === null)
+      return { xepLoai: "", nhanXet: "" }; // Không hiển thị nếu chưa có dữ liệu
+
+    let xepLoaiDayDu, nhanXet;
+
+    // Ưu tiên: ≥50% T -> Tốt
+    if (tyLeT >= 0.5 || diemTB >= 2.8) {
+      xepLoaiDayDu = "Tốt";
+      nhanXet = randomItem(nhanXetTheoMuc.tot);
+    } else if (diemTB >= 2.0) {
+      xepLoaiDayDu = "Khá";
+      nhanXet = randomItem(nhanXetTheoMuc.kha);
+    } else if (diemTB >= 1.5) {
+      xepLoaiDayDu = "Trung bình";
+      nhanXet = randomItem(nhanXetTheoMuc.trungbinh);
+    } else {
+      xepLoaiDayDu = "Yếu";
+      nhanXet = randomItem(nhanXetTheoMuc.yeu);
+    }
+
+    // 🔹 Rút gọn loại hiển thị:
+    // Tốt → T | Khá, Trung bình → H | Yếu → C
+    let xepLoaiRutGon =
+      xepLoaiDayDu === "Tốt"
+        ? "T"
+        : ["Khá", "Trung bình"].includes(xepLoaiDayDu)
+        ? "H"
+        : "C";
+
+    return { xepLoai: xepLoaiRutGon, nhanXet };
+  }
+
 
 
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
@@ -43,17 +195,39 @@ export default function TongHopDanhGia() {
 
 
   // Lấy config tuần & công nghệ (chỉ hiển thị)
+  
+
   useEffect(() => {
     const fetchConfig = async () => {
-      const docRef = doc(db, "CONFIG", "config");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setSelectedWeek(data.tuan || 1);
-        setIsCongNghe(data.congnghe || false);
-        setConfig(data);
+      try {
+        const docRef = doc(db, "CONFIG", "config");
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+
+          setSelectedWeek(data.tuan || 1);
+          setIsCongNghe(data.congnghe || false);
+          setConfig(data);
+
+          // ✅ Dùng Number() để đảm bảo kiểu số
+          setWeekFrom(Number(data.th_tuan_from) || 1);
+          setWeekTo(Number(data.th_tuan_to) || 9);
+        } else {
+          console.warn("⚠️ Chưa có document CONFIG/config, dùng giá trị mặc định.");
+          setWeekFrom(1);
+          setWeekTo(9);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi tải cấu hình:", err);
+        setWeekFrom(1);
+        setWeekTo(9);
+      } finally {
+        // ✅ Luôn đánh dấu đã tải xong (thành công hoặc thất bại)
+        setIsConfigLoaded(true);
       }
     };
+
     fetchConfig();
   }, [setConfig]);
 
@@ -84,82 +258,108 @@ export default function TongHopDanhGia() {
     };
 
     fetchClasses();
-    }, [setClassData]); // chỉ dependency là setClassData
+  }, [setClassData]); // chỉ dependency là setClassData
 
+  // 🧩 Định nghĩa ngoài useEffect
+  const fetchStudentsAndStatus = async () => {
+    if (!selectedClass) return;
 
-// 🧩 Định nghĩa ngoài useEffect
-const fetchStudentsAndStatus = async () => {
-  if (!selectedClass) return;
-  try {
-    // 1️⃣ Lấy danh sách học sinh
-    const classDocRef = doc(db, "DANHSACH", selectedClass);
-    const classSnap = await getDoc(classDocRef);
-    if (!classSnap.exists()) {
-      setStudents([]);
-      setStudentData(prev => ({ ...prev, [selectedClass]: [] }));
-      return;
-    }
+    try {
+      setLoadingProgress(0);
+      setLoadingMessage(`Đang tổng hợp dữ liệu...`);
 
-    const studentsData = classSnap.data();
-    let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      hoVaTen: info.hoVaTen || "",
-      statusByWeek: {},
-    }));
+      // 1️⃣ Lấy danh sách học sinh
+      const classDocRef = doc(db, "DANHSACH", selectedClass);
+      const classSnap = await getDoc(classDocRef);
+      if (!classSnap.exists()) {
+        setStudents([]);
+        setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
+        setLoadingMessage("");
+        return;
+      }
 
-    // ✅ Chọn collection
-    const collectionName = isTeacherChecked ? "DANHGIA_GV" : "DANHGIA";
+      const studentsData = classSnap.data();
+      let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
+        hoVaTen: info.hoVaTen || "",
+        statusByWeek: {},
+      }));
 
-    // ✅ Lấy dữ liệu trong khoảng tuần
-    const weekPromises = [];
-    for (let i = weekFrom; i <= weekTo; i++) {
-      const weekId = `tuan_${i}`;
-      weekPromises.push(
-        getDoc(doc(db, collectionName, weekId)).then((snap) => ({ weekId, snap }))
+      // ✅ Xác định collection
+      const collectionName = isTeacherChecked ? "DANHGIA_GV" : "DANHGIA";
+      const totalWeeks = weekTo - weekFrom + 1;
+      const weekIds = Array.from({ length: totalWeeks }, (_, i) => `tuan_${weekFrom + i}`);
+
+      // 2️⃣ Lấy dữ liệu tất cả tuần song song (chạy mượt hơn)
+      const weekResults = await Promise.allSettled(
+        weekIds.map((weekId) => getDoc(doc(db, collectionName, weekId)))
       );
-    }
 
-    const weekResults = await Promise.all(weekPromises);
+      // 3️⃣ Gộp dữ liệu từng tuần
+      let completed = 0;
+      for (let i = 0; i < weekResults.length; i++) {
+        completed++;
+        const percent = Math.round((completed / totalWeeks) * 100);
+        setLoadingProgress(percent);
+        setLoadingMessage(`Đang tổng hợp dữ liệu... ${percent}%`);
 
-    // 2️⃣ Gộp dữ liệu từng tuần
-    for (const { weekId, snap } of weekResults) {
-      if (!snap.exists()) continue;
-      const weekData = snap.data();
+        const result = weekResults[i];
+        const weekId = weekIds[i];
 
-      for (const [key, value] of Object.entries(weekData)) {
-        const isCN = key.includes("_CN.");
-        if (isCongNghe && !isCN) continue;
-        if (!isCongNghe && isCN) continue;
+        if (result.status !== "fulfilled") {
+          console.warn(`⚠️ Không thể tải dữ liệu tuần ${weekId}`);
+          continue;
+        }
 
-        const classPrefix = isCongNghe ? `${selectedClass}_CN` : selectedClass;
-        if (!key.startsWith(classPrefix)) continue;
+        const snap = result.value;
+        if (!snap.exists()) continue;
+        const weekData = snap.data();
 
-        const maHS = key.split(".").pop();
-        const student = studentList.find((s) => s.maDinhDanh === maHS);
-        if (student) {
-          student.statusByWeek[weekId] = value.status || "-";
+        for (const [key, value] of Object.entries(weekData)) {
+          const isCN = key.includes("_CN.");
+          if (isCongNghe && !isCN) continue;
+          if (!isCongNghe && isCN) continue;
+
+          const classPrefix = isCongNghe ? `${selectedClass}_CN` : selectedClass;
+          if (!key.startsWith(classPrefix)) continue;
+
+          const maHS = key.split(".").pop();
+          const student = studentList.find((s) => s.maDinhDanh === maHS);
+          if (student) {
+            student.statusByWeek[weekId] = value.status || "-";
+          }
         }
       }
+
+      // 4️⃣ Sắp xếp danh sách theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+      // 5️⃣ Đánh giá & nhận xét
+      const evaluatedList = studentList.map((s) => {
+        const { xepLoai, nhanXet } = danhGiaHocSinh(s, weekFrom, weekTo);
+        return { ...s, xepLoai, nhanXet };
+      });
+
+      // 6️⃣ Hoàn tất
+      setStudentData((prev) => ({ ...prev, [selectedClass]: evaluatedList }));
+      setStudents(evaluatedList);
+
+      setLoadingProgress(100);
+      //setLoadingMessage("✅ Đã tổng hợp xong dữ liệu!");
+      setTimeout(() => setLoadingMessage(""), 1500);
+    } catch (err) {
+      console.error(`❌ Lỗi khi lấy dữ liệu lớp "${selectedClass}":`, err);
+      setStudents([]);
+      setLoadingProgress(0);
+      setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
     }
+  };
 
-    // 3️⃣ Sắp xếp
-    studentList.sort((a, b) => {
-      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-
-    studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
-
-    // 4️⃣ Lưu lại
-    setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
-    setStudents(studentList);
-
-  } catch (err) {
-    console.error(`❌ Lỗi khi lấy dữ liệu lớp "${selectedClass}":`, err);
-    setStudents([]);
-  }
-};
 
 useEffect(() => {
   fetchStudentsAndStatus();
@@ -257,6 +457,28 @@ return (
             <RefreshIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+
+        <Tooltip title="Đánh giá tự động" arrow>
+        
+        <IconButton
+          onClick={() => {
+            const updated = students.map((s) => {
+              const { diemTB, xepLoai, nhanXet } = danhGiaHocSinh(s, weekFrom, weekTo);
+              return { ...s, diemTB, xepLoai, nhanXet };
+            });
+            setStudents(updated);
+          }}
+          sx={{
+            color: "primary.main",
+            bgcolor: "white",
+            boxShadow: 2,
+            "&:hover": { bgcolor: "primary.light", color: "white" },
+          }}
+        >
+          <AssessmentIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+
       </Box>
 
       {/* ===== Header ===== */}
@@ -327,7 +549,6 @@ return (
         </Stack>
       </Box>*/}
 
-
       {/* ===== Row tuần ===== */}
       <Stack
         direction="row"
@@ -337,36 +558,61 @@ return (
         mb={2}
         flexWrap="wrap"
       >
-        <FormControl size="small" sx={{ minWidth: 100 }}>
-          <InputLabel>Tuần từ</InputLabel>
-          <Select
-            value={weekFrom}
-            label="Tuần từ"
-            onChange={(e) => setWeekFrom(Number(e.target.value))}
-          >
-            {[...Array(35)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>
-                Tuần {i + 1}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {!isConfigLoaded ? (
+          <Typography color="text.secondary">Đang tải cấu hình...</Typography>
+        ) : (
+          <>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <InputLabel>Tuần từ</InputLabel>
+              <Select
+                value={weekFrom}
+                label="Tuần từ"
+                onChange={async (e) => {
+                  const newFrom = Number(e.target.value);
+                  setWeekFrom(newFrom);
+                  try {
+                    const docRef = doc(db, "CONFIG", "config");
+                    await setDoc(docRef, { th_tuan_from: newFrom }, { merge: true });
+                  } catch (err) {
+                    console.error("❌ Lỗi cập nhật th_tuan_from:", err);
+                  }
+                }}
+              >
+                {[...Array(35)].map((_, i) => (
+                  <MenuItem key={i + 1} value={i + 1}>
+                    Tuần {i + 1}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 100 }}>
-          <InputLabel>Đến tuần</InputLabel>
-          <Select
-            value={weekTo}
-            label="Đến tuần"
-            onChange={(e) => setWeekTo(Number(e.target.value))}
-          >
-            {[...Array(35)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>
-                Tuần {i + 1}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <InputLabel>Đến tuần</InputLabel>
+              <Select
+                value={weekTo}
+                label="Đến tuần"
+                onChange={async (e) => {
+                  const newTo = Number(e.target.value);
+                  setWeekTo(newTo);
+                  try {
+                    const docRef = doc(db, "CONFIG", "config");
+                    await setDoc(docRef, { th_tuan_to: newTo }, { merge: true });
+                  } catch (err) {
+                    console.error("❌ Lỗi cập nhật th_tuan_to:", err);
+                  }
+                }}
+              >
+                {[...Array(35)].map((_, i) => (
+                  <MenuItem key={i + 1} value={i + 1}>
+                    Tuần {i + 1}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        )}
       </Stack>
+
 
       <Divider sx={{ mb: 3 }} />
 
@@ -388,8 +634,24 @@ return (
               value={selectedClass}
               onChange={(e) => {
                 const newClass = e.target.value;
-                setSelectedClass(newClass); // local state
-                setConfig((prev) => ({ ...prev, lop: newClass })); // cập nhật context
+
+                // 🔹 Cập nhật lớp trong state & context
+                setSelectedClass(newClass);
+                setConfig((prev) => ({ ...prev, lop: newClass }));
+
+                // 🔹 Xóa dữ liệu trong bảng nhưng giữ nguyên hàng
+                setStudents((prev) =>
+                  prev.map((s) => ({
+                    ...s,
+                    statusByWeek: {}, // reset dữ liệu tuần
+                    xepLoai: "",      // xóa xếp loại
+                    nhanXet: "",      // xóa nhận xét
+                  }))
+                );
+
+                // 🔹 Hiển thị thông báo đang tải
+                setLoadingMessage("Đang tải dữ liệu lớp mới...");
+                setLoadingProgress(0);
               }}
               size="small"
               sx={{
@@ -410,7 +672,6 @@ return (
               ))}
             </Select>
           </FormControl>
-
         </Stack>
 
         {/* Checkbox Công nghệ */}
@@ -429,7 +690,42 @@ return (
           }
           label="Giáo viên"
         />
+        
       </Stack>
+
+      {/*{loadingMessage && (
+        <Box
+          sx={{
+            mt: 2,
+            mb: 2, // 🔹 thêm khoảng cách phía dưới toàn cụm
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center", // căn giữa
+          }}
+        >
+          <LinearProgress
+            variant="determinate"
+            value={loadingProgress}
+            sx={{
+              width: "25%",   // 🔹 giảm chiều rộng
+              height: 3,
+              borderRadius: 2,
+              mb: 0.8,        // 🔹 khoảng cách giữa thanh và nhãn
+            }}
+            color="primary"
+          />
+
+          <Typography
+            variant="body2"
+            color="primary"
+            sx={{ fontWeight: 500, textAlign: "center" }}
+          >
+            {loadingMessage}
+          </Typography>
+        </Box>
+      )}*/}
+
+
 
       {/* --- Bảng dữ liệu --- */}
       <TableContainer
@@ -477,6 +773,16 @@ return (
                   </TableCell>
                 );
               })}
+              {/*<TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 80 }}>
+                Điểm TB
+              </TableCell>*/}
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 100 }}>
+                Xếp loại
+              </TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 350 }}>
+                Nhận xét
+              </TableCell>
+
             </TableRow>
           </TableHead>
 
@@ -486,6 +792,8 @@ return (
                 <TableCell align="center">{student.stt}</TableCell>
                 <TableCell align="left">{student.hoVaTen}</TableCell>
                 <TableCell align="center">{selectedClass}</TableCell>
+
+                {/* Các cột tuần */}
                 {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
                   const weekNum = weekFrom + i;
                   const weekId = `tuan_${weekNum}`;
@@ -504,9 +812,28 @@ return (
                     </TableCell>
                   );
                 })}
+
+                {/* ✅ Thêm 3 cột mới ở cuối mỗi hàng */}
+                {/*<TableCell align="center">
+                  {student.diemTB ? student.diemTB.toFixed(2) : ""}
+                </TableCell>*/}
+                <TableCell
+                  align="center"
+                  sx={{
+                    //fontWeight: "bold",
+                    color:
+                      student.xepLoai === "C"
+                        ? "#dc2626" // đỏ
+                        : (theme) => theme.palette.primary.main, // màu xanh dương chuẩn của theme
+                  }}
+                >
+                  {student.xepLoai || ""}
+                </TableCell>
+                <TableCell align="left">{student.nhanXet || ""}</TableCell>
               </TableRow>
             ))}
           </TableBody>
+
         </Table>
       </TableContainer>
       {/* --- Bảng thống kê --- */}
@@ -567,8 +894,6 @@ return (
           <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
         </Stack>
       </Box>
-
-
     </Card>
   </Box>
 );

@@ -30,12 +30,11 @@ export const exportEvaluationToExcelFromTable = async (
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Đánh giá");
 
-  // 🔹 Header gồm các tuần + Xếp loại + Nhận xét
+  // 🔹 Header gồm các tuần
   const headerKeys = ["STT", "HỌ VÀ TÊN", "LỚP"];
   for (let week = weekFrom; week <= weekTo; week++) {
     headerKeys.push(`TUẦN ${week}`);
   }
-  headerKeys.push("XẾP LOẠI", "NHẬN XÉT");
 
   const headerRow = sheet.addRow(headerKeys);
 
@@ -47,7 +46,7 @@ export const exportEvaluationToExcelFromTable = async (
       pattern: "solid",
       fgColor: { argb: "FF1976D2" },
     };
-    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = {
       top: { style: "thin" },
       bottom: { style: "thin" },
@@ -68,19 +67,15 @@ export const exportEvaluationToExcelFromTable = async (
         const status = student.statusByWeek?.[weekId] || "";
         return statusMap[status] || "";
       }),
-      student.xepLoai || "",
-      student.nhanXet || "",
     ];
 
     const row = sheet.addRow(rowData);
 
-    // 🔹 Style từng ô
     row.eachCell((cell, colNumber) => {
       const key = headerKeys[colNumber - 1];
       cell.alignment = {
-        horizontal: key === "HỌ VÀ TÊN" || key === "NHẬN XÉT" ? "left" : "center",
+        horizontal: key === "HỌ VÀ TÊN" ? "left" : "center",
         vertical: "middle",
-        wrapText: true,
       };
       cell.border = {
         top: { style: "thin" },
@@ -88,17 +83,6 @@ export const exportEvaluationToExcelFromTable = async (
         left: { style: "thin" },
         right: { style: "thin" },
       };
-
-      // 🎨 Tô màu cho cột "XẾP LOẠI"
-      if (key === "XẾP LOẠI") {
-        cell.font = {
-          //bold: true,
-          color:
-            cell.value === "C"
-              ? { argb: "FFDC2626" } // đỏ
-              : { argb: "FF1976D2" }, // xanh dương
-        };
-      }
     });
   });
 
@@ -111,10 +95,6 @@ export const exportEvaluationToExcelFromTable = async (
       column.width = 10;
     } else if (key === "HỌ VÀ TÊN") {
       column.width = 28.5;
-    } else if (key === "XẾP LOẠI") {
-      column.width = 12;
-    } else if (key === "NHẬN XÉT") {
-      column.width = 60; // đủ dài cho nhận xét
     }
   });
 
