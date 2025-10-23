@@ -850,7 +850,7 @@ return (
                   textOverflow: "ellipsis",
                 }}
               >
-                HỌ VÀ TÊN
+                Họ và tên
               </TableCell>
               {/*<TableCell
                 align="center"

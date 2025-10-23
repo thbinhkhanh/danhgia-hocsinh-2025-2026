@@ -191,7 +191,7 @@ export default function DanhSachHS() {
                   sx={{
                     bgcolor: "#1976d2",
                     color: "#ffffff",
-                    fontWeight: "bold",
+                    //fontWeight: "bold",
                     textAlign: "center",
                     borderRight: "1px solid rgba(0,0,0,0.12)",
                     width: 50,
@@ -203,36 +203,36 @@ export default function DanhSachHS() {
                   sx={{
                     bgcolor: "#1976d2",
                     color: "#ffffff",
-                    fontWeight: "bold",
+                    //fontWeight: "bold",
                     textAlign: "center",
                     borderRight: "1px solid rgba(0,0,0,0.12)",
                     width: 120,
                   }}
                 >
-                  MÃ ĐỊNH DANH
+                  Mã định danh
                 </TableCell>
                 <TableCell
                   sx={{
                     bgcolor: "#1976d2",
                     color: "#ffffff",
-                    fontWeight: "bold",
+                    //fontWeight: "bold",
                     textAlign: "center", // căn giữa
                     borderRight: "1px solid rgba(0,0,0,0.12)",
                     width: 200,
                   }}
                 >
-                  HỌ VÀ TÊN
+                  Họ và tên
                 </TableCell>
                 <TableCell
                   sx={{
                     bgcolor: "#1976d2",
                     color: "#ffffff",
-                    fontWeight: "bold",
+                    //fontWeight: "bold",
                     textAlign: "center",
                     width: 250,
                   }}
                 >
-                  GHI CHÚ
+                  Ghi chú
                 </TableCell>
               </TableRow>
             </TableHead>
