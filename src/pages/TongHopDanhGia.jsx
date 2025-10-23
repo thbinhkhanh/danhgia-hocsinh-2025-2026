@@ -27,13 +27,15 @@ import {
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
-import { doc, getDoc, getDocs, setDoc, collection } from "firebase/firestore";
+import { doc, getDoc, getDocs, setDoc, collection, writeBatch } from "firebase/firestore";
 
+import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
+import { Snackbar, Alert } from "@mui/material";
 
 export default function TongHopDanhGia() {
   // --- Context ---
@@ -184,7 +186,73 @@ export default function TongHopDanhGia() {
     return { xepLoai: xepLoaiRutGon, nhanXet };
   }
 
+const [snackbar, setSnackbar] = useState({
+  open: false,
+  message: "",
+  severity: "success", // success | error | warning | info
+});
 
+
+const handleSaveAll = async () => {
+  if (!students || students.length === 0) return;
+
+  const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
+  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+  const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+  const docRef = doc(db, "BANGDIEM", termDoc);
+
+  const batch = writeBatch(db);
+
+  const studentsMap = {};
+  students.forEach((s) => {
+    studentsMap[s.maDinhDanh] = {
+      hoVaTen: s.hoVaTen || "",
+      tracNghiem: s.tracNghiem !== "" && s.tracNghiem !== undefined ? Number(s.tracNghiem) : null,
+      thucHanh: s.thucHanh !== "" && s.thucHanh !== undefined ? Number(s.thucHanh) : null,
+      tongCong: s.tongCong !== "" && s.tongCong !== undefined ? Number(s.tongCong) : null,
+      xepLoai: s.xepLoai || "",
+      nhanXet: s.nhanXet || "",
+      dgtx: s.xepLoai || "",
+    };
+  });
+
+  Object.keys(studentsMap).forEach((maHS) => {
+    batch.set(
+      docRef,
+      {
+        [classKey]: {
+          [maHS]: { dgtx: studentsMap[maHS].dgtx },
+        },
+      },
+      { merge: true }
+    );
+  });
+
+  try {
+    await batch.commit();
+
+    setStudentData((prev) => ({
+      ...prev,
+      [classKey]: students,
+    }));
+
+    // ✅ Hiển thị Snackbar thành công
+    setSnackbar({
+      open: true,
+      message: `✅ Lưu thành công!`,
+      severity: "success",
+    });
+  } catch (err) {
+    console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
+
+    // ❌ Hiển thị Snackbar lỗi
+    setSnackbar({
+      open: true,
+      message: "❌ Lỗi khi lưu dữ liệu học sinh!",
+      severity: "error",
+    });
+  }
+};
 
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
   useEffect(() => {
@@ -430,6 +498,20 @@ return (
           gap: 1,
         }}
       >
+        <Tooltip title="Lưu Xếp loại" arrow>
+        <IconButton
+          onClick={handleSaveAll}
+          sx={{
+            color: "primary.main",
+            bgcolor: "white",
+            boxShadow: 2,
+            "&:hover": { bgcolor: "primary.light", color: "white" },
+          }}
+        >
+          <SaveIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+
         <Tooltip title="Tải xuống Excel" arrow>
           <IconButton
             onClick={handleDownload}
@@ -732,7 +814,23 @@ return (
         component={Paper}
         sx={{ maxHeight: "70vh", overflowY: "auto", overflowX: "auto" }}
       >
-        <Table stickyHeader size="small" sx={{ tableLayout: "fixed", minWidth: 800 }}>
+        <Table
+          stickyHeader
+          size="small"
+          sx={{
+            tableLayout: "fixed",
+            minWidth: 800,
+            borderCollapse: "collapse",
+            "& td, & th": {
+              borderRight: "1px solid #e0e0e0", // ✅ Đường kẻ dọc nhạt giữa các cột
+              borderBottom: "1px solid #e0e0e0", // ✅ Đường kẻ ngang
+            },
+            "& th:last-child, & td:last-child": {
+              borderRight: "none", // ❌ Bỏ đường kẻ ở cột cuối
+            },
+          }}
+        >
+
           <TableHead>
             <TableRow>
               <TableCell
@@ -754,12 +852,12 @@ return (
               >
                 HỌ VÀ TÊN
               </TableCell>
-              <TableCell
+              {/*<TableCell
                 align="center"
                 sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}
               >
                 LỚP
-              </TableCell>
+              </TableCell>*/}
 
               {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
                 const weekNum = weekFrom + i;
@@ -767,7 +865,7 @@ return (
                   <TableCell
                     key={weekNum}
                     align="center"
-                    sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}
+                    sx={{ backgroundColor: "#1976d2", color: "white", width: 50 }}
                   >
                     Tuần {weekNum}
                   </TableCell>
@@ -776,7 +874,7 @@ return (
               {/*<TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 80 }}>
                 Điểm TB
               </TableCell>*/}
-              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 100 }}>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 50 }}>
                 Xếp loại
               </TableCell>
               <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 350 }}>
@@ -791,7 +889,7 @@ return (
               <TableRow key={student.maDinhDanh} hover>
                 <TableCell align="center">{student.stt}</TableCell>
                 <TableCell align="left">{student.hoVaTen}</TableCell>
-                <TableCell align="center">{selectedClass}</TableCell>
+                {/*<TableCell align="center">{selectedClass}</TableCell>*/}
 
                 {/* Các cột tuần */}
                 {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
@@ -895,6 +993,27 @@ return (
         </Stack>
       </Box>
     </Card>
+
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={() => setSnackbar({ ...snackbar, open: false })}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }} // 👈 Góc dưới bên phải
+    >
+      <Alert
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        severity={snackbar.severity}
+        sx={{
+          width: "100%",
+          boxShadow: 3,
+          borderRadius: 2,
+          fontSize: "0.9rem",
+        }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+
   </Box>
 );
 

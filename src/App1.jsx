@@ -17,14 +17,10 @@ import Login from "./pages/Login";
 import QuanTri from "./pages/QuanTri";
 import GiaoVien from "./pages/GiaoVien";
 import TongHopDanhGia from "./pages/TongHopDanhGia";
-import KiemTraDinhKi from "./pages/KiemTraDinhKi";
-import ThongKe from "./pages/ThongKe";
-import DanhSachHS from "./pages/DanhSachHS"; 
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
 import { ConfigProvider, ConfigContext } from "./context/ConfigContext";
-import { StudentDataProvider } from "./context/StudentDataContext";
 
 // 🔹 Import icon
 //import HomeIcon from "@mui/icons-material/Home";
@@ -34,45 +30,68 @@ import SummarizeIcon from "@mui/icons-material/Summarize";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
-import BarChartIcon from "@mui/icons-material/BarChart";
 
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { config, setConfig } = useContext(ConfigContext);
 
+  //console.log("📦 Config trong AppContent:", config);
+
   // ✅ Hàm xử lý đăng xuất
   const handleLogout = () => {
+    // 1. Xóa thông tin đăng nhập khỏi localStorage
     localStorage.removeItem("loggedIn");
     localStorage.removeItem("account");
 
+    // 2. Cập nhật context và localStorage
     const updatedConfig = { ...config, login: false };
     localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
     setConfig(updatedConfig);
 
+    // 3. Điều hướng về trang đăng nhập
     navigate("/login");
 
+    // 4. Ghi login: false vào Firestore (nền, không log)
     setTimeout(() => {
       const docRef = doc(db, "CONFIG", "config");
       setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
     }, 0);
   };
 
+
   // ✅ Danh sách menu
   const navItems = [
     { path: "/home", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
-    { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
     ...(config.login
       ? [
-          { path: "/giaovien", label: "Đánh giá", icon: <SchoolIcon fontSize="small" /> },          
-          { path: "/tonghopdanhgia", label: "Tổng hợp", icon: <SummarizeIcon fontSize="small" /> },
-          { path: "/nhapdiemktdk", label: "Nhập điểm", icon: <SummarizeIcon fontSize="small" /> },
-          { path: "/thongke", label: "Thống kê", icon: <BarChartIcon fontSize="small" /> },
-          { path: "/quan-tri", label: "Hệ thống", icon: <SettingsIcon fontSize="small" /> },
-          { label: "Đăng xuất", onClick: handleLogout, icon: <LogoutIcon fontSize="small" /> },
+          {
+            path: "/giaovien",
+            label: "Giáo viên",
+            icon: <SchoolIcon fontSize="small" />,
+          },
+          {
+            path: "/tonghopdanhgia",
+            label: "Tổng hợp",
+            icon: <SummarizeIcon fontSize="small" />,
+          },
+          {
+            path: "/quan-tri",
+            label: "Hệ thống",
+            icon: <SettingsIcon fontSize="small" />,
+          },
+          {
+            label: "Đăng xuất",
+            onClick: handleLogout,
+            icon: <LogoutIcon fontSize="small" />,
+          },
         ]
       : [
-          { path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> },
+          {
+            path: "/login",
+            label: "Đăng nhập",
+            icon: <LoginIcon fontSize="small" />,
+          },
         ]),
   ];
 
@@ -99,8 +118,8 @@ function AppContent() {
             sx={{
               height: 34,
               flexShrink: 0,
-              ml: { xs: -1, sm: -2 },
-              mr: 1,
+              ml: { xs: -1, sm: -2 }, // 📱 xs (điện thoại): cách 1 đơn vị, 💻 sm+ (desktop): dính sát
+              mr: 1,                 // khoảng cách nhỏ bên phải logo
             }}
           />
 
@@ -134,47 +153,28 @@ function AppContent() {
             </Button>
           ))}
 
-          {/* 🔹 TUẦN: 
-              - Nếu đã đăng nhập → nằm cuối menu (sau Đăng xuất)
-              - Nếu chưa đăng nhập → vẫn căn giữa như cũ */}
-          {config.login ? (
-            <Typography
-              variant="body2"
-              sx={{
-                ml: 40, // 🔹 tăng khoảng cách giữa "Đăng xuất" và "TUẦN ..."
-                px: 2,
-                py: 0.5,
-                border: "1px solid white",
-                borderRadius: "6px",
-                color: "white",
-                flexShrink: 0,
-              }}
-            >
-              {`TUẦN ${config.tuan || "?"}`}
-            </Typography>
-          ) : (
-            <Typography
-              variant="body2"
-              sx={{
-                position: { xs: "static", md: "absolute" },
-                top: { xs: "auto", md: "50%" },
-                left: { xs: "auto", md: "50%" },
-                transform: { xs: "none", md: "translate(-50%, -50%)" },
-                backgroundColor: "transparent",
-                color: "white",
-                padding: "10px 20px",
-                borderRadius: "6px",
-                border: "1px solid white",
-                lineHeight: 1,
-                textAlign: "center",
-                zIndex: 1,
-                whiteSpace: "nowrap",
-                mt: { xs: 1, md: 0 },
-              }}
-            >
-              {`TUẦN ${config.tuan || "?"}`}
-            </Typography>
-          )}
+          {/* 🔹 Hiển thị tuần ở giữa (hoặc cố định bên phải nếu muốn) */}
+          <Typography
+            variant="body2"
+            sx={{
+              position: { xs: "static", md: "absolute" },
+              top: { xs: "auto", md: "50%" },
+              left: { xs: "auto", md: "50%" },
+              transform: { xs: "none", md: "translate(-50%, -50%)" },
+              backgroundColor: "transparent",
+              color: "white",
+              padding: "10px 20px",
+              borderRadius: "6px",
+              border: "1px solid white",
+              lineHeight: 1,
+              textAlign: "center",
+              zIndex: 1,
+              whiteSpace: "nowrap",
+              mt: { xs: 1, md: 0 },
+            }}
+          >
+            {`TUẦN ${config.tuan || "?"}`}
+          </Typography>
         </Toolbar>
       </AppBar>
 
@@ -183,29 +183,28 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<Home />} />
-          <Route path="/danhsach" element={<DanhSachHS />} /> 
           <Route path="/login" element={<Login />} />
-
           <Route
             path="/giaovien"
-            element={config.login ? <GiaoVien /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/nhapdiemktdk"
-            element={config.login ? <KiemTraDinhKi /> : <Navigate to="/login" replace />}
+            element={
+              config.login ? <GiaoVien /> : <Navigate to="/login" replace />
+            }
           />
           <Route
             path="/tonghopdanhgia"
-            element={config.login ? <TongHopDanhGia /> : <Navigate to="/login" replace />}
+            element={
+              config.login ? (
+                <TongHopDanhGia />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
           />
-          <Route
-            path="/thongke"
-            element={config.login ? <ThongKe /> : <Navigate to="/login" replace />}
-          />
-
           <Route
             path="/quan-tri"
-            element={config.login ? <QuanTri /> : <Navigate to="/login" replace />}
+            element={
+              config.login ? <QuanTri /> : <Navigate to="/login" replace />
+            }
           />
         </Routes>
       </Box>
@@ -213,14 +212,11 @@ function AppContent() {
   );
 }
 
-
 export default function App() {
   return (
     <ConfigProvider>
       <StudentProvider>
-        <StudentDataProvider>
-          <AppContent />
-        </StudentDataProvider>
+        <AppContent />
       </StudentProvider>
     </ConfigProvider>
   );
