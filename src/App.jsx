@@ -61,10 +61,10 @@ function AppContent() {
   // ✅ Danh sách menu
   const navItems = [
     { path: "/home", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
-    { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
     ...(config.login
       ? [
-          { path: "/giaovien", label: "Đánh giá", icon: <SchoolIcon fontSize="small" /> },          
+          { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
+          { path: "/giaovien", label: "Đánh giá", icon: <SummarizeIcon fontSize="small" /> },          
           { path: "/tonghopdanhgia", label: "Tổng hợp", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/nhapdiemktdk", label: "Nhập điểm", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/thongke", label: "Thống kê", icon: <BarChartIcon fontSize="small" /> },
@@ -141,7 +141,7 @@ function AppContent() {
             <Typography
               variant="body2"
               sx={{
-                ml: 40, // 🔹 tăng khoảng cách giữa "Đăng xuất" và "TUẦN ..."
+                ml: 25, // 🔹 tăng khoảng cách giữa "Đăng xuất" và "TUẦN ..."
                 px: 2,
                 py: 0.5,
                 border: "1px solid white",
@@ -183,7 +183,13 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<Home />} />
-          <Route path="/danhsach" element={<DanhSachHS />} /> 
+          
+          {/* Danh sách chỉ hiển thị khi đã đăng nhập */}
+          <Route
+            path="/danhsach"
+            element={config.login ? <DanhSachHS /> : <Navigate to="/login" replace />}
+          /> 
+
           <Route path="/login" element={<Login />} />
 
           <Route
@@ -202,12 +208,12 @@ function AppContent() {
             path="/thongke"
             element={config.login ? <ThongKe /> : <Navigate to="/login" replace />}
           />
-
           <Route
             path="/quan-tri"
             element={config.login ? <QuanTri /> : <Navigate to="/login" replace />}
           />
         </Routes>
+
       </Box>
     </>
   );

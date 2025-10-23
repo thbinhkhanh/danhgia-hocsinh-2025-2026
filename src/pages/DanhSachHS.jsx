@@ -49,40 +49,72 @@ export default function DanhSachHS() {
 
   // 🔹 Lấy danh sách học sinh
   useEffect(() => {
-    if (!selectedClass) return;
+  if (!selectedClass) return;
 
-    const cached = studentData[selectedClass];
-    if (cached && cached.length > 0) {
-      setStudents(cached);
-      return;
+  // Hàm so sánh từng chữ từ phải sang trái
+  const compareFullNamesRightToLeft = (a, b) => {
+    const partsA = a.hoVaTen.replace(/\//g, " ").trim().split(/\s+/);
+    const partsB = b.hoVaTen.replace(/\//g, " ").trim().split(/\s+/);
+    const len = Math.max(partsA.length, partsB.length);
+
+    for (let i = 1; i <= len; i++) { // bắt đầu từ cuối
+      const wordA = partsA[partsA.length - i] || "";
+      const wordB = partsB[partsB.length - i] || "";
+      const cmp = wordA.localeCompare(wordB, "vi", { sensitivity: "base" });
+      if (cmp !== 0) return cmp;
     }
 
-    const fetchStudents = async () => {
-      try {
-        const classDocRef = doc(db, "DANHSACH", selectedClass);
-        const classSnap = await getDoc(classDocRef);
-        if (classSnap.exists()) {
-          const data = classSnap.data();
-          let studentList = Object.entries(data).map(([maDinhDanh, info], idx) => ({
-            stt: idx + 1,
-            maDinhDanh,
-            hoVaTen: info.hoVaTen,
-            ghiChu: "", // trống ban đầu
-          }));
-          setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
-          setStudents(studentList);
-        } else {
-          setStudents([]);
-          setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
-        }
-      } catch (err) {
-        console.error(`❌ Lỗi khi lấy học sinh lớp "${selectedClass}":`, err);
-        setStudents([]);
-      }
-    };
+    return 0;
+  };
 
-    fetchStudents();
-  }, [selectedClass, studentData, setStudentData]);
+  // Lấy dữ liệu từ cache nếu có
+  const cached = studentData[selectedClass];
+  if (cached && cached.length > 0) {
+    const sorted = [...cached].sort(compareFullNamesRightToLeft).map((stu, idx) => ({
+      ...stu,
+      stt: idx + 1,
+    }));
+    setStudents(sorted);
+    return;
+  }
+
+  // Nếu chưa có cache, fetch từ Firestore
+  const fetchStudents = async () => {
+    try {
+      const classDocRef = doc(db, "DANHSACH", selectedClass);
+      const classSnap = await getDoc(classDocRef);
+
+      if (!classSnap.exists()) {
+        setStudents([]);
+        setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
+        return;
+      }
+
+      const data = classSnap.data();
+      let studentList = Object.entries(data).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
+        hoVaTen: info.hoVaTen,
+        ghiChu: "",
+      }));
+
+      // 🔹 Sắp xếp theo từng chữ từ phải sang trái
+      studentList.sort(compareFullNamesRightToLeft);
+
+      // Thêm STT
+      studentList = studentList.map((stu, idx) => ({ ...stu, stt: idx + 1 }));
+
+      // Cập nhật cache và state
+      setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
+      setStudents(studentList);
+    } catch (err) {
+      console.error(`❌ Lỗi khi lấy học sinh lớp "${selectedClass}":`, err);
+      setStudents([]);
+    }
+  };
+
+  fetchStudents();
+}, [selectedClass, studentData, setStudentData]);
+
 
   {/*const handleClassChange = async (e) => {
     const newClass = e.target.value;
@@ -101,138 +133,163 @@ export default function DanhSachHS() {
     setSelectedClass(newClass); // chỉ cập nhật state local
     };
 
-
   return (
-    <Box
+  <Box
+    sx={{
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
+      pt: 3,
+      px: 3,
+    }}
+  >
+    <Paper
+      elevation={6}
       sx={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
-        pt: 3,
-        px: 3,
+        p: 4,
+        borderRadius: 3,
+        width: "100%",
+        maxWidth: 800,
+        bgcolor: "white",
       }}
     >
-      <Paper
-        elevation={6}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          width: "100%",
-          maxWidth: 800,
-          bgcolor: "white",
-        }}
-      >
-        <Box sx={{ textAlign: "center", mb: 2 }}>
-          <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2" }}>
-            DANH SÁCH HỌC SINH
-          </Typography>
-        </Box>
+      {/* Tiêu đề */}
+      <Box sx={{ textAlign: "center", mb: 2 }}>
+        <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2" }}>
+          DANH SÁCH HỌC SINH
+        </Typography>
+      </Box>
 
-        {/* Dropdown chọn lớp với nhãn */}
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mb: 4, gap: 1 }}>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                Lớp:
-            </Typography>
-            <Select
-                value={selectedClass}
-                onChange={handleClassChange}
-                size="small"
-                sx={{ width: 80, height: 40 }}
-            >
-                {classes.map((cls) => (
-                <MenuItem key={cls} value={cls}>
-                    {cls}
-                </MenuItem>
-                ))}
-            </Select>
-        </Box>
+      {/* Dropdown chọn lớp */}
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mb: 4, gap: 1 }}>
+        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+          Lớp:
+        </Typography>
+        <Select
+          value={selectedClass}
+          onChange={handleClassChange}
+          size="small"
+          sx={{ width: 80, height: 40 }}
+        >
+          {classes.map((cls) => (
+            <MenuItem key={cls} value={cls}>
+              {cls}
+            </MenuItem>
+          ))}
+        </Select>
+      </Box>
 
+      {/* Bảng học sinh */}
+      <Box sx={{ width: "100%", overflowX: "auto" }}>
+        <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
+          <Table size="small" sx={{ minWidth: 650 }}>
+            <TableHead>
+              <TableRow sx={{ height: 36 }}>
+                <TableCell
+                  sx={{
+                    bgcolor: "#1976d2",
+                    color: "#ffffff",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    borderRight: "1px solid rgba(0,0,0,0.12)",
+                    width: 50,
+                  }}
+                >
+                  STT
+                </TableCell>
+                <TableCell
+                  sx={{
+                    bgcolor: "#1976d2",
+                    color: "#ffffff",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    borderRight: "1px solid rgba(0,0,0,0.12)",
+                    width: 120,
+                  }}
+                >
+                  MÃ ĐỊNH DANH
+                </TableCell>
+                <TableCell
+                  sx={{
+                    bgcolor: "#1976d2",
+                    color: "#ffffff",
+                    fontWeight: "bold",
+                    textAlign: "center", // căn giữa
+                    borderRight: "1px solid rgba(0,0,0,0.12)",
+                    width: 200,
+                  }}
+                >
+                  HỌ VÀ TÊN
+                </TableCell>
+                <TableCell
+                  sx={{
+                    bgcolor: "#1976d2",
+                    color: "#ffffff",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    width: 250,
+                  }}
+                >
+                  GHI CHÚ
+                </TableCell>
+              </TableRow>
+            </TableHead>
 
-        {/* Bảng hiển thị học sinh */}
-        <TableContainer component={Paper}>
-            <Table size="small">
-                <TableHead>
-                <TableRow sx={{ height: 36 }}>
-                    <TableCell
+            <TableBody>
+              {students.map((student) => (
+                <TableRow key={student.maDinhDanh} sx={{ height: 32 }}>
+                  <TableCell
                     sx={{
-                        bgcolor: "#1976d2",
-                        color: "#ffffff",
-                        fontWeight: "bold",
-                        px: 1,
-                        width: 50,
-                        textAlign: "center",
-                        borderRight: "1px solid rgba(0,0,0,0.12)"
+                      px: 1,
+                      textAlign: "center",
+                      border: "1px solid rgba(0,0,0,0.12)", 
+                      width: 50,
                     }}
-                    >
-                    STT
-                    </TableCell>
-                    <TableCell
+                  >
+                    {student.stt}
+                  </TableCell>
+                  <TableCell
                     sx={{
-                        bgcolor: "#1976d2",
-                        color: "#ffffff",
-                        fontWeight: "bold",
-                        px: 1,
-                        width: 120,
-                        textAlign: "center",       // căn giữa mã định danh
-                        borderRight: "1px solid rgba(0,0,0,0.12)"
+                      px: 1,
+                      textAlign: "center",
+                      border: "1px solid rgba(0,0,0,0.12)", 
+                      width: 120,
                     }}
-                    >
-                    MÃ ĐỊNH DANH
-                    </TableCell>
-                    <TableCell
+                  >
+                    {student.maDinhDanh}
+                  </TableCell>
+                  <TableCell
                     sx={{
-                        bgcolor: "#1976d2",
-                        color: "#ffffff",
-                        fontWeight: "bold",
-                        px: 1,
-                        width: 200,
-                        textAlign: "center",
-                        borderRight: "1px solid rgba(0,0,0,0.12)"
+                      px: 1,
+                      textAlign: "left",
+                      border: "1px solid rgba(0,0,0,0.12)", 
+                      width: 200,
                     }}
-                    >
-                    HỌ VÀ TÊN
-                    </TableCell>
-                    <TableCell
+                  >
+                    {student.hoVaTen}
+                  </TableCell>
+                  <TableCell
                     sx={{
-                        bgcolor: "#1976d2",
-                        color: "#ffffff",
-                        fontWeight: "bold",
-                        px: 1,
-                        width: 250,
-                        textAlign: "center"
+                      px: 1,
+                      textAlign: "center",
+                      border: "1px solid rgba(0,0,0,0.12)", 
+                      width: 250,
                     }}
-                    >
-                    GHI CHÚ
-                    </TableCell>
+                  >
+                    {student.ghiChu}
+                  </TableCell>
                 </TableRow>
-                </TableHead>
-
-                <TableBody>
-                {students.map((student) => (
-                    <TableRow key={student.maDinhDanh} sx={{ height: 32 }}>
-                    <TableCell sx={{ px: 1, width: 50, textAlign: "center", borderRight: "1px solid rgba(0,0,0,0.12)" }}>
-                        {student.stt}
-                    </TableCell>
-                    <TableCell sx={{ px: 1, width: 120, textAlign: "center", borderRight: "1px solid rgba(0,0,0,0.12)" }}>
-                        {student.maDinhDanh}
-                    </TableCell>
-                    <TableCell sx={{ px: 1, width: 200, borderRight: "1px solid rgba(0,0,0,0.12)" }}>
-                        {student.hoVaTen}
-                    </TableCell>
-                    <TableCell sx={{ px: 1, width: 250 }}>
-                        {student.ghiChu}
-                    </TableCell>
-                    </TableRow>
-                ))}
-                </TableBody>
-            </Table>
-            </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    </Paper>
+  </Box>
+);
 
 
 
-      </Paper>
-    </Box>
-  );
 }
