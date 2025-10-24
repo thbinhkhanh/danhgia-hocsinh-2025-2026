@@ -825,5 +825,4 @@ const nhanXetTheoMuc = {
           </Snackbar>
     </Box>
   );
-
 }
