@@ -88,95 +88,115 @@ export default function KiemTraDinhKi() {
     fetchClasses();
   }, [classData, setClassData]);
 
-  const fetchStudentsAndStatus = async (cls) => {
-    const currentClass = cls || selectedClass; // dùng lớp được truyền nếu có
-    if (!currentClass) return;
+  const fetchStudentsAndStatus = async () => {
+  if (!selectedClass) return;
 
-    const classKey = `${currentClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+  // ✅ Thêm học kì vào classKey để cache riêng
+  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
 
-    // 1️⃣ Kiểm tra context trước
-    const cached = getStudentsForClass(classKey);
-    if (cached) {
-      //console.log(`🟢 Lấy dữ liệu học sinh từ Context cho lớp ${classKey}`);
-      setStudents(cached);
+  // 1️⃣ Kiểm tra context trước
+  const cached = getStudentsForClass(classKey);
+  if (cached) {
+    console.log(`🟢 Lấy dữ liệu học sinh từ Context cho lớp ${classKey}`);
+    setStudents(cached);
+    return;
+  }
+
+  try {
+    console.log(`🟡 Chưa có trong Context, fetch từ Firestore cho lớp ${classKey}`);
+
+    // 2️⃣ Lấy danh sách học sinh từ DANHSACH
+    const classDocRef = doc(db, "DANHSACH", selectedClass);
+    const classSnap = await getDoc(classDocRef);
+    if (!classSnap.exists()) {
+      console.log(`⚪ Không có dữ liệu trong Firestore cho lớp ${selectedClass}`);
+      setStudents([]);
       return;
     }
 
+    const studentsData = classSnap.data();
+    let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
+      maDinhDanh,
+      hoVaTen: info.hoVaTen || "",
+      tracNghiem: "",
+      thucHanh: "",
+      tongCong: "",
+      xepLoai: "",
+      nhanXet: "",
+      dgtx: "",
+      statusByWeek: {},
+    }));
+
+    // 🔹 2.5️⃣ Lấy dữ liệu ĐGTX riêng (nếu có)
     try {
-      //console.log(`🟡 Chưa có trong Context, fetch từ Firestore cho lớp ${classKey}`);
+      // ⚠️ Nếu bạn lưu ở doc DGTX/{classKey}, dùng dòng này:
+      const dgtxDocRef = doc(db, "DGTX", classKey);
+      // Hoặc nếu chỉ lưu theo tên lớp: const dgtxDocRef = doc(db, "DGTX", selectedClass);
 
-      // 2️⃣ Lấy danh sách học sinh từ DANHSACH
-      const classDocRef = doc(db, "DANHSACH", currentClass);
-      const classSnap = await getDoc(classDocRef);
-      if (!classSnap.exists()) {
-        //console.log(`⚪ Không có dữ liệu trong Firestore cho lớp ${currentClass}`);
-        setStudents([]);
-        return;
-      }
+      const dgtxSnap = await getDoc(dgtxDocRef);
+      if (dgtxSnap.exists()) {
+        const dgtxData = dgtxSnap.data(); // {7956673972: {...}, 7956673994: {...}}
+        console.log(`🔵 Đã lấy dữ liệu ĐGTX cho lớp ${classKey}`, dgtxData);
 
-      const studentsData = classSnap.data();
-      let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
-        maDinhDanh,
-        hoVaTen: info.hoVaTen || "",
-        tracNghiem: "",
-        thucHanh: "",
-        tongCong: "",
-        xepLoai: "",
-        nhanXet: "",
-        dgtx: "",
-        statusByWeek: {},
-      }));
-
-      // 🔹 2.5️⃣ Lấy dữ liệu ĐGTX riêng
-      try {
-        const dgtxDocRef = doc(db, "DGTX", classKey);
-        const dgtxSnap = await getDoc(dgtxDocRef);
-        if (dgtxSnap.exists()) {
-          const dgtxData = dgtxSnap.data();
-          studentList = studentList.map((s) => ({
-            ...s,
-            dgtx: dgtxData[s.maDinhDanh]?.dgtx ?? s.dgtx ?? "",
-          }));
-        }
-      } catch (err) {
-        console.error("❌ Lỗi khi lấy ĐGTX:", err);
-      }
-
-      // 3️⃣ Lấy điểm từ BANGDIEM nếu có
-      const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
-      const scoreDocRef = doc(db, "BANGDIEM", termDoc);
-      const scoreSnap = await getDoc(scoreDocRef);
-      if (scoreSnap.exists()) {
-        const scoreData = scoreSnap.data();
-        const classScores = scoreData[classKey] || {};
+        // Map dgtx vào danh sách học sinh
         studentList = studentList.map((s) => ({
+          ...s,
+          dgtx: dgtxData[s.maDinhDanh]?.dgtx ?? s.dgtx ?? "",
+        }));
+      } else {
+        console.log(`⚪ Không có dữ liệu ĐGTX cho lớp ${classKey}`);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy ĐGTX:", err);
+    }
+
+    // 3️⃣ Lấy điểm từ BANGDIEM nếu có
+    const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+    const scoreDocRef = doc(db, "BANGDIEM", termDoc);
+    const scoreSnap = await getDoc(scoreDocRef);
+
+    if (scoreSnap.exists()) {
+      const scoreData = scoreSnap.data();
+      const classScores = scoreData[classKey] || {};
+      console.log(`🔵 Lấy điểm từ BANGDIEM cho lớp ${classKey}, học kì ${termDoc}`);
+
+      studentList = studentList.map((s) => {
+        console.log(s.maDinhDanh, "dgtx (sau khi merge):", classScores[s.maDinhDanh]?.dgtx || s.dgtx);
+        return {
           ...s,
           tracNghiem: classScores[s.maDinhDanh]?.tracNghiem || "",
           thucHanh: classScores[s.maDinhDanh]?.thucHanh || "",
           tongCong: classScores[s.maDinhDanh]?.tongCong || "",
           xepLoai: classScores[s.maDinhDanh]?.xepLoai || "",
           nhanXet: classScores[s.maDinhDanh]?.nhanXet || "",
+          // ưu tiên lấy dgtx từ BANGDIEM nếu có, nếu không giữ nguyên từ DGTX
           dgtx: classScores[s.maDinhDanh]?.dgtx || s.dgtx || "",
-        }));
-      }
-
-      // 4️⃣ Sắp xếp theo tên
-      studentList.sort((a, b) => {
-        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-        return nameA.localeCompare(nameB);
+        };
       });
-      studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-      // 5️⃣ Cập nhật state và context
-      setStudents(studentList);
-      setStudentsForClass(classKey, studentList);
-      //console.log(`🟢 Đã lưu dữ liệu học sinh vào Context cho lớp ${classKey}`);
-    } catch (err) {
-      console.error("❌ Lỗi khi lấy dữ liệu:", err);
-      setStudents([]);
+    } else {
+      console.log(`⚪ Chưa có bảng điểm BANGDIEM cho học kì ${termDoc}`);
     }
-  };
+
+    // 4️⃣ Sắp xếp theo tên
+    studentList.sort((a, b) => {
+      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+    // 5️⃣ Cập nhật state và context
+    setStudents(studentList);
+    setStudentsForClass(classKey, studentList); // cache đúng lớp + CN + học kì
+    console.log(`🟢 Đã lưu dữ liệu học sinh vào Context cho lớp ${classKey}`);
+  } catch (err) {
+    console.error("❌ Lỗi khi lấy dữ liệu:", err);
+    setStudents([]);
+  }
+};
+
+
 
   useEffect(() => {
     fetchStudentsAndStatus();
@@ -423,6 +443,7 @@ const nhanXetTheoMuc = {
     }
   };
 
+
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
       <Card
@@ -548,31 +569,38 @@ const nhanXetTheoMuc = {
       labelId="lop-label"
       value={selectedClass}
       label="Lớp"
-      onChange={async (e) => {
+      onChange={(e) => {
         const newClass = e.target.value;
 
-        // 1️⃣ Cập nhật state ngay (Dropdown sẽ tự đóng)
+        // 1️⃣ Cập nhật giá trị trước để dropdown đóng
         setSelectedClass(newClass);
-        setConfig(prev => ({ ...prev, lop: newClass }));
+        setConfig((prev) => ({ ...prev, lop: newClass }));
 
-        // 2️⃣ Reset danh sách cũ
-        setStudents([]);
+        // 2️⃣ Reset học sinh cũ
+        setStudents((prev) =>
+          prev.map((s) => ({
+            ...s,
+            statusByWeek: {},
+            xepLoai: "",
+            nhanXet: "",
+          }))
+        );
 
-        // 3️⃣ Hiển thị loading ngắn (tuỳ chọn)
-        setLoadingMessage("Đang tải dữ liệu lớp mới...");
-        setLoadingProgress(0);
-
-        // 4️⃣ Fetch dữ liệu mới ngay sau khi state được set
-        await fetchStudentsAndStatus(newClass); // truyền class mới
+        // 3️⃣ Dùng timeout nhỏ nếu có async nặng, giúp UI mượt hơn
+        setTimeout(() => {
+          setLoadingMessage("Đang tải dữ liệu lớp mới...");
+          setLoadingProgress(0);
+        }, 50);
       }}
     >
-      {classes.map(cls => (
+      {classes.map((cls) => (
         <MenuItem key={cls} value={cls}>
           {cls}
         </MenuItem>
       ))}
     </Select>
   </FormControl>
+
 
   {/* Môn học */}
   <FormControl size="small" sx={{ minWidth: 120 }}>

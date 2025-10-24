@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Box, Typography, MenuItem, Select, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import { Box, Typography, MenuItem, Select, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, IconButton, Tooltip } from "@mui/material";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, setDoc, onSnapshot } from "firebase/firestore";
+import { exportDanhsach } from "../utils/exportDanhsach";
+import { inDanhsach } from "../utils/inDanhsach";
+
+import DownloadIcon from "@mui/icons-material/Download";
+import PrintIcon from "@mui/icons-material/Print";
 
 export default function DanhSachHS() {
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
@@ -153,8 +158,48 @@ export default function DanhSachHS() {
         width: "100%",
         maxWidth: 800,
         bgcolor: "white",
+        position: "relative", // ✅ để đặt icon tuyệt đối
       }}
     >
+      {/* 🔹 Nhóm icon ở góc trên trái */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 12,
+          left: 12,
+          display: "flex",
+          gap: 1, // khoảng cách giữa 2 icon
+        }}
+      >
+        {/* Xuất Excel */}
+        <Tooltip title="Xuất danh sách Excel">
+          <IconButton
+            onClick={() => exportDanhsach(selectedClass)}
+            sx={{
+              color: "#1976d2",
+              backgroundColor: "rgba(25,118,210,0.1)",
+              "&:hover": { backgroundColor: "rgba(25,118,210,0.2)" },
+            }}
+          >
+            <DownloadIcon />
+          </IconButton>
+        </Tooltip>
+
+        {/* In danh sách */}
+        <Tooltip title="In danh sách học sinh">
+          <IconButton
+            onClick={() => inDanhsach(selectedClass)}
+            sx={{
+              color: "#2e7d32",
+              backgroundColor: "rgba(46,125,50,0.1)",
+              "&:hover": { backgroundColor: "rgba(46,125,50,0.2)" },
+            }}
+          >
+            <PrintIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
       {/* Tiêu đề */}
       <Box sx={{ textAlign: "center", mb: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2" }}>
@@ -163,7 +208,15 @@ export default function DanhSachHS() {
       </Box>
 
       {/* Dropdown chọn lớp */}
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mb: 4, gap: 1 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          mb: 4,
+          gap: 1,
+        }}
+      >
         <Typography variant="body1" sx={{ fontWeight: 500 }}>
           Lớp:
         </Typography>
@@ -191,7 +244,6 @@ export default function DanhSachHS() {
                   sx={{
                     bgcolor: "#1976d2",
                     color: "#ffffff",
-                    //fontWeight: "bold",
                     textAlign: "center",
                     borderRight: "1px solid rgba(0,0,0,0.12)",
                     width: 50,
@@ -203,36 +255,33 @@ export default function DanhSachHS() {
                   sx={{
                     bgcolor: "#1976d2",
                     color: "#ffffff",
-                    //fontWeight: "bold",
                     textAlign: "center",
                     borderRight: "1px solid rgba(0,0,0,0.12)",
                     width: 120,
                   }}
                 >
-                  Mã định danh
+                  MÃ ĐỊNH DANH
                 </TableCell>
                 <TableCell
                   sx={{
                     bgcolor: "#1976d2",
                     color: "#ffffff",
-                    //fontWeight: "bold",
-                    textAlign: "center", // căn giữa
+                    textAlign: "center",
                     borderRight: "1px solid rgba(0,0,0,0.12)",
                     width: 200,
                   }}
                 >
-                  Họ và tên
+                  HỌ VÀ TÊN
                 </TableCell>
                 <TableCell
                   sx={{
                     bgcolor: "#1976d2",
                     color: "#ffffff",
-                    //fontWeight: "bold",
                     textAlign: "center",
                     width: 250,
                   }}
                 >
-                  Ghi chú
+                  GHI CHÚ
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -244,7 +293,7 @@ export default function DanhSachHS() {
                     sx={{
                       px: 1,
                       textAlign: "center",
-                      border: "1px solid rgba(0,0,0,0.12)", 
+                      border: "1px solid rgba(0,0,0,0.12)",
                       width: 50,
                     }}
                   >
@@ -254,7 +303,7 @@ export default function DanhSachHS() {
                     sx={{
                       px: 1,
                       textAlign: "center",
-                      border: "1px solid rgba(0,0,0,0.12)", 
+                      border: "1px solid rgba(0,0,0,0.12)",
                       width: 120,
                     }}
                   >
@@ -264,7 +313,7 @@ export default function DanhSachHS() {
                     sx={{
                       px: 1,
                       textAlign: "left",
-                      border: "1px solid rgba(0,0,0,0.12)", 
+                      border: "1px solid rgba(0,0,0,0.12)",
                       width: 200,
                     }}
                   >
@@ -274,7 +323,7 @@ export default function DanhSachHS() {
                     sx={{
                       px: 1,
                       textAlign: "center",
-                      border: "1px solid rgba(0,0,0,0.12)", 
+                      border: "1px solid rgba(0,0,0,0.12)",
                       width: 250,
                     }}
                   >
@@ -289,7 +338,5 @@ export default function DanhSachHS() {
     </Paper>
   </Box>
 );
-
-
 
 }

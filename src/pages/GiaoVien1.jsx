@@ -329,67 +329,73 @@ const handleClassChange = async (e) => {
             mb: 4,
           }}
         >
-          <FormControl size="small" sx={{ minWidth: 80 }}>
-            <InputLabel id="lop-label">Lớp</InputLabel>
-            <Select
-              labelId="lop-label"
-              value={selectedClass}
-              onChange={handleClassChange}
-              label="Lớp"
-              size="small"
-              sx={{
-                height: 40,
-                borderRadius: 1,
-                bgcolor: "transparent",
-                "& .MuiSelect-select": {
+          <Typography
+            variant="body1"
+            fontWeight={500}
+            color="text.primary"
+            sx={{ whiteSpace: "nowrap" }}
+          >
+            Lớp:
+          </Typography>
+
+          <Select
+            value={selectedClass}
+            //onChange={(e) => setSelectedClass(e.target.value)}
+            onChange={handleClassChange}
+            size="small"
+            sx={{
+              width: 80,
+              height: 40,
+              borderRadius: 2,
+              bgcolor: "transparent",
+              "& .MuiSelect-select": {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                px: 1,
+              },
+              "&:hover": { bgcolor: "#e0e0e0" },
+            }}
+          >
+            {classes.map((cls) => (
+              <MenuItem
+                key={cls}
+                value={cls}
+                sx={{
+                  fontSize: 14,
+                  minHeight: 40,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  px: 1,
-                },
-                "&:hover": { bgcolor: "#e0e0e0" },
-              }}
-            >
-              {classes.map((cls) => (
-                <MenuItem key={cls} value={cls}>
-                  {cls}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+                }}
+              >
+                {cls}
+              </MenuItem>
+            ))}
+          </Select>
 
-          {/* Dropdown chọn môn học (Tin học / Công nghệ) */}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel id="monhoc-label">Môn học</InputLabel>
-            <Select
-              labelId="monhoc-label"
-              value={config?.congnghe ? "congnghe" : "tinhoc"}
-              label="Môn học"
-              onChange={async (e) => {
-                const value = e.target.value;
-                const isCongNghe = value === "congnghe";
-
-                // cập nhật Firestore
-                try {
-                  const docRef = doc(db, "CONFIG", "config");
-                  await setDoc(docRef, { congnghe: isCongNghe }, { merge: true });
-
-                  // cập nhật context
-                  setConfig((prev) => ({ ...prev, congnghe: isCongNghe }));
-                  setIsCongNghe(isCongNghe);
-                } catch (err) {
-                  console.error("❌ Lỗi cập nhật môn học:", err);
-                }
-              }}
-            >
-              <MenuItem value="tinhoc">Tin học</MenuItem>
-              <MenuItem value="congnghe">Công nghệ</MenuItem>
-            </Select>
-          </FormControl>
-
+          {/* Hiển thị checkbox "Công nghệ" */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!config?.congnghe}         // ép kiểu boolean an toàn
+                onChange={handleCongNgheChange}      // hàm bạn đã định nghĩa
+                sx={{ transform: "scale(1.1)" }}
+              />
+            }
+            label={
+              <Typography variant="body2" color="text.primary">
+                Công nghệ
+              </Typography>
+            }
+            sx={{
+              ml: 1,
+              "& .MuiTypography-root": { fontSize: 14 },
+            }}
+          />
 
           {/* ---------------------- Ô chọn Tuần ---------------------- */}
-          <FormControl size="small" sx={{ minWidth: 100 }}>
+          <FormControl size="small" sx={{ ml: 2, minWidth: 100 }}>
             <Select
               value={selectedWeek}
               onChange={async (e) => {
@@ -416,6 +422,10 @@ const handleClassChange = async (e) => {
               ))}
             </Select>
           </FormControl>
+
+
+          
+
         </Box>
 
         {/* Grid học sinh */}

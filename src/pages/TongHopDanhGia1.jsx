@@ -499,18 +499,18 @@ return (
         }}
       >
         <Tooltip title="Lưu Xếp loại" arrow>
-          <IconButton
-            onClick={handleSaveAll}
-            sx={{
-              color: "primary.main",
-              bgcolor: "white",
-              boxShadow: 2,
-              "&:hover": { bgcolor: "primary.light", color: "white" },
-            }}
-          >
-            <SaveIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <IconButton
+          onClick={handleSaveAll}
+          sx={{
+            color: "primary.main",
+            bgcolor: "white",
+            boxShadow: 2,
+            "&:hover": { bgcolor: "primary.light", color: "white" },
+          }}
+        >
+          <SaveIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
 
         <Tooltip title="Tải xuống Excel" arrow>
           <IconButton
@@ -541,24 +541,26 @@ return (
         </Tooltip>
 
         <Tooltip title="Đánh giá tự động" arrow>
-          <IconButton
-            onClick={() => {
-              const updated = students.map((s) => {
-                const { diemTB, xepLoai, nhanXet } = danhGiaHocSinh(s, weekFrom, weekTo);
-                return { ...s, diemTB, xepLoai, nhanXet };
-              });
-              setStudents(updated);
-            }}
-            sx={{
-              color: "primary.main",
-              bgcolor: "white",
-              boxShadow: 2,
-              "&:hover": { bgcolor: "primary.light", color: "white" },
-            }}
-          >
-            <AssessmentIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        
+        <IconButton
+          onClick={() => {
+            const updated = students.map((s) => {
+              const { diemTB, xepLoai, nhanXet } = danhGiaHocSinh(s, weekFrom, weekTo);
+              return { ...s, diemTB, xepLoai, nhanXet };
+            });
+            setStudents(updated);
+          }}
+          sx={{
+            color: "primary.main",
+            bgcolor: "white",
+            boxShadow: 2,
+            "&:hover": { bgcolor: "primary.light", color: "white" },
+          }}
+        >
+          <AssessmentIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+
       </Box>
 
       {/* ===== Header ===== */}
@@ -571,6 +573,63 @@ return (
       >
         TỔNG HỢP ĐÁNH GIÁ
       </Typography>
+
+      {/* --- Bảng thống kê góc phải --- */}
+      {/*<Box
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          backgroundColor: "#f1f8e9",
+          borderRadius: 2,
+          border: "1px solid #e0e0e0",
+          p: 2,
+          minWidth: 260,
+          boxShadow: 2,
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={1}
+        >
+          <Typography variant="subtitle1" fontWeight="bold" color="primary">
+            Thống kê:
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 100 }}>
+            <InputLabel>Tuần</InputLabel>
+            <Select
+              value={selectedWeek}
+              label="Tuần"
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            >
+              {[...Array(35)].map((_, i) => (
+                <MenuItem key={i + 1} value={i + 1}>
+                  Tuần {i + 1}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Hoàn thành tốt (T):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalT}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Hoàn thành (H):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalH}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Chưa hoàn thành (C):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalC}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Chưa đánh giá:</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
+        </Stack>
+      </Box>*/}
 
       {/* ===== Row tuần ===== */}
       <Stack
@@ -636,6 +695,7 @@ return (
         )}
       </Stack>
 
+
       <Divider sx={{ mb: 3 }} />
 
       {/* 🔹 Hàng chọn lớp và bộ lọc */}
@@ -647,65 +707,60 @@ return (
         mb={3}
       >
         {/* Lớp */}
-        <FormControl size="small" sx={{ minWidth: 80 }}>
-          <InputLabel id="lop-label">Lớp</InputLabel>
-          <Select
-            labelId="lop-label"
-            value={selectedClass}
-            label="Lớp"
-            onChange={(e) => {
-              const newClass = e.target.value;
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="body1" fontWeight="medium">
+            Lớp:
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 80 }}>
+            <Select
+              value={selectedClass}
+              onChange={(e) => {
+                const newClass = e.target.value;
 
-              setSelectedClass(newClass);
-              setConfig((prev) => ({ ...prev, lop: newClass }));
+                // 🔹 Cập nhật lớp trong state & context
+                setSelectedClass(newClass);
+                setConfig((prev) => ({ ...prev, lop: newClass }));
 
-              setStudents((prev) =>
-                prev.map((s) => ({
-                  ...s,
-                  statusByWeek: {},
-                  xepLoai: "",
-                  nhanXet: "",
-                }))
-              );
+                // 🔹 Xóa dữ liệu trong bảng nhưng giữ nguyên hàng
+                setStudents((prev) =>
+                  prev.map((s) => ({
+                    ...s,
+                    statusByWeek: {}, // reset dữ liệu tuần
+                    xepLoai: "",      // xóa xếp loại
+                    nhanXet: "",      // xóa nhận xét
+                  }))
+                );
 
-              setLoadingMessage("Đang tải dữ liệu lớp mới...");
-              setLoadingProgress(0);
-            }}
-          >
-            {classes.map((cls) => (
-              <MenuItem key={cls} value={cls}>
-                {cls}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+                // 🔹 Hiển thị thông báo đang tải
+                setLoadingMessage("Đang tải dữ liệu lớp mới...");
+                setLoadingProgress(0);
+              }}
+              size="small"
+              sx={{
+                width: 80,
+                height: 40,
+                borderRadius: 2,
+                "& .MuiSelect-select": {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+              }}
+            >
+              {classes.map((cls) => (
+                <MenuItem key={cls} value={cls}>
+                  {cls}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
 
-
-        {/* Dropdown chọn môn học (Tin học / Công nghệ) */}
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel id="monhoc-label">Môn học</InputLabel>
-          <Select
-            labelId="monhoc-label"
-            value={isCongNghe ? "congnghe" : "tinhoc"}
-            label="Môn học"
-            onChange={async (e) => {
-              const value = e.target.value;
-              const isCN = value === "congnghe";
-
-              try {
-                const docRef = doc(db, "CONFIG", "config");
-                await setDoc(docRef, { congnghe: isCN }, { merge: true });
-                setConfig((prev) => ({ ...prev, congnghe: isCN }));
-                setIsCongNghe(isCN);
-              } catch (err) {
-                console.error("❌ Lỗi cập nhật môn học:", err);
-              }
-            }}
-          >
-            <MenuItem value="tinhoc">Tin học</MenuItem>
-            <MenuItem value="congnghe">Công nghệ</MenuItem>
-          </Select>
-        </FormControl>
+        {/* Checkbox Công nghệ */}
+        <FormControlLabel
+          control={<Checkbox checked={!!isCongNghe} onChange={handleCongNgheChange} />}
+          label="Công nghệ"
+        />
 
         {/* Checkbox Giáo viên */}
         <FormControlLabel
@@ -717,7 +772,42 @@ return (
           }
           label="Giáo viên"
         />
+        
       </Stack>
+
+      {/*{loadingMessage && (
+        <Box
+          sx={{
+            mt: 2,
+            mb: 2, // 🔹 thêm khoảng cách phía dưới toàn cụm
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center", // căn giữa
+          }}
+        >
+          <LinearProgress
+            variant="determinate"
+            value={loadingProgress}
+            sx={{
+              width: "25%",   // 🔹 giảm chiều rộng
+              height: 3,
+              borderRadius: 2,
+              mb: 0.8,        // 🔹 khoảng cách giữa thanh và nhãn
+            }}
+            color="primary"
+          />
+
+          <Typography
+            variant="body2"
+            color="primary"
+            sx={{ fontWeight: 500, textAlign: "center" }}
+          >
+            {loadingMessage}
+          </Typography>
+        </Box>
+      )}*/}
+
+
 
       {/* --- Bảng dữ liệu --- */}
       <TableContainer
@@ -732,14 +822,15 @@ return (
             minWidth: 800,
             borderCollapse: "collapse",
             "& td, & th": {
-              borderRight: "1px solid #e0e0e0",
-              borderBottom: "1px solid #e0e0e0",
+              borderRight: "1px solid #e0e0e0", // ✅ Đường kẻ dọc nhạt giữa các cột
+              borderBottom: "1px solid #e0e0e0", // ✅ Đường kẻ ngang
             },
             "& th:last-child, & td:last-child": {
-              borderRight: "none",
+              borderRight: "none", // ❌ Bỏ đường kẻ ở cột cuối
             },
           }}
         >
+
           <TableHead>
             <TableRow>
               <TableCell
@@ -761,6 +852,12 @@ return (
               >
                 Họ và tên
               </TableCell>
+              {/*<TableCell
+                align="center"
+                sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}
+              >
+                LỚP
+              </TableCell>*/}
 
               {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
                 const weekNum = weekFrom + i;
@@ -774,19 +871,16 @@ return (
                   </TableCell>
                 );
               })}
-
-              <TableCell
-                align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 50 }}
-              >
+              {/*<TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 80 }}>
+                Điểm TB
+              </TableCell>*/}
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 50 }}>
                 Xếp loại
               </TableCell>
-              <TableCell
-                align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 350 }}
-              >
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 350 }}>
                 Nhận xét
               </TableCell>
+
             </TableRow>
           </TableHead>
 
@@ -795,7 +889,9 @@ return (
               <TableRow key={student.maDinhDanh} hover>
                 <TableCell align="center">{student.stt}</TableCell>
                 <TableCell align="left">{student.hoVaTen}</TableCell>
+                {/*<TableCell align="center">{selectedClass}</TableCell>*/}
 
+                {/* Các cột tuần */}
                 {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
                   const weekNum = weekFrom + i;
                   const weekId = `tuan_${weekNum}`;
@@ -815,13 +911,18 @@ return (
                   );
                 })}
 
+                {/* ✅ Thêm 3 cột mới ở cuối mỗi hàng */}
+                {/*<TableCell align="center">
+                  {student.diemTB ? student.diemTB.toFixed(2) : ""}
+                </TableCell>*/}
                 <TableCell
                   align="center"
                   sx={{
+                    //fontWeight: "bold",
                     color:
                       student.xepLoai === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main,
+                        ? "#dc2626" // đỏ
+                        : (theme) => theme.palette.primary.main, // màu xanh dương chuẩn của theme
                   }}
                 >
                   {student.xepLoai || ""}
@@ -830,9 +931,9 @@ return (
               </TableRow>
             ))}
           </TableBody>
+
         </Table>
       </TableContainer>
-
       {/* --- Bảng thống kê --- */}
       <Box
         sx={{
@@ -849,7 +950,12 @@ return (
           width: isMobile ? "90%" : "auto",
         }}
       >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={1}
+        >
           <Typography variant="subtitle1" fontWeight="bold" color="primary">
             Thống kê:
           </Typography>
@@ -892,7 +998,7 @@ return (
       open={snackbar.open}
       autoHideDuration={3000}
       onClose={() => setSnackbar({ ...snackbar, open: false })}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }} // 👈 Góc dưới bên phải
     >
       <Alert
         onClose={() => setSnackbar({ ...snackbar, open: false })}
@@ -907,8 +1013,8 @@ return (
         {snackbar.message}
       </Alert>
     </Snackbar>
+
   </Box>
 );
-
 
 }
