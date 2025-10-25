@@ -29,7 +29,7 @@ import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentDataContext } from "../context/StudentDataContext";
 import { exportKTDK } from "../utils/exportKTDK";
-import { inKTDK } from "../utils/inKTDK";
+import { printKTDK } from "../utils/printKTDK";
 
 import { doc, getDoc, getDocs, collection, setDoc, writeBatch, deleteField } from "firebase/firestore";
 
@@ -469,7 +469,7 @@ const nhanXetTheoMuc = {
 
           <Tooltip title="In danh sách KTĐK" arrow>
             <IconButton
-              onClick={() => inKTDK(students, selectedClass, selectedTerm)}
+              onClick={() => printKTDK(students, selectedClass, selectedTerm)}
               sx={{
                 color: "primary.main",
                 bgcolor: "white",

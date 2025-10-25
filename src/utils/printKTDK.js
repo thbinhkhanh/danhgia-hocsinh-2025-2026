@@ -4,7 +4,7 @@
  * @param {string} className - Tên lớp (VD: "4.1")
  * @param {string} term - Học kỳ ("HK1", "HK2" hoặc "CN")
  */
-export const inKTDK = (students, className, term = "HK1") => {
+export const printKTDK = (students, className, term = "HK1") => {
   if (!students || students.length === 0) {
     alert("❌ Không có dữ liệu để in!");
     return;
