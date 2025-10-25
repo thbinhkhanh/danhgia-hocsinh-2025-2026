@@ -4,7 +4,7 @@ import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, setDoc, onSnapshot } from "firebase/firestore";
-import { exportDanhsach } from "../utils/exportDanhsach";
+import { exportDanhsach } from "../utils/exportDanhSach";
 import { inDanhsach } from "../utils/inDanhsach";
 
 import DownloadIcon from "@mui/icons-material/Download";
