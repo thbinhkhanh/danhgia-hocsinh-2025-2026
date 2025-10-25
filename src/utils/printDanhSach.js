@@ -5,7 +5,7 @@ import { db } from "../firebase";
  * In danh sách học sinh của một lớp trực tiếp trên trình duyệt
  * @param {string} className - Tên lớp (ví dụ: "4.5_CN")
  */
-export const inDanhSach = async (className) => {
+export const printDanhSach = async (className) => {
   if (!className) {
     alert("❌ Thiếu tên lớp để in danh sách!");
     return;
