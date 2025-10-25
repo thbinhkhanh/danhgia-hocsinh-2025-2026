@@ -528,7 +528,7 @@ const nhanXetTheoMuc = {
           }}
         >
           {/* Lớp */}
-          <FormControl size="small" sx={{ minWidth: 80, flexShrink: 0 }}>
+          <FormControl size="small" sx={{ minWidth: 80, flexShrink: 0, mt: 1 }}>
             <InputLabel id="lop-label">Lớp</InputLabel>
             <Select
               labelId="lop-label"
@@ -551,7 +551,7 @@ const nhanXetTheoMuc = {
           </FormControl>
 
           {/* Môn học */}
-          <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0 }}>
+          <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0, mt: 1 }}>
             <InputLabel id="monhoc-label">Môn học</InputLabel>
             <Select
               labelId="monhoc-label"
@@ -577,7 +577,7 @@ const nhanXetTheoMuc = {
 
           {/* Học kỳ (hiển thị trong hàng này khi mobile) */}
           {isMobile && (
-            <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0 }}>
+            <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0, mt: 1 }}>
               <InputLabel id="term-label">Học kỳ</InputLabel>
               <Select
                 labelId="term-label"
