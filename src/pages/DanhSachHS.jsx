@@ -5,7 +5,7 @@ import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, setDoc, onSnapshot } from "firebase/firestore";
 import { exportDanhsach } from "../utils/exportDanhSach";
-import { inDanhsach } from "../utils/inDanhSach";
+import { inDanhSach } from "../utils/inDanhSach";
 
 import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
@@ -188,7 +188,7 @@ export default function DanhSachHS() {
         {/* In danh sách */}
         <Tooltip title="In danh sách học sinh">
           <IconButton
-            onClick={() => inDanhsach(selectedClass)}
+            onClick={() => inDanhSach(selectedClass)}
             sx={{
               color: "#2e7d32",
               backgroundColor: "rgba(46,125,50,0.1)",
