@@ -57,7 +57,7 @@ export default function KiemTraDinhKi() {
   const { getStudentsForClass, setStudentsForClass } = useContext(StudentDataContext);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const [isTeacherChecked, setIsTeacherChecked] = useState(false);
+  //const [isTeacherChecked, setIsTeacherChecked] = useState(false);
 
 
   useEffect(() => {
@@ -435,9 +435,8 @@ const nhanXetTheoMuc = {
           position: "relative"
         }}
       >
-        {/* 🟩 Nút Lưu, Tải Excel, Làm mới và Đánh giá */}
+        {/* 🟩 Nút Lưu, Tải Excel, In */}
         <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
-          {/* Nút Lưu */}
           <Tooltip title="Lưu dữ liệu" arrow>
             <IconButton
               onClick={handleSaveAll}
@@ -452,7 +451,6 @@ const nhanXetTheoMuc = {
             </IconButton>
           </Tooltip>
 
-          {/* Nút Tải xuống Excel */}
           <Tooltip title="Tải xuống Excel" arrow>
             <IconButton
               onClick={handleDownload}
@@ -480,139 +478,120 @@ const nhanXetTheoMuc = {
               <PrintIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-
         </Box>
 
-        {/* 🟦 Ô chọn học kỳ (desktop: góc trên phải, mobile: dưới tiêu đề) */}
-{!isMobile && (
-  <Box
-    sx={{
-      position: "absolute",
-      top: 12,
-      right: 12
-    }}
-  >
-    <FormControl size="small" sx={{ minWidth: 120 }}>
-      <Select
-        value={selectedTerm}
-        onChange={(e) => setSelectedTerm(e.target.value)}
-        size="small"
-      >
-        <MenuItem value="HK1">Học kì I</MenuItem>
-        <MenuItem value="ALL">Cả năm</MenuItem>
-      </Select>
-    </FormControl>
-  </Box>
-)}
+        {/* 🟦 Ô chọn học kỳ ở góc phải (desktop) */}
+        {!isMobile && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 12,
+              right: 12
+            }}
+          >
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <Select
+                value={selectedTerm}
+                onChange={(e) => setSelectedTerm(e.target.value)}
+                size="small"
+              >
+                <MenuItem value="HK1">Học kì I</MenuItem>
+                <MenuItem value="ALL">Cả năm</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        )}
 
-{/* 🟨 Tiêu đề */}
-<Typography
-  variant="h5"
-  fontWeight="bold"
-  color="primary"
-  gutterBottom
-  sx={{ textAlign: "center", mb: 2 }}
->
-  NHẬP ĐIỂM KTĐK
-</Typography>
+        {/* 🟨 Tiêu đề */}
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          color="primary"
+          gutterBottom
+          sx={{ textAlign: "center", mb: 2 }}
+        >
+          NHẬP ĐIỂM KTĐK
+        </Typography>
 
-{/* Chỉ hiển thị chọn học kỳ dưới tiêu đề nếu trên mobile */}
-{isMobile && (
-  <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-    <FormControl size="small" sx={{ minWidth: 120 }}>
-      <Select
-        value={selectedTerm}
-        onChange={(e) => setSelectedTerm(e.target.value)}
-        size="small"
-      >
-        <MenuItem value="HK1">Học kì I</MenuItem>
-        <MenuItem value="ALL">Cả năm</MenuItem>
-      </Select>
-    </FormControl>
-  </Box>
-)}
+        {/* 🟩 Hàng chọn Lớp – Môn – Học kỳ (3 ô cùng hàng khi mobile) */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 2,
+            flexWrap: isMobile ? "nowrap" : "wrap",
+            overflowX: isMobile ? "auto" : "visible",
+            px: isMobile ? 1 : 0,
+            mb: 3,
+          }}
+        >
+          {/* Lớp */}
+          <FormControl size="small" sx={{ minWidth: 80, flexShrink: 0 }}>
+            <InputLabel id="lop-label">Lớp</InputLabel>
+            <Select
+              labelId="lop-label"
+              value={selectedClass}
+              label="Lớp"
+              onChange={async (e) => {
+                const newClass = e.target.value;
+                setSelectedClass(newClass);
+                setConfig(prev => ({ ...prev, lop: newClass }));
+                setStudents([]);
+                await fetchStudentsAndStatus(newClass);
+              }}
+            >
+              {classes.map((cls) => (
+                <MenuItem key={cls} value={cls}>
+                  {cls}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-{/* 🟩 Stack lớp – môn – checkbox */}
-<Stack
-  direction="row"
-  spacing={2}
-  justifyContent="center"
-  alignItems="center"
-  flexWrap="wrap"
-  mb={3}
->
-  {/* Lớp */}
-  <FormControl size="small" sx={{ minWidth: 80 }}>
-    <InputLabel id="lop-label">Lớp</InputLabel>
-    <Select
-      labelId="lop-label"
-      value={selectedClass}
-      label="Lớp"
-      onChange={async (e) => {
-        const newClass = e.target.value;
+          {/* Môn học */}
+          <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0 }}>
+            <InputLabel id="monhoc-label">Môn học</InputLabel>
+            <Select
+              labelId="monhoc-label"
+              value={isCongNghe ? "congnghe" : "tinhoc"}
+              label="Môn học"
+              onChange={async (e) => {
+                const value = e.target.value;
+                const isCN = value === "congnghe";
+                try {
+                  const docRef = doc(db, "CONFIG", "config");
+                  await setDoc(docRef, { congnghe: isCN }, { merge: true });
+                  setConfig((prev) => ({ ...prev, congnghe: isCN }));
+                  setIsCongNghe(isCN);
+                } catch (err) {
+                  console.error("❌ Lỗi cập nhật môn học:", err);
+                }
+              }}
+            >
+              <MenuItem value="tinhoc">Tin học</MenuItem>
+              <MenuItem value="congnghe">Công nghệ</MenuItem>
+            </Select>
+          </FormControl>
 
-        // 1️⃣ Cập nhật state ngay (Dropdown sẽ tự đóng)
-        setSelectedClass(newClass);
-        setConfig(prev => ({ ...prev, lop: newClass }));
+          {/* Học kỳ (hiển thị trong hàng này khi mobile) */}
+          {isMobile && (
+            <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0 }}>
+              <InputLabel id="term-label">Học kỳ</InputLabel>
+              <Select
+                labelId="term-label"
+                value={selectedTerm}
+                onChange={(e) => setSelectedTerm(e.target.value)}
+              >
+                <MenuItem value="HK1">Học kì I</MenuItem>
+                <MenuItem value="ALL">Cả năm</MenuItem>
+              </Select>
+            </FormControl>
+          )}
+        </Box>
 
-        // 2️⃣ Reset danh sách cũ
-        setStudents([]);
-
-        // 3️⃣ Hiển thị loading ngắn (tuỳ chọn)
-        setLoadingMessage("Đang tải dữ liệu lớp mới...");
-        setLoadingProgress(0);
-
-        // 4️⃣ Fetch dữ liệu mới ngay sau khi state được set
-        await fetchStudentsAndStatus(newClass); // truyền class mới
-      }}
-    >
-      {classes.map(cls => (
-        <MenuItem key={cls} value={cls}>
-          {cls}
-        </MenuItem>
-      ))}
-    </Select>
-  </FormControl>
-
-  {/* Môn học */}
-  <FormControl size="small" sx={{ minWidth: 120 }}>
-    <InputLabel id="monhoc-label">Môn học</InputLabel>
-    <Select
-      labelId="monhoc-label"
-      value={isCongNghe ? "congnghe" : "tinhoc"}
-      label="Môn học"
-      onChange={async (e) => {
-        const value = e.target.value;
-        const isCN = value === "congnghe";
-        try {
-          const docRef = doc(db, "CONFIG", "config");
-          await setDoc(docRef, { congnghe: isCN }, { merge: true });
-          setConfig((prev) => ({ ...prev, congnghe: isCN }));
-          setIsCongNghe(isCN);
-        } catch (err) {
-          console.error("❌ Lỗi cập nhật môn học:", err);
-        }
-      }}
-    >
-      <MenuItem value="tinhoc">Tin học</MenuItem>
-      <MenuItem value="congnghe">Công nghệ</MenuItem>
-    </Select>
-  </FormControl>
-
-  {/* Checkbox Giáo viên */}
-  <FormControlLabel
-    control={
-      <Checkbox
-        checked={isTeacherChecked || false}
-        onChange={(e) => setIsTeacherChecked(e.target.checked)}
-      />
-    }
-    label="Giáo viên"
-  />
-</Stack>
-
-
-        {/* 🧾 Bảng học sinh */}
+        {/* 🧾 Bảng học sinh (giữ nguyên định dạng gốc) */}
         <TableContainer component={Paper} sx={{ maxHeight: "70vh", overflow: "auto" }}>
           <Table
             stickyHeader
@@ -622,19 +601,18 @@ const nhanXetTheoMuc = {
               minWidth: 800,
               borderCollapse: "collapse",
               "& td, & th": {
-                borderRight: "1px solid #e0e0e0", // ✅ Đường kẻ dọc nhạt
-                borderBottom: "1px solid #e0e0e0" // Giữ kẻ ngang
+                borderRight: "1px solid #e0e0e0",
+                borderBottom: "1px solid #e0e0e0",
               },
               "& th:last-child, & td:last-child": {
-                borderRight: "none" // ❌ Bỏ đường ở cột cuối
-              }
+                borderRight: "none",
+              },
             }}
           >
             <TableHead>
               <TableRow>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 50, px: 1, whiteSpace: "nowrap" }}>STT</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220, px: 1, whiteSpace: "nowrap" }}>Họ và tên</TableCell>
-                {/*<TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>LỚP</TableCell>*/}
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>ĐGTX</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Lí thuyết</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Thực hành</TableCell>
@@ -649,153 +627,121 @@ const nhanXetTheoMuc = {
                 <TableRow key={student.maDinhDanh} hover>
                   <TableCell align="center" sx={{ px: 1 }}>{student.stt}</TableCell>
                   <TableCell align="left" sx={{ px: 1 }}>{student.hoVaTen}</TableCell>
-                  {/*<TableCell align="center" sx={{ px: 1 }}>{selectedClass}</TableCell>*/}
 
-                  {/* ĐGTX hiển thị */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     <Typography variant="body2" sx={{ textAlign: "center" }}>
                       {student.dgtx || ""}
                     </Typography>
                   </TableCell>
 
-                  {/* Trắc nghiệm */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     <TextField
                       variant="standard"
                       value={student.tracNghiem}
-                      onChange={(e) =>
-                        handleCellChange(student.maDinhDanh, "tracNghiem", e.target.value)
-                      }
+                      onChange={(e) => handleCellChange(student.maDinhDanh, "tracNghiem", e.target.value)}
                       inputProps={{ style: { textAlign: "center", paddingLeft: 2, paddingRight: 2 } }}
                       id={`tracNghiem-${idx}`}
                       onKeyDown={(e) => handleKeyNavigation(e, idx, "tracNghiem")}
-                      InputProps={{
-                        disableUnderline: true
-                      }}
+                      InputProps={{ disableUnderline: true }}
                     />
                   </TableCell>
 
-                  {/* Thực hành */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     <TextField
                       variant="standard"
                       value={student.thucHanh}
-                      onChange={(e) =>
-                        handleCellChange(student.maDinhDanh, "thucHanh", e.target.value)
-                      }
+                      onChange={(e) => handleCellChange(student.maDinhDanh, "thucHanh", e.target.value)}
                       inputProps={{ style: { textAlign: "center", paddingLeft: 2, paddingRight: 2 } }}
                       id={`thucHanh-${idx}`}
                       onKeyDown={(e) => handleKeyNavigation(e, idx, "thucHanh")}
-                      InputProps={{
-                        disableUnderline: true
-                      }}
+                      InputProps={{ disableUnderline: true }}
                     />
                   </TableCell>
 
-                  {/* Tổng cộng */}
-                  <TableCell
-                      align="center"
-                      sx={{
-                          px: 1,
-                          fontWeight: "bold", // ✅ In đậm
-                      }}
-                      >
-                      {student.tongCong || ""}
-                      </TableCell>
+                  <TableCell align="center" sx={{ px: 1, fontWeight: "bold" }}>
+                    {student.tongCong || ""}
+                  </TableCell>
 
-
-                  {/* Mức đạt được */}
                   <TableCell align="center" sx={{ px: 1 }}>
-                      <FormControl
-                          variant="standard"
-                          fullWidth
-                          size="small"
-                          sx={{
-                          "& .MuiSelect-icon": {
-                              opacity: 0,
-                              transition: "opacity 0.2s ease",
+                    <FormControl
+                      variant="standard"
+                      fullWidth
+                      size="small"
+                      sx={{
+                        "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
+                        "&:hover .MuiSelect-icon": { opacity: 1 },
+                      }}
+                    >
+                      <Select
+                        value={student.xepLoai}
+                        onChange={(e) => handleCellChange(student.maDinhDanh, "xepLoai", e.target.value)}
+                        disableUnderline
+                        sx={{
+                          textAlign: "center",
+                          px: 1,
+                          "& .MuiSelect-select": {
+                            py: 0.5,
+                            color: student.xepLoai === "C" ? "#d32f2f" : "inherit",
                           },
-                          "&:hover .MuiSelect-icon": {
-                              opacity: 1,
-                          },
-                          }}
+                        }}
                       >
-                          <Select
-                          value={student.xepLoai}
-                          onChange={(e) =>
-                              handleCellChange(student.maDinhDanh, "xepLoai", e.target.value)
-                          }
-                          disableUnderline
-                          sx={{
-                              textAlign: "center",
-                              px: 1,
-                              "& .MuiSelect-select": {
-                              py: 0.5,
-                              //fontWeight: "bold",
-                              color: student.xepLoai === "C" ? "#d32f2f" : "inherit", // 🔴 Chỉ đỏ khi là "C"
-                              },
-                          }}
-                          >
-                          <MenuItem value="T">T</MenuItem>
-                          <MenuItem value="H">H</MenuItem>
-                          <MenuItem value="C">C</MenuItem>
-                          </Select>
-                      </FormControl>
-                      </TableCell>
+                        <MenuItem value="T">T</MenuItem>
+                        <MenuItem value="H">H</MenuItem>
+                        <MenuItem value="C">C</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </TableCell>
 
-
-                  {/* Nhận xét */}
                   <TableCell align="left" sx={{ px: 1 }}>
-                      <TextField
-                          variant="standard"
-                          multiline
-                          maxRows={4}
-                          fullWidth
-                          value={student.nhanXet}
-                          onChange={(e) =>
-                          handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)
-                          }
-                          id={`nhanXet-${idx}`}
-                          onKeyDown={(e) => handleKeyNavigation(e, idx, "nhanXet")}
-                          InputProps={{
-                          sx: {
-                              paddingLeft: 1,
-                              paddingRight: 1,
-                              fontSize: "14px", // ✅ Giảm cỡ chữ ở đây
-                              lineHeight: 1.3,  // (tùy chọn) làm cho dòng chữ gọn hơn
-                          },
-                          disableUnderline: true,
-                          }}
-                      />
-                      </TableCell>
-
+                    <TextField
+                      variant="standard"
+                      multiline
+                      maxRows={4}
+                      fullWidth
+                      value={student.nhanXet}
+                      onChange={(e) => handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)}
+                      id={`nhanXet-${idx}`}
+                      onKeyDown={(e) => handleKeyNavigation(e, idx, "nhanXet")}
+                      InputProps={{
+                        sx: {
+                          paddingLeft: 1,
+                          paddingRight: 1,
+                          fontSize: "14px",
+                          lineHeight: 1.3,
+                        },
+                        disableUnderline: true,
+                      }}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
       </Card>
-      
+
+      {/* Snackbar thông báo */}
       <Snackbar
-          open={snackbar.open}
-          autoHideDuration={3000} // 3 giây tự tắt
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }} // 👈 Xuất hiện góc dưới bên phải
-          >
-          <Alert
-              onClose={() => setSnackbar({ ...snackbar, open: false })}
-              severity={snackbar.severity}
-              sx={{
-              width: "100%",
-              boxShadow: 3,
-              borderRadius: 2,
-              fontSize: "0.9rem",
-              }}
-          >
-              {snackbar.message}
-          </Alert>
-          </Snackbar>
+          severity={snackbar.severity}
+          sx={{
+            width: "100%",
+            boxShadow: 3,
+            borderRadius: 2,
+            fontSize: "0.9rem",
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
+
 
 }

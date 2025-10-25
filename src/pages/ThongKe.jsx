@@ -18,6 +18,7 @@ import {
   Paper,
   IconButton,
   Tooltip,
+  useMediaQuery,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
@@ -27,7 +28,8 @@ export default function ThongKe() {
   const [selectedTerm, setSelectedTerm] = useState("HK1");
   const [isCongNghe, setIsCongNghe] = useState(false);
   const [rowsToRender, setRowsToRender] = useState([]);
-
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  
   // 🔹 Hàm chính: fetch dữ liệu thống kê
   const fetchThongKeData = async () => {
     try {
@@ -225,116 +227,183 @@ const renderRows = (rows) =>
 
 
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
-      <Card
-        elevation={6}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          maxWidth: 800,
-          mx: "auto",
-          position: "relative",
-        }}
-      >
-        {/* 🔹 Nút tải Excel */}
-        <Box sx={{ position: "absolute", top: 12, left: 12 }}>
-          <Tooltip title="Tải xuống Excel" arrow>
-            <IconButton
-              onClick={() => console.log("TODO: xuất Excel")}
-              sx={{
-                color: "primary.main",
-                bgcolor: "white",
-                boxShadow: 2,
-                "&:hover": { bgcolor: "primary.light", color: "white" },
-              }}
-            >
-              <DownloadIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
+  <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
+    <Card
+      elevation={6}
+      sx={{
+        p: 4,
+        borderRadius: 3,
+        maxWidth: 800,
+        mx: "auto",
+        position: "relative",
+      }}
+    >
+      {/* 🔹 Nút tải Excel */}
+      <Box sx={{ position: "absolute", top: 12, left: 12 }}>
+        <Tooltip title="Tải xuống Excel" arrow>
+          <IconButton
+            onClick={() => console.log("TODO: xuất Excel")}
+            sx={{
+              color: "primary.main",
+              bgcolor: "white",
+              boxShadow: 2,
+              "&:hover": { bgcolor: "primary.light", color: "white" },
+            }}
+          >
+            <DownloadIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
-        {/* 🔹 Chọn học kỳ */}
-        <Box sx={{ position: "absolute", top: 12, right: 12 }}>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <Select
-              value={selectedTerm}
-              onChange={(e) => setSelectedTerm(e.target.value)}
-            >
-              <MenuItem value="HK1">Học kì I</MenuItem>
-              <MenuItem value="ALL">Cả năm</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
+      {/* 🔹 Nếu là mobile thì đặt chọn học kỳ xuống cùng hàng với chọn môn */}
+      {isMobile ? (
+        <>
+          {/* 🔹 Tiêu đề */}
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            color="primary"
+            gutterBottom
+            sx={{ textAlign: "center", mb: 1 }}
+          >
+            THỐNG KÊ CHẤT LƯỢNG
+          </Typography>
 
-        {/* 🔹 Tiêu đề */}
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          color="primary"
-          gutterBottom
-          sx={{ textAlign: "center", mb: 1 }}
-        >
-          THỐNG KÊ CHẤT LƯỢNG {/*- {title}*/}
-        </Typography>
-
-        <Box sx={{ textAlign: "center", mb: 2, display: "flex", justifyContent: "center", alignItems: "center", gap: 1 }}>
-            <Typography variant="body1" sx={{ fontWeight: "bold" }}>Môn:</Typography>
-            <FormControl size="small" sx={{ minWidth: 130 }}>
-                <Select
+          {/* 🔹 Hàng gồm: Môn + Học kỳ */}
+          <Box
+            sx={{
+              textAlign: "center",
+              mb: 2,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
+            <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+              Môn:
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <Select
                 value={isCongNghe ? "CN" : "TH"}
                 onChange={(e) => setIsCongNghe(e.target.value === "CN")}
-                >
+              >
                 <MenuItem value="TH">Tin học</MenuItem>
                 <MenuItem value="CN">Công nghệ</MenuItem>
-                </Select>
+              </Select>
             </FormControl>
-            </Box>
-        {/*<Divider sx={{ mb: 3 }} />*/}
 
-        {/* 🔹 Bảng thống kê */}
-        <TableContainer component={Paper}>
-          <Table size="small" sx={{ border: "1px solid #ccc" }}>
-            <TableHead>
-                <TableRow
-                    sx={{
-                    backgroundColor: "#1976d2",
-                    "& th": {
-                        color: "white",
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        border: "1px solid #fff",
-                    },
-                    }}
-                >
-                    <TableCell rowSpan={2}>KHỐI / LỚP</TableCell>
-                    <TableCell rowSpan={2}>SĨ SỐ</TableCell> {/* <-- thêm cột */}
-                    <TableCell colSpan={2}>TỐT</TableCell>
-                    <TableCell colSpan={2}>HT</TableCell>
-                    <TableCell colSpan={2}>CHƯA HT</TableCell>
-                </TableRow>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <Select
+                value={selectedTerm}
+                onChange={(e) => setSelectedTerm(e.target.value)}
+              >
+                <MenuItem value="HK1">Học kì I</MenuItem>
+                <MenuItem value="ALL">Cả năm</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </>
+      ) : (
+        <>
+          {/* 🔹 Chọn học kỳ ở góc phải như cũ */}
+          <Box sx={{ position: "absolute", top: 12, right: 12 }}>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <Select
+                value={selectedTerm}
+                onChange={(e) => setSelectedTerm(e.target.value)}
+              >
+                <MenuItem value="HK1">Học kì I</MenuItem>
+                <MenuItem value="ALL">Cả năm</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
 
-                <TableRow
-                    sx={{
-                    backgroundColor: "#1976d2",
-                    "& th": {
-                        color: "white",
-                        textAlign: "center",
-                        border: "1px solid #fff",
-                    },
-                    }}
-                >
-                    <TableCell>SL</TableCell>
-                    <TableCell>TL</TableCell>
-                    <TableCell>SL</TableCell>
-                    <TableCell>TL</TableCell>
-                    <TableCell>SL</TableCell>
-                    <TableCell>TL</TableCell>
-                </TableRow>
-                </TableHead>
-            <TableBody>{renderRows(rowsToRender)}</TableBody>
-          </Table>
-        </TableContainer>
-      </Card>
-    </Box>
-  );
+          {/* 🔹 Tiêu đề */}
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            color="primary"
+            gutterBottom
+            sx={{ textAlign: "center", mb: 1 }}
+          >
+            THỐNG KÊ CHẤT LƯỢNG
+          </Typography>
+
+          {/* 🔹 Ô chọn Môn */}
+          <Box
+            sx={{
+              textAlign: "center",
+              mb: 2,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
+            <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+              Môn:
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <Select
+                value={isCongNghe ? "CN" : "TH"}
+                onChange={(e) => setIsCongNghe(e.target.value === "CN")}
+              >
+                <MenuItem value="TH">Tin học</MenuItem>
+                <MenuItem value="CN">Công nghệ</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </>
+      )}
+
+      {/* 🔹 Bảng thống kê */}
+      <TableContainer component={Paper}>
+        <Table size="small" sx={{ border: "1px solid #ccc" }}>
+          <TableHead>
+            <TableRow
+              sx={{
+                backgroundColor: "#1976d2",
+                "& th": {
+                  color: "white",
+                  fontWeight: "bold",
+                  textAlign: "center",
+                  border: "1px solid #fff",
+                },
+              }}
+            >
+              <TableCell rowSpan={2}>KHỐI / LỚP</TableCell>
+              <TableCell rowSpan={2}>SĨ SỐ</TableCell>
+              <TableCell colSpan={2}>TỐT</TableCell>
+              <TableCell colSpan={2}>HT</TableCell>
+              <TableCell colSpan={2}>CHƯA HT</TableCell>
+            </TableRow>
+
+            <TableRow
+              sx={{
+                backgroundColor: "#1976d2",
+                "& th": {
+                  color: "white",
+                  textAlign: "center",
+                  border: "1px solid #fff",
+                },
+              }}
+            >
+              <TableCell>SL</TableCell>
+              <TableCell>TL</TableCell>
+              <TableCell>SL</TableCell>
+              <TableCell>TL</TableCell>
+              <TableCell>SL</TableCell>
+              <TableCell>TL</TableCell>
+            </TableRow>
+          </TableHead>
+
+          <TableBody>{renderRows(rowsToRender)}</TableBody>
+        </Table>
+      </TableContainer>
+    </Card>
+  </Box>
+);
+
 }
