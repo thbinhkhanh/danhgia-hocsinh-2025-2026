@@ -59,6 +59,7 @@ export default function TongHopDanhGia() {
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const [showWeeks, setShowWeeks] = useState(true);
 
   const nhanXetTheoMuc = {
     tot: [
@@ -186,6 +187,16 @@ export default function TongHopDanhGia() {
     return { xepLoai: xepLoaiRutGon, nhanXet };
   }
 
+  // 🔹 Sinh nhận xét tự động dựa vào xếp loại rút gọn
+  function getNhanXetTuDong(xepLoai) {
+    if (!xepLoai) return "";
+    if (xepLoai === "T") return randomItem(nhanXetTheoMuc.tot);
+    if (xepLoai === "H") return randomItem(nhanXetTheoMuc.kha);
+    if (xepLoai === "C") return randomItem(nhanXetTheoMuc.yeu);
+    return "";
+  }
+
+
 const [snackbar, setSnackbar] = useState({
   open: false,
   message: "",
@@ -193,7 +204,7 @@ const [snackbar, setSnackbar] = useState({
 });
 
 
-const handleSaveAll = async () => {
+const handleSaveAll = async () => { 
   if (!students || students.length === 0) return;
 
   const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
@@ -207,12 +218,22 @@ const handleSaveAll = async () => {
   students.forEach((s) => {
     studentsMap[s.maDinhDanh] = {
       hoVaTen: s.hoVaTen || "",
-      tracNghiem: s.tracNghiem !== "" && s.tracNghiem !== undefined ? Number(s.tracNghiem) : null,
-      thucHanh: s.thucHanh !== "" && s.thucHanh !== undefined ? Number(s.thucHanh) : null,
-      tongCong: s.tongCong !== "" && s.tongCong !== undefined ? Number(s.tongCong) : null,
+      tracNghiem:
+        s.tracNghiem !== "" && s.tracNghiem !== undefined
+          ? Number(s.tracNghiem)
+          : null,
+      thucHanh:
+        s.thucHanh !== "" && s.thucHanh !== undefined
+          ? Number(s.thucHanh)
+          : null,
+      tongCong:
+        s.tongCong !== "" && s.tongCong !== undefined
+          ? Number(s.tongCong)
+          : null,
       xepLoai: s.xepLoai || "",
       nhanXet: s.nhanXet || "",
-      dgtx: s.xepLoai || "",
+      dgtx: s.xepLoai || "",      // vẫn giữ như cũ
+      dgtx_gv: s.dgtx_gv || "",   // ✅ thêm dòng này để lưu cột Giáo viên
     };
   });
 
@@ -221,7 +242,10 @@ const handleSaveAll = async () => {
       docRef,
       {
         [classKey]: {
-          [maHS]: { dgtx: studentsMap[maHS].dgtx },
+          [maHS]: {
+            dgtx: studentsMap[maHS].dgtx,
+            dgtx_gv: studentsMap[maHS].dgtx_gv, // ✅ ghi thêm field Giáo viên vào Firestore
+          },
         },
       },
       { merge: true }
@@ -253,6 +277,7 @@ const handleSaveAll = async () => {
     });
   }
 };
+
 
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
   useEffect(() => {
@@ -399,6 +424,24 @@ const handleSaveAll = async () => {
         }
       }
 
+      // 🟨 Thêm: Fetch dgtx_gv từ bảng điểm (BANGDIEM)
+      const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
+      const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+      const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+      const bangDiemRef = doc(db, "BANGDIEM", termDoc);
+      const bangDiemSnap = await getDoc(bangDiemRef);
+
+      if (bangDiemSnap.exists()) {
+        const bangDiemData = bangDiemSnap.data();
+        const classData = bangDiemData[classKey] || {};
+
+        studentList = studentList.map((s) => ({
+          ...s,
+          dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
+        }));
+      }
+
+
       // 4️⃣ Sắp xếp danh sách theo tên
       studentList.sort((a, b) => {
         const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
@@ -410,8 +453,36 @@ const handleSaveAll = async () => {
       // 5️⃣ Đánh giá & nhận xét
       const evaluatedList = studentList.map((s) => {
         const { xepLoai, nhanXet } = danhGiaHocSinh(s, weekFrom, weekTo);
-        return { ...s, xepLoai, nhanXet };
+
+        // Nếu có dgtx_gv từ Firestore (đã được lưu ở đâu đó)
+        const gv = s.dgtx_gv || "";
+        const hs = xepLoai || "";
+
+        let chung = "";
+
+        // 🟩 TÍNH ĐÁNH GIÁ CHUNG (ĐGTX)
+        if (!gv) {
+          chung = hs; // Nếu giáo viên chưa chọn → giữ theo HS
+        } else {
+          if (hs === "T" && gv === "T") chung = "T";
+          else if (hs === "H" && gv === "T") chung = "T";
+          else if (hs === "C" && gv === "T") chung = "H";
+          else if (hs === "T" && gv === "H") chung = "H";
+          else if (hs === "H" && gv === "H") chung = "H";
+          else if (hs === "C" && gv === "H") chung = "H";
+          else if (hs === "T" && gv === "C") chung = "H";
+          else if (hs === "H" && gv === "C") chung = "C";
+          else if (hs === "C" && gv === "C") chung = "C";
+          else chung = hs;
+        }
+
+        // 🟨 Ghi giá trị ĐGTX & nhận xét
+        const dgtx = chung;
+        const nhanXetChung = getNhanXetTuDong(dgtx);
+
+        return { ...s, xepLoai, nhanXet: nhanXetChung, dgtx };
       });
+
 
       // 6️⃣ Hoàn tất
       setStudentData((prev) => ({ ...prev, [selectedClass]: evaluatedList }));
@@ -540,7 +611,7 @@ return (
           </IconButton>
         </Tooltip>
 
-        <Tooltip title="Đánh giá tự động" arrow>
+        {/*<Tooltip title="Đánh giá tự động" arrow>
           <IconButton
             onClick={() => {
               const updated = students.map((s) => {
@@ -558,7 +629,7 @@ return (
           >
             <AssessmentIcon fontSize="small" />
           </IconButton>
-        </Tooltip>
+        </Tooltip>*/}
       </Box>
 
       {/* ===== Header ===== */}
@@ -665,6 +736,8 @@ return (
                   statusByWeek: {},
                   xepLoai: "",
                   nhanXet: "",
+                  dgtx_gv: "", 
+                  dgtx: "", 
                 }))
               );
 
@@ -707,16 +780,16 @@ return (
           </Select>
         </FormControl>
 
-        {/* Checkbox Giáo viên */}
         <FormControlLabel
           control={
             <Checkbox
-              checked={!!isTeacherChecked}
-              onChange={(e) => setIsTeacherChecked(e.target.checked)}
+              checked={showWeeks}
+              onChange={(e) => setShowWeeks(e.target.checked)}
             />
           }
-          label="Giáo viên"
+          label={showWeeks ? "Ẩn tuần" : "Hiện tuần"}
         />
+
       </Stack>
 
       {/* --- Bảng dữ liệu --- */}
@@ -744,10 +817,11 @@ return (
             <TableRow>
               <TableCell
                 align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 50 }}
+                sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}
               >
                 STT
               </TableCell>
+
               <TableCell
                 align="center"
                 sx={{
@@ -762,25 +836,48 @@ return (
                 Họ và tên
               </TableCell>
 
-              {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
-                const weekNum = weekFrom + i;
-                return (
-                  <TableCell
-                    key={weekNum}
-                    align="center"
-                    sx={{ backgroundColor: "#1976d2", color: "white", width: 50 }}
-                  >
-                    Tuần {weekNum}
-                  </TableCell>
-                );
-              })}
+              {/* 🔹 Các cột tuần — chỉ hiển thị khi showWeeks = true */}
+              {showWeeks &&
+                Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
+                  const weekNum = weekFrom + i;
+                  return (
+                    <TableCell
+                      key={weekNum}
+                      align="center"
+                      sx={{
+                        backgroundColor: "#1976d2",
+                        color: "white",
+                        width: 25,
+                        transition: "all 0.3s ease",
+                      }}
+                    >
+                      Tuần {weekNum}
+                    </TableCell>
+                  );
+                })}
+
+              {/* 🔹 Các tiêu đề cột cuối */}
+              <TableCell
+                align="center"
+                sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}
+              >
+                Học sinh
+              </TableCell>
 
               <TableCell
                 align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 50 }}
+                sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}
               >
-                Xếp loại
+                Giáo viên
               </TableCell>
+
+              <TableCell
+                align="center"
+                sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}
+              >
+                Mức đạt
+              </TableCell>
+
               <TableCell
                 align="center"
                 sx={{ backgroundColor: "#1976d2", color: "white", width: 350 }}
@@ -791,30 +888,33 @@ return (
           </TableHead>
 
           <TableBody>
-            {students.map((student) => (
+            {students.map((student, idx) => (
               <TableRow key={student.maDinhDanh} hover>
                 <TableCell align="center">{student.stt}</TableCell>
                 <TableCell align="left">{student.hoVaTen}</TableCell>
 
-                {Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
-                  const weekNum = weekFrom + i;
-                  const weekId = `tuan_${weekNum}`;
-                  const status = student.statusByWeek?.[weekId] || "";
-                  const statusShort =
-                    status === "Chưa hoàn thành"
-                      ? "C"
-                      : status === "Hoàn thành"
-                      ? "H"
-                      : status === "Hoàn thành tốt"
-                      ? "T"
-                      : "";
-                  return (
-                    <TableCell key={weekNum} align="center">
-                      {statusShort}
-                    </TableCell>
-                  );
-                })}
+                {/* 🔹 Các cột tuần — chỉ hiển thị khi showWeeks = true */}
+                {showWeeks &&
+                  Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
+                    const weekNum = weekFrom + i;
+                    const weekId = `tuan_${weekNum}`;
+                    const status = student.statusByWeek?.[weekId] || "";
+                    const statusShort =
+                      status === "Chưa hoàn thành"
+                        ? "C"
+                        : status === "Hoàn thành"
+                        ? "H"
+                        : status === "Hoàn thành tốt"
+                        ? "T"
+                        : "";
+                    return (
+                      <TableCell key={weekNum} align="center">
+                        {statusShort}
+                      </TableCell>
+                    );
+                  })}
 
+                {/* 🟩 Cột Xếp loại (Học sinh) */}
                 <TableCell
                   align="center"
                   sx={{
@@ -826,12 +926,118 @@ return (
                 >
                   {student.xepLoai || ""}
                 </TableCell>
+
+                {/* 🟦 Cột Giáo viên */}
+                <TableCell
+                  align="center"
+                  sx={{
+                    px: 1,
+                    color:
+                      student.dgtx_gv === "C"
+                        ? "#dc2626"
+                        : (theme) => theme.palette.primary.main,
+                  }}
+                >
+                  <FormControl
+                    variant="standard"
+                    fullWidth
+                    sx={{
+                      "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
+                      "&:hover .MuiSelect-icon": { opacity: 1 },
+                    }}
+                  >
+                    <Select
+                      value={student.dgtx_gv || ""}
+                      onChange={(e) => {
+                        const newVal = e.target.value;
+
+                        setStudents((prev) =>
+                          prev.map((s) => {
+                            if (s.maDinhDanh !== student.maDinhDanh) return s;
+
+                            const updated = { ...s, dgtx_gv: newVal };
+                            const hs = updated.xepLoai;
+                            const gv = newVal;
+                            let chung = "";
+
+                            if (!gv) {
+                              chung = hs;
+                            } else {
+                              if (hs === "T" && gv === "T") chung = "T";
+                              else if (hs === "H" && gv === "T") chung = "T";
+                              else if (hs === "C" && gv === "T") chung = "H";
+                              else if (hs === "T" && gv === "H") chung = "H";
+                              else if (hs === "H" && gv === "H") chung = "H";
+                              else if (hs === "C" && gv === "H") chung = "H";
+                              else if (hs === "T" && gv === "C") chung = "H";
+                              else if (hs === "H" && gv === "C") chung = "C";
+                              else if (hs === "C" && gv === "C") chung = "C";
+                              else chung = hs;
+                            }
+
+                            updated.dgtx = !gv ? hs : chung;
+                            updated.nhanXet = updated.dgtx
+                              ? getNhanXetTuDong(updated.dgtx)
+                              : "";
+
+                            return updated;
+                          })
+                        );
+                      }}
+                      disableUnderline
+                      id={`teacher-dgtx-${idx}`}
+                      sx={{
+                        textAlign: "center",
+                        px: 1,
+                        "& .MuiSelect-select": {
+                          py: 0.5,
+                          fontSize: "14px",
+                          color:
+                            student.dgtx_gv === "C"
+                              ? "#dc2626"
+                              : (theme) => theme.palette.primary.main,
+                        },
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const next = document.getElementById(`teacher-dgtx-${idx + 1}`);
+                          if (next) next.focus();
+                        }
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>-</em>
+                      </MenuItem>
+                      <MenuItem value="T">T</MenuItem>
+                      <MenuItem value="H">H</MenuItem>
+                      <MenuItem value="C">C</MenuItem>
+                    </Select>
+                  </FormControl>
+                </TableCell>
+
+                {/* 🟧 Cột ĐGTX (hiển thị kết quả chung) */}
+                <TableCell
+                  align="center"
+                  sx={{
+                    color:
+                      student.dgtx === "C"
+                        ? "#dc2626"
+                        : (theme) => theme.palette.primary.main,
+                  }}
+                >
+                  {student.dgtx || ""}
+                </TableCell>
+
+                {/* 🟨 Cột Nhận xét */}
                 <TableCell align="left">{student.nhanXet || ""}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+
 
       {/* --- Bảng thống kê --- */}
       <Box
