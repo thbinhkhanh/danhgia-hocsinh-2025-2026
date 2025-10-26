@@ -5,25 +5,33 @@ import { db } from "../firebase";
 export const ConfigContext = createContext();
 
 export const ConfigProvider = ({ children }) => {
-  const defaultConfig = {
-    tuan: 1,
-    hethong: false,
-    giaovien: false,
-    mon: "Tin học",
-    login: false,
-  };
-
-  const storedConfig = JSON.parse(localStorage.getItem("appConfig") || '{}');
-  const [config, setConfig] = useState({ ...defaultConfig, ...storedConfig });
+  const [config, setConfig] = useState({});
+  // ví dụ: { tuan: 1, hethong: true, giaovien: false, congnghe: false, login: true }
 
   // 🔄 Khi config thay đổi -> lưu xuống localStorage
   useEffect(() => {
     localStorage.setItem("appConfig", JSON.stringify(config));
   }, [config]);
 
-  // ⚡ Khi ứng dụng khởi động, nếu localStorage trống thì load từ Firestore
+  // ⚡ Khi ứng dụng khởi động, nếu config rỗng -> load từ localStorage hoặc Firestore
   useEffect(() => {
-    if (!localStorage.getItem("appConfig")) {
+    const storedConfig = localStorage.getItem("appConfig");
+
+    // nếu có localStorage và chưa có config trong state
+    if (storedConfig && Object.keys(config).length === 0) {
+      const parsed = JSON.parse(storedConfig);
+      const restoredConfig = {
+        tuan: parsed.tuan || "",
+        hethong: parsed.hethong === true,
+        giaovien: parsed.giaovien === true,
+        congnghe: parsed.congnghe === true,
+        login: parsed.login === true || false,
+      };
+      setConfig(restoredConfig);
+      //console.log("🧠 ConfigContext từ localStorage:", restoredConfig);
+    }
+    // nếu localStorage rỗng, lấy từ Firestore
+    else if (Object.keys(config).length === 0) {
       const fetchConfig = async () => {
         try {
           const docRef = doc(db, "CONFIG", "config");
@@ -31,13 +39,14 @@ export const ConfigProvider = ({ children }) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             const restoredConfig = {
-              tuan: data.tuan || 1,
+              tuan: data.tuan || "",
               hethong: data.hethong === true,
               giaovien: data.giaovien === true || false,
-              mon: data.mon || "Tin học",
+              congnghe: data.congnghe === true || false,
               login: data.login === true || false,
             };
             setConfig(restoredConfig);
+            //console.log("🧠 ConfigContext từ Firestore:", restoredConfig);
           }
         } catch (error) {
           console.error("❌ Lỗi khi lấy config từ Firestore:", error);

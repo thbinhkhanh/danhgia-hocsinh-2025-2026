@@ -45,32 +45,32 @@ export default function QuanTri() {
   // Load config từ context hoặc Firestore
   useEffect(() => {
     const initConfig = async () => {
-      if (config && (config.tuan !== undefined || config.congnghe !== undefined)) {
-        setSelectedWeek(config.tuan || 1);
-        setSystemLocked(config.hethong === false);
-        setIsCongNghe(config.congnghe === true);
-      } else {
-        try {
-          const docRef = doc(db, "CONFIG", "config");
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setSelectedWeek(data.tuan || 1);
-            setSystemLocked(data.hethong === false);
-            setSubject(data.mon || (data.congnghe ? "Công nghệ" : "Tin học"));
-            setConfig({
-              tuan: data.tuan || 1,
-              hethong: data.hethong ?? false,
-              mon: data.mon || (data.congnghe ? "Công nghệ" : "Tin học"),
-            });
-          }
-        } catch (err) {
-          console.error("Lỗi lấy config từ Firestore:", err);
+      try {
+        const docRef = doc(db, "CONFIG", "config");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+
+          // luôn set tuần và môn
+          setSelectedWeek(data.tuan || 1);
+          setSystemLocked(data.hethong === false);
+          setSubject(data.mon || (data.congnghe ? "Công nghệ" : "Tin học"));
+
+          setConfig(prev => ({
+            ...prev,
+            tuan: data.tuan || 1,
+            hethong: data.hethong ?? false,
+            congnghe: data.congnghe ?? false,
+            mon: data.mon || (data.congnghe ? "Công nghệ" : "Tin học"),
+          }));
         }
+      } catch (err) {
+        console.error("Lỗi lấy config từ Firestore:", err);
       }
     };
     initConfig();
-  }, [config, setConfig]);
+  }, [setConfig]);
+
 
   // Lấy danh sách lớp
   useEffect(() => {
@@ -266,11 +266,25 @@ export default function QuanTri() {
 
   const handleSubjectChange = async (e) => {
     const newSubject = e.target.value;
+    const isCongNghe = newSubject === "Công nghệ";
+
     setSubject(newSubject);
+
     try {
       const docRef = doc(db, "CONFIG", "config");
-      await setDoc(docRef, { mon: newSubject }, { merge: true });
-      setConfig(prev => ({ ...prev, mon: newSubject }));
+
+      // 🔄 Ghi cả mon và congnghe lên Firestore
+      await setDoc(docRef, {
+        mon: newSubject,
+        congnghe: isCongNghe,
+      }, { merge: true });
+
+      // 🔄 Cập nhật context đầy đủ
+      setConfig(prev => ({
+        ...prev,
+        mon: newSubject,
+        congnghe: isCongNghe,
+      }));
     } catch (err) {
       console.error("❌ Lỗi cập nhật môn học:", err);
     }
@@ -342,6 +356,15 @@ export default function QuanTri() {
         </Typography>
 
         <Stack spacing={2}>
+          {/* 🔼 Môn học đặt lên trên */}
+          <FormControl fullWidth size="small">
+            <Select value={subject} onChange={handleSubjectChange}>
+              <MenuItem value="Tin học">Tin học</MenuItem>
+              <MenuItem value="Công nghệ">Công nghệ</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* 🔽 Lớp và tuần đặt xuống dưới */}
           <Box sx={{ display: "flex", gap: 2 }}>
             <FormControl size="small" sx={{ flex: 1 }}>
               <Select value={selectedClass} onChange={handleClassChange}>
@@ -363,13 +386,6 @@ export default function QuanTri() {
               </Select>
             </FormControl>
           </Box>
-
-          <FormControl fullWidth size="small">
-            <Select value={subject} onChange={handleSubjectChange}>
-              <MenuItem value="Tin học">Tin học</MenuItem>
-              <MenuItem value="Công nghệ">Công nghệ</MenuItem>
-            </Select>
-          </FormControl>
         </Stack>
       </Box>
     </Card>

@@ -640,7 +640,7 @@ return (
         gutterBottom
         sx={{ textAlign: "center", width: "100%", display: "block", mb: 2 }}
       >
-        ĐÁNH GIÁ HỌC SINH
+        TỔNG HỢP - ĐÁNH GIÁ
       </Typography>
 
       {/* ===== Row tuần ===== */}

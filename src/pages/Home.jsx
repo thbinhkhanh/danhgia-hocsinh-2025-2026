@@ -40,7 +40,7 @@ useEffect(() => {
       const tuan = data.tuan || 1;
       const hethong = data.hethong ?? false;
       const congnghe = data.congnghe === true;
-      const giaovien = data.giaovien === true;
+      //const giaovien = data.giaovien === true;
 
       // 🔹 Cập nhật local state các phần config khác
       setSelectedWeek(tuan);
@@ -52,7 +52,7 @@ useEffect(() => {
         tuan,
         hethong,
         congnghe,
-        giaovien,
+        //giaovien,
       }));
     } else {
       console.warn("⚠️ Không tìm thấy CONFIG/config trong Firestore, dùng mặc định");
@@ -63,7 +63,7 @@ useEffect(() => {
         hethong: false,
         lop: "",
         congnghe: false,
-        giaovien: false,
+        //giaovien: false,
       });
     }
   }, (err) => {
@@ -343,7 +343,7 @@ useEffect(() => {
             }}
           >
             {selectedClass
-              ? `DANH SÁCH HỌC SINH - LỚP ${selectedClass}`
+              ? `DANH SÁCH LỚP ${selectedClass}`
               : "DANH SÁCH HỌC SINH"}
           </Typography>
         </Box>

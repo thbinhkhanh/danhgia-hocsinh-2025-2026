@@ -23,13 +23,19 @@ export default function Login() {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setConfig({ tuan: data.tuan || 1, hethong: data.hethong ?? false });
-        } else {
-          setConfig({ tuan: 1, hethong: false });
+          setConfig(prev => ({
+            ...prev,
+            tuan: data.tuan || prev.tuan || 1,
+            hethong: data.hethong ?? prev.hethong ?? false,
+            mon: data.mon || prev.mon || "Tin học", // ✅ giữ lại môn học
+            lop: data.lop || prev.lop || "",
+            //giaovien: data.giaovien ?? prev.giaovien ?? false,
+            th_tuan_from: data.th_tuan_from ?? prev.th_tuan_from,
+            th_tuan_to: data.th_tuan_to ?? prev.th_tuan_to,
+          }));
         }
       } catch (err) {
         console.error(err);
-        setConfig({ tuan: 1, hethong: false });
       }
     };
     fetchConfig();

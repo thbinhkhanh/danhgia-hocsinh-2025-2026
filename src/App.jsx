@@ -153,7 +153,7 @@ function AppContent() {
                 flexShrink: 0,
               }}
             >
-              {`TUẦN ${config.tuan || "?"}`}
+              {`TUẦN ${config.tuan || "?"}${config.mon ? " - " + config.mon.toUpperCase() : ""}`}
             </Typography>
           ) : (
             <Typography
@@ -175,7 +175,7 @@ function AppContent() {
                 mt: { xs: 1, md: 0 },
               }}
             >
-              {`TUẦN ${config.tuan || "?"}`}
+              {`TUẦN ${config.tuan || "?"}${config.mon ? " - " + config.mon.toUpperCase() : ""}`}
             </Typography>
           )}
         </Toolbar>
