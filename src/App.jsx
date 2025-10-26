@@ -17,7 +17,7 @@ import Login from "./pages/Login";
 import QuanTri from "./pages/QuanTri";
 import GiaoVien from "./pages/GiaoVien";
 import TongHopDanhGia from "./pages/TongHopDanhGia";
-import KiemTraDinhKi from "./pages/KiemTraDinhKi";
+import NhapdiemKTDK from "./pages/NhapdiemKTDK";
 import ThongKe from "./pages/ThongKe";
 import DanhSachHS from "./pages/DanhSachHS"; 
 
@@ -198,7 +198,7 @@ function AppContent() {
           />
           <Route
             path="/nhapdiemktdk"
-            element={config.login ? <KiemTraDinhKi /> : <Navigate to="/login" replace />}
+            element={config.login ? <NhapdiemKTDK /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/tonghopdanhgia"

@@ -43,7 +43,7 @@ import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable"
 import { Snackbar, Alert } from "@mui/material";
 
 
-export default function KiemTraDinhKi() {
+export default function NhapdiemKTDK() {
   const { classData, setClassData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
 
