@@ -63,11 +63,14 @@ function AppContent() {
     { path: "/home", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
     ...(config.login
       ? [
-          { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
-          { path: "/giaovien", label: "Đánh giá", icon: <SummarizeIcon fontSize="small" /> },          
-          { path: "/tonghopdanhgia", label: "Tổng hợp", icon: <SummarizeIcon fontSize="small" /> },
-          { path: "/nhapdiemktdk", label: "Nhập điểm", icon: <SummarizeIcon fontSize="small" /> },
+          //{ path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
+          //{ path: "/giaovien", label: "Đánh giá", icon: <SummarizeIcon fontSize="small" /> },          
+          //{ path: "/tonghopdanhgia", label: "Tổng hợp", icon: <SummarizeIcon fontSize="small" /> },
+          { path: "/tonghopdanhgia", label: "ĐGTX", icon: <SummarizeIcon fontSize="small" /> },
+          //{ path: "/nhapdiemktdk", label: "Nhập điểm", icon: <SummarizeIcon fontSize="small" /> },
+          { path: "/nhapdiemktdk", label: "KTĐK", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/thongke", label: "Thống kê", icon: <BarChartIcon fontSize="small" /> },
+          { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
           { path: "/quan-tri", label: "Hệ thống", icon: <SettingsIcon fontSize="small" /> },
           { label: "Đăng xuất", onClick: handleLogout, icon: <LogoutIcon fontSize="small" /> },
         ]

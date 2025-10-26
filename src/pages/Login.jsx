@@ -46,8 +46,9 @@ export default function Login() {
       localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
       setConfig(updatedConfig);
 
-      navigate("/giaovien");
-
+      //navigate("/giaovien");
+      navigate("/tonghopdanhgia");
+      
       // Ghi login: true vào Firestore (không log ra console)
       setTimeout(() => {
         const docRef = doc(db, "CONFIG", "config");

@@ -40,7 +40,7 @@ export default function QuanTri() {
   const { classData, setClassData } = useContext(StudentContext);
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [subject, setSubject] = useState("Tin học");
+  const [isCongNghe, setIsCongNghe] = useState(false);
 
   // Load config từ context hoặc Firestore
   useEffect(() => {
@@ -57,11 +57,11 @@ export default function QuanTri() {
             const data = docSnap.data();
             setSelectedWeek(data.tuan || 1);
             setSystemLocked(data.hethong === false);
-            setSubject(data.mon || (data.congnghe ? "Công nghệ" : "Tin học"));
+            setIsCongNghe(data.congnghe === true);
             setConfig({
               tuan: data.tuan || 1,
               hethong: data.hethong ?? false,
-              mon: data.mon || (data.congnghe ? "Công nghệ" : "Tin học"),
+              congnghe: data.congnghe === true,
             });
           }
         } catch (err) {
@@ -264,116 +264,115 @@ export default function QuanTri() {
     }
   };
 
-  const handleSubjectChange = async (e) => {
-    const newSubject = e.target.value;
-    setSubject(newSubject);
-    try {
-      const docRef = doc(db, "CONFIG", "config");
-      await setDoc(docRef, { mon: newSubject }, { merge: true });
-      setConfig(prev => ({ ...prev, mon: newSubject }));
-    } catch (err) {
-      console.error("❌ Lỗi cập nhật môn học:", err);
-    }
-  };
-
   return (
-  <Box sx={{ minHeight: '100vh', backgroundColor: '#e3f2fd', pt: 3 }}>
-    <Card
-      elevation={6}
-      sx={{
-        p: 4,
-        borderRadius: 3,
-        maxWidth: 300,
-        mx: 'auto',
-        mt: 3,
-        position: 'relative',
-      }}
-    >
-      <Typography
-        variant="h5"
-        color="primary"
-        fontWeight="bold"
-        align="center"
-        gutterBottom
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#e3f2fd', pt: 3 }}>
+      <Card
+        elevation={6}
+        sx={{
+          p: 4,
+          borderRadius: 3,
+          maxWidth: 660,
+          mx: 'auto',
+          mt: 3,
+          position: 'relative',
+        }}
       >
-        ⚙️ QUẢN TRỊ HỆ THỐNG
-      </Typography>
-
-      <Divider sx={{ mb: 4 }} />
-
-      <Box sx={{ width: "100%", maxWidth: 400, mx: "auto" }}>
-        {/* 📤 Danh sách học sinh */}
-        <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
-          📤 Danh sách học sinh
+        <Typography
+          variant="h5"
+          color="primary"
+          fontWeight="bold"
+          align="center"
+          gutterBottom
+        >
+          ⚙️ QUẢN TRỊ HỆ THỐNG
         </Typography>
 
-        <Stack spacing={2} sx={{ mb: 5 }}>
-          <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
-            Chọn file Excel
-            <input type="file" hidden accept=".xlsx" onChange={handleFileChange} />
-          </Button>
+        <Divider sx={{ mb: 4 }} />
 
-          {selectedFile && (
-            <Typography variant="body2">📄 File đã chọn: {selectedFile.name}</Typography>
-          )}
+        <Grid container spacing={3} justifyContent="center">
+          {/* Cột trái: upload file */}
+          <Grid item>
+            <Box sx={{ width: 300 }}>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
+                📤 Danh sách học sinh
+              </Typography>
 
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<CloudUploadIcon />}
-            onClick={handleUpload}
-            disabled={loading}
-          >
-            {loading ? `🔄 Đang tải... (${progress}%)` : 'Tải danh sách'}
-          </Button>
+              <Stack spacing={2}>
+                <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
+                  Chọn file Excel
+                  <input type="file" hidden accept=".xlsx" onChange={handleFileChange} />
+                </Button>
 
-          {loading && <LinearProgress variant="determinate" value={progress} />}
+                {selectedFile && (
+                  <Typography variant="body2">📄 File đã chọn: {selectedFile.name}</Typography>
+                )}
 
-          {message && (
-            <Alert severity={success ? 'success' : loading ? 'info' : 'error'}>
-              {message}
-            </Alert>
-          )}
-        </Stack>
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<CloudUploadIcon />}
+                  onClick={handleUpload}
+                  disabled={loading}
+                >
+                  {loading ? `🔄 Đang tải... (${progress}%)` : 'Tải danh sách'}
+                </Button>
 
-        {/* ⚙️ Cài đặt hệ thống */}
-        <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
-          ⚙️ Cài đặt hệ thống
-        </Typography>
+                {loading && <LinearProgress variant="determinate" value={progress} />}
 
-        <Stack spacing={2}>
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <FormControl size="small" sx={{ flex: 1 }}>
-              <Select value={selectedClass} onChange={handleClassChange}>
-                {classes.map((cls) => (
-                  <MenuItem key={cls} value={cls}>
-                    {cls}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                {message && (
+                  <Alert severity={success ? 'success' : loading ? 'info' : 'error'}>
+                    {message}
+                  </Alert>
+                )}
+              </Stack>
+            </Box>
+          </Grid>
 
-            <FormControl size="small" sx={{ flex: 1 }}>
-              <Select value={selectedWeek} onChange={handleWeekChange}>
-                {[...Array(35)].map((_, i) => (
-                  <MenuItem key={i + 1} value={i + 1}>
-                    Tuần {i + 1}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
+          {/* Cột phải: cài đặt hệ thống */}
+          <Grid item>
+            <Box sx={{ width: 300 }}>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
+                ⚙️ Cài đặt hệ thống
+              </Typography>
 
-          <FormControl fullWidth size="small">
-            <Select value={subject} onChange={handleSubjectChange}>
-              <MenuItem value="Tin học">Tin học</MenuItem>
-              <MenuItem value="Công nghệ">Công nghệ</MenuItem>
-            </Select>
-          </FormControl>
-        </Stack>
-      </Box>
-    </Card>
-  </Box>
-);
+              <Stack spacing={2}>
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <FormControl size="small" sx={{ flex: 1 }}>
+                    <Select value={selectedClass} onChange={handleClassChange}>
+                      {classes.map((cls) => (
+                        <MenuItem key={cls} value={cls}>
+                          {cls}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
+                  <FormControl size="small" sx={{ flex: 1 }}>
+                    <Select value={selectedWeek} onChange={handleWeekChange}>
+                      {[...Array(35)].map((_, i) => (
+                        <MenuItem key={i + 1} value={i + 1}>
+                          Tuần {i + 1}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                {/* Checkbox Công nghệ */}
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isCongNghe}
+                      onChange={handleCongNgheChange}
+                    />
+                  }
+                  label="Công nghệ"
+                />
+              </Stack>
+            </Box>
+          </Grid>
+        </Grid>
+      </Card>
+    </Box>
+  );
 }
