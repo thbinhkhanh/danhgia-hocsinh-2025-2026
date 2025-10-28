@@ -108,10 +108,10 @@ export default function GiaoVien() {
 
   // 🔹 Bảng màu
   const statusColors = {
-    "Hoàn thành tốt": "#C8E6C9", // xanh nhạt
-    "Hoàn thành": "#FFF9C4", // vàng nhạt
-    "Chưa hoàn thành": "#FFCDD2", // đỏ nhạt
-    "": "#FFFFFF", // mặc định
+    "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },  // xanh dương, chữ trắng
+    "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },      // tím, chữ trắng
+    "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff" }, // cam, chữ trắng
+    "": { bg: "#ffffff", text: "#000000" },                // mặc định trắng, chữ đen
   };
 
   // 🔹 Hàm chia cột hiển thị
