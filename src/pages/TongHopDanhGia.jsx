@@ -464,6 +464,130 @@ const handleSaveAll = async () => {
   }
 };
 
+const fetchStudentsDGTX = async () => {
+  if (!selectedClass) return;
+
+  try {
+    setLoadingProgress(0);
+    setLoadingMessage(`Đang tổng hợp dữ liệu...`);
+
+    const classPath = isCongNghe ? `${selectedClass}_CN` : selectedClass;
+    const cacheKey = classPath;
+
+    // 1️⃣ Lấy dữ liệu từ DGTX
+    const tuanRef = collection(db, `DGTX/${classPath}/tuan`);
+    const snapshot = await getDocs(tuanRef);
+
+    if (snapshot.empty) {
+      setStudents([]);
+      setStudentData((prev) => ({ ...prev, [cacheKey]: [] }));
+      setLoadingMessage("");
+      return;
+    }
+
+    // Gom dữ liệu tất cả các tuần
+    const weekMap = {};
+    snapshot.forEach((docSnap) => {
+      if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
+    });
+
+    // 🔹 Gom tất cả học sinh từ tất cả các tuần
+    const studentMap = {};
+    Object.values(weekMap).forEach((weekData) => {
+      Object.entries(weekData).forEach(([maDinhDanh, info]) => {
+        if (!studentMap[maDinhDanh]) {
+          studentMap[maDinhDanh] = {
+            maDinhDanh,
+            hoVaTen: info.hoVaTen || "",
+            statusByWeek: {},
+            status: "",
+            dgtx_gv: "",
+            nhanXetTX: "",
+          };
+        }
+      });
+    });
+
+    let studentList = Object.values(studentMap);
+
+    // 2️⃣ Tổng hợp trạng thái theo tuần
+    const totalWeeks = weekTo - weekFrom + 1;
+    const weekIds = Array.from({ length: totalWeeks }, (_, i) => `tuan_${weekFrom + i}`);
+
+    for (const weekId of weekIds) {
+      const weekData = weekMap[weekId];
+      if (!weekData) continue;
+
+      for (const [maHS, value] of Object.entries(weekData)) {
+        const student = studentMap[maHS];
+        if (student) student.statusByWeek[weekId] = value.status || "-";
+      }
+    }
+
+    // 3️⃣ Lấy đánh giá GV từ bảng điểm
+    const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
+    const classKeyForTerm = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+    const bangDiemRef = doc(db, "KTDK", selectedTerm);
+    const bangDiemSnap = await getDoc(bangDiemRef);
+
+    if (bangDiemSnap.exists()) {
+      const bangDiemData = bangDiemSnap.data();
+      const classData = bangDiemData[classKeyForTerm] || {};
+
+      studentList = studentList.map((s) => ({
+        ...s,
+        dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
+        status: classData[s.maDinhDanh]?.status || "",
+      }));
+    }
+
+    // 4️⃣ Sắp xếp học sinh theo tên
+    studentList.sort((a, b) => {
+      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+    // 5️⃣ Tính mức đạt & nhận xét
+    const evaluatedList = studentList.map((s) => {
+      const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
+      const hs = xepLoai || "";
+      const gv = s.dgtx_gv || "";
+
+      let chung = "";
+      if (!gv) chung = hs;
+      else if (hs === "T" && gv === "T") chung = "T";
+      else if (hs === "H" && gv === "T") chung = "T";
+      else if (hs === "C" && gv === "T") chung = "H";
+      else if (hs === "T" && gv === "H") chung = "H";
+      else if (hs === "H" && gv === "H") chung = "H";
+      else if (hs === "C" && gv === "H") chung = "H";
+      else if (hs === "T" && gv === "C") chung = "H";
+      else if (hs === "H" && gv === "C") chung = "C";
+      else if (hs === "C" && gv === "C") chung = "C";
+      else chung = hs;
+
+      const dgtx = chung;
+      const nhanXet = getNhanXetTuDong(dgtx);
+
+      return { ...s, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
+    });
+
+    // 6️⃣ Lưu cache & cập nhật UI
+    setStudentData((prev) => ({ ...prev, [cacheKey]: evaluatedList }));
+    setStudents(evaluatedList);
+
+    setLoadingProgress(100);
+    setTimeout(() => setLoadingMessage(""), 1500);
+  } catch (err) {
+    console.error(`❌ Lỗi khi lấy dữ liệu lớp "${selectedClass}":`, err);
+    setStudents([]);
+    setLoadingProgress(0);
+    setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
+  }
+};
+
 
 useEffect(() => {
   fetchStudentsAndStatus();
@@ -564,7 +688,7 @@ return (
 
         <Tooltip title="Làm mới thống kê" arrow>
           <IconButton
-            onClick={fetchStudentsAndStatus}
+            onClick={fetchStudentsDGTX}
             sx={{
               color: "primary.main",
               bgcolor: "white",
