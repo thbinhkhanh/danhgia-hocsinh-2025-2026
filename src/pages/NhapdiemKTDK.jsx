@@ -104,7 +104,7 @@ export default function NhapdiemKTDK() {
     try {
       // 2️⃣ Lấy dữ liệu từ BANGDIEM
       const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
-      const docRef = doc(db, "BANGDIEM", termDoc);
+      const docRef = doc(db, "KTDK", termDoc);
       const snap = await getDoc(docRef);
 
       if (!snap.exists()) {
@@ -237,7 +237,7 @@ const handleSaveAll = async () => {
   // ✅ Thêm học kì vào classKey
   const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
   const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
-  const docRef = doc(db, "BANGDIEM", termDoc);
+  const docRef = doc(db, "KTDK", termDoc);
 
   const batch = writeBatch(db);
 

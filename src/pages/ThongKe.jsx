@@ -53,7 +53,7 @@ export default function ThongKe() {
 
     // 2️⃣ Lấy dữ liệu bảng điểm
     const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
-    const scoreDocRef = doc(db, "BANGDIEM", termDoc);
+    const scoreDocRef = doc(db, "KTDK", termDoc);
     const scoreSnap = await getDoc(scoreDocRef);
     const scoreData = scoreSnap.exists() ? scoreSnap.data() : {};
 
@@ -183,7 +183,7 @@ export default function ThongKe() {
 
       // 2️⃣ Lấy dữ liệu bảng điểm tương ứng
       const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
-      const scoreDocRef = doc(db, "BANGDIEM", termDoc);
+      const scoreDocRef = doc(db, "KTDK", termDoc);
       const scoreSnap = await getDoc(scoreDocRef);
       const scoreData = scoreSnap.exists() ? scoreSnap.data() : {};
 

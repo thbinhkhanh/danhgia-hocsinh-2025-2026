@@ -211,7 +211,7 @@ const handleSaveAll = async () => {
   const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
   const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
   const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
-  const docRef = doc(db, "BANGDIEM", termDoc);
+  const docRef = doc(db, "KTDK", termDoc);
 
   const batch = writeBatch(db);
 
@@ -403,7 +403,7 @@ const handleSaveAll = async () => {
     // 3️⃣ Lấy đánh giá GV từ bảng điểm
     const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
     const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
-    const bangDiemRef = doc(db, "BANGDIEM", selectedTerm);
+    const bangDiemRef = doc(db, "KTDK", selectedTerm);
     const bangDiemSnap = await getDoc(bangDiemRef);
 
     if (bangDiemSnap.exists()) {
