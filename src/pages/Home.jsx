@@ -8,10 +8,7 @@ import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
 import { onSnapshot } from "firebase/firestore";
-
 import { deleteField } from "firebase/firestore";
-
-
 
 export default function Home() {
   // 🔹 Lấy context
@@ -197,6 +194,37 @@ useEffect(() => {
   };
 
   const saveStudentStatus = async (studentId, hoVaTen, status) => {
+    if (!selectedWeek || !selectedClass) return;
+
+    try {
+      // 🔹 Nếu là lớp công nghệ, thêm hậu tố "_CN"
+      const classKey = config?.congnghe ? `${selectedClass}_CN` : selectedClass;
+
+      // 🔹 Đường dẫn tài liệu Firestore cho tuần hiện tại
+      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+
+      // 🔹 Ghi trực tiếp vào field con của học sinh
+      await updateDoc(tuanRef, {
+        [`${studentId}.hoVaTen`]: hoVaTen,
+        [`${studentId}.status`]: status,
+      }).catch(async (err) => {
+        if (err.code === "not-found") {
+          // 🔹 Nếu document chưa tồn tại → tạo mới
+          await setDoc(tuanRef, {
+            [studentId]: { hoVaTen, status },
+          });
+        } else {
+          throw err;
+        }
+      });
+
+      console.log(`✅ ${studentId}: ${hoVaTen} (${status}) đã lưu thành công`);
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu trạng thái học sinh:", err);
+    }
+  };
+
+  {/*const saveStudentStatusOK = async (studentId, hoVaTen, status) => {
   if (!selectedWeek || !selectedClass) return;
 
   try {
@@ -225,7 +253,7 @@ useEffect(() => {
   } catch (err) {
     console.error("❌ Lỗi lưu trạng thái học sinh vào DGTX:", err);
   }
-};
+};*/}
 
 
   const saveStudentStatus1 = async (studentId, hoVaTen, status) => {
