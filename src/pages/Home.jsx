@@ -512,7 +512,7 @@ useEffect(() => {
             </IconButton>
           </DialogTitle>
 
-          <DialogContent sx={{ mt: 1 }}>
+          <DialogContent sx={{ mt: 2 }}>
             <Stack spacing={1}>
               {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map((s) => {
                 const isSelected = studentStatus[expandedStudent.maDinhDanh] === s;
@@ -562,6 +562,7 @@ useEffect(() => {
                       "&:hover": {
                         bgcolor: "#388e3c",
                       },
+                      mt: 1,
                     }}
                   >
                     HỦY ĐÁNH GIÁ

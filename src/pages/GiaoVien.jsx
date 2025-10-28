@@ -331,7 +331,7 @@ export default function GiaoVien() {
             </DialogTitle>
 
             <DialogContent>
-              <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <Stack spacing={1.5} sx={{ mt: 2 }}>
                 {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map((s) => {
                   const isSelected = studentStatus[expandedStudent.maDinhDanh] === s;
                   return (
@@ -372,6 +372,7 @@ export default function GiaoVien() {
                         bgcolor: "#4caf50",
                         color: "#fff",
                         "&:hover": { bgcolor: "#388e3c" },
+                        mt: 1,
                       }}
                     >
                       HỦY ĐÁNH GIÁ
