@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { 
-  Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, 
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  IconButton,
+  Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack 
 } from "@mui/material";
 //import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { db } from "../firebase";
@@ -13,8 +9,6 @@ import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
 import { onSnapshot } from "firebase/firestore";
 import { deleteField } from "firebase/firestore";
-import CloseIcon from "@mui/icons-material/Close";
-
 
 export default function Home() {
   // 🔹 Lấy context
@@ -324,202 +318,149 @@ useEffect(() => {
   };
 
   return (
-  <Box
-    sx={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
-      pt: 3,
-      px: 3,
-    }}
-  >
-    <Paper
-      elevation={6}
+    <Box
       sx={{
-        p: 4,
-        borderRadius: 3,
-        width: "100%",
-        maxWidth: 1300,
-        bgcolor: "white",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",      // căn giữa ngang
+        background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
+        pt: 3,                     // khoảng cách từ trên
+        px: 3,
       }}
     >
-      <Box sx={{ textAlign: "center", mb: 4 }}>
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          sx={{
-            color: "#1976d2",
-            borderBottom: "3px solid #1976d2",
-            display: "inline-block",
-            pb: 1,
-          }}
-        >
-          {selectedClass ? `DANH SÁCH LỚP ${selectedClass}` : "DANH SÁCH HỌC SINH"}
-        </Typography>
-      </Box>
-
-      {/* Danh sách học sinh */}
-      <Grid container spacing={2} justifyContent="center">
-        {columns.map((col, colIdx) => (
-          <Grid item key={colIdx}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {col.map((student) => {
-                const status = studentStatus[student.maDinhDanh];
-                const colors = status
-                  ? statusColors[status]
-                  : { bg: "white", text: "inherit" };
-
-                return (
-                  <Paper
-                    key={student.maDinhDanh}
-                    elevation={3}
-                    sx={{
-                      minWidth: 120,
-                      width: { xs: "75vw", sm: "auto" },
-                      p: 2,
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      bgcolor: "#ffffff", // luôn nền trắng
-                      color: "inherit", // giữ màu chữ mặc định
-                      transition: "0.2s",
-                      boxShadow: 1,
-                      "&:hover": {
-                        transform: "scale(1.03)", // phóng to nhẹ khi hover
-                        boxShadow: 4,
-                        bgcolor: "#f5f5f5", // đổi nhẹ màu nền khi hover
-                      },
-                    }}
-                    onClick={() => {
-                      setExpandedStudent(student); // dùng để hiển thị modal
-                    }}
-                  >
-                    <Typography variant="subtitle2" fontWeight="medium">
-                      {student.stt}. {student.hoVaTen}
-                    </Typography>
-                  </Paper>
-                );
-
-              })}
-            </Box>
-          </Grid>
-        ))}
-      </Grid>
-    </Paper>
-
-    {/* 🔹 Dialog hiển thị khi chọn học sinh */}
-    <Dialog
-      open={Boolean(expandedStudent)}
-      onClose={() => setExpandedStudent(null)}
-      maxWidth="xs"
-      fullWidth
-    >
-      {expandedStudent && (
-        <>
-          <DialogTitle
+      {/* Card lớn chứa toàn bộ */}
+      <Paper
+        elevation={6}
+        sx={{
+          p: 4,
+          borderRadius: 3,
+          width: "100%",
+          maxWidth: 1300,
+          bgcolor: "white",
+        }}
+      >
+        {/* Tiêu đề phía trên dropdown */}
+        <Box sx={{ textAlign: "center", mb: 4 }}>
+          <Typography
+            variant="h5"
+            fontWeight="bold"
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              bgcolor: "#e3f2fd",
-              flexWrap: "wrap",
-              py: 1.5,
+              color: "#1976d2",
+              borderBottom: "3px solid #1976d2", // đường gạch ngang màu xanh
+              display: "inline-block",           // đường gạch ngang bằng width nội dung
+              pb: 1,                             // khoảng cách giữa chữ và gạch
             }}
           >
-            <Box>
-              <Typography
-                variant="subtitle1"
-                fontWeight="bold"
-                sx={{ color: "#1976d2", fontSize: "1.05rem" }}
-              >
-                {expandedStudent.hoVaTen.toUpperCase()}
-              </Typography>
+            {selectedClass
+              ? `DANH SÁCH LỚP ${selectedClass}`
+              : "DANH SÁCH HỌC SINH"}
+          </Typography>
+        </Box>
+        
+        {/* Grid học sinh */}
+        <Grid container spacing={2} justifyContent="center">
+          {columns.map((col, colIdx) => (
+            <Grid item key={colIdx}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {col.map((student) => {
+                  const isExpanded = expandedStudent === student.maDinhDanh;
+                  const status = studentStatus[student.maDinhDanh];
+                  const colors = status ? statusColors[status] : { bg: "white", text: "inherit" };
 
-              {/*<Typography
-                variant="body2"
-                sx={{
-                  fontWeight: "bold", // in đậm mã định danh
-                  color: "text.secondary",
-                }}
-              >
-                Mã định danh: {expandedStudent.maDinhDanh}
-              </Typography>*/}
-            </Box>
+                  return (
+                    <Box key={student.maDinhDanh} sx={{ position: "relative" }}>
+                      {/* Thẻ học sinh */}
+                      <Paper
+                        elevation={3}
+                        sx={{
+                          minWidth: 120,
+                          width: { xs: "75vw", sm: "auto" }, // 📱 chỉ trên điện thoại: rộng 75% màn hình
+                          p: 2,
+                          borderRadius: 2,
+                          cursor: "pointer",
+                          transition: "all 0.3s",
+                          textAlign: "left",
+                          bgcolor: !isExpanded ? (status ? colors.bg : "white") : "white",
+                          color: status ? colors.text : "black",
+                          "&:hover": {
+                            transform: "translateY(-2px)",
+                            boxShadow: 4,
+                            bgcolor: !status ? "#e3f2fd" : undefined,
+                          },
+                        }}
 
-            <IconButton
-              onClick={() => setExpandedStudent(null)}
-              sx={{
-                color: "#f44336", // đỏ
-                "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
+                        onClick={() => toggleExpand(student.maDinhDanh)}
+                        onMouseEnter={() => setExpandedStudent(null)} // <-- ẩn overlay khi hover vào học sinh khác
+                      >
+                        <Typography variant="subtitle2" fontWeight="medium">
+                          {student.stt}. {student.hoVaTen}
+                        </Typography>
+                      </Paper>
+                      {/* Overlay đánh giá */}
+                      {isExpanded && (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            p: 2,
+                            borderRadius: 2,
+                            bgcolor: "#e0e0e0", // nền xám toàn vùng mở rộng
+                            color: "black",
+                            zIndex: 10,
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              //bgcolor: "white", // nền trắng bao quanh các mức đánh giá
+                              bgcolor: "#e3f2fd",
+                              borderRadius: 2,
+                              boxShadow: 3,
+                              p: 2,
+                              border: "2px solid #2196f3", // viền xanh xung quanh vùng trắng
+                            }}
+                          >
+                            <Stack spacing={1}>
+                              {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành" ].map((s) => (
+                                <Button
+                                  key={s}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: status === s ? "#e0e0e0" : "#f9f9f9",
+                                    color: "black",
+                                    borderRadius: 1,
+                                    textTransform: "none",
+                                    justifyContent: "flex-start",
+                                    fontSize: 15,
+                                    border: "1px solid",
+                                    borderColor: status === s ? "#bdbdbd" : "#ccc",
+                                    width: "100%",
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(student.maDinhDanh, student.hoVaTen, s);
+                                    setExpandedStudent(null);
+                                  }}
+                                >
+                                  {status === s ? "✅ " : ""}
+                                  {s}
+                                </Button>
+                              ))}
+                            </Stack>
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
 
-          <DialogContent sx={{ mt: 1 }}>
-            <Stack spacing={1}>
-              {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map((s) => {
-                const isSelected = studentStatus[expandedStudent.maDinhDanh] === s;
-                return (
-                  <Button
-                    key={s}
-                    variant={isSelected ? "contained" : "outlined"}
-                    color={
-                      s === "Hoàn thành tốt"
-                        ? "primary"
-                        : s === "Hoàn thành"
-                        ? "secondary"
-                        : "warning"
-                    }
-                    onClick={() =>
-                      handleStatusChange(
-                        expandedStudent.maDinhDanh,
-                        expandedStudent.hoVaTen,
-                        s
-                      )
-                    }
-                  >
-                    {isSelected ? `✓ ${s}` : s}
-                  </Button>
-                );
-              })}
-
-              {/* 🔹 Nút hủy đánh giá */}
-              {studentStatus[expandedStudent.maDinhDanh] && (
-                <Box sx={{ mt: 5, textAlign: "center" }}>
-                  <Button
-                    onClick={() =>
-                      handleStatusChange(
-                        expandedStudent.maDinhDanh,
-                        expandedStudent.hoVaTen,
-                        ""
-                      )
-                    }
-                    sx={{
-                      width: 160,
-                      px: 2,
-                      bgcolor: "#4caf50",
-                      color: "#ffffff",
-                      borderRadius: 1,
-                      textTransform: "none",
-                      fontWeight: "bold",
-                      "&:hover": {
-                        bgcolor: "#388e3c",
-                      },
-                    }}
-                  >
-                    HỦY ĐÁNH GIÁ
-                  </Button>
-                </Box>
-              )}
-            </Stack>
-          </DialogContent>
-        </>
-      )}
-    </Dialog>
-  </Box>
-);
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      </Paper>
+    </Box>
+  );
 }
