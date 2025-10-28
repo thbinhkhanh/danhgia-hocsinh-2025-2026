@@ -290,6 +290,204 @@ export default function QuanTri() {
     }
   };
 
+  // 🧩 Đồng bộ dữ liệu từ BANGDIEM → DGTX (ngay trong web)
+{/*const handleSyncBangDiem1 = async () => {
+  setLoading(true);
+  setMessage("🔄 Đang đồng bộ dữ liệu từ DANHGIA...");
+  setSuccess(false);
+  setProgress(0);
+
+  try {
+    const danhGiaRef = collection(db, "DANHGIA");
+    const weeksSnap = await getDocs(danhGiaRef);
+
+    if (weeksSnap.empty) {
+      setMessage("⚠️ Không có tuần nào trong DANHGIA để đồng bộ.");
+      setLoading(false);
+      return;
+    }
+
+    let processedWeeks = 0;
+
+    for (const tuanDoc of weeksSnap.docs) {
+      const tuanId = tuanDoc.id; // ví dụ: tuan_1
+      const data = tuanDoc.data();
+
+      const lopMap = {};
+
+      // 🧩 Gom học sinh theo lớp
+      for (const [key, value] of Object.entries(data)) {
+        const parts = key.split(".");
+        if (parts.length < 3) continue;
+        const lop = `${parts[0]}.${parts[1]}`; // ví dụ: 4.1 hoặc 5.1_CN
+        const hocSinhId = parts[2];
+
+        if (!lopMap[lop]) lopMap[lop] = {};
+
+        // 🧠 Map dữ liệu học sinh sang cấu trúc mới
+        lopMap[lop][hocSinhId] = {
+          hoVaTen: value.hoVaTen || "",
+          dgtx: value.status || "",        // 🔄 chuyển status → dgtx
+          dgtx_gv: value.dgtx_gv || "",
+          nhanXet: value.nhanXet || "",
+          thucHanh: value.thucHanh ?? null,
+          tongCong: value.tongCong ?? null,
+          tracNghiem: value.tracNghiem ?? null,
+          xepLoai: value.xepLoai || ""
+        };
+      }
+
+      // 🔥 Ghi từng lớp vào DGTX/[lop]/tuan/[tuan_x]
+      for (const [lopId, hocSinhMap] of Object.entries(lopMap)) {
+        const tuanRef = doc(db, `DGTX/${lopId}/tuan/${tuanId}`);
+        await setDoc(tuanRef, hocSinhMap, { merge: true });
+      }
+
+      processedWeeks++;
+      setProgress(Math.round((processedWeeks / weeksSnap.size) * 100));
+    }
+
+    setSuccess(true);
+    setMessage(`✅ Đã đồng bộ thành công ${weeksSnap.size} tuần từ DANHGIA → DGTX.`);
+  } catch (err) {
+    console.error("❌ Lỗi khi đồng bộ dữ liệu:", err);
+    setSuccess(false);
+    setMessage("❌ Lỗi khi đồng bộ dữ liệu. Kiểm tra console để biết chi tiết.");
+  } finally {
+    setLoading(false);
+  }
+};*/}
+
+const handleSyncBangDiem = async () => {
+  setLoading(true);
+  setMessage("🔄 Đang đồng bộ dữ liệu từ DANHGIA...");
+  setSuccess(false);
+  setProgress(0);
+
+  try {
+    const danhGiaRef = collection(db, "DANHGIA");
+    const weeksSnap = await getDocs(danhGiaRef);
+
+    if (weeksSnap.empty) {
+      setMessage("⚠️ Không có tuần nào trong DANHGIA để đồng bộ.");
+      setLoading(false);
+      return;
+    }
+
+    let processedWeeks = 0;
+
+    for (const tuanDoc of weeksSnap.docs) {
+      const tuanId = tuanDoc.id; // ví dụ: tuan_1
+      const data = tuanDoc.data();
+
+      const lopMap = {};
+
+      // 🧩 Gom học sinh theo lớp
+      for (const [key, value] of Object.entries(data)) {
+        const parts = key.split(".");
+        if (parts.length < 3) continue;
+        const lop = `${parts[0]}.${parts[1]}`; // ví dụ: 4.1 hoặc 5.2_CN
+
+        // 🔹 Bỏ qua lớp 5.2_CN
+        if (lop === "5.2_CN") continue;
+
+        const hocSinhId = parts[2];
+
+        if (!lopMap[lop]) lopMap[lop] = {};
+
+        // 🧠 Map dữ liệu học sinh sang cấu trúc DGTX mới
+        lopMap[lop][hocSinhId] = {
+          hoVaTen: value.hoVaTen || "",
+          status: value.status || "", // HS đánh giá
+        };
+      }
+
+      // 🔥 Ghi từng lớp vào DGTX/[lop]/tuan/[tuan_x]
+      for (const [lopId, hocSinhMap] of Object.entries(lopMap)) {
+        const tuanRef = doc(db, `DGTX/${lopId}/tuan/${tuanId}`);
+        await setDoc(tuanRef, hocSinhMap, { merge: true });
+      }
+
+      processedWeeks++;
+      setProgress(Math.round((processedWeeks / weeksSnap.size) * 100));
+    }
+
+    setSuccess(true);
+    setMessage(`✅ Đã đồng bộ thành công ${weeksSnap.size} tuần từ DANHGIA → DGTX.`);
+  } catch (err) {
+    console.error("❌ Lỗi khi đồng bộ dữ liệu:", err);
+    setSuccess(false);
+    setMessage("❌ Lỗi khi đồng bộ dữ liệu. Kiểm tra console để biết chi tiết.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const handleSyncBangDiem1 = async () => {
+  setLoading(true);
+  setMessage("🔄 Đang đồng bộ dữ liệu từ DANHGIA...");
+  setSuccess(false);
+  setProgress(0);
+
+  try {
+    const danhGiaRef = collection(db, "DANHGIA");
+    const weeksSnap = await getDocs(danhGiaRef);
+
+    if (weeksSnap.empty) {
+      setMessage("⚠️ Không có tuần nào trong DANHGIA để đồng bộ.");
+      setLoading(false);
+      return;
+    }
+
+    let processedWeeks = 0;
+
+    for (const tuanDoc of weeksSnap.docs) {
+      const tuanId = tuanDoc.id; // ví dụ: tuan_1
+      const data = tuanDoc.data();
+
+      const lopMap = {};
+
+      // 🧩 Gom học sinh theo lớp
+      for (const [key, value] of Object.entries(data)) {
+        const parts = key.split(".");
+        if (parts.length < 3) continue;
+        const lop = `${parts[0]}.${parts[1]}`; // ví dụ: 4.1 hoặc 5.1_CN
+        const hocSinhId = parts[2];
+
+        if (!lopMap[lop]) lopMap[lop] = {};
+
+        // 🧠 Map dữ liệu học sinh sang cấu trúc DGTX mới
+        lopMap[lop][hocSinhId] = {
+          hoVaTen: value.hoVaTen || "",
+          status: value.status || "",             // HS đánh giá
+        };
+      }
+
+      // 🔥 Ghi từng lớp vào DGTX/[lop]/tuan/[tuan_x]
+      for (const [lopId, hocSinhMap] of Object.entries(lopMap)) {
+        const tuanRef = doc(db, `DGTX/${lopId}/tuan/${tuanId}`);
+        await setDoc(tuanRef, hocSinhMap, { merge: true });
+      }
+
+      processedWeeks++;
+      setProgress(Math.round((processedWeeks / weeksSnap.size) * 100));
+    }
+
+    setSuccess(true);
+    setMessage(`✅ Đã đồng bộ thành công ${weeksSnap.size} tuần từ DANHGIA → DGTX.`);
+  } catch (err) {
+    console.error("❌ Lỗi khi đồng bộ dữ liệu:", err);
+    setSuccess(false);
+    setMessage("❌ Lỗi khi đồng bộ dữ liệu. Kiểm tra console để biết chi tiết.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
+
   return (
   <Box sx={{ minHeight: '100vh', backgroundColor: '#e3f2fd', pt: 3 }}>
     <Card
@@ -363,6 +561,16 @@ export default function QuanTri() {
               <MenuItem value="Công nghệ">Công nghệ</MenuItem>
             </Select>
           </FormControl>
+
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSyncBangDiem}
+            disabled={loading}
+          >
+            {loading ? `🔄 Đang đồng bộ... (${progress}%)` : '🔁 Đồng bộ dữ liệu'}
+          </Button>
+
 
           {/* 🔽 Lớp và tuần đặt xuống dưới */}
           <Box sx={{ display: "flex", gap: 2 }}>

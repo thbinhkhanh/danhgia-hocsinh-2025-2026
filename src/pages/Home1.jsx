@@ -196,39 +196,7 @@ useEffect(() => {
     setExpandedStudent(expandedStudent === maDinhDanh ? null : maDinhDanh);
   };
 
-  const saveStudentStatus = async (studentId, hoVaTen, status) => {
-  if (!selectedWeek || !selectedClass) return;
-
-  try {
-    // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
-    const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
-
-    // 🔹 Tham chiếu tới DGTX / [lop] / tuan / [tuan_x]
-    const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
-
-    // 🔹 Lấy dữ liệu hiện có (nếu cần)
-    const docSnap = await getDoc(tuanRef);
-    const existingData = docSnap.exists() ? docSnap.data() : {};
-
-    // 🔹 Cập nhật dữ liệu học sinh
-    const updatedData = {
-      ...existingData,
-      [studentId]: { hoVaTen, status },
-    };
-
-    // 🔹 Lưu vào Firestore
-    await setDoc(tuanRef, updatedData, { merge: true });
-
-    console.log(
-      `✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`
-    );
-  } catch (err) {
-    console.error("❌ Lỗi lưu trạng thái học sinh vào DGTX:", err);
-  }
-};
-
-
-  const saveStudentStatus1 = async (studentId, hoVaTen, status) => {
+    const saveStudentStatus = async (studentId, hoVaTen, status) => {
   if (!selectedWeek || !selectedClass) return;
 
   // ✅ Kiểm tra config.congnghe

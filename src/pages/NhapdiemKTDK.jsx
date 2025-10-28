@@ -89,77 +89,45 @@ export default function NhapdiemKTDK() {
   }, [classData, setClassData]);
 
   const fetchStudentsAndStatus = async (cls) => {
-    const currentClass = cls || selectedClass; // dùng lớp được truyền nếu có
+    const currentClass = cls || selectedClass;
     if (!currentClass) return;
 
     const classKey = `${currentClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
 
-    // 1️⃣ Kiểm tra context trước
+    // 1️⃣ Kiểm tra cache
     const cached = getStudentsForClass(classKey);
     if (cached) {
-      //console.log(`🟢 Lấy dữ liệu học sinh từ Context cho lớp ${classKey}`);
       setStudents(cached);
       return;
     }
 
     try {
-      //console.log(`🟡 Chưa có trong Context, fetch từ Firestore cho lớp ${classKey}`);
+      // 2️⃣ Lấy dữ liệu từ BANGDIEM
+      const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+      const docRef = doc(db, "BANGDIEM", termDoc);
+      const snap = await getDoc(docRef);
 
-      // 2️⃣ Lấy danh sách học sinh từ DANHSACH
-      const classDocRef = doc(db, "DANHSACH", currentClass);
-      const classSnap = await getDoc(classDocRef);
-      if (!classSnap.exists()) {
-        //console.log(`⚪ Không có dữ liệu trong Firestore cho lớp ${currentClass}`);
+      if (!snap.exists()) {
         setStudents([]);
         return;
       }
 
-      const studentsData = classSnap.data();
-      let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
+      const termData = snap.data();
+      const classData = termData[classKey] || {};
+
+      // 3️⃣ Chuyển thành array studentList
+      const studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
         maDinhDanh,
         hoVaTen: info.hoVaTen || "",
-        tracNghiem: "",
-        thucHanh: "",
-        tongCong: "",
-        xepLoai: "",
-        nhanXet: "",
-        dgtx: "",
-        statusByWeek: {},
+        dgtx: info.dgtx || "",
+        dgtx_gv: info.dgtx_gv || "",
+        lyThuyet: info.lyThuyet ?? null,
+        thucHanh: info.thucHanh ?? null,
+        tongCong: info.tongCong ?? null,
+        mucDat: info.mucDat || "",
+        nhanXet: info.nhanXet || "",
+        //statusByWeek: {},
       }));
-
-      // 🔹 2.5️⃣ Lấy dữ liệu ĐGTX riêng
-      try {
-        const dgtxDocRef = doc(db, "DGTX", classKey);
-        const dgtxSnap = await getDoc(dgtxDocRef);
-        if (dgtxSnap.exists()) {
-          const dgtxData = dgtxSnap.data();
-          studentList = studentList.map((s) => ({
-            ...s,
-            dgtx: dgtxData[s.maDinhDanh]?.dgtx ?? s.dgtx ?? "",
-          }));
-        }
-      } catch (err) {
-        console.error("❌ Lỗi khi lấy ĐGTX:", err);
-      }
-
-      // 3️⃣ Lấy điểm từ BANGDIEM nếu có
-      const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
-      const scoreDocRef = doc(db, "BANGDIEM", termDoc);
-      const scoreSnap = await getDoc(scoreDocRef);
-      if (scoreSnap.exists()) {
-        const scoreData = scoreSnap.data();
-        const classScores = scoreData[classKey] || {};
-        studentList = studentList.map((s) => ({
-          ...s,
-          tracNghiem: classScores[s.maDinhDanh]?.tracNghiem || "",
-          thucHanh: classScores[s.maDinhDanh]?.thucHanh || "",
-          tongCong: classScores[s.maDinhDanh]?.tongCong || "",
-          xepLoai: classScores[s.maDinhDanh]?.xepLoai || "",
-          nhanXet: classScores[s.maDinhDanh]?.nhanXet || "",
-          dgtx: classScores[s.maDinhDanh]?.dgtx || s.dgtx || "",
-          dgtx_gv: classScores[s.maDinhDanh]?.dgtx_gv || "",
-        }));
-      }
 
       // 4️⃣ Sắp xếp theo tên
       studentList.sort((a, b) => {
@@ -167,12 +135,12 @@ export default function NhapdiemKTDK() {
         const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
         return nameA.localeCompare(nameB);
       });
-      studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+      studentList.forEach((s, idx) => (s.stt = idx + 1));
 
-      // 5️⃣ Cập nhật state và context
+      // 5️⃣ Lưu vào state & context
       setStudents(studentList);
       setStudentsForClass(classKey, studentList);
-      //console.log(`🟢 Đã lưu dữ liệu học sinh vào Context cho lớp ${classKey}`);
+
     } catch (err) {
       console.error("❌ Lỗi khi lấy dữ liệu:", err);
       setStudents([]);
@@ -201,10 +169,10 @@ const getNhanXetTuDong = (xepLoai) => {
 
 // Hàm xử lý thay đổi ô bảng
 const handleCellChange = (maDinhDanh, field, value) => {
-  // ✅ Kiểm tra dữ liệu nhập vào Trắc nghiệm / Thực hành
-  if ((field === "tracNghiem" || field === "thucHanh") && value !== "") {
+  // ✅ Kiểm tra dữ liệu nhập vào Lí thuyết / Thực hành
+  if ((field === "lyThuyet" || field === "thucHanh") && value !== "") {
     const num = parseFloat(value);
-    if (isNaN(num) || num < 0 || num > 5) return; // Chỉ chấp nhận số từ 0–5
+    if (isNaN(num) || num < 0 || num > 5) return; // Chỉ nhận 0–5
   }
 
   setStudents((prev) =>
@@ -212,58 +180,40 @@ const handleCellChange = (maDinhDanh, field, value) => {
       if (s.maDinhDanh === maDinhDanh) {
         const updated = { ...s, [field]: value };
 
-        // ✅ Nếu chỉnh cột Trắc nghiệm / Thực hành / Giáo viên → tính lại toàn bộ
-        if (["tracNghiem", "thucHanh", "dgtx_gv"].includes(field)) {
-          const tn = parseFloat(updated.tracNghiem) || 0;
+        // ✅ Nếu chỉnh cột Lí thuyết / Thực hành / GV đánh giá → tính lại
+        if (["lyThuyet", "thucHanh", "dgtx_gv"].includes(field)) {
+          const lt = parseFloat(updated.lyThuyet) || 0;
           const th = parseFloat(updated.thucHanh) || 0;
 
-          if (updated.tracNghiem !== "" && updated.thucHanh !== "") {
-            const tong = tn + th;
-            updated.tongCong = Math.round(tong);
+          if (updated.lyThuyet !== "" && updated.thucHanh !== "") {
+            updated.tongCong = Math.round(lt + th);
 
-            const gv = updated.dgtx_gv; // ✅ lấy đánh giá của giáo viên
+            const gv = updated.dgtx_gv;
 
             // ⚙️ Quy tắc đánh giá Mức đạt
             if (!gv) {
-              // 🟢 Nếu giáo viên chưa đánh giá → dùng cách cũ
-              if (updated.tongCong === 8 && s.dgtx === "T") {
-                updated.xepLoai = "T";
-              } else if (updated.tongCong >= 9) {
-                updated.xepLoai = "T";
-              } else if (updated.tongCong >= 5) {
-                updated.xepLoai = "H";
-              } else {
-                updated.xepLoai = "C";
-              }
+              // GV chưa đánh giá → logic mặc định
+              if (updated.tongCong >= 9) updated.mucDat = "T";
+              else if (updated.tongCong >= 5) updated.mucDat = "H";
+              else updated.mucDat = "C";
             } else {
-              // 🔵 Nếu giáo viên có đánh giá → quy tắc mới
-              if (gv === "T" && updated.tongCong >= 7) {
-                updated.xepLoai = "T";
-              } else if (gv === "T" && updated.tongCong < 5) {
-                updated.xepLoai = "H";
-              } else if (gv === "C" && updated.tongCong < 7) {
-                updated.xepLoai = "C";
-              } else {
-                // ⚪ Các trường hợp khác giữ logic cơ bản
-                if (updated.tongCong >= 9) updated.xepLoai = "T";
-                else if (updated.tongCong >= 5) updated.xepLoai = "H";
-                else updated.xepLoai = "C";
-              }
+              // GV đánh giá → ưu tiên theo gv
+              updated.mucDat = gv;
             }
 
             // ✅ Cập nhật nhận xét tự động
-            updated.nhanXet = getNhanXetTuDong(updated.xepLoai);
+            updated.nhanXet = getNhanXetTuDong(updated.mucDat);
           } else {
-            // Nếu chưa nhập đủ điểm
-            updated.tongCong = "";
-            updated.xepLoai = "";
+            // Chưa nhập đủ điểm
+            updated.tongCong = null;
+            updated.mucDat = "";
             updated.nhanXet = "";
           }
         }
 
-        // ✅ Nếu chỉnh trực tiếp Xếp loại → tự động cập nhật nhận xét
-        if (field === "xepLoai") {
-          updated.nhanXet = getNhanXetTuDong(updated.xepLoai);
+        // ✅ Nếu chỉnh trực tiếp Mức đạt → tự động cập nhật nhận xét
+        if (field === "mucDat") {
+          updated.nhanXet = getNhanXetTuDong(updated.mucDat);
         }
 
         return updated;
@@ -272,7 +222,6 @@ const handleCellChange = (maDinhDanh, field, value) => {
     })
   );
 };
-
 
 
 const [snackbar, setSnackbar] = useState({
@@ -295,47 +244,44 @@ const handleSaveAll = async () => {
   const studentsMap = {};
   students.forEach(s => {
     studentsMap[s.maDinhDanh] = {
-        hoVaTen: s.hoVaTen,
-        tracNghiem: s.tracNghiem !== "" ? Number(s.tracNghiem) : null,
-        thucHanh: s.thucHanh !== "" ? Number(s.thucHanh) : null,
-        tongCong: s.tongCong !== "" ? Number(s.tongCong) : null,
-        xepLoai: s.xepLoai,
-        nhanXet: s.nhanXet,
-        dgtx: s.dgtx,
-        dgtx_gv: s.dgtx_gv || ""
+      hoVaTen: s.hoVaTen,
+      lyThuyet: s.lyThuyet !== "" ? Number(s.lyThuyet) : null,    // trước là tracNghiem
+      thucHanh: s.thucHanh !== "" ? Number(s.thucHanh) : null,
+      tongCong: s.tongCong !== "" ? Number(s.tongCong) : null,
+      mucDat: s.mucDat || "",                                        // trước là xepLoai
+      nhanXet: s.nhanXet || "",
+      dgtx: s.dgtx || "",
+      dgtx_gv: s.dgtx_gv || ""
     };
   });
-
 
   batch.set(docRef, { [classKey]: studentsMap }, { merge: true });
 
   try {
     await batch.commit();
 
+    // Cập nhật context và state
     setStudentData(prev => ({
-        ...prev,
-        [classKey]: students
+      ...prev,
+      [classKey]: students
     }));
 
     setStudentsForClass(classKey, students);
 
     setSnackbar({
-        open: true,
-        //message: `✅ Đã lưu tất cả học sinh lớp ${classKey} vào ${termDoc}`,
-        message: `✅ Lưu thành công!`,
-        severity: "success",
+      open: true,
+      message: `✅ Lưu thành công!`,
+      severity: "success",
     });
-    } catch (err) {
+  } catch (err) {
     console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
     setSnackbar({
-        open: true,
-        message: "❌ Lỗi khi lưu dữ liệu học sinh!",
-        severity: "error",
+      open: true,
+      message: "❌ Lỗi khi lưu dữ liệu học sinh!",
+      severity: "error",
     });
-    }
-
+  }
 };
-
 
  const handleDownload = async () => {
     try {
@@ -346,7 +292,7 @@ const handleSaveAll = async () => {
   };
 
 
-  const columns = ["tracNghiem", "thucHanh", "xepLoai", "nhanXet"];
+  const columns = ["lyThuyet", "thucHanh", "mucDat", "nhanXet"];
 
 const handleKeyNavigation = (e, rowIndex, col) => {
   const navigKeys = ["Enter", "ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "Tab"];
@@ -362,23 +308,24 @@ const handleKeyNavigation = (e, rowIndex, col) => {
   } else if (e.key === "ArrowUp") {
     nextRow = Math.max(0, rowIndex - 1);
   } else if (e.key === "ArrowRight" || e.key === "Tab") {
-    if (col === "tracNghiem") {
+    if (col === "lyThuyet") {
       nextCol = columns.indexOf("thucHanh");
     } else if (col === "thucHanh") {
-      nextCol = columns.indexOf("tracNghiem");
+      nextCol = columns.indexOf("lyThuyet");
       nextRow = Math.min(students.length - 1, rowIndex + 1);
     } else {
       // các cột khác: đi theo cột bình thường
       nextCol = Math.min(columns.length - 1, nextCol + 1);
     }
   } else if (e.key === "ArrowLeft") {
-    if (col === "thucHanh") nextCol = columns.indexOf("tracNghiem");
+    if (col === "thucHanh") nextCol = columns.indexOf("lyThuyet");
     else nextCol = Math.max(0, nextCol - 1);
   }
 
   const nextInput = document.getElementById(`${columns[nextCol]}-${nextRow}`);
   nextInput?.focus();
 };
+
 
 const nhanXetTheoMuc = {
     tot: [
@@ -684,7 +631,6 @@ const nhanXetTheoMuc = {
                           "& .MuiSelect-select": {
                             py: 0.5,
                             fontSize: "14px",
-                            // ❌ đã bỏ màu theo giá trị
                           },
                         }}
                         onKeyDown={(e) => {
@@ -695,11 +641,15 @@ const nhanXetTheoMuc = {
                           }
                         }}
                       >
+                        <MenuItem value="">
+                          <em>-</em>
+                        </MenuItem>
                         <MenuItem value="T">T</MenuItem>
                         <MenuItem value="H">H</MenuItem>
                         <MenuItem value="C">C</MenuItem>
                       </Select>
                     </FormControl>
+
 
 
 
@@ -709,13 +659,13 @@ const nhanXetTheoMuc = {
                   <TableCell align="center" sx={{ px: 1 }}>
                     <TextField
                       variant="standard"
-                      value={student.tracNghiem}
+                      value={student.lyThuyet || ""} // ✅ dùng lyThuyet
                       onChange={(e) =>
-                        handleCellChange(student.maDinhDanh, "tracNghiem", e.target.value)
+                        handleCellChange(student.maDinhDanh, "lyThuyet", e.target.value) // ✅ field lyThuyet
                       }
                       inputProps={{ style: { textAlign: "center", paddingLeft: 2, paddingRight: 2 } }}
-                      id={`tracNghiem-${idx}`}
-                      onKeyDown={(e) => handleKeyNavigation(e, idx, "tracNghiem")}
+                      id={`lyThuyet-${idx}`}
+                      onKeyDown={(e) => handleKeyNavigation(e, idx, "lyThuyet")}
                       InputProps={{ disableUnderline: true }}
                     />
                   </TableCell>
@@ -752,24 +702,18 @@ const nhanXetTheoMuc = {
                       }}
                     >
                       <Select
-                        value={student.xepLoai}
+                        value={student.mucDat || ""} // ✅ dùng mucDat
                         onChange={(e) =>
-                          handleCellChange(student.maDinhDanh, "xepLoai", e.target.value)
+                          handleCellChange(student.maDinhDanh, "mucDat", e.target.value) // ✅ field mucDat
                         }
                         disableUnderline
-                        sx={{
-                          textAlign: "center",
-                          px: 1,
-                          "& .MuiSelect-select": {
-                            py: 0.5,
-                            color: student.xepLoai === "C" ? "#d32f2f" : "inherit",
-                          },
-                        }}
+                        sx={{ textAlign: "center", px: 1 }}
                       >
                         <MenuItem value="T">T</MenuItem>
                         <MenuItem value="H">H</MenuItem>
                         <MenuItem value="C">C</MenuItem>
                       </Select>
+
                     </FormControl>
                   </TableCell>
 

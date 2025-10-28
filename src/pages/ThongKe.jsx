@@ -31,7 +31,138 @@ export default function ThongKe() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   
   // 🔹 Hàm chính: fetch dữ liệu thống kê
+
   const fetchThongKeData = async () => {
+  try {
+    // 1️⃣ Lấy danh sách lớp
+    const snap = await getDocs(collection(db, "DANHSACH"));
+    const classes = snap.docs
+      .map((d) => {
+        const data = d.data();
+        return data?.lop ? data.lop : d.id;
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const [aMajor, aMinor = "0"] = String(a).split(".");
+        const [bMajor, bMinor = "0"] = String(b).split(".");
+        const ai = parseInt(aMajor, 10) || 0;
+        const bi = parseInt(bMajor, 10) || 0;
+        if (ai !== bi) return ai - bi;
+        return aMinor.localeCompare(bMinor, undefined, { numeric: true });
+      });
+
+    // 2️⃣ Lấy dữ liệu bảng điểm
+    const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+    const scoreDocRef = doc(db, "BANGDIEM", termDoc);
+    const scoreSnap = await getDoc(scoreDocRef);
+    const scoreData = scoreSnap.exists() ? scoreSnap.data() : {};
+
+    // 3️⃣ Tạo thống kê cho từng lớp dựa trên mucDat
+    const dataByClass = {};
+    classes.forEach((lop) => {
+      const classKey = `${lop}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+      const classScores = scoreData[classKey] || {};
+
+      let tot = 0,    // mucDat = "T"
+          hoanThanh = 0, // mucDat = "H"
+          chuaHoanThanh = 0; // mucDat khác
+
+      Object.values(classScores).forEach((s) => {
+        const mucDat = s?.mucDat || "";
+        if (mucDat === "T") tot++;
+        else if (mucDat === "H") hoanThanh++;
+        else chuaHoanThanh++;
+      });
+
+      const tong = tot + hoanThanh + chuaHoanThanh;
+      dataByClass[lop] = {
+        tot,
+        hoanThanh,
+        chuaHoanThanh,
+        totTL: tong ? ((tot / tong) * 100).toFixed(1) : "",
+        hoanThanhTL: tong ? ((hoanThanh / tong) * 100).toFixed(1) : "",
+        chuaHoanThanhTL: tong ? ((chuaHoanThanh / tong) * 100).toFixed(1) : "",
+      };
+    });
+
+    // 4️⃣ Gom theo khối
+    const grouped = {};
+    classes.forEach((lop) => {
+      const khoi = String(lop).split(".")[0];
+      if (!grouped[khoi]) grouped[khoi] = [];
+      grouped[khoi].push(lop);
+    });
+
+    // 5️⃣ Tạo các dòng thống kê
+    const rows = [];
+    Object.keys(grouped)
+      .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))
+      .forEach((khoi) => {
+        let kTot = 0, kH = 0, kC = 0, kTong = 0;
+
+        grouped[khoi].forEach((lop) => {
+          const d = dataByClass[lop] || {};
+          kTot += d.tot || 0;
+          kH += d.hoanThanh || 0;
+          kC += d.chuaHoanThanh || 0;
+          kTong += (d.tot || 0) + (d.hoanThanh || 0) + (d.chuaHoanThanh || 0);
+
+          rows.push({
+            type: "class",
+            label: lop,
+            khoi,
+            ...d,
+          });
+        });
+
+        rows.push({
+          type: "khoi",
+          label: `KHỐI ${khoi}`,
+          khoi,
+          tot: kTot,
+          hoanThanh: kH,
+          chuaHoanThanh: kC,
+          totTL: kTong ? ((kTot / kTong) * 100).toFixed(1) : "",
+          hoanThanhTL: kTong ? ((kH / kTong) * 100).toFixed(1) : "",
+          chuaHoanThanhTL: kTong ? ((kC / kTong) * 100).toFixed(1) : "",
+        });
+      });
+
+    // 6️⃣ Tính tổng toàn trường
+    const total = rows
+      .filter((r) => r.type === "khoi")
+      .reduce(
+        (acc, r) => {
+          acc.tot += r.tot || 0;
+          acc.hoanThanh += r.hoanThanh || 0;
+          acc.chuaHoanThanh += r.chuaHoanThanh || 0;
+          return acc;
+        },
+        { tot: 0, hoanThanh: 0, chuaHoanThanh: 0 }
+      );
+    const tongAll = total.tot + total.hoanThanh + total.chuaHoanThanh;
+
+    setRowsToRender([
+      ...rows,
+      {
+        type: "truong",
+        label: "TRƯỜNG",
+        tot: total.tot,
+        hoanThanh: total.hoanThanh,
+        chuaHoanThanh: total.chuaHoanThanh,
+        totTL: tongAll ? ((total.tot / tongAll) * 100).toFixed(1) : "",
+        hoanThanhTL: tongAll ? ((total.hoanThanh / tongAll) * 100).toFixed(1) : "",
+        chuaHoanThanhTL: tongAll ? ((total.chuaHoanThanh / tongAll) * 100).toFixed(1) : "",
+      },
+    ]);
+  } catch (err) {
+    console.error("❌ Lỗi khi thống kê:", err);
+    setRowsToRender([]);
+  }
+};
+
+
+  const fetchThongKeData1 = async () => {
     try {
       // 1️⃣ Lấy danh sách lớp
       const snap = await getDocs(collection(db, "DANHSACH"));

@@ -157,6 +157,7 @@ export default function NhapdiemKTDK() {
           xepLoai: classScores[s.maDinhDanh]?.xepLoai || "",
           nhanXet: classScores[s.maDinhDanh]?.nhanXet || "",
           dgtx: classScores[s.maDinhDanh]?.dgtx || s.dgtx || "",
+          dgtx_gv: classScores[s.maDinhDanh]?.dgtx_gv || "",
         }));
       }
 
@@ -206,41 +207,61 @@ const handleCellChange = (maDinhDanh, field, value) => {
     if (isNaN(num) || num < 0 || num > 5) return; // Chỉ chấp nhận số từ 0–5
   }
 
-  setStudents(prev =>
-    prev.map(s => {
+  setStudents((prev) =>
+    prev.map((s) => {
       if (s.maDinhDanh === maDinhDanh) {
         const updated = { ...s, [field]: value };
 
-        // ✅ Nếu chỉnh Trắc nghiệm hoặc Thực hành
-        if (field === "tracNghiem" || field === "thucHanh") {
+        // ✅ Nếu chỉnh cột Trắc nghiệm / Thực hành / Giáo viên → tính lại toàn bộ
+        if (["tracNghiem", "thucHanh", "dgtx_gv"].includes(field)) {
           const tn = parseFloat(updated.tracNghiem) || 0;
           const th = parseFloat(updated.thucHanh) || 0;
 
           if (updated.tracNghiem !== "" && updated.thucHanh !== "") {
             const tong = tn + th;
-            updated.tongCong = Math.round(tong); // Làm tròn trước khi dùng
+            updated.tongCong = Math.round(tong);
 
-            // ✅ Dựa hoàn toàn vào giá trị đã làm tròn
-            if (updated.tongCong === 8 && s.dgtx === "T") {
-              updated.xepLoai = "T";
-            } else if (updated.tongCong >= 9) {
-              updated.xepLoai = "T";
-            } else if (updated.tongCong >= 5) {
-              updated.xepLoai = "H";
+            const gv = updated.dgtx_gv; // ✅ lấy đánh giá của giáo viên
+
+            // ⚙️ Quy tắc đánh giá Mức đạt
+            if (!gv) {
+              // 🟢 Nếu giáo viên chưa đánh giá → dùng cách cũ
+              if (updated.tongCong === 8 && s.dgtx === "T") {
+                updated.xepLoai = "T";
+              } else if (updated.tongCong >= 9) {
+                updated.xepLoai = "T";
+              } else if (updated.tongCong >= 5) {
+                updated.xepLoai = "H";
+              } else {
+                updated.xepLoai = "C";
+              }
             } else {
-              updated.xepLoai = "C";
+              // 🔵 Nếu giáo viên có đánh giá → quy tắc mới
+              if (gv === "T" && updated.tongCong >= 7) {
+                updated.xepLoai = "T";
+              } else if (gv === "T" && updated.tongCong < 5) {
+                updated.xepLoai = "H";
+              } else if (gv === "C" && updated.tongCong < 7) {
+                updated.xepLoai = "C";
+              } else {
+                // ⚪ Các trường hợp khác giữ logic cơ bản
+                if (updated.tongCong >= 9) updated.xepLoai = "T";
+                else if (updated.tongCong >= 5) updated.xepLoai = "H";
+                else updated.xepLoai = "C";
+              }
             }
 
             // ✅ Cập nhật nhận xét tự động
             updated.nhanXet = getNhanXetTuDong(updated.xepLoai);
           } else {
+            // Nếu chưa nhập đủ điểm
             updated.tongCong = "";
             updated.xepLoai = "";
             updated.nhanXet = "";
           }
         }
 
-        // ✅ Nếu chỉnh trực tiếp Xếp loại
+        // ✅ Nếu chỉnh trực tiếp Xếp loại → tự động cập nhật nhận xét
         if (field === "xepLoai") {
           updated.nhanXet = getNhanXetTuDong(updated.xepLoai);
         }
@@ -251,6 +272,8 @@ const handleCellChange = (maDinhDanh, field, value) => {
     })
   );
 };
+
+
 
 const [snackbar, setSnackbar] = useState({
   open: false,
@@ -277,7 +300,9 @@ const handleSaveAll = async () => {
         thucHanh: s.thucHanh !== "" ? Number(s.thucHanh) : null,
         tongCong: s.tongCong !== "" ? Number(s.tongCong) : null,
         xepLoai: s.xepLoai,
-        nhanXet: s.nhanXet
+        nhanXet: s.nhanXet,
+        dgtx: s.dgtx,
+        dgtx_gv: s.dgtx_gv || ""
     };
   });
 
@@ -613,7 +638,8 @@ const nhanXetTheoMuc = {
               <TableRow>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 50, px: 1, whiteSpace: "nowrap" }}>STT</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220, px: 1, whiteSpace: "nowrap" }}>Họ và tên</TableCell>
-                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>ĐGTX</TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>HS đánh giá</TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>GV đánh giá</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Lí thuyết</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Thực hành</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Tổng cộng</TableCell>
@@ -628,17 +654,65 @@ const nhanXetTheoMuc = {
                   <TableCell align="center" sx={{ px: 1 }}>{student.stt}</TableCell>
                   <TableCell align="left" sx={{ px: 1 }}>{student.hoVaTen}</TableCell>
 
+                  {/* 🟦 Cột Học sinh (trước là ĐGTX) */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     <Typography variant="body2" sx={{ textAlign: "center" }}>
                       {student.dgtx || ""}
                     </Typography>
                   </TableCell>
 
+                  {/* 🟩 Cột Giáo viên – nhập theo cột, dùng teacher.dgtx */}
+                  <TableCell align="center" sx={{ px: 1 }}>
+                    <FormControl
+                      variant="standard"
+                      fullWidth
+                      sx={{
+                        "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
+                        "&:hover .MuiSelect-icon": { opacity: 1 },
+                      }}
+                    >
+                      <Select
+                        value={student.dgtx_gv || ""}
+                        onChange={(e) =>
+                          handleCellChange(student.maDinhDanh, "dgtx_gv", e.target.value)
+                        }
+                        disableUnderline
+                        id={`teacher-dgtx-${idx}`}
+                        sx={{
+                          textAlign: "center",
+                          px: 1,
+                          "& .MuiSelect-select": {
+                            py: 0.5,
+                            fontSize: "14px",
+                            // ❌ đã bỏ màu theo giá trị
+                          },
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const next = document.getElementById(`teacher-dgtx-${idx + 1}`);
+                            if (next) next.focus();
+                          }
+                        }}
+                      >
+                        <MenuItem value="T">T</MenuItem>
+                        <MenuItem value="H">H</MenuItem>
+                        <MenuItem value="C">C</MenuItem>
+                      </Select>
+                    </FormControl>
+
+
+
+                  </TableCell>
+
+                  {/* 🟨 Cột Lí thuyết */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     <TextField
                       variant="standard"
                       value={student.tracNghiem}
-                      onChange={(e) => handleCellChange(student.maDinhDanh, "tracNghiem", e.target.value)}
+                      onChange={(e) =>
+                        handleCellChange(student.maDinhDanh, "tracNghiem", e.target.value)
+                      }
                       inputProps={{ style: { textAlign: "center", paddingLeft: 2, paddingRight: 2 } }}
                       id={`tracNghiem-${idx}`}
                       onKeyDown={(e) => handleKeyNavigation(e, idx, "tracNghiem")}
@@ -646,11 +720,14 @@ const nhanXetTheoMuc = {
                     />
                   </TableCell>
 
+                  {/* 🟨 Cột Thực hành */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     <TextField
                       variant="standard"
                       value={student.thucHanh}
-                      onChange={(e) => handleCellChange(student.maDinhDanh, "thucHanh", e.target.value)}
+                      onChange={(e) =>
+                        handleCellChange(student.maDinhDanh, "thucHanh", e.target.value)
+                      }
                       inputProps={{ style: { textAlign: "center", paddingLeft: 2, paddingRight: 2 } }}
                       id={`thucHanh-${idx}`}
                       onKeyDown={(e) => handleKeyNavigation(e, idx, "thucHanh")}
@@ -658,10 +735,12 @@ const nhanXetTheoMuc = {
                     />
                   </TableCell>
 
+                  {/* 🟨 Cột Tổng cộng */}
                   <TableCell align="center" sx={{ px: 1, fontWeight: "bold" }}>
                     {student.tongCong || ""}
                   </TableCell>
 
+                  {/* 🟨 Cột Mức đạt */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     <FormControl
                       variant="standard"
@@ -674,7 +753,9 @@ const nhanXetTheoMuc = {
                     >
                       <Select
                         value={student.xepLoai}
-                        onChange={(e) => handleCellChange(student.maDinhDanh, "xepLoai", e.target.value)}
+                        onChange={(e) =>
+                          handleCellChange(student.maDinhDanh, "xepLoai", e.target.value)
+                        }
                         disableUnderline
                         sx={{
                           textAlign: "center",
@@ -692,6 +773,7 @@ const nhanXetTheoMuc = {
                     </FormControl>
                   </TableCell>
 
+                  {/* 🟨 Cột Nhận xét */}
                   <TableCell align="left" sx={{ px: 1 }}>
                     <TextField
                       variant="standard"
@@ -699,7 +781,9 @@ const nhanXetTheoMuc = {
                       maxRows={4}
                       fullWidth
                       value={student.nhanXet}
-                      onChange={(e) => handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)}
+                      onChange={(e) =>
+                        handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)
+                      }
                       id={`nhanXet-${idx}`}
                       onKeyDown={(e) => handleKeyNavigation(e, idx, "nhanXet")}
                       InputProps={{
@@ -716,6 +800,7 @@ const nhanXetTheoMuc = {
                 </TableRow>
               ))}
             </TableBody>
+
           </Table>
         </TableContainer>
       </Card>

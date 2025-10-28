@@ -39,8 +39,7 @@ import { Snackbar, Alert } from "@mui/material";
 
 export default function TongHopDanhGia() {
   // --- Context ---
-  const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
-
+  const { setStudentData, classData, setClassData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
 
   // --- State ---
@@ -215,23 +214,38 @@ const handleSaveAll = async () => {
 
   const batch = writeBatch(db);
 
+  const studentsMap = {};
   students.forEach((s) => {
-    const studentData = {
+    studentsMap[s.maDinhDanh] = {
       hoVaTen: s.hoVaTen || "",
-      lyThuyet: null,    // luôn null
-      thucHanh: null,    // luôn null
-      tongCong: null,    // luôn null
-      mucDat: s.mucDat || "",
+      tracNghiem:
+        s.tracNghiem !== "" && s.tracNghiem !== undefined
+          ? Number(s.tracNghiem)
+          : null,
+      thucHanh:
+        s.thucHanh !== "" && s.thucHanh !== undefined
+          ? Number(s.thucHanh)
+          : null,
+      tongCong:
+        s.tongCong !== "" && s.tongCong !== undefined
+          ? Number(s.tongCong)
+          : null,
+      xepLoai: s.xepLoai || "",
       nhanXet: s.nhanXet || "",
-      dgtx: s.xepLoai || "",
-      dgtx_gv: s.dgtx_gv || "",
+      dgtx: s.xepLoai || "",      // vẫn giữ như cũ
+      dgtx_gv: s.dgtx_gv || "",   // ✅ thêm dòng này để lưu cột Giáo viên
     };
+  });
 
+  Object.keys(studentsMap).forEach((maHS) => {
     batch.set(
       docRef,
       {
         [classKey]: {
-          [s.maDinhDanh]: studentData,
+          [maHS]: {
+            dgtx: studentsMap[maHS].dgtx,
+            dgtx_gv: studentsMap[maHS].dgtx_gv, // ✅ ghi thêm field Giáo viên vào Firestore
+          },
         },
       },
       { merge: true }
@@ -246,6 +260,7 @@ const handleSaveAll = async () => {
       [classKey]: students,
     }));
 
+    // ✅ Hiển thị Snackbar thành công
     setSnackbar({
       open: true,
       message: `✅ Lưu thành công!`,
@@ -254,6 +269,7 @@ const handleSaveAll = async () => {
   } catch (err) {
     console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
 
+    // ❌ Hiển thị Snackbar lỗi
     setSnackbar({
       open: true,
       message: "❌ Lỗi khi lưu dữ liệu học sinh!",
@@ -261,7 +277,6 @@ const handleSaveAll = async () => {
     });
   }
 };
-
 
 
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
@@ -338,131 +353,151 @@ const handleSaveAll = async () => {
     fetchClasses();
   }, [setClassData]); // chỉ dependency là setClassData
 
+  // 🧩 Định nghĩa ngoài useEffect
   const fetchStudentsAndStatus = async () => {
-  if (!selectedClass) return;
+    if (!selectedClass) return;
 
-  try {
-    // 🔹 Kiểm tra cache trước
-    const cacheKey = isCongNghe ? `${selectedClass}_CN` : selectedClass;
-    const cachedData = studentData[cacheKey];
-    if (cachedData && cachedData.length > 0) {
-      setStudents(cachedData);
-      setLoadingMessage("✅ Đã tải dữ liệu từ bộ nhớ cache!");
-      setTimeout(() => setLoadingMessage(""), 1500);
-      return;
-    }
+    try {
+      setLoadingProgress(0);
+      setLoadingMessage(`Đang tổng hợp dữ liệu...`);
 
-    setLoadingProgress(0);
-    setLoadingMessage(`Đang tổng hợp dữ liệu...`);
-
-    // 1️⃣ Lấy dữ liệu từ DGTX
-    const classPath = isCongNghe ? `${selectedClass}_CN` : selectedClass; // lấy lớp công nghệ nếu cần
-    const tuanRef = collection(db, `DGTX/${classPath}/tuan`);
-    const snapshot = await getDocs(tuanRef);
-
-    if (snapshot.empty) {
-      setStudents([]);
-      setStudentData((prev) => ({ ...prev, [cacheKey]: [] }));
-      setLoadingMessage("");
-      return;
-    }
-
-    // Gom dữ liệu các tuần
-    const weekMap = {};
-    snapshot.forEach((docSnap) => {
-      if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
-    });
-
-    // Lấy danh sách học sinh từ tuần đầu tiên
-    const firstWeekId = Object.keys(weekMap)[0];
-    const firstWeekData = weekMap[firstWeekId] || {};
-
-    let studentList = Object.entries(firstWeekData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      hoVaTen: info.hoVaTen || "",
-      statusByWeek: {},
-      status: "",
-      dgtx_gv: "",
-      nhanXetTX: "",
-    }));
-
-    // 2️⃣ Tổng hợp dữ liệu theo tuần
-    const totalWeeks = weekTo - weekFrom + 1;
-    const weekIds = Array.from({ length: totalWeeks }, (_, i) => `tuan_${weekFrom + i}`);
-
-    for (const weekId of weekIds) {
-      const weekData = weekMap[weekId];
-      if (!weekData) continue;
-
-      for (const [maHS, value] of Object.entries(weekData)) {
-        const student = studentList.find((s) => s.maDinhDanh === maHS);
-        if (student) student.statusByWeek[weekId] = value.status || "-";
+      // 1️⃣ Lấy danh sách học sinh
+      const classDocRef = doc(db, "DANHSACH", selectedClass);
+      const classSnap = await getDoc(classDocRef);
+      if (!classSnap.exists()) {
+        setStudents([]);
+        setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
+        setLoadingMessage("");
+        return;
       }
-    }
 
-    // 3️⃣ Lấy đánh giá GV từ bảng điểm
-    const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
-    const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
-    const bangDiemRef = doc(db, "BANGDIEM", selectedTerm);
-    const bangDiemSnap = await getDoc(bangDiemRef);
-
-    if (bangDiemSnap.exists()) {
-      const bangDiemData = bangDiemSnap.data();
-      const classData = bangDiemData[classKey] || {};
-
-      studentList = studentList.map((s) => ({
-        ...s,
-        dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
-        status: classData[s.maDinhDanh]?.status || "",
+      const studentsData = classSnap.data();
+      let studentList = Object.entries(studentsData).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
+        hoVaTen: info.hoVaTen || "",
+        statusByWeek: {},
       }));
+
+      // ✅ Xác định collection
+      const collectionName = isTeacherChecked ? "DANHGIA_GV" : "DANHGIA";
+      const totalWeeks = weekTo - weekFrom + 1;
+      const weekIds = Array.from({ length: totalWeeks }, (_, i) => `tuan_${weekFrom + i}`);
+
+      // 2️⃣ Lấy dữ liệu tất cả tuần song song (chạy mượt hơn)
+      const weekResults = await Promise.allSettled(
+        weekIds.map((weekId) => getDoc(doc(db, collectionName, weekId)))
+      );
+
+      // 3️⃣ Gộp dữ liệu từng tuần
+      let completed = 0;
+      for (let i = 0; i < weekResults.length; i++) {
+        completed++;
+        const percent = Math.round((completed / totalWeeks) * 100);
+        setLoadingProgress(percent);
+        setLoadingMessage(`Đang tổng hợp dữ liệu... ${percent}%`);
+
+        const result = weekResults[i];
+        const weekId = weekIds[i];
+
+        if (result.status !== "fulfilled") {
+          console.warn(`⚠️ Không thể tải dữ liệu tuần ${weekId}`);
+          continue;
+        }
+
+        const snap = result.value;
+        if (!snap.exists()) continue;
+        const weekData = snap.data();
+
+        for (const [key, value] of Object.entries(weekData)) {
+          const isCN = key.includes("_CN.");
+          if (isCongNghe && !isCN) continue;
+          if (!isCongNghe && isCN) continue;
+
+          const classPrefix = isCongNghe ? `${selectedClass}_CN` : selectedClass;
+          if (!key.startsWith(classPrefix)) continue;
+
+          const maHS = key.split(".").pop();
+          const student = studentList.find((s) => s.maDinhDanh === maHS);
+          if (student) {
+            student.statusByWeek[weekId] = value.status || "-";
+          }
+        }
+      }
+
+      // 🟨 Thêm: Fetch dgtx_gv từ bảng điểm (BANGDIEM)
+      const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
+      const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+      const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+      const bangDiemRef = doc(db, "BANGDIEM", termDoc);
+      const bangDiemSnap = await getDoc(bangDiemRef);
+
+      if (bangDiemSnap.exists()) {
+        const bangDiemData = bangDiemSnap.data();
+        const classData = bangDiemData[classKey] || {};
+
+        studentList = studentList.map((s) => ({
+          ...s,
+          dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
+        }));
+      }
+
+
+      // 4️⃣ Sắp xếp danh sách theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+      // 5️⃣ Đánh giá & nhận xét
+      const evaluatedList = studentList.map((s) => {
+        const { xepLoai, nhanXet } = danhGiaHocSinh(s, weekFrom, weekTo);
+
+        // Nếu có dgtx_gv từ Firestore (đã được lưu ở đâu đó)
+        const gv = s.dgtx_gv || "";
+        const hs = xepLoai || "";
+
+        let chung = "";
+
+        // 🟩 TÍNH ĐÁNH GIÁ CHUNG (ĐGTX)
+        if (!gv) {
+          chung = hs; // Nếu giáo viên chưa chọn → giữ theo HS
+        } else {
+          if (hs === "T" && gv === "T") chung = "T";
+          else if (hs === "H" && gv === "T") chung = "T";
+          else if (hs === "C" && gv === "T") chung = "H";
+          else if (hs === "T" && gv === "H") chung = "H";
+          else if (hs === "H" && gv === "H") chung = "H";
+          else if (hs === "C" && gv === "H") chung = "H";
+          else if (hs === "T" && gv === "C") chung = "H";
+          else if (hs === "H" && gv === "C") chung = "C";
+          else if (hs === "C" && gv === "C") chung = "C";
+          else chung = hs;
+        }
+
+        // 🟨 Ghi giá trị ĐGTX & nhận xét
+        const dgtx = chung;
+        const nhanXetChung = getNhanXetTuDong(dgtx);
+
+        return { ...s, xepLoai, nhanXet: nhanXetChung, dgtx };
+      });
+
+
+      // 6️⃣ Hoàn tất
+      setStudentData((prev) => ({ ...prev, [selectedClass]: evaluatedList }));
+      setStudents(evaluatedList);
+
+      setLoadingProgress(100);
+      //setLoadingMessage("✅ Đã tổng hợp xong dữ liệu!");
+      setTimeout(() => setLoadingMessage(""), 1500);
+    } catch (err) {
+      console.error(`❌ Lỗi khi lấy dữ liệu lớp "${selectedClass}":`, err);
+      setStudents([]);
+      setLoadingProgress(0);
+      setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
     }
-
-    // 4️⃣ Sắp xếp học sinh theo tên
-    studentList.sort((a, b) => {
-      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-    studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
-
-    // 5️⃣ Tính mức đạt & nhận xét
-    const evaluatedList = studentList.map((s) => {
-      const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
-      const hs = xepLoai || "";
-      const gv = s.dgtx_gv || "";
-
-      let chung = "";
-      if (!gv) chung = hs;
-      else if (hs === "T" && gv === "T") chung = "T";
-      else if (hs === "H" && gv === "T") chung = "T";
-      else if (hs === "C" && gv === "T") chung = "H";
-      else if (hs === "T" && gv === "H") chung = "H";
-      else if (hs === "H" && gv === "H") chung = "H";
-      else if (hs === "C" && gv === "H") chung = "H";
-      else if (hs === "T" && gv === "C") chung = "H";
-      else if (hs === "H" && gv === "C") chung = "C";
-      else if (hs === "C" && gv === "C") chung = "C";
-      else chung = hs;
-
-      const dgtx = chung;
-      const nhanXet = getNhanXetTuDong(dgtx);
-
-      return { ...s, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
-    });
-
-    // 6️⃣ Lưu cache & cập nhật UI
-    setStudentData((prev) => ({ ...prev, [cacheKey]: evaluatedList }));
-    setStudents(evaluatedList);
-
-    setLoadingProgress(100);
-    setTimeout(() => setLoadingMessage(""), 1500);
-  } catch (err) {
-    console.error(`❌ Lỗi khi lấy dữ liệu lớp "${selectedClass}":`, err);
-    setStudents([]);
-    setLoadingProgress(0);
-    setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
-  }
-};
+  };
 
 
 useEffect(() => {
