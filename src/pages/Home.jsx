@@ -317,6 +317,54 @@ useEffect(() => {
     });
   };
 
+  useEffect(() => {
+    // 🔹 Nếu chưa có thông tin cần thiết → thoát
+    if (!expandedStudent || !selectedClass || !selectedWeek) return;
+
+    const classKey = config?.congnghe ? `${selectedClass}_CN` : selectedClass;
+    const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+
+    // 🔹 Đăng ký lắng nghe realtime
+    const unsubscribe = onSnapshot(
+      tuanRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const record = data[expandedStudent.maDinhDanh];
+
+          if (record && record.status) {
+            // 🟢 Có dữ liệu đánh giá → cập nhật UI
+            setStudentStatus((prev) => ({
+              ...prev,
+              [expandedStudent.maDinhDanh]: record.status,
+            }));
+          } else {
+            // 🔵 Không có đánh giá → xóa trạng thái cũ nếu có
+            setStudentStatus((prev) => {
+              const updated = { ...prev };
+              delete updated[expandedStudent.maDinhDanh];
+              return updated;
+            });
+          }
+        } else {
+          // Document chưa tồn tại → không có đánh giá nào
+          setStudentStatus((prev) => {
+            const updated = { ...prev };
+            delete updated[expandedStudent.maDinhDanh];
+            return updated;
+          });
+        }
+      },
+      (error) => {
+        console.error("❌ Lỗi khi lắng nghe đánh giá realtime:", error);
+      }
+    );
+
+    // 🔹 Khi đóng dialog → hủy lắng nghe
+    return () => unsubscribe();
+  }, [expandedStudent, selectedClass, selectedWeek, config?.congnghe]);
+
+
   const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },
     "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },       // tím, chữ trắng

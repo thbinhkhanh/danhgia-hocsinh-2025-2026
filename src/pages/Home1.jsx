@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useContext } from "react";
 import { 
-  Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack 
+  Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, 
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
 } from "@mui/material";
 //import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { db } from "../firebase";
@@ -8,9 +12,8 @@ import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
 import { onSnapshot } from "firebase/firestore";
-
 import { deleteField } from "firebase/firestore";
-
+import CloseIcon from "@mui/icons-material/Close";
 
 
 export default function Home() {
@@ -196,46 +199,108 @@ useEffect(() => {
     setExpandedStudent(expandedStudent === maDinhDanh ? null : maDinhDanh);
   };
 
-    const saveStudentStatus = async (studentId, hoVaTen, status) => {
-  if (!selectedWeek || !selectedClass) return;
+  const saveStudentStatus = async (studentId, hoVaTen, status) => {
+    if (!selectedWeek || !selectedClass) return;
 
-  // ✅ Kiểm tra config.congnghe
-  //console.log("🔍 saveStudentStatus() gọi với:");
-  //console.log("   - selectedClass:", selectedClass);
-  //console.log("   - config.congnghe:", config?.congnghe);
-  //console.log("   - selectedWeek:", selectedWeek);
+    try {
+      // 🔹 Nếu là lớp công nghệ, thêm hậu tố "_CN"
+      const classKey = config?.congnghe ? `${selectedClass}_CN` : selectedClass;
 
-  // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
-  const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
-  //console.log("👉 classKey được sử dụng:", classKey);
+      // 🔹 Đường dẫn tài liệu Firestore cho tuần hiện tại
+      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-  const docRef = doc(db, "DANHGIA", `tuan_${selectedWeek}`);
+      // 🔹 Ghi trực tiếp vào field con của học sinh
+      await updateDoc(tuanRef, {
+        [`${studentId}.hoVaTen`]: hoVaTen,
+        [`${studentId}.status`]: status,
+      }).catch(async (err) => {
+        if (err.code === "not-found") {
+          // 🔹 Nếu document chưa tồn tại → tạo mới
+          await setDoc(tuanRef, {
+            [studentId]: { hoVaTen, status },
+          });
+        } else {
+          throw err;
+        }
+      });
 
-  try {
-    const docSnap = await getDoc(docRef);
-    const data = docSnap.exists() ? docSnap.data() : {};
+      console.log(`✅ ${studentId}: ${hoVaTen} (${status}) đã lưu thành công`);
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu trạng thái học sinh:", err);
+    }
+  };
 
-    // ⚠️ dùng classKey ở đây thay vì selectedClass
-    const classData = data[classKey] || {};
+  {/*const saveStudentStatusOK = async (studentId, hoVaTen, status) => {
+    if (!selectedWeek || !selectedClass) return;
 
-    // Ghi hoVaTen + status
-    classData[studentId] = { hoVaTen, status };
+    try {
+      // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
+      const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
 
-    //await setDoc(docRef, { ...data, [classKey]: classData });
-    await setDoc(
-      docRef,
-      { [`${classKey}.${studentId}`]: { hoVaTen, status } },
-      { merge: true }
-    );
+      // 🔹 Tham chiếu tới DGTX / [lop] / tuan / [tuan_x]
+      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-    //console.log(
-    //  `✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`
-    //);
-  } catch (err) {
-    console.error("❌ Lỗi lưu trạng thái học sinh:", err);
-  }
-};
+      // 🔹 Lấy dữ liệu hiện có (nếu cần)
+      const docSnap = await getDoc(tuanRef);
+      const existingData = docSnap.exists() ? docSnap.data() : {};
 
+      // 🔹 Cập nhật dữ liệu học sinh
+      const updatedData = {
+        ...existingData,
+        [studentId]: { hoVaTen, status },
+      };
+
+      // 🔹 Lưu vào Firestore
+      await setDoc(tuanRef, updatedData, { merge: true });
+
+      console.log(
+        `✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`
+      );
+    } catch (err) {
+      console.error("❌ Lỗi lưu trạng thái học sinh vào DGTX:", err);
+    }
+  };*/}
+
+
+  const saveStudentStatus1 = async (studentId, hoVaTen, status) => {
+    if (!selectedWeek || !selectedClass) return;
+
+    // ✅ Kiểm tra config.congnghe
+    //console.log("🔍 saveStudentStatus() gọi với:");
+    //console.log("   - selectedClass:", selectedClass);
+    //console.log("   - config.congnghe:", config?.congnghe);
+    //console.log("   - selectedWeek:", selectedWeek);
+
+    // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
+    const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
+    //console.log("👉 classKey được sử dụng:", classKey);
+
+    const docRef = doc(db, "DANHGIA", `tuan_${selectedWeek}`);
+
+    try {
+      const docSnap = await getDoc(docRef);
+      const data = docSnap.exists() ? docSnap.data() : {};
+
+      // ⚠️ dùng classKey ở đây thay vì selectedClass
+      const classData = data[classKey] || {};
+
+      // Ghi hoVaTen + status
+      classData[studentId] = { hoVaTen, status };
+
+      //await setDoc(docRef, { ...data, [classKey]: classData });
+      await setDoc(
+        docRef,
+        { [`${classKey}.${studentId}`]: { hoVaTen, status } },
+        { merge: true }
+      );
+
+      //console.log(
+      //  `✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`
+      //);
+    } catch (err) {
+      console.error("❌ Lỗi lưu trạng thái học sinh:", err);
+    }
+  };
 
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
     setStudentStatus((prev) => {
@@ -252,54 +317,53 @@ useEffect(() => {
     });
   };
 
+  useEffect(() => {
+    // 🔹 Nếu chưa có thông tin cần thiết → thoát
+    if (!expandedStudent || !selectedClass || !selectedWeek) return;
 
-  // 🧹 Xóa hậu tố "_CN" trong tất cả key của tuần hiện tại
-  const removeCNKeys = async () => {
-    const weekKey = "tuan_6"; // cố định
-    const docRef = doc(db, "DANHGIA", weekKey);
+    const classKey = config?.congnghe ? `${selectedClass}_CN` : selectedClass;
+    const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-    try {
-      const snap = await getDoc(docRef);
-      if (!snap.exists()) {
-        alert(`⚠️ Không tìm thấy ${weekKey} trong Firestore`);
-        return;
-      }
+    // 🔹 Đăng ký lắng nghe realtime
+    const unsubscribe = onSnapshot(
+      tuanRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const record = data[expandedStudent.maDinhDanh];
 
-      const data = snap.data();
-      const updatedData = {};
-      const keysToDelete = {};
-
-      // Duyệt qua tất cả key lớp trong tuan_1
-      for (const [classKey, classValue] of Object.entries(data)) {
-        // Chỉ xử lý các lớp 4.x có hậu tố _CN
-        if (classKey.startsWith("4.1") && classKey.includes("_CN")) {
-          const newKey = classKey.replace("_CN", "");
-
-          // Gộp dữ liệu nếu key mới đã có
-          updatedData[newKey] = { ...(data[newKey] || {}), ...classValue };
-
-          // Đánh dấu key cũ để xóa
-          keysToDelete[classKey] = deleteField();
+          if (record && record.status) {
+            // 🟢 Có dữ liệu đánh giá → cập nhật UI
+            setStudentStatus((prev) => ({
+              ...prev,
+              [expandedStudent.maDinhDanh]: record.status,
+            }));
+          } else {
+            // 🔵 Không có đánh giá → xóa trạng thái cũ nếu có
+            setStudentStatus((prev) => {
+              const updated = { ...prev };
+              delete updated[expandedStudent.maDinhDanh];
+              return updated;
+            });
+          }
+        } else {
+          // Document chưa tồn tại → không có đánh giá nào
+          setStudentStatus((prev) => {
+            const updated = { ...prev };
+            delete updated[expandedStudent.maDinhDanh];
+            return updated;
+          });
         }
+      },
+      (error) => {
+        console.error("❌ Lỗi khi lắng nghe đánh giá realtime:", error);
       }
+    );
 
-      if (Object.keys(updatedData).length === 0) {
-        alert(`⚠️ Không tìm thấy key nào của lớp 4 có "_CN" trong ${weekKey}`);
-        return;
-      }
+    // 🔹 Khi đóng dialog → hủy lắng nghe
+    return () => unsubscribe();
+  }, [expandedStudent, selectedClass, selectedWeek, config?.congnghe]);
 
-      // Ghi dữ liệu mới (merge key không có _CN)
-      await setDoc(docRef, updatedData, { merge: true });
-
-      // Xóa key cũ có _CN
-      await setDoc(docRef, keysToDelete, { merge: true });
-
-      alert(`✅ Đã chuyển và xóa các key *_CN trong ${weekKey}`);
-    } catch (err) {
-      console.error("❌ Lỗi khi cập nhật Firestore:", err);
-      alert("❌ Lỗi khi xóa hậu tố _CN. Kiểm tra console để xem chi tiết.");
-    }
-  };
 
   const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },
@@ -308,222 +372,207 @@ useEffect(() => {
   };
 
   return (
-    <Box
+  <Box
+    sx={{
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
+      pt: 3,
+      px: 3,
+    }}
+  >
+    <Paper
+      elevation={6}
       sx={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",      // căn giữa ngang
-        background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
-        pt: 3,                     // khoảng cách từ trên
-        px: 3,
+        p: 4,
+        borderRadius: 3,
+        width: "100%",
+        maxWidth: 1300,
+        bgcolor: "white",
       }}
     >
-      {/* Card lớn chứa toàn bộ */}
-      <Paper
-        elevation={6}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          width: "100%",
-          maxWidth: 1300,
-          bgcolor: "white",
-        }}
-      >
-        {/* Tiêu đề phía trên dropdown */}
-        <Box sx={{ textAlign: "center", mb: 4 }}>
-          <Typography
-            variant="h5"
-            fontWeight="bold"
-            sx={{
-              color: "#1976d2",
-              borderBottom: "3px solid #1976d2", // đường gạch ngang màu xanh
-              display: "inline-block",           // đường gạch ngang bằng width nội dung
-              pb: 1,                             // khoảng cách giữa chữ và gạch
-            }}
-          >
-            {selectedClass
-              ? `DANH SÁCH LỚP ${selectedClass}`
-              : "DANH SÁCH HỌC SINH"}
-          </Typography>
-        </Box>
-        
-        {/* Nút XÓA _CN */}
-        {/*<Box sx={{ textAlign: "center", mb: 2 }}>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={removeCNKeys}
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              textTransform: "none",
-              fontWeight: "bold",
-            }}
-          >
-            🧹 Xóa _CN trong tuần {selectedWeek}
-          </Button>
-        </Box>*/}
-
-
-        {/* Nhãn và dropdown */}
-        {/*<Box
+      <Box sx={{ textAlign: "center", mb: 4 }}>
+        <Typography
+          variant="h5"
+          fontWeight="bold"
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",  // căn giữa ngang
-            gap: 2,
-            mb: 4,
+            color: "#1976d2",
+            borderBottom: "3px solid #1976d2",
+            display: "inline-block",
+            pb: 1,
           }}
         >
-          <Typography
-            variant="body1"
-            fontWeight={500}
-            color="text.primary"
-            sx={{ whiteSpace: "nowrap" }}
-          >
-            Lớp:
-          </Typography>
+          {selectedClass ? `DANH SÁCH LỚP ${selectedClass}` : "DANH SÁCH HỌC SINH"}
+        </Typography>
+      </Box>
 
-          <Select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            size="small"
+      {/* Danh sách học sinh */}
+      <Grid container spacing={2} justifyContent="center">
+        {columns.map((col, colIdx) => (
+          <Grid item key={colIdx}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {col.map((student) => {
+                const status = studentStatus[student.maDinhDanh];
+                const colors = status
+                  ? statusColors[status]
+                  : { bg: "white", text: "inherit" };
+
+                return (
+                  <Paper
+                    key={student.maDinhDanh}
+                    elevation={3}
+                    sx={{
+                      minWidth: 120,
+                      width: { xs: "75vw", sm: "auto" },
+                      p: 2,
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      bgcolor: "#ffffff", // luôn nền trắng
+                      color: "inherit", // giữ màu chữ mặc định
+                      transition: "0.2s",
+                      boxShadow: 1,
+                      "&:hover": {
+                        transform: "scale(1.03)", // phóng to nhẹ khi hover
+                        boxShadow: 4,
+                        bgcolor: "#f5f5f5", // đổi nhẹ màu nền khi hover
+                      },
+                    }}
+                    onClick={() => {
+                      setExpandedStudent(student); // dùng để hiển thị modal
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight="medium">
+                      {student.stt}. {student.hoVaTen}
+                    </Typography>
+                  </Paper>
+                );
+
+              })}
+            </Box>
+          </Grid>
+        ))}
+      </Grid>
+    </Paper>
+
+    {/* 🔹 Dialog hiển thị khi chọn học sinh */}
+    <Dialog
+      open={Boolean(expandedStudent)}
+      onClose={(event, reason) => {
+        if (reason !== "backdropClick") {
+          setExpandedStudent(null);
+        }
+      }}
+      maxWidth="xs"
+      fullWidth
+    >
+
+      {expandedStudent && (
+        <>
+          <DialogTitle
             sx={{
-              width: 80,
-              height: 40,
-              borderRadius: 2,
-              bgcolor: "transparent",     // bỏ nền xám
-              "& .MuiSelect-select": {
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                px: 1,
-              },
-              "&:hover": { bgcolor: "#e0e0e0" }, // chỉ nền hover
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              bgcolor: "#e3f2fd",
+              flexWrap: "wrap",
+              py: 1.5,
             }}
           >
-            {classes.map((cls) => (
-              <MenuItem
-                key={cls}
-                value={cls}
+            <Box>
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                sx={{ color: "#1976d2", fontSize: "1.05rem" }}
+              >
+                {expandedStudent.hoVaTen.toUpperCase()}
+              </Typography>
+
+              {/*<Typography
+                variant="body2"
                 sx={{
-                  fontSize: 14,
-                  minHeight: 40,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  fontWeight: "bold", // in đậm mã định danh
+                  color: "text.secondary",
                 }}
               >
-                {cls}
-              </MenuItem>
-            ))}
-          </Select>
-        </Box>*/}
+                Mã định danh: {expandedStudent.maDinhDanh}
+              </Typography>*/}
+            </Box>
 
-        {/* Grid học sinh */}
-        <Grid container spacing={2} justifyContent="center">
-          {columns.map((col, colIdx) => (
-            <Grid item key={colIdx}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {col.map((student) => {
-                  const isExpanded = expandedStudent === student.maDinhDanh;
-                  const status = studentStatus[student.maDinhDanh];
-                  const colors = status ? statusColors[status] : { bg: "white", text: "inherit" };
+            <IconButton
+              onClick={() => setExpandedStudent(null)}
+              sx={{
+                color: "#f44336", // đỏ
+                "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
 
-                  return (
-                    <Box key={student.maDinhDanh} sx={{ position: "relative" }}>
-                      {/* Thẻ học sinh */}
-                      <Paper
-                        elevation={3}
-                        sx={{
-                          minWidth: 120,
-                          width: { xs: "75vw", sm: "auto" }, // 📱 chỉ trên điện thoại: rộng 75% màn hình
-                          p: 2,
-                          borderRadius: 2,
-                          cursor: "pointer",
-                          transition: "all 0.3s",
-                          textAlign: "left",
-                          bgcolor: !isExpanded ? (status ? colors.bg : "white") : "white",
-                          color: status ? colors.text : "black",
-                          "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: 4,
-                            bgcolor: !status ? "#e3f2fd" : undefined,
-                          },
-                        }}
+          <DialogContent sx={{ mt: 1 }}>
+            <Stack spacing={1}>
+              {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map((s) => {
+                const isSelected = studentStatus[expandedStudent.maDinhDanh] === s;
+                return (
+                  <Button
+                    key={s}
+                    variant={isSelected ? "contained" : "outlined"}
+                    color={
+                      s === "Hoàn thành tốt"
+                        ? "primary"
+                        : s === "Hoàn thành"
+                        ? "secondary"
+                        : "warning"
+                    }
+                    onClick={() =>
+                      handleStatusChange(
+                        expandedStudent.maDinhDanh,
+                        expandedStudent.hoVaTen,
+                        s
+                      )
+                    }
+                  >
+                    {isSelected ? `✓ ${s}` : s}
+                  </Button>
+                );
+              })}
 
-                        onClick={() => toggleExpand(student.maDinhDanh)}
-                        onMouseEnter={() => setExpandedStudent(null)} // <-- ẩn overlay khi hover vào học sinh khác
-                      >
-                        <Typography variant="subtitle2" fontWeight="medium">
-                          {student.stt}. {student.hoVaTen}
-                        </Typography>
-                      </Paper>
-                      {/* Overlay đánh giá */}
-                      {isExpanded && (
-                        <Box
-                          sx={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            p: 2,
-                            borderRadius: 2,
-                            bgcolor: "#e0e0e0", // nền xám toàn vùng mở rộng
-                            color: "black",
-                            zIndex: 10,
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              //bgcolor: "white", // nền trắng bao quanh các mức đánh giá
-                              bgcolor: "#e3f2fd",
-                              borderRadius: 2,
-                              boxShadow: 3,
-                              p: 2,
-                              border: "2px solid #2196f3", // viền xanh xung quanh vùng trắng
-                            }}
-                          >
-                            <Stack spacing={1}>
-                              {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành" ].map((s) => (
-                                <Button
-                                  key={s}
-                                  size="small"
-                                  sx={{
-                                    bgcolor: status === s ? "#e0e0e0" : "#f9f9f9",
-                                    color: "black",
-                                    borderRadius: 1,
-                                    textTransform: "none",
-                                    justifyContent: "flex-start",
-                                    fontSize: 15,
-                                    border: "1px solid",
-                                    borderColor: status === s ? "#bdbdbd" : "#ccc",
-                                    width: "100%",
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(student.maDinhDanh, student.hoVaTen, s);
-                                    setExpandedStudent(null);
-                                  }}
-                                >
-                                  {status === s ? "✅ " : ""}
-                                  {s}
-                                </Button>
-                              ))}
-                            </Stack>
-                          </Box>
-                        </Box>
-                      )}
-                    </Box>
-                  );
-                })}
-
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
-    </Box>
-  );
+              {/* 🔹 Nút hủy đánh giá */}
+              {studentStatus[expandedStudent.maDinhDanh] && (
+                <Box sx={{ mt: 5, textAlign: "center" }}>
+                  <Button
+                    onClick={() =>
+                      handleStatusChange(
+                        expandedStudent.maDinhDanh,
+                        expandedStudent.hoVaTen,
+                        ""
+                      )
+                    }
+                    sx={{
+                      width: 160,
+                      px: 2,
+                      bgcolor: "#4caf50",
+                      color: "#ffffff",
+                      borderRadius: 1,
+                      textTransform: "none",
+                      fontWeight: "bold",
+                      "&:hover": {
+                        bgcolor: "#388e3c",
+                      },
+                    }}
+                  >
+                    HỦY ĐÁNH GIÁ
+                  </Button>
+                </Box>
+              )}
+            </Stack>
+          </DialogContent>
+        </>
+      )}
+    </Dialog>
+  </Box>
+);
 }
