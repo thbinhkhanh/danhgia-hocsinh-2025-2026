@@ -1,325 +1,172 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, Checkbox, FormControlLabel, InputLabel, FormControl } from "@mui/material";
-//import { doc, getDoc, getDocs, collection } from "firebase/firestore";
+import {
+  Box,
+  Typography,
+  MenuItem,
+  Select,
+  Grid,
+  Paper,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
-import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
-import { onSnapshot } from "firebase/firestore";
-
+import { doc, getDoc, getDocs, collection, setDoc, onSnapshot } from "firebase/firestore";
 
 export default function GiaoVien() {
-  // 🔹 Lấy context
-  const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
-  
+  // 🔹 Context
+  const { studentData, setStudentData, setClassData } = useContext(StudentContext);
+  const { config, setConfig } = useContext(ConfigContext);
 
   // 🔹 Local state
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
-  const [expandedStudent, setExpandedStudent] = useState(null);
   const [studentStatus, setStudentStatus] = useState({});
-
-  const { config, setConfig } = useContext(ConfigContext);
   const [selectedWeek, setSelectedWeek] = useState(1);
-  const [systemLocked, setSystemLocked] = useState(false);
   const [isCongNghe, setIsCongNghe] = useState(false);
-  
+
+  // 🔹 Lắng nghe CONFIG realtime
   useEffect(() => {
-    //console.log("🌀 useEffect initConfig chạy lại (mount)");
-
     const docRef = doc(db, "CONFIG", "config");
-
-    // 👂 Lắng nghe realtime Firestore
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      //console.log("📡 Firestore gửi cập nhật mới...");
-
       if (docSnap.exists()) {
         const data = docSnap.data();
+        setSelectedWeek(data.tuan || 1);
+        setSelectedClass(data.lop || "");
+        setIsCongNghe(data.congnghe === true);
+        setConfig((prev) => ({ ...prev, ...data }));
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
-        const tuan = data.tuan || 1;
-        const hethong = data.hethong ?? false;
-        const lopConfig = data.lop || "";
-        const congnghe = data.congnghe === true;
-        const giaovien = data.giaovien === true;
+  // 🔹 Lấy danh sách lớp
+  useEffect(() => {
+    const fetchClasses = async () => {
+      const snapshot = await getDocs(collection(db, "DANHSACH"));
+      const classList = snapshot.docs.map((d) => d.id);
+      setClasses(classList);
+      setClassData(classList);
+      if (classList.length > 0 && !selectedClass) {
+        setSelectedClass(config.lop || classList[0]);
+      }
+    };
+    fetchClasses();
+  }, [config.lop]);
 
-        // Log rõ từng giá trị
-        //console.log("🔍 Firestore config raw:", data);
-        //console.log(`🔸 tuan: ${tuan}, hethong: ${hethong}, lop: ${lopConfig}, congnghe: ${congnghe}, giaovien: ${giaovien}`);
-
-        // Cập nhật local state
-        setSelectedWeek(tuan);
-        setSystemLocked(hethong === false);
-        setSelectedClass(lopConfig);
-
-        // Cập nhật context
-        setConfig((prev) => ({
-        ...prev,
-        tuan,
-        hethong,
-        lop: lopConfig,
-        congnghe,
-        giaovien,
-      }));
-
+  // 🔹 Lấy danh sách học sinh của lớp
+  useEffect(() => {
+    if (!selectedClass) return;
+    const cached = studentData[selectedClass];
+    if (cached?.length > 0) {
+      setStudents(cached);
+      return;
+    }
+    const fetchStudents = async () => {
+      const ref = doc(db, "DANHSACH", selectedClass);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        const list = Object.entries(data)
+          .map(([id, info]) => ({ maDinhDanh: id, hoVaTen: info.hoVaTen }))
+          .sort((a, b) =>
+            a.hoVaTen.split(" ").slice(-1)[0].localeCompare(b.hoVaTen.split(" ").slice(-1)[0])
+          )
+          .map((s, i) => ({ ...s, stt: i + 1 }));
+        setStudents(list);
+        setStudentData((prev) => ({ ...prev, [selectedClass]: list }));
       } else {
-        console.warn("⚠️ Không tìm thấy tài liệu CONFIG/config trong Firestore!");
+        setStudents([]);
+      }
+    };
+    fetchStudents();
+  }, [selectedClass]);
+
+  // 🔹 Lắng nghe realtime trạng thái đánh giá từ HS
+  useEffect(() => {
+    if (!selectedClass || !selectedWeek) return;
+    const classKey = isCongNghe ? `${selectedClass}_CN` : selectedClass;
+    const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${selectedWeek}`);
+
+    const unsubscribe = onSnapshot(tuanRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const updated = {};
+        Object.entries(data).forEach(([id, info]) => {
+          updated[id] = info.status || "";
+        });
+        setStudentStatus(updated);
+      } else {
+        setStudentStatus({});
       }
     });
 
-    // 🧹 Cleanup listener khi component unmount
-    return () => {
-      //console.log("🧹 Gỡ bỏ listener Firestore CONFIG/config");
-      unsubscribe();
-    };
-  }, []); // ✅ chỉ setup listener 1 lần
+    return () => unsubscribe();
+  }, [selectedClass, selectedWeek, isCongNghe]);
 
-  // 🔹 Lấy danh sách lớp (ưu tiên lớp từ config, fallback cache, fallback lớp đầu tiên)
-useEffect(() => {
-  const fetchClasses = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, "DANHSACH"));
-      const classList = snapshot.docs.map((doc) => doc.id);
-
-      // Lưu vào context và local state
-      setClassData(classList);
-      setClasses(classList);
-
-      // ✅ Chọn lớp từ config trước, nếu không có mới dùng lớp đầu tiên
-      if (classList.length > 0) {
-        setSelectedClass((prev) => prev || config.lop || classList[0]);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi khi lấy danh sách lớp:", err);
-      setClasses([]);
-      setClassData([]);
-    }
+  // 🔹 Bảng màu
+  const statusColors = {
+    "Hoàn thành tốt": "#C8E6C9", // xanh nhạt
+    "Hoàn thành": "#FFF9C4", // vàng nhạt
+    "Chưa hoàn thành": "#FFCDD2", // đỏ nhạt
+    "": "#FFFFFF", // mặc định
   };
 
-  fetchClasses();
-}, [config.lop]); // Chạy lại nếu config.lop thay đổi
-
-
-// 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
-useEffect(() => {
-  if (!selectedClass) return;
-
-  const cached = studentData[selectedClass];
-  if (cached && cached.length > 0) {
-    // 🟢 Dùng cache nếu có
-    //console.log(`📦 Dữ liệu học sinh lớp "${selectedClass}" lấy từ context:`, cached);
-    setStudents(cached);
-    return;
-  }
-
-  // 🔵 Nếu chưa có trong context thì tải từ Firestore
-  const fetchStudents = async () => {
-    try {
-      //console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
-      const classDocRef = doc(db, "DANHSACH", selectedClass);
-      const classSnap = await getDoc(classDocRef);
-      if (classSnap.exists()) {
-        const data = classSnap.data();
-        let studentList = Object.entries(data).map(([maDinhDanh, info]) => ({
-          maDinhDanh,
-          hoVaTen: info.hoVaTen,
-        }));
-
-        // Sắp xếp theo tên
-        studentList.sort((a, b) => {
-          const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-          const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
-
-        studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
-
-        //console.log(`✅ Đã tải học sinh lớp "${selectedClass}" từ Firestore:`, studentList);
-
-        // ⬇️ Lưu vào context và state
-        setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
-        setStudents(studentList);
-      } else {
-        console.warn(`⚠️ Không tìm thấy dữ liệu lớp "${selectedClass}" trong Firestore.`);
-        setStudents([]);
-        setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
-      }
-    } catch (err) {
-      console.error(`❌ Lỗi khi lấy học sinh lớp "${selectedClass}":`, err);
-      setStudents([]);
-    }
-  };
-
-  fetchStudents();
-}, [selectedClass, studentData, setStudentData]);
-
-
-  // 🔹 Cột hiển thị
+  // 🔹 Hàm chia cột hiển thị
   const getColumns = () => {
     const cols = [[], [], [], [], []];
-    students.forEach((student, idx) => {
-      const colIndex = Math.floor(idx / 7) % 5;
-      cols[colIndex].push(student);
+    students.forEach((s, i) => {
+      cols[Math.floor(i / 7) % 5].push(s);
     });
     return cols;
   };
 
   const columns = getColumns();
 
-  const toggleExpand = (maDinhDanh) => {
-    setExpandedStudent(expandedStudent === maDinhDanh ? null : maDinhDanh);
+  // 🔹 Hàm đổi lớp / tuần / môn
+  const handleClassChange = async (e) => {
+    const newClass = e.target.value;
+    setSelectedClass(newClass);
+    await setDoc(doc(db, "CONFIG", "config"), { lop: newClass }, { merge: true });
   };
 
-  const saveStudentStatus = async (studentId, hoVaTen, status) => {
-    if (!selectedWeek || !selectedClass) return;
-
-    // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
-    const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
-
-    //console.log("🔍 saveStudentStatus() gọi với:");
-    //console.log("   - selectedClass:", selectedClass);
-    //console.log("   - classKey:", classKey);
-    //console.log("   - config.congnghe:", config?.congnghe);
-    //console.log("   - selectedWeek:", selectedWeek);
-
-    const docRef = doc(db, "DANHGIA_GV", `tuan_${selectedWeek}`);
-
-    try {
-      const docSnap = await getDoc(docRef);
-      const data = docSnap.exists() ? docSnap.data() : {};
-      const classData = data[classKey] || {}; // ✅ dùng classKey thay vì selectedClass
-
-      // Ghi hoVaTen + status
-      classData[studentId] = { hoVaTen, status };
-
-      //await setDoc(docRef, { ...data, [classKey]: classData }); // ✅ dùng classKey
-      await setDoc(
-        docRef,
-        { [`${classKey}.${studentId}`]: { hoVaTen, status } },
-        { merge: true }
-      );
-      //console.log(`✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`);
-    } catch (err) {
-      console.error("❌ Lỗi lưu trạng thái học sinh:", err);
-    }
+  const handleWeekChange = async (e) => {
+    const newWeek = Number(e.target.value);
+    setSelectedWeek(newWeek);
+    await setDoc(doc(db, "CONFIG", "config"), { tuan: newWeek }, { merge: true });
   };
 
-
-  const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
-    setStudentStatus((prev) => {
-      const updated = { ...prev };
-
-      // Nếu chọn lại trạng thái đã chọn, hủy đánh giá
-      const newStatus = prev[maDinhDanh] === status ? "" : status;
-      updated[maDinhDanh] = newStatus;
-
-      // 🔹 Lưu vào Firestore ngay
-      saveStudentStatus(maDinhDanh, hoVaTen, newStatus);
-
-      return updated;
-    });
-  };
-
-  // Khi config thay đổi → đồng bộ lại checkbox
-useEffect(() => {
-  setIsCongNghe(config?.congnghe === true);
-}, [config?.congnghe]);
-
-// ✅ Hàm toggle checkbox (bật/tắt công nghệ)
-const handleCongNgheToggle = async (e) => {
-  const newValue = e.target.checked;
-  setIsCongNghe(newValue);
-
-  try {
-    const docRef = doc(db, "CONFIG", "config");
-    await setDoc(docRef, { congnghe: newValue }, { merge: true }); // Lưu Firestore
-    setConfig((prev) => ({ ...prev, congnghe: newValue })); // Cập nhật context
-    //console.log(`⚙️ Cập nhật Công nghệ: ${newValue}`);
-  } catch (err) {
-    console.error("❌ Lỗi cập nhật Công nghệ:", err);
-  }
-};
-
-const handleCongNgheChange = async (e) => {
-  const newCongNghe = e.target.checked;
-  setIsCongNghe(newCongNghe);
-
-  try {
-    const docRef = doc(db, "CONFIG", "config");
-    await setDoc(docRef, { congnghe: newCongNghe }, { merge: true });
-
-    // ✅ Cập nhật context
-    setConfig((prev) => ({
-      ...prev,
-      congnghe: newCongNghe,
-    }));
-
-    //console.log("✅ Đã cập nhật trạng thái Công nghệ:", newCongNghe);
-  } catch (err) {
-    console.error("❌ Lỗi cập nhật Công nghệ:", err);
-  }
-};
-
-// ✅ Hàm thay đổi lớp: cập nhật state, context và Firestore
-const handleClassChange = async (e) => {
-  const newClass = e.target.value;
-  setSelectedClass(newClass);
-
-  try {
-    const docRef = doc(db, "CONFIG", "config");
-    await setDoc(docRef, { lop: newClass }, { merge: true }); // lưu vào field 'lop'
-    setConfig(prev => ({ ...prev, lop: newClass })); // cập nhật context
-  } catch (err) {
-    console.error("❌ Lỗi cập nhật lớp:", err);
-  }
-};
-
-
-  const statusColors = {
-    "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff" }, // cam, chữ trắng
-    "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },       // tím, chữ trắng
-    "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },
+  const handleMonChange = async (e) => {
+    const isCN = e.target.value === "congnghe";
+    setIsCongNghe(isCN);
+    await setDoc(doc(db, "CONFIG", "config"), { congnghe: isCN }, { merge: true });
   };
 
   return (
     <Box
-        sx={{
+      sx={{
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",      // căn giữa ngang
+        alignItems: "center",
         background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
-        pt: 3,                     // khoảng cách từ trên
+        pt: 3,
         px: 3,
-        }}
+      }}
     >
-        {/* Card lớn chứa toàn bộ */}
-        <Paper
+      <Paper
         elevation={6}
-        sx={{
-            p: 4,
-            borderRadius: 3,
-            width: "100%",
-            maxWidth: 1300,
-            bgcolor: "white",
-        }}
-        >
-        {/* Tiêu đề phía trên dropdown */}
+        sx={{ p: 4, borderRadius: 3, width: "100%", maxWidth: 1300, bgcolor: "white" }}
+      >
         <Box sx={{ textAlign: "center", mb: 1 }}>
-            <Typography
-                variant="h5"
-                fontWeight="bold"
-                sx={{
-                color: "#1976d2",
-                display: "inline-block",
-                pb: 1,
-                }}
-            >
-                ĐÁNH GIÁ HỌC SINH
-            </Typography>
+          <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2", pb: 1 }}>
+            ĐÁNH GIÁ HỌC SINH (CHẾ ĐỘ XEM)
+          </Typography>
         </Box>
 
-        {/* Nhãn và dropdown */}
+        {/* Bộ chọn Lớp / Môn / Tuần */}
         <Box
           sx={{
             display: "flex",
@@ -331,25 +178,7 @@ const handleClassChange = async (e) => {
         >
           <FormControl size="small" sx={{ minWidth: 80 }}>
             <InputLabel id="lop-label">Lớp</InputLabel>
-            <Select
-              labelId="lop-label"
-              value={selectedClass}
-              onChange={handleClassChange}
-              label="Lớp"
-              size="small"
-              sx={{
-                height: 40,
-                borderRadius: 1,
-                bgcolor: "transparent",
-                "& .MuiSelect-select": {
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  px: 1,
-                },
-                "&:hover": { bgcolor: "#e0e0e0" },
-              }}
-            >
+            <Select labelId="lop-label" value={selectedClass} onChange={handleClassChange} label="Lớp">
               {classes.map((cls) => (
                 <MenuItem key={cls} value={cls}>
                   {cls}
@@ -358,57 +187,22 @@ const handleClassChange = async (e) => {
             </Select>
           </FormControl>
 
-          {/* Dropdown chọn môn học (Tin học / Công nghệ) */}
           <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel id="monhoc-label">Môn học</InputLabel>
+            <InputLabel id="mon-label">Môn học</InputLabel>
             <Select
-              labelId="monhoc-label"
-              value={config?.congnghe ? "congnghe" : "tinhoc"}
+              labelId="mon-label"
+              value={isCongNghe ? "congnghe" : "tinhoc"}
+              onChange={handleMonChange}
               label="Môn học"
-              onChange={async (e) => {
-                const value = e.target.value;
-                const isCongNghe = value === "congnghe";
-
-                // cập nhật Firestore
-                try {
-                  const docRef = doc(db, "CONFIG", "config");
-                  await setDoc(docRef, { congnghe: isCongNghe }, { merge: true });
-
-                  // cập nhật context
-                  setConfig((prev) => ({ ...prev, congnghe: isCongNghe }));
-                  setIsCongNghe(isCongNghe);
-                } catch (err) {
-                  console.error("❌ Lỗi cập nhật môn học:", err);
-                }
-              }}
             >
               <MenuItem value="tinhoc">Tin học</MenuItem>
               <MenuItem value="congnghe">Công nghệ</MenuItem>
             </Select>
           </FormControl>
 
-
-          {/* ---------------------- Ô chọn Tuần ---------------------- */}
           <FormControl size="small" sx={{ minWidth: 100 }}>
-            <Select
-              value={selectedWeek}
-              onChange={async (e) => {
-                const newWeek = Number(e.target.value); // ép kiểu số
-                setSelectedWeek(newWeek); // cập nhật state local
-
-                try {
-                  // Cập nhật Firestore
-                  const docRef = doc(db, "CONFIG", "config");
-                  await setDoc(docRef, { tuan: newWeek }, { merge: true });
-
-                  // Cập nhật context
-                  setConfig(prev => ({ ...prev, tuan: newWeek }));
-                } catch (err) {
-                  console.error("❌ Lỗi cập nhật tuần:", err);
-                }
-              }}
-              size="small"
-            >
+            <InputLabel id="tuan-label">Tuần</InputLabel>
+            <Select labelId="tuan-label" value={selectedWeek} onChange={handleWeekChange} label="Tuần">
               {[...Array(35)].map((_, i) => (
                 <MenuItem key={i + 1} value={i + 1}>
                   Tuần {i + 1}
@@ -418,109 +212,38 @@ const handleClassChange = async (e) => {
           </FormControl>
         </Box>
 
-        {/* Grid học sinh */}
+        {/* Hiển thị học sinh */}
         <Grid container spacing={2} justifyContent="center">
-            {columns.map((col, colIdx) => (
+          {columns.map((col, colIdx) => (
             <Grid item key={colIdx}>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {col.map((student) => {
-                      const isExpanded = expandedStudent === student.maDinhDanh;
-                      const status = studentStatus[student.maDinhDanh];
-                      const colors = status ? statusColors[status] : { bg: "white", text: "inherit" };
-
-                      return (
-                        <Box key={student.maDinhDanh} sx={{ position: "relative" }}>
-                            {/* Thẻ học sinh */}
-                            <Paper
-                                elevation={3}
-                                sx={{
-                                  minWidth: 120,
-                                  width: { xs: "75vw", sm: "auto" }, // 📱 chỉ áp dụng 75% chiều rộng trên điện thoại
-                                  p: 2,
-                                  borderRadius: 2,
-                                  cursor: "pointer",
-                                  transition: "all 0.3s",
-                                  textAlign: "left",
-                                  bgcolor: !isExpanded ? (status ? colors.bg : "white") : "white",
-                                  color: status ? colors.text : "black",
-                                  "&:hover": {
-                                    transform: "translateY(-2px)",
-                                    boxShadow: 4,
-                                    bgcolor: !status ? "#e3f2fd" : undefined,
-                                  },
-                                }}
-
-                                onClick={() => toggleExpand(student.maDinhDanh)}
-                                onMouseEnter={() => setExpandedStudent(null)} // <-- ẩn overlay khi hover vào học sinh khác
-                                >
-                                <Typography variant="subtitle2" fontWeight="medium">
-                                    {student.stt}. {student.hoVaTen}
-                                </Typography>
-                                </Paper>
-                              {/* Overlay đánh giá */}
-                              {isExpanded && (
-                                <Box
-                                  sx={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: "100%",
-                                    p: 2,
-                                    borderRadius: 2,
-                                    bgcolor: "#e0e0e0", // nền xám toàn vùng mở rộng
-                                    color: "black",
-                                    zIndex: 10,
-                                  }}
-                                >
-                                  <Box
-                                    sx={{
-                                      //bgcolor: "white", // nền trắng bao quanh các mức đánh giá
-                                      bgcolor: "#e3f2fd",
-                                      borderRadius: 2,
-                                      boxShadow: 3,
-                                      p: 2,
-                                      border: "2px solid #2196f3", // viền xanh xung quanh vùng trắng
-                                    }}
-                                  >
-                                    <Stack spacing={1}>                                      
-                                      {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành" ].map((s) => (
-                                        <Button
-                                          key={s}
-                                          size="small"
-                                          sx={{
-                                            bgcolor: status === s ? "#e0e0e0" : "#f9f9f9",
-                                            color: "black",
-                                            borderRadius: 1,
-                                            textTransform: "none",
-                                            justifyContent: "flex-start",
-                                            fontSize: 15,
-                                            border: "1px solid",
-                                            borderColor: status === s ? "#bdbdbd" : "#ccc",
-                                            width: "100%",
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleStatusChange(student.maDinhDanh, student.hoVaTen, s);
-                                            setExpandedStudent(null);
-                                          }}
-                                        >
-                                          {status === s ? "✅ " : ""}
-                                          {s}
-                                        </Button>
-                                      ))}
-                                    </Stack>
-                                  </Box>
-                                </Box>
-                              )}
-                        </Box>
-                      );
-                  })}
-
-                </Box>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {col.map((student) => {
+                  const status = studentStatus[student.maDinhDanh] || "";
+                  return (
+                    <Paper
+                      key={student.maDinhDanh}
+                      elevation={3}
+                      sx={{
+                        minWidth: 120,
+                        width: { xs: "75vw", sm: "auto" },
+                        p: 2,
+                        borderRadius: 2,
+                        textAlign: "left",
+                        bgcolor: statusColors[status],
+                        transition: "all 0.3s",
+                      }}
+                    >
+                      <Typography variant="subtitle2" fontWeight="medium">
+                        {student.stt}. {student.hoVaTen}
+                      </Typography>
+                    </Paper>
+                  );
+                })}
+              </Box>
             </Grid>
-            ))}
+          ))}
         </Grid>
-        </Paper>
+      </Paper>
     </Box>
-    );
+  );
 }

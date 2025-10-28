@@ -64,7 +64,7 @@ function AppContent() {
     ...(config.login
       ? [
           //{ path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
-          //{ path: "/giaovien", label: "Đánh giá", icon: <SummarizeIcon fontSize="small" /> },          
+          { path: "/giaovien", label: "Đánh giá", icon: <SummarizeIcon fontSize="small" /> },          
           //{ path: "/tonghopdanhgia", label: "Tổng hợp", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/tonghopdanhgia", label: "ĐGTX", icon: <SummarizeIcon fontSize="small" /> },
           //{ path: "/nhapdiemktdk", label: "Nhập điểm", icon: <SummarizeIcon fontSize="small" /> },
