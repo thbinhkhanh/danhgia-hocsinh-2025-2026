@@ -412,10 +412,15 @@ useEffect(() => {
     {/* 🔹 Dialog hiển thị khi chọn học sinh */}
     <Dialog
       open={Boolean(expandedStudent)}
-      onClose={() => setExpandedStudent(null)}
+      onClose={(event, reason) => {
+        if (reason !== "backdropClick") {
+          setExpandedStudent(null);
+        }
+      }}
       maxWidth="xs"
       fullWidth
     >
+
       {expandedStudent && (
         <>
           <DialogTitle
