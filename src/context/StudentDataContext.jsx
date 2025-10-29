@@ -1,27 +1,65 @@
-import React, { createContext, useState } from "react";
+// 📁 src/context/StudentDataContext.jsx
+import React, { createContext, useState, useEffect } from "react";
 
 export const StudentDataContext = createContext();
 
 export const StudentDataProvider = ({ children }) => {
-  // Lưu dữ liệu theo key: lớp + học kì + công nghệ (nếu có)
-  // Ví dụ: { "5.1_HK1": [...], "5.1_CN_HK1": [...], "5.1_CN_ALL": [...] }
-  const [studentDataByClass, setStudentDataByClass] = useState({});
+  // 🧩 Dữ liệu học sinh (cache theo từng lớp và học kỳ)
+  // Cấu trúc: { [termDoc]: { [classKey]: [students] } }
+  const [studentData, setStudentData] = useState({});
+  // 🧩 Dữ liệu danh sách lớp
+  const [classData, setClassData] = useState([]);
 
-  // classKey: string duy nhất bao gồm lớp + "_CN" nếu tick + học kì
-  const setStudentsForClass = (classKey, students) => {
-    setStudentDataByClass((prev) => ({
-      ...prev,
-      [classKey]: students,
-    }));
+  // 🔄 Lưu xuống localStorage khi studentData thay đổi
+  useEffect(() => {
+    localStorage.setItem("studentData", JSON.stringify(studentData));
+  }, [studentData]);
+
+  // 🔄 Lưu xuống localStorage khi classData thay đổi
+  useEffect(() => {
+    localStorage.setItem("classData", JSON.stringify(classData));
+  }, [classData]);
+
+  // ⚡ Load lại từ storage khi mount
+  useEffect(() => {
+    const storedStudent = localStorage.getItem("studentData");
+    const storedClass = localStorage.getItem("classData");
+
+    if (storedStudent && Object.keys(studentData).length === 0) {
+      setStudentData(JSON.parse(storedStudent));
+    }
+
+    if (storedClass && classData.length === 0) {
+      setClassData(JSON.parse(storedClass));
+    }
+  }, []);
+
+  // 🟢 Helper: lấy dữ liệu theo lớp và học kỳ
+  const getStudentsForClass = (termDoc, classKey) => {
+    return studentData?.[termDoc]?.[classKey] || null;
   };
 
-  const getStudentsForClass = (classKey) => {
-    return studentDataByClass[classKey] || null;
+  // 🟢 Helper: set dữ liệu theo lớp và học kỳ
+  const setStudentsForClass = (termDoc, classKey, students) => {
+    setStudentData((prev) => ({
+      ...prev,
+      [termDoc]: {
+        ...prev[termDoc],
+        [classKey]: students,
+      },
+    }));
   };
 
   return (
     <StudentDataContext.Provider
-      value={{ studentDataByClass, setStudentsForClass, getStudentsForClass }}
+      value={{
+        studentData,
+        setStudentData,
+        classData,
+        setClassData,
+        getStudentsForClass,
+        setStudentsForClass,
+      }}
     >
       {children}
     </StudentDataContext.Provider>

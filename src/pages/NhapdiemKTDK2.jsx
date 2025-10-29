@@ -3,9 +3,13 @@ import {
   Box,
   Card,
   Typography,
+  Divider,
+  Stack,
   FormControl,
   Select,
   MenuItem,
+  Checkbox,
+  FormControlLabel,
   Table,
   TableBody,
   TableCell,
@@ -18,37 +22,43 @@ import {
   TextField,
   useMediaQuery,
   InputLabel,
-  Snackbar,
-  Alert,
 } from "@mui/material";
 
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
-import { StudentKTDKContext } from "../context/StudentKTDKContext";
-
+import { StudentDataContext } from "../context/StudentDataContext";
 import { exportKTDK } from "../utils/exportKTDK";
 import { printKTDK } from "../utils/printKTDK";
 
-import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, setDoc, writeBatch, deleteField } from "firebase/firestore";
 
 import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 import PrintIcon from "@mui/icons-material/Print";
 
+import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
+import { Snackbar, Alert } from "@mui/material";
+
+
 export default function NhapdiemKTDK() {
-  const { classData, setClassData, studentData, setStudentData } = useContext(StudentContext);
+  const { classData, setClassData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
-  const { getStudentsForClass, setStudentsForClass } = useContext(StudentKTDKContext);
 
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
+  const { studentData, setStudentData } = useContext(StudentContext);
+
   const [isCongNghe, setIsCongNghe] = useState(false);
-  const [selectedTerm, setSelectedTerm] = useState("HK1");
+  const [selectedTerm, setSelectedTerm] = useState("HK1"); // mặc định HỌC KÌ I
+  const { getStudentsForClass, setStudentsForClass } = useContext(StudentDataContext);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
+  //const [isTeacherChecked, setIsTeacherChecked] = useState(false);
+
 
   useEffect(() => {
     if (config?.lop) setSelectedClass(config.lop);
@@ -79,62 +89,64 @@ export default function NhapdiemKTDK() {
   }, [classData, setClassData]);
 
   const fetchStudentsAndStatus = async (cls) => {
-  const currentClass = cls || selectedClass;
-  if (!currentClass) return;
+    const currentClass = cls || selectedClass;
+    if (!currentClass) return;
 
-  const classKey = `${currentClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
-  const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+    const classKey = `${currentClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
 
-  // 1️⃣ Kiểm tra cache từ StudentKTDKContext
-  const cached = getStudentsForClass(termDoc, classKey);
-  if (cached) {
-    setStudents(cached);
-    return;
-  }
-
-  try {
-    // 2️⃣ Lấy dữ liệu từ Firestore
-    const docRef = doc(db, "KTDK", termDoc);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) {
-      setStudents([]);
+    // 1️⃣ Kiểm tra cache
+    const cached = getStudentsForClass(classKey);
+    if (cached) {
+      setStudents(cached);
       return;
     }
 
-    const termData = snap.data();
-    const classData = termData[classKey] || {};
+    try {
+      // 2️⃣ Lấy dữ liệu từ BANGDIEM
+      const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+      const docRef = doc(db, "KTDK", termDoc);
+      const snap = await getDoc(docRef);
 
-    // 3️⃣ Chuyển thành array studentList
-    const studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      hoVaTen: info.hoVaTen || "",
-      dgtx: info.dgtx || "",
-      dgtx_gv: info.dgtx_gv || "",
-      lyThuyet: info.lyThuyet ?? null,
-      thucHanh: info.thucHanh ?? null,
-      tongCong: info.tongCong ?? null,
-      mucDat: info.mucDat || "",
-      nhanXet: info.nhanXet_CK || "",
-    }));
+      if (!snap.exists()) {
+        setStudents([]);
+        return;
+      }
 
-    // 4️⃣ Sắp xếp theo tên
-    studentList.sort((a, b) => {
-      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-    studentList.forEach((s, idx) => (s.stt = idx + 1));
+      const termData = snap.data();
+      const classData = termData[classKey] || {};
 
-    // 5️⃣ Lưu vào state & context
-    setStudents(studentList);
-    setStudentsForClass(termDoc, classKey, studentList);
+      // 3️⃣ Chuyển thành array studentList
+      const studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
+        hoVaTen: info.hoVaTen || "",
+        dgtx: info.dgtx || "",
+        dgtx_gv: info.dgtx_gv || "",
+        lyThuyet: info.lyThuyet ?? null,
+        thucHanh: info.thucHanh ?? null,
+        tongCong: info.tongCong ?? null,
+        mucDat: info.mucDat || "",
+        //nhanXet: info.nhanXet || "",
+        nhanXet: info.nhanXet_CK || "", // ✅ lấy từ nhanXet_CK thay vì nhanXet
+        //statusByWeek: {},
+      }));
 
-  } catch (err) {
-    console.error("❌ Lỗi khi lấy dữ liệu:", err);
-    setStudents([]);
-  }
-};
+      // 4️⃣ Sắp xếp theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      studentList.forEach((s, idx) => (s.stt = idx + 1));
 
+      // 5️⃣ Lưu vào state & context
+      setStudents(studentList);
+      setStudentsForClass(classKey, studentList);
+
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy dữ liệu:", err);
+      setStudents([]);
+    }
+  };
 
   useEffect(() => {
     fetchStudentsAndStatus();
@@ -234,6 +246,7 @@ const handleSaveAll = async () => {
 
   const batch = writeBatch(db);
 
+  // ✅ Chuẩn bị dữ liệu học sinh để lưu
   const studentsMap = {};
   students.forEach((s) => {
     studentsMap[s.maDinhDanh] = {
@@ -242,7 +255,7 @@ const handleSaveAll = async () => {
       thucHanh: parseOrNull(s.thucHanh),
       tongCong: parseOrNull(s.tongCong),
       mucDat: s.mucDat || "",
-      nhanXet_CK: s.nhanXet || "",
+      nhanXet_CK: s.nhanXet || "", // ✅ lưu nhận xét cuối kỳ
       dgtx: s.dgtx || "",
       dgtx_gv: s.dgtx_gv || "",
     };
@@ -253,19 +266,29 @@ const handleSaveAll = async () => {
   try {
     await batch.commit();
 
-    // ✅ Cập nhật context
-    setStudentData((prev) => ({ ...prev, [classKey]: students }));
+    setStudentData((prev) => ({
+      ...prev,
+      [classKey]: students,
+    }));
+
     if (typeof setStudentsForClass === "function") {
-      setStudentsForClass(term, classKey, students);
+      setStudentsForClass(classKey, students);
     }
 
-    setSnackbar({ open: true, message: "✅ Lưu thành công!", severity: "success" });
+    setSnackbar({
+      open: true,
+      message: `✅ Lưu thành công!`,
+      severity: "success",
+    });
   } catch (err) {
     console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
-    setSnackbar({ open: true, message: "❌ Lỗi khi lưu dữ liệu học sinh!", severity: "error" });
+    setSnackbar({
+      open: true,
+      message: "❌ Lỗi khi lưu dữ liệu học sinh!",
+      severity: "error",
+    });
   }
 };
-
 
 {/*const handleSaveAll_OK = async () => {
   if (!students || students.length === 0) return;

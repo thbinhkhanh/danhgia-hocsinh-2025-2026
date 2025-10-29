@@ -25,6 +25,7 @@ import DanhSachHS from "./pages/DanhSachHS";
 import { StudentProvider } from "./context/StudentContext";
 import { ConfigProvider, ConfigContext } from "./context/ConfigContext";
 import { StudentDataProvider } from "./context/StudentDataContext";
+import { StudentKTDKProvider } from "./context/StudentKTDKContext";
 
 // 🔹 Import icon
 //import HomeIcon from "@mui/icons-material/Home";
@@ -228,9 +229,12 @@ export default function App() {
     <ConfigProvider>
       <StudentProvider>
         <StudentDataProvider>
-          <AppContent />
+          <StudentKTDKProvider> {/* 🔹 thêm context mới */}
+            <AppContent />
+          </StudentKTDKProvider>
         </StudentDataProvider>
       </StudentProvider>
     </ConfigProvider>
   );
 }
+

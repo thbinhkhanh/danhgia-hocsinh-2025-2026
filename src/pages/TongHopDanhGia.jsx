@@ -26,7 +26,8 @@ import {
 } from "@mui/material";
 
 import { db } from "../firebase";
-import { StudentContext } from "../context/StudentContext";
+//import { StudentContext } from "../context/StudentContext";
+import { StudentDataContext } from "../context/StudentDataContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, setDoc, collection, writeBatch } from "firebase/firestore";
 
@@ -40,7 +41,8 @@ import { Snackbar, Alert } from "@mui/material";
 
 export default function TongHopDanhGia() {
   // --- Context ---
-  const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
+  //const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
+  const { studentData, setStudentData, classData, setClassData } = useContext(StudentDataContext);
 
   const { config, setConfig } = useContext(ConfigContext);
 
@@ -219,12 +221,12 @@ const handleSaveAll = async () => {
   students.forEach((s) => {
     const studentData = {
       hoVaTen: s.hoVaTen || "",
-      lyThuyet: null,    // luôn null
-      thucHanh: null,    // luôn null
-      tongCong: null,    // luôn null
-      mucDat: s.mucDat || "",
+      lyThuyet: null,
+      thucHanh: null,
+      tongCong: null,
+      mucDat: s.mucDat || "",    // ✅ Giữ nguyên, không cập nhật
       nhanXet: s.nhanXet || "",
-      dgtx: s.xepLoai || "",
+      dgtx: s.dgtx || "",         // ✅ Mức đạt chung (HS + GV)
       dgtx_gv: s.dgtx_gv || "",
     };
 
@@ -262,6 +264,7 @@ const handleSaveAll = async () => {
     });
   }
 };
+
 
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
   useEffect(() => {
@@ -369,33 +372,42 @@ const fetchStudentsAndStatus = async () => {
     // Gom dữ liệu các tuần
     const weekMap = {};
     snapshot.forEach((docSnap) => {
-      if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
+      if (docSnap.exists()) {
+        weekMap[docSnap.id] = docSnap.data();
+      }
     });
 
-    // Lấy danh sách học sinh từ tuần đầu tiên
-    const firstWeekId = Object.keys(weekMap)[0];
+    // 🔹 Chuẩn hóa danh sách tuần (đảm bảo thứ tự tăng dần)
+    const sortedWeekIds = Object.keys(weekMap).sort((a, b) => {
+      const nA = parseInt(a.replace(/\D/g, "")) || 0;
+      const nB = parseInt(b.replace(/\D/g, "")) || 0;
+      return nA - nB;
+    });
+
+    // 🔹 Lấy danh sách học sinh từ tuần đầu tiên
+    const firstWeekId = sortedWeekIds[0];
     const firstWeekData = weekMap[firstWeekId] || {};
 
     let studentList = Object.entries(firstWeekData).map(([maDinhDanh, info]) => ({
       maDinhDanh,
       hoVaTen: info.hoVaTen || "",
-      statusByWeek: {},
+      statusByWeek: {}, // dữ liệu theo tuần
       status: "",
       dgtx_gv: "",
-      nhanXet: "", // ⚙️ dùng trực tiếp nhanXet từ KTDK
+      nhanXet: "",
     }));
 
-    // 2️⃣ Tổng hợp dữ liệu theo tuần
-    const totalWeeks = weekTo - weekFrom + 1;
-    const weekIds = Array.from({ length: totalWeeks }, (_, i) => `tuan_${weekFrom + i}`);
-
-    for (const weekId of weekIds) {
+    // 2️⃣ Tổng hợp dữ liệu theo từng tuần
+    for (const weekId of sortedWeekIds) {
       const weekData = weekMap[weekId];
       if (!weekData) continue;
 
       for (const [maHS, value] of Object.entries(weekData)) {
         const student = studentList.find((s) => s.maDinhDanh === maHS);
-        if (student) student.statusByWeek[weekId] = value.status || "-";
+        if (student) {
+          // Lưu lại toàn bộ mức đạt hoặc status theo tuần
+          student.statusByWeek[weekId] = value.mucdat || value.status || "-";
+        }
       }
     }
 
@@ -412,7 +424,7 @@ const fetchStudentsAndStatus = async () => {
       studentList = studentList.map((s) => ({
         ...s,
         dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
-        nhanXet: classData[s.maDinhDanh]?.nhanXet || "", // ✅ lấy nhận xét từ KTDK
+        nhanXet: classData[s.maDinhDanh]?.nhanXet || "",
         status: classData[s.maDinhDanh]?.status || "",
       }));
     }
@@ -427,10 +439,12 @@ const fetchStudentsAndStatus = async () => {
 
     // 5️⃣ Tính mức đạt & nhận xét (ưu tiên nhận xét từ KTDK)
     const evaluatedList = studentList.map((s) => {
+      // Gọi hàm đánh giá học sinh của bạn
       const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
       const hs = xepLoai || "";
       const gv = s.dgtx_gv || "";
 
+      // ✅ Hợp nhất học sinh + giáo viên → mức đạt cuối cùng
       let chung = "";
       if (!gv) chung = hs;
       else if (hs === "T" && gv === "T") chung = "T";
@@ -447,12 +461,24 @@ const fetchStudentsAndStatus = async () => {
       const dgtx = chung;
       const nhanXetTuDong = getNhanXetTuDong(dgtx);
 
-      // ✅ Ưu tiên nhận xét trong KTDK, nếu trống thì tự động sinh
-      const nhanXet = s.nhanXet?.trim()
-        ? s.nhanXet.trim()
-        : nhanXetTuDong;
+      // ✅ Ưu tiên nhận xét từ KTDK, nếu trống thì sinh tự động
+      const nhanXet = s.nhanXet?.trim() ? s.nhanXet.trim() : nhanXetTuDong;
 
-      return { ...s, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
+      // ✅ Ghép dữ liệu tuần vào hàng hiển thị
+      const weekCols = sortedWeekIds.reduce((acc, weekId) => {
+        const weekNum = parseInt(weekId.replace(/\D/g, "")) || weekId;
+        acc[`Tuan_${weekNum}`] = s.statusByWeek[weekId] || "-";
+        return acc;
+      }, {});
+
+      return {
+        ...s,
+        ...weekCols, // thêm cột Tuần 3–8
+        xepLoai: hs,
+        dgtx_gv: gv,
+        dgtx,
+        nhanXet,
+      };
     });
 
     // 6️⃣ Lưu cache & cập nhật UI
@@ -468,7 +494,6 @@ const fetchStudentsAndStatus = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
-
 
 const fetchStudentsDGTX = async () => {
   if (!selectedClass) return;
