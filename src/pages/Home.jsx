@@ -472,45 +472,45 @@ useEffect(() => {
       {expandedStudent && (
         <>
           <DialogTitle
-  sx={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    bgcolor: "#64b5f6", // 🔹 màu nền đậm hơn
-    flexWrap: "wrap",
-    py: 1.5,
-  }}
->
-  <Box>
-    <Typography
-      variant="subtitle1"
-      fontWeight="bold"
-      sx={{ color: "#ffffff", fontSize: "1.05rem" }} // đổi chữ trắng để tương phản
-    >
-      {expandedStudent.hoVaTen.toUpperCase()}
-    </Typography>
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              bgcolor: "#64b5f6", // 🔹 màu nền đậm hơn
+              flexWrap: "wrap",
+              py: 1.5,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                sx={{ color: "#ffffff", fontSize: "1.05rem" }} // đổi chữ trắng để tương phản
+              >
+                {expandedStudent.hoVaTen.toUpperCase()}
+              </Typography>
 
-    {/*<Typography
-      variant="body2"
-      sx={{
-        fontWeight: "bold",
-        color: "rgba(255,255,255,0.85)", // chữ nhạt hơn để tương phản
-      }}
-    >
-      Mã định danh: {expandedStudent.maDinhDanh}
-    </Typography>*/}
-  </Box>
+              {/*<Typography
+                variant="body2"
+                sx={{
+                  fontWeight: "bold",
+                  color: "rgba(255,255,255,0.85)", // chữ nhạt hơn để tương phản
+                }}
+              >
+                Mã định danh: {expandedStudent.maDinhDanh}
+              </Typography>*/}
+            </Box>
 
-  <IconButton
-    onClick={() => setExpandedStudent(null)}
-    sx={{
-      color: "#f44336",
-      "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
-    }}
-  >
-    <CloseIcon />
-  </IconButton>
-</DialogTitle>
+            <IconButton
+              onClick={() => setExpandedStudent(null)}
+              sx={{
+                color: "#f44336",
+                "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
 
 
           <DialogContent sx={{ mt: 2 }}>

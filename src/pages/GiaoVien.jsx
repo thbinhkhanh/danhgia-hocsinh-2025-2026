@@ -251,8 +251,8 @@ export default function GiaoVien() {
 
         {/* Danh sách học sinh */}
         <Grid container spacing={2} justifyContent="center">
-          {columns.map((col, idx) => (
-            <Grid item key={idx}>
+          {columns.map((col, colIdx) => (
+            <Grid item key={colIdx}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {col.map((student) => {
                   const status = studentStatus[student.maDinhDanh];
@@ -266,18 +266,27 @@ export default function GiaoVien() {
                   return (
                     <Paper
                       key={student.maDinhDanh}
-                      elevation={2}
-                      onClick={() => setExpandedStudent(student)} // 🔹 mở dialog
+                      elevation={3}
+                      onClick={() => setExpandedStudent(student)}
                       sx={{
-                        minWidth: 180,
+                        minWidth: 120,
+                        width: { xs: "75vw", sm: "auto" }, // 🔹 quan trọng: width bằng nhau trên mobile
                         p: 2,
                         borderRadius: 2,
+                        cursor: "pointer",
+                        textAlign: "left",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        bgcolor: "#fff",
-                        cursor: "pointer",
-                        "&:hover": { bgcolor: "#f9f9f9" },
+                        bgcolor: "#ffffff",
+                        color: "inherit",
+                        transition: "0.2s",
+                        boxShadow: 1,
+                        "&:hover": {
+                          transform: "scale(1.03)",
+                          boxShadow: 4,
+                          bgcolor: "#f5f5f5",
+                        },
                       }}
                     >
                       <Typography variant="subtitle2" fontWeight="medium" noWrap>
@@ -308,6 +317,7 @@ export default function GiaoVien() {
             </Grid>
           ))}
         </Grid>
+
       </Paper>
 
       {/* 🔹 Dialog chọn đánh giá */}
@@ -319,13 +329,25 @@ export default function GiaoVien() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                bgcolor: "#e3f2fd",
+                bgcolor: "#64b5f6", // 🔹 nền đậm hơn
+                flexWrap: "wrap",
+                py: 1.5,
               }}
             >
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ color: "#1976d2" }}>
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                sx={{ color: "#ffffff" }} // 🔹 chữ trắng để tương phản
+              >
                 {expandedStudent.hoVaTen.toUpperCase()}
               </Typography>
-              <IconButton onClick={() => setExpandedStudent(null)} sx={{ color: "#f44336" }}>
+              <IconButton
+                onClick={() => setExpandedStudent(null)}
+                sx={{
+                  color: "#f44336", // đỏ
+                  "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+                }}
+              >
                 <CloseIcon />
               </IconButton>
             </DialogTitle>
