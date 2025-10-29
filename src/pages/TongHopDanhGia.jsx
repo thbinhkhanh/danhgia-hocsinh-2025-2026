@@ -22,6 +22,7 @@ import {
   Tooltip,
   LinearProgress,
   useMediaQuery,
+  TextField,
 } from "@mui/material";
 
 import { db } from "../firebase";
@@ -47,7 +48,7 @@ export default function TongHopDanhGia() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
-
+  
   const [weekFrom, setWeekFrom] = useState(1);
   const [weekTo, setWeekTo] = useState(9);
 
@@ -262,8 +263,6 @@ const handleSaveAll = async () => {
   }
 };
 
-
-
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
   useEffect(() => {
     if (config?.lop) {
@@ -338,7 +337,7 @@ const handleSaveAll = async () => {
     fetchClasses();
   }, [setClassData]); // chỉ dependency là setClassData
 
-  const fetchStudentsAndStatus = async () => {
+const fetchStudentsAndStatus = async () => {
   if (!selectedClass) return;
 
   try {
@@ -356,7 +355,7 @@ const handleSaveAll = async () => {
     setLoadingMessage(`Đang tổng hợp dữ liệu...`);
 
     // 1️⃣ Lấy dữ liệu từ DGTX
-    const classPath = isCongNghe ? `${selectedClass}_CN` : selectedClass; // lấy lớp công nghệ nếu cần
+    const classPath = isCongNghe ? `${selectedClass}_CN` : selectedClass;
     const tuanRef = collection(db, `DGTX/${classPath}/tuan`);
     const snapshot = await getDocs(tuanRef);
 
@@ -383,7 +382,7 @@ const handleSaveAll = async () => {
       statusByWeek: {},
       status: "",
       dgtx_gv: "",
-      nhanXetTX: "",
+      nhanXet: "", // ⚙️ dùng trực tiếp nhanXet từ KTDK
     }));
 
     // 2️⃣ Tổng hợp dữ liệu theo tuần
@@ -400,7 +399,7 @@ const handleSaveAll = async () => {
       }
     }
 
-    // 3️⃣ Lấy đánh giá GV từ bảng điểm
+    // 3️⃣ Lấy đánh giá GV + nhận xét từ bảng điểm (KTDK)
     const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
     const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
     const bangDiemRef = doc(db, "KTDK", selectedTerm);
@@ -413,6 +412,7 @@ const handleSaveAll = async () => {
       studentList = studentList.map((s) => ({
         ...s,
         dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
+        nhanXet: classData[s.maDinhDanh]?.nhanXet || "", // ✅ lấy nhận xét từ KTDK
         status: classData[s.maDinhDanh]?.status || "",
       }));
     }
@@ -425,7 +425,7 @@ const handleSaveAll = async () => {
     });
     studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-    // 5️⃣ Tính mức đạt & nhận xét
+    // 5️⃣ Tính mức đạt & nhận xét (ưu tiên nhận xét từ KTDK)
     const evaluatedList = studentList.map((s) => {
       const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
       const hs = xepLoai || "";
@@ -445,7 +445,12 @@ const handleSaveAll = async () => {
       else chung = hs;
 
       const dgtx = chung;
-      const nhanXet = getNhanXetTuDong(dgtx);
+      const nhanXetTuDong = getNhanXetTuDong(dgtx);
+
+      // ✅ Ưu tiên nhận xét trong KTDK, nếu trống thì tự động sinh
+      const nhanXet = s.nhanXet?.trim()
+        ? s.nhanXet.trim()
+        : nhanXetTuDong;
 
       return { ...s, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
     });
@@ -463,6 +468,7 @@ const handleSaveAll = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
+
 
 const fetchStudentsDGTX = async () => {
   if (!selectedClass) return;
@@ -485,13 +491,13 @@ const fetchStudentsDGTX = async () => {
       return;
     }
 
-    // Gom dữ liệu tất cả các tuần
+    // Gom dữ liệu các tuần
     const weekMap = {};
     snapshot.forEach((docSnap) => {
       if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
     });
 
-    // 🔹 Gom tất cả học sinh từ tất cả các tuần
+    // 🔹 Gom danh sách học sinh từ tất cả các tuần
     const studentMap = {};
     Object.values(weekMap).forEach((weekData) => {
       Object.entries(weekData).forEach(([maDinhDanh, info]) => {
@@ -502,7 +508,7 @@ const fetchStudentsDGTX = async () => {
             statusByWeek: {},
             status: "",
             dgtx_gv: "",
-            nhanXetTX: "",
+            nhanXet: "", // ⚙️ sẽ ghi đè sau từ KTDK
           };
         }
       });
@@ -524,7 +530,7 @@ const fetchStudentsDGTX = async () => {
       }
     }
 
-    // 3️⃣ Lấy đánh giá GV từ bảng điểm
+    // 3️⃣ Lấy đánh giá GV + nhận xét từ KTDK
     const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
     const classKeyForTerm = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
     const bangDiemRef = doc(db, "KTDK", selectedTerm);
@@ -537,6 +543,7 @@ const fetchStudentsDGTX = async () => {
       studentList = studentList.map((s) => ({
         ...s,
         dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
+        nhanXet: classData[s.maDinhDanh]?.nhanXet || "", // ✅ Lấy nhận xét từ KTDK
         status: classData[s.maDinhDanh]?.status || "",
       }));
     }
@@ -549,7 +556,7 @@ const fetchStudentsDGTX = async () => {
     });
     studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-    // 5️⃣ Tính mức đạt & nhận xét
+    // 5️⃣ Tính mức đạt & nhận xét (ưu tiên nhận xét từ KTDK)
     const evaluatedList = studentList.map((s) => {
       const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
       const hs = xepLoai || "";
@@ -569,7 +576,12 @@ const fetchStudentsDGTX = async () => {
       else chung = hs;
 
       const dgtx = chung;
-      const nhanXet = getNhanXetTuDong(dgtx);
+      const nhanXetTuDong = getNhanXetTuDong(dgtx);
+
+      // ✅ Ưu tiên lấy nhận xét từ KTDK (field nhanXet), nếu trống thì sinh tự động
+      const nhanXet = s.nhanXet?.trim()
+        ? s.nhanXet.trim()
+        : nhanXetTuDong;
 
       return { ...s, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
     });
@@ -587,7 +599,6 @@ const fetchStudentsDGTX = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
-
 
 useEffect(() => {
   fetchStudentsAndStatus();
@@ -635,6 +646,15 @@ const { totalT, totalH, totalC, totalBlank } = getStatistics();
 
 const handleCongNgheChange = (e) => setIsCongNghe(e.target.checked);
 const borderStyle = "1px solid #e0e0e0"; // màu nhạt như đường mặc định
+
+const handleCellChange = (maDinhDanh, field, value) => {
+  setStudents((prev) =>
+    prev.map((s) =>
+      s.maDinhDanh === maDinhDanh ? { ...s, [field]: value } : s
+    )
+  );
+};
+
 
 return (
   <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
@@ -686,7 +706,7 @@ return (
           </IconButton>
         </Tooltip>
 
-        <Tooltip title="Làm mới thống kê" arrow>
+        <Tooltip title="Làm mới dữ liệu" arrow>
           <IconButton
             onClick={fetchStudentsDGTX}
             sx={{
@@ -1117,9 +1137,31 @@ return (
                 >
                   {student.dgtx || ""}
                 </TableCell>
+                {/* 🟨 Cột Nhận xét (có thể nhập thủ công) */}
+                <TableCell align="left" sx={{ px: 1 }}>
+                  <TextField
+                    variant="standard"
+                    multiline
+                    maxRows={4}
+                    fullWidth
+                    value={student.nhanXet || ""}
+                    onChange={(e) =>
+                      handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)
+                    }
+                    id={`nhanXet-${idx}`}
+                    onKeyDown={(e) => handleKeyNavigation(e, idx, "nhanXet")}
+                    InputProps={{
+                      sx: {
+                        paddingLeft: 1,
+                        paddingRight: 1,
+                        fontSize: "14px",
+                        lineHeight: 1.3,
+                      },
+                      disableUnderline: true,
+                    }}
+                  />
+                </TableCell>
 
-                {/* 🟨 Cột Nhận xét */}
-                <TableCell align="left">{student.nhanXet || ""}</TableCell>
               </TableRow>
             ))}
           </TableBody>

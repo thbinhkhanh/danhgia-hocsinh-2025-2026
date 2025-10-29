@@ -125,7 +125,8 @@ export default function NhapdiemKTDK() {
         thucHanh: info.thucHanh ?? null,
         tongCong: info.tongCong ?? null,
         mucDat: info.mucDat || "",
-        nhanXet: info.nhanXet || "",
+        //nhanXet: info.nhanXet || "",
+        nhanXet: info.nhanXet_CK || "", // ✅ lấy từ nhanXet_CK thay vì nhanXet
         //statusByWeek: {},
       }));
 
@@ -230,28 +231,33 @@ const [snackbar, setSnackbar] = useState({
   severity: "success", // "success" | "error" | "info" | "warning"
 });
 
+// ✅ Lưu null nếu rỗng
+const parseOrNull = (val) => {
+  if (val === "" || val === null || val === undefined) return null;
+  return Number(val);
+};
 
 const handleSaveAll = async () => {
   if (!students || students.length === 0) return;
 
-  // ✅ Thêm học kì vào classKey
-  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
-  const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
-  const docRef = doc(db, "KTDK", termDoc);
+  const term = selectedTerm;
+  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${term}`;
+  const docRef = doc(db, "KTDK", term);
 
   const batch = writeBatch(db);
 
+  // ✅ Chuẩn bị dữ liệu học sinh để lưu
   const studentsMap = {};
-  students.forEach(s => {
+  students.forEach((s) => {
     studentsMap[s.maDinhDanh] = {
-      hoVaTen: s.hoVaTen,
-      lyThuyet: s.lyThuyet !== "" ? Number(s.lyThuyet) : null,    // trước là tracNghiem
-      thucHanh: s.thucHanh !== "" ? Number(s.thucHanh) : null,
-      tongCong: s.tongCong !== "" ? Number(s.tongCong) : null,
-      mucDat: s.mucDat || "",                                        // trước là xepLoai
-      nhanXet: s.nhanXet || "",
+      hoVaTen: s.hoVaTen || "",
+      lyThuyet: parseOrNull(s.lyThuyet),
+      thucHanh: parseOrNull(s.thucHanh),
+      tongCong: parseOrNull(s.tongCong),
+      mucDat: s.mucDat || "",
+      nhanXet_CK: s.nhanXet || "", // ✅ lưu nhận xét cuối kỳ
       dgtx: s.dgtx || "",
-      dgtx_gv: s.dgtx_gv || ""
+      dgtx_gv: s.dgtx_gv || "",
     };
   });
 
@@ -260,13 +266,14 @@ const handleSaveAll = async () => {
   try {
     await batch.commit();
 
-    // Cập nhật context và state
-    setStudentData(prev => ({
+    setStudentData((prev) => ({
       ...prev,
-      [classKey]: students
+      [classKey]: students,
     }));
 
-    setStudentsForClass(classKey, students);
+    if (typeof setStudentsForClass === "function") {
+      setStudentsForClass(classKey, students);
+    }
 
     setSnackbar({
       open: true,
@@ -282,6 +289,62 @@ const handleSaveAll = async () => {
     });
   }
 };
+
+{/*const handleSaveAll_OK = async () => {
+  if (!students || students.length === 0) return;
+
+  // ✅ Dùng selectedTerm có sẵn
+  const term = selectedTerm;
+  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${term}`;
+  const docRef = doc(db, "KTDK", term);
+
+  const batch = writeBatch(db);
+
+  // ✅ Chuẩn bị dữ liệu học sinh để lưu
+  const studentsMap = {};
+  students.forEach((s) => {
+    studentsMap[s.maDinhDanh] = {
+      hoVaTen: s.hoVaTen || "",
+      lyThuyet: s.lyThuyet !== "" ? Number(s.lyThuyet) : null,
+      thucHanh: s.thucHanh !== "" ? Number(s.thucHanh) : null,
+      tongCong: s.tongCong !== "" ? Number(s.tongCong) : null,
+      mucDat: s.mucDat || "",
+      nhanXet_CK: s.nhanXet || "", // ✅ lưu vào field nhanXet_CK
+      dgtx: s.dgtx || "",
+      dgtx_gv: s.dgtx_gv || "",
+    };
+  });
+
+  // ✅ Ghi dữ liệu vào Firestore
+  batch.set(docRef, { [classKey]: studentsMap }, { merge: true });
+
+  try {
+    await batch.commit();
+
+    // ✅ Cập nhật state local
+    setStudentData((prev) => ({
+      ...prev,
+      [classKey]: students,
+    }));
+
+    if (typeof setStudentsForClass === "function") {
+      setStudentsForClass(classKey, students);
+    }
+
+    setSnackbar({
+      open: true,
+      message: `✅ Lưu thành công!`,
+      severity: "success",
+    });
+  } catch (err) {
+    console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
+    setSnackbar({
+      open: true,
+      message: "❌ Lỗi khi lưu dữ liệu học sinh!",
+      severity: "error",
+    });
+  }
+};*/}
 
  const handleDownload = async () => {
     try {
@@ -695,27 +758,44 @@ const nhanXetTheoMuc = {
                     <FormControl
                       variant="standard"
                       fullWidth
-                      size="small"
                       sx={{
                         "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
                         "&:hover .MuiSelect-icon": { opacity: 1 },
                       }}
                     >
                       <Select
-                        value={student.mucDat || ""} // ✅ dùng mucDat
+                        value={student.mucDat || ""}
                         onChange={(e) =>
-                          handleCellChange(student.maDinhDanh, "mucDat", e.target.value) // ✅ field mucDat
+                          handleCellChange(student.maDinhDanh, "mucDat", e.target.value)
                         }
                         disableUnderline
-                        sx={{ textAlign: "center", px: 1 }}
+                        id={`mucDat-${idx}`}
+                        sx={{
+                          textAlign: "center",
+                          px: 1,
+                          "& .MuiSelect-select": {
+                            py: 0.5,
+                            fontSize: "14px",
+                          },
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const next = document.getElementById(`mucDat-${idx + 1}`);
+                            if (next) next.focus();
+                          }
+                        }}
                       >
+                        <MenuItem value="">
+                          <em>-</em>
+                        </MenuItem>
                         <MenuItem value="T">T</MenuItem>
                         <MenuItem value="H">H</MenuItem>
                         <MenuItem value="C">C</MenuItem>
                       </Select>
-
                     </FormControl>
                   </TableCell>
+
 
                   {/* 🟨 Cột Nhận xét */}
                   <TableCell align="left" sx={{ px: 1 }}>
