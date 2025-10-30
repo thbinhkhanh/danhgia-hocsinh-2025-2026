@@ -79,64 +79,61 @@ export default function NhapdiemKTDK() {
   }, [classData, setClassData]);
 
   const fetchStudentsAndStatus = async (cls) => {
-  const currentClass = cls || selectedClass;
-  if (!currentClass) return;
+    const currentClass = cls || selectedClass;
+    if (!currentClass) return;
 
-  const classKey = `${currentClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
-  const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
+    const classKey = `${currentClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+    const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
 
-  // 1️⃣ Kiểm tra cache từ StudentKTDKContext
-  const cached = getStudentsForClass(termDoc, classKey);
-  if (cached) {
-    setStudents(cached);
-    return;
-  }
-
-  try {
-    // 2️⃣ Lấy dữ liệu từ Firestore
-    const docRef = doc(db, "KTDK", termDoc);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) {
-      setStudents([]);
+    const cached = getStudentsForClass(termDoc, classKey);
+    if (cached) {
+      setStudents(cached);
       return;
     }
 
-    const termData = snap.data();
-    const classData = termData[classKey] || {};
+    try {
+      const docRef = doc(db, "KTDK", termDoc);
+      const snap = await getDoc(docRef);
+      const termData = snap.exists() ? snap.data() : {};
+      const classData = termData[classKey] || {};
 
-    // 3️⃣ Chuyển thành array studentList
-    const studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      hoVaTen: info.hoVaTen || "",
-      dgtx: info.dgtx || "",
-      dgtx_gv: info.dgtx_gv || "",
-      lyThuyet: info.lyThuyet ?? null,
-      thucHanh: info.thucHanh ?? null,
-      tongCong: info.tongCong ?? null,
-      mucDat: info.mucDat || "",
-      nhanXet: info.nhanXet_CK || "",
-    }));
+      // 1️⃣ Tạo danh sách học sinh (chưa gán STT)
+      let studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
+        hoVaTen: info.hoVaTen || "",
+        dgtx: info.dgtx || "",
+        dgtx_gv: info.dgtx_gv || "",
+        lyThuyet: info.lyThuyet ?? null,
+        thucHanh: info.thucHanh ?? null,
+        tongCong: info.tongCong ?? null,
+        mucDat: info.mucDat || "",
+        nhanXet: info.nhanXet_CK || "",
+      }));
 
-    // 4️⃣ Sắp xếp theo tên
-    studentList.sort((a, b) => {
-      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-    studentList.forEach((s, idx) => (s.stt = idx + 1));
+      // 2️⃣ Sắp xếp theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
 
-    // 5️⃣ Lưu vào state & context
-    setStudents(studentList);
-    setStudentsForClass(termDoc, classKey, studentList);
+      // 3️⃣ Gán lại số thứ tự sau khi sắp xếp
+      studentList = studentList.map((s, idx) => ({
+        ...s,
+        stt: idx + 1,
+      }));
 
-  } catch (err) {
-    console.error("❌ Lỗi khi lấy dữ liệu:", err);
-    setStudents([]);
-  }
-};
+      // 4️⃣ Lưu và cache
+      setStudents(studentList);
+      setStudentsForClass(termDoc, classKey, studentList);
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy dữ liệu:", err);
+      setStudents([]);
+    }
+  };
 
 
-  useEffect(() => {
+ useEffect(() => {
     fetchStudentsAndStatus();
     }, [selectedClass, selectedTerm, isCongNghe]);
 
@@ -265,63 +262,6 @@ const handleSaveAll = async () => {
     setSnackbar({ open: true, message: "❌ Lỗi khi lưu dữ liệu học sinh!", severity: "error" });
   }
 };
-
-
-{/*const handleSaveAll_OK = async () => {
-  if (!students || students.length === 0) return;
-
-  // ✅ Dùng selectedTerm có sẵn
-  const term = selectedTerm;
-  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${term}`;
-  const docRef = doc(db, "KTDK", term);
-
-  const batch = writeBatch(db);
-
-  // ✅ Chuẩn bị dữ liệu học sinh để lưu
-  const studentsMap = {};
-  students.forEach((s) => {
-    studentsMap[s.maDinhDanh] = {
-      hoVaTen: s.hoVaTen || "",
-      lyThuyet: s.lyThuyet !== "" ? Number(s.lyThuyet) : null,
-      thucHanh: s.thucHanh !== "" ? Number(s.thucHanh) : null,
-      tongCong: s.tongCong !== "" ? Number(s.tongCong) : null,
-      mucDat: s.mucDat || "",
-      nhanXet_CK: s.nhanXet || "", // ✅ lưu vào field nhanXet_CK
-      dgtx: s.dgtx || "",
-      dgtx_gv: s.dgtx_gv || "",
-    };
-  });
-
-  // ✅ Ghi dữ liệu vào Firestore
-  batch.set(docRef, { [classKey]: studentsMap }, { merge: true });
-
-  try {
-    await batch.commit();
-
-    // ✅ Cập nhật state local
-    setStudentData((prev) => ({
-      ...prev,
-      [classKey]: students,
-    }));
-
-    if (typeof setStudentsForClass === "function") {
-      setStudentsForClass(classKey, students);
-    }
-
-    setSnackbar({
-      open: true,
-      message: `✅ Lưu thành công!`,
-      severity: "success",
-    });
-  } catch (err) {
-    console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Lỗi khi lưu dữ liệu học sinh!",
-      severity: "error",
-    });
-  }
-};*/}
 
  const handleDownload = async () => {
     try {
