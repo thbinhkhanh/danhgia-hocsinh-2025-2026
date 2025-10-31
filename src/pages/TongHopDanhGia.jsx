@@ -368,7 +368,7 @@ const fetchStudentsAndStatus = async () => {
       return;
     }
 
-    // Gom dữ liệu các tuần
+    // 🔹 Gom dữ liệu các tuần
     const weekMap = {};
     snapshot.forEach((docSnap) => {
       if (docSnap.exists()) {
@@ -383,18 +383,22 @@ const fetchStudentsAndStatus = async () => {
       return nA - nB;
     });
 
-    // 🔹 Lấy danh sách học sinh từ tuần đầu tiên
-    const firstWeekId = sortedWeekIds[0];
-    const firstWeekData = weekMap[firstWeekId] || {};
-
-    let studentList = Object.entries(firstWeekData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      hoVaTen: info.hoVaTen || "",
-      statusByWeek: {}, // dữ liệu theo tuần
-      status: "",
-      dgtx_gv: "",
-      nhanXet: "",
-    }));
+    // 🔹 👉 FIX LỖI: gom học sinh từ TẤT CẢ các tuần, không chỉ tuần đầu tiên
+    const studentMap = {};
+    Object.values(weekMap).forEach((weekData) => {
+      Object.entries(weekData).forEach(([maDinhDanh, info]) => {
+        if (!studentMap[maDinhDanh]) {
+          studentMap[maDinhDanh] = {
+            maDinhDanh,
+            hoVaTen: info.hoVaTen || "",
+            statusByWeek: {},
+            status: "",
+            dgtx_gv: "",
+            nhanXet: "",
+          };
+        }
+      });
+    });
 
     // 2️⃣ Tổng hợp dữ liệu theo từng tuần
     for (const weekId of sortedWeekIds) {
@@ -402,9 +406,8 @@ const fetchStudentsAndStatus = async () => {
       if (!weekData) continue;
 
       for (const [maHS, value] of Object.entries(weekData)) {
-        const student = studentList.find((s) => s.maDinhDanh === maHS);
+        const student = studentMap[maHS];
         if (student) {
-          // Lưu lại toàn bộ mức đạt hoặc status theo tuần
           student.statusByWeek[weekId] = value.mucdat || value.status || "-";
         }
       }
@@ -420,15 +423,16 @@ const fetchStudentsAndStatus = async () => {
       const bangDiemData = bangDiemSnap.data();
       const classData = bangDiemData[classKey] || {};
 
-      studentList = studentList.map((s) => ({
-        ...s,
-        dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
-        nhanXet: classData[s.maDinhDanh]?.nhanXet || "",
-        status: classData[s.maDinhDanh]?.status || "",
-      }));
+      Object.keys(studentMap).forEach((maHS) => {
+        const s = studentMap[maHS];
+        s.dgtx_gv = classData[maHS]?.dgtx_gv || "";
+        s.nhanXet = classData[maHS]?.nhanXet || "";
+        s.status = classData[maHS]?.status || "";
+      });
     }
 
-    // 4️⃣ Sắp xếp học sinh theo tên
+    // 4️⃣ Chuyển sang mảng và sắp xếp học sinh theo tên
+    let studentList = Object.values(studentMap);
     studentList.sort((a, b) => {
       const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
       const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
@@ -438,12 +442,10 @@ const fetchStudentsAndStatus = async () => {
 
     // 5️⃣ Tính mức đạt & nhận xét (ưu tiên nhận xét từ KTDK)
     const evaluatedList = studentList.map((s) => {
-      // Gọi hàm đánh giá học sinh của bạn
       const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
       const hs = xepLoai || "";
       const gv = s.dgtx_gv || "";
 
-      // ✅ Hợp nhất học sinh + giáo viên → mức đạt cuối cùng
       let chung = "";
       if (!gv) chung = hs;
       else if (hs === "T" && gv === "T") chung = "T";
@@ -459,11 +461,8 @@ const fetchStudentsAndStatus = async () => {
 
       const dgtx = chung;
       const nhanXetTuDong = getNhanXetTuDong(dgtx);
-
-      // ✅ Ưu tiên nhận xét từ KTDK, nếu trống thì sinh tự động
       const nhanXet = s.nhanXet?.trim() ? s.nhanXet.trim() : nhanXetTuDong;
 
-      // ✅ Ghép dữ liệu tuần vào hàng hiển thị
       const weekCols = sortedWeekIds.reduce((acc, weekId) => {
         const weekNum = parseInt(weekId.replace(/\D/g, "")) || weekId;
         acc[`Tuan_${weekNum}`] = s.statusByWeek[weekId] || "-";
@@ -472,7 +471,7 @@ const fetchStudentsAndStatus = async () => {
 
       return {
         ...s,
-        ...weekCols, // thêm cột Tuần 3–8
+        ...weekCols,
         xepLoai: hs,
         dgtx_gv: gv,
         dgtx,
@@ -493,6 +492,7 @@ const fetchStudentsAndStatus = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
+
 
 const fetchStudentsDGTX = async () => {
   if (!selectedClass) return;
