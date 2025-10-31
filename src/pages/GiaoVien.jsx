@@ -383,13 +383,14 @@ export default function GiaoVien() {
                 {studentStatus[expandedStudent.maDinhDanh] && (
                   <Box sx={{ textAlign: "center", mt: 2 }}>
                     <Button
-                      onClick={() =>
+                      onClick={() => {
                         handleStatusChange(
                           expandedStudent.maDinhDanh,
                           expandedStudent.hoVaTen,
                           ""
-                        )
-                      }
+                        );
+                        setExpandedStudent(null); // 🔹 Đóng dialog ngay sau khi hủy đánh giá
+                      }}
                       sx={{
                         bgcolor: "#4caf50",
                         color: "#fff",

@@ -5,18 +5,18 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
+  Chip,
 } from "@mui/material";
-//import { doc, getDoc, getDocs, collection } from "firebase/firestore";
+
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
 import { onSnapshot } from "firebase/firestore";
-import { deleteField } from "firebase/firestore";
 import CloseIcon from "@mui/icons-material/Close";
 
 
-export default function Home() {
+export default function HocSinh() {
   // 🔹 Lấy context
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
   
@@ -128,7 +128,6 @@ useEffect(() => {
   fetchClasses();
 }, [config.lop]); // ✅ phụ thuộc config.lop để set lớp đúng
 
-
 // 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
 useEffect(() => {
   if (!selectedClass) return;
@@ -136,7 +135,6 @@ useEffect(() => {
   const cached = studentData[selectedClass];
   if (cached && cached.length > 0) {
     // 🟢 Dùng cache nếu có
-    //console.log(`📦 Dữ liệu học sinh lớp "${selectedClass}" lấy từ context:`, cached);
     setStudents(cached);
     return;
   }
@@ -265,12 +263,6 @@ useEffect(() => {
   const saveStudentStatus1 = async (studentId, hoVaTen, status) => {
     if (!selectedWeek || !selectedClass) return;
 
-    // ✅ Kiểm tra config.congnghe
-    //console.log("🔍 saveStudentStatus() gọi với:");
-    //console.log("   - selectedClass:", selectedClass);
-    //console.log("   - config.congnghe:", config?.congnghe);
-    //console.log("   - selectedWeek:", selectedWeek);
-
     // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
     const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
     //console.log("👉 classKey được sử dụng:", classKey);
@@ -294,9 +286,6 @@ useEffect(() => {
         { merge: true }
       );
 
-      //console.log(
-      //  `✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`
-      //);
     } catch (err) {
       console.error("❌ Lỗi lưu trạng thái học sinh:", err);
     }
@@ -364,11 +353,11 @@ useEffect(() => {
     return () => unsubscribe();
   }, [expandedStudent, selectedClass, selectedWeek, config?.congnghe]);
 
-
   const statusColors = {
-    "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },
-    "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },       // tím, chữ trắng
-    "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff" }, // cam, chữ trắng
+    "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff", label: "T", color: "primary" },
+    "Hoàn thành": { bg: "#9C27B0", text: "#ffffff", label: "H", color: "secondary" },
+    "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff", label: "C", color: "warning" },
+    "": { bg: "#ffffff", text: "#000000" },
   };
 
   return (
@@ -430,26 +419,36 @@ useEffect(() => {
                       borderRadius: 2,
                       cursor: "pointer",
                       textAlign: "left",
-                      bgcolor: "#ffffff", // luôn nền trắng
-                      color: "inherit", // giữ màu chữ mặc định
+                      bgcolor: "#ffffff",
+                      color: "inherit",
                       transition: "0.2s",
                       boxShadow: 1,
                       "&:hover": {
-                        transform: "scale(1.03)", // phóng to nhẹ khi hover
+                        transform: "scale(1.03)",
                         boxShadow: 4,
-                        bgcolor: "#f5f5f5", // đổi nhẹ màu nền khi hover
+                        bgcolor: "#f5f5f5",
                       },
                     }}
                     onClick={() => {
-                      setExpandedStudent(student); // dùng để hiển thị modal
+                      setExpandedStudent(student);
                     }}
                   >
-                    <Typography variant="subtitle2" fontWeight="medium">
-                      {student.stt}. {student.hoVaTen}
-                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <Typography variant="subtitle2" fontWeight="medium">
+                        {student.stt}. {student.hoVaTen}
+                      </Typography>
+
+                      {status && (
+                        <Chip
+                          label={statusColors[status].label}
+                          color={statusColors[status].color}
+                          size="small"
+                          sx={{ ml: 1, fontWeight: "bold" }}
+                        />
+                      )}
+                    </Box>
                   </Paper>
                 );
-
               })}
             </Box>
           </Grid>
@@ -468,7 +467,6 @@ useEffect(() => {
       maxWidth="xs"
       fullWidth
     >
-
       {expandedStudent && (
         <>
           <DialogTitle
@@ -476,7 +474,7 @@ useEffect(() => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              bgcolor: "#64b5f6", // 🔹 màu nền đậm hơn
+              bgcolor: "#64b5f6",
               flexWrap: "wrap",
               py: 1.5,
             }}
@@ -485,20 +483,10 @@ useEffect(() => {
               <Typography
                 variant="subtitle1"
                 fontWeight="bold"
-                sx={{ color: "#ffffff", fontSize: "1.05rem" }} // đổi chữ trắng để tương phản
+                sx={{ color: "#ffffff", fontSize: "1.05rem" }}
               >
                 {expandedStudent.hoVaTen.toUpperCase()}
               </Typography>
-
-              {/*<Typography
-                variant="body2"
-                sx={{
-                  fontWeight: "bold",
-                  color: "rgba(255,255,255,0.85)", // chữ nhạt hơn để tương phản
-                }}
-              >
-                Mã định danh: {expandedStudent.maDinhDanh}
-              </Typography>*/}
             </Box>
 
             <IconButton
@@ -511,7 +499,6 @@ useEffect(() => {
               <CloseIcon />
             </IconButton>
           </DialogTitle>
-
 
           <DialogContent sx={{ mt: 2 }}>
             <Stack spacing={1}>
@@ -545,13 +532,14 @@ useEffect(() => {
               {studentStatus[expandedStudent.maDinhDanh] && (
                 <Box sx={{ mt: 5, textAlign: "center" }}>
                   <Button
-                    onClick={() =>
+                    onClick={() => {
                       handleStatusChange(
                         expandedStudent.maDinhDanh,
                         expandedStudent.hoVaTen,
                         ""
-                      )
-                    }
+                      );
+                      setExpandedStudent(null); // 🔹 Đóng dialog sau khi hủy
+                    }}
                     sx={{
                       width: 160,
                       px: 2,
@@ -577,4 +565,5 @@ useEffect(() => {
     </Dialog>
   </Box>
 );
+
 }

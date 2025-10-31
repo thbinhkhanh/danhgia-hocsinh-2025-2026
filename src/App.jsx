@@ -12,7 +12,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase"; // 🔹 import db
 
 // 🔹 Import các trang
-import Home from "./pages/Home";
+import HocSinh from "./pages/HocSinh";
 import Login from "./pages/Login";
 import QuanTri from "./pages/QuanTri";
 import GiaoVien from "./pages/GiaoVien";
@@ -28,7 +28,7 @@ import { StudentDataProvider } from "./context/StudentDataContext";
 import { StudentKTDKProvider } from "./context/StudentKTDKContext";
 
 // 🔹 Import icon
-//import HomeIcon from "@mui/icons-material/Home";
+//import HocSinhIcon from "@mui/icons-material/HocSinh";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
 import SummarizeIcon from "@mui/icons-material/Summarize";
@@ -61,7 +61,7 @@ function AppContent() {
 
   // ✅ Danh sách menu
   const navItems = [
-    { path: "/home", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
+    { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
     ...(config.login
       ? [
           //{ path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
@@ -185,8 +185,8 @@ function AppContent() {
       {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/" element={<Navigate to="/hocsinh" replace />} />
+          <Route path="/hocsinh" element={<HocSinh />} />
           
           {/* Danh sách chỉ hiển thị khi đã đăng nhập */}
           <Route

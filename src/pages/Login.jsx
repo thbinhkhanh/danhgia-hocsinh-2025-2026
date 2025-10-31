@@ -66,7 +66,7 @@ export default function Login() {
   };
 
   const handleClose = () => {
-    navigate("/home");
+    navigate("/hocsinh");
   };
 
   return (
