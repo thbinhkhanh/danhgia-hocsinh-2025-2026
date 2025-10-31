@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from "react";
+//import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { 
   Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, 
   Dialog,
@@ -14,7 +15,7 @@ import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
 import { onSnapshot } from "firebase/firestore";
 import CloseIcon from "@mui/icons-material/Close";
-
+import Draggable from "react-draggable";
 
 export default function HocSinh() {
   // 🔹 Lấy context
@@ -360,6 +361,22 @@ useEffect(() => {
     "": { bg: "#ffffff", text: "#000000" },
   };
 
+   /// ref cho node (an toàn cho React StrictMode)
+  const dialogNodeRef = useRef(null);
+
+  function PaperComponent(props) {
+    // sử dụng nodeRef để tránh findDOMNode warnings / errors
+    return (
+      <Draggable
+        nodeRef={dialogNodeRef}
+        handle="#draggable-dialog-title"
+        cancel={'[class*="MuiDialogContent-root"]'}
+      >
+        <Paper ref={dialogNodeRef} {...props} />
+      </Draggable>
+    );
+  }
+
   return (
   <Box
     sx={{
@@ -466,10 +483,13 @@ useEffect(() => {
       }}
       maxWidth="xs"
       fullWidth
+      PaperComponent={PaperComponent}
     >
+
       {expandedStudent && (
         <>
           <DialogTitle
+            id="draggable-dialog-title"
             sx={{
               display: "flex",
               justifyContent: "space-between",
@@ -477,8 +497,10 @@ useEffect(() => {
               bgcolor: "#64b5f6",
               flexWrap: "wrap",
               py: 1.5,
+              cursor: "move", // 🟢 thêm để dễ thấy có thể kéo
             }}
           >
+
             <Box>
               <Typography
                 variant="subtitle1"

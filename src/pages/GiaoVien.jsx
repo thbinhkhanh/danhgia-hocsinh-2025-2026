@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useContext } from "react";
+//import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
+
 import {
   Box,
   Typography,
@@ -21,6 +23,7 @@ import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, setDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import Draggable from "react-draggable";
 
 export default function GiaoVien() {
   // 🔹 Context
@@ -196,6 +199,21 @@ export default function GiaoVien() {
     }
   };
 
+  /// ref cho node (an toàn cho React StrictMode)
+  const dialogNodeRef = useRef(null);
+
+  function PaperComponent(props) {
+    // sử dụng nodeRef để tránh findDOMNode warnings / errors
+    return (
+      <Draggable
+        nodeRef={dialogNodeRef}
+        handle="#draggable-dialog-title"
+        cancel={'[class*="MuiDialogContent-root"]'}
+      >
+        <Paper ref={dialogNodeRef} {...props} />
+      </Draggable>
+    );
+  }
 
   return (
     <Box
@@ -321,92 +339,101 @@ export default function GiaoVien() {
       </Paper>
 
       {/* 🔹 Dialog chọn đánh giá */}
-      <Dialog open={Boolean(expandedStudent)} onClose={() => setExpandedStudent(null)} maxWidth="xs" fullWidth>
-        {expandedStudent && (
-          <>
-            <DialogTitle
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                bgcolor: "#64b5f6", // 🔹 nền đậm hơn
-                flexWrap: "wrap",
-                py: 1.5,
-              }}
-            >
-              <Typography
-                variant="subtitle1"
-                fontWeight="bold"
-                sx={{ color: "#ffffff" }} // 🔹 chữ trắng để tương phản
+      <Dialog
+  open={Boolean(expandedStudent)}
+  onClose={() => setExpandedStudent(null)}
+  maxWidth="xs"
+  fullWidth
+  PaperComponent={PaperComponent}   // 🔹 thêm dòng này
+>
+  {expandedStudent && (
+    <>
+      <DialogTitle
+        id="draggable-dialog-title"  // 🔹 thêm dòng này
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          bgcolor: "#64b5f6",
+          flexWrap: "wrap",
+          py: 1.5,
+          cursor: "move", // 🔹 đổi con trỏ chuột cho biết là kéo được
+        }}
+      >
+        <Typography
+          variant="subtitle1"
+          fontWeight="bold"
+          sx={{ color: "#ffffff" }}
+        >
+          {expandedStudent.hoVaTen.toUpperCase()}
+        </Typography>
+        <IconButton
+          onClick={() => setExpandedStudent(null)}
+          sx={{
+            color: "#f44336",
+            "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent>
+        <Stack spacing={1.5} sx={{ mt: 2 }}>
+          {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map((s) => {
+            const isSelected = studentStatus[expandedStudent.maDinhDanh] === s;
+            return (
+              <Button
+                key={s}
+                variant={isSelected ? "contained" : "outlined"}
+                color={
+                  s === "Hoàn thành tốt"
+                    ? "primary"
+                    : s === "Hoàn thành"
+                    ? "secondary"
+                    : "warning"
+                }
+                onClick={() =>
+                  handleStatusChange(
+                    expandedStudent.maDinhDanh,
+                    expandedStudent.hoVaTen,
+                    s
+                  )
+                }
               >
-                {expandedStudent.hoVaTen.toUpperCase()}
-              </Typography>
-              <IconButton
-                onClick={() => setExpandedStudent(null)}
+                {isSelected ? `✓ ${s}` : s}
+              </Button>
+            );
+          })}
+
+          {studentStatus[expandedStudent.maDinhDanh] && (
+            <Box sx={{ textAlign: "center", mt: 2 }}>
+              <Button
+                onClick={() => {
+                  handleStatusChange(
+                    expandedStudent.maDinhDanh,
+                    expandedStudent.hoVaTen,
+                    ""
+                  );
+                  setExpandedStudent(null);
+                }}
                 sx={{
-                  color: "#f44336", // đỏ
-                  "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+                  bgcolor: "#4caf50",
+                  color: "#fff",
+                  "&:hover": { bgcolor: "#388e3c" },
+                  mt: 1,
                 }}
               >
-                <CloseIcon />
-              </IconButton>
-            </DialogTitle>
+                HỦY ĐÁNH GIÁ
+              </Button>
+            </Box>
+          )}
+        </Stack>
+      </DialogContent>
+    </>
+  )}
+</Dialog>
 
-            <DialogContent>
-              <Stack spacing={1.5} sx={{ mt: 2 }}>
-                {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map((s) => {
-                  const isSelected = studentStatus[expandedStudent.maDinhDanh] === s;
-                  return (
-                    <Button
-                      key={s}
-                      variant={isSelected ? "contained" : "outlined"}
-                      color={
-                        s === "Hoàn thành tốt"
-                          ? "primary"
-                          : s === "Hoàn thành"
-                          ? "secondary"
-                          : "warning"
-                      }
-                      onClick={() =>
-                        handleStatusChange(
-                          expandedStudent.maDinhDanh,
-                          expandedStudent.hoVaTen,
-                          s
-                        )
-                      }
-                    >
-                      {isSelected ? `✓ ${s}` : s}
-                    </Button>
-                  );
-                })}
-
-                {studentStatus[expandedStudent.maDinhDanh] && (
-                  <Box sx={{ textAlign: "center", mt: 2 }}>
-                    <Button
-                      onClick={() => {
-                        handleStatusChange(
-                          expandedStudent.maDinhDanh,
-                          expandedStudent.hoVaTen,
-                          ""
-                        );
-                        setExpandedStudent(null); // 🔹 Đóng dialog ngay sau khi hủy đánh giá
-                      }}
-                      sx={{
-                        bgcolor: "#4caf50",
-                        color: "#fff",
-                        "&:hover": { bgcolor: "#388e3c" },
-                        mt: 1,
-                      }}
-                    >
-                      HỦY ĐÁNH GIÁ
-                    </Button>
-                  </Box>
-                )}
-              </Stack>
-            </DialogContent>
-          </>
-        )}
-      </Dialog>
     </Box>
   );
 }
