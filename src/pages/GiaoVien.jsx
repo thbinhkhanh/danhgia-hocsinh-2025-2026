@@ -24,6 +24,7 @@ import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, setDoc, updateDoc, onSnapshot } from "firebase/firestore";
 import Draggable from "react-draggable";
+import { useTheme, useMediaQuery } from "@mui/material"; // 🔹 thêm dòng này
 
 export default function GiaoVien() {
   // 🔹 Context
@@ -199,11 +200,19 @@ export default function GiaoVien() {
     }
   };
 
-  /// ref cho node (an toàn cho React StrictMode)
+  // ref cho node (an toàn cho React StrictMode)
   const dialogNodeRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   function PaperComponent(props) {
-    // sử dụng nodeRef để tránh findDOMNode warnings / errors
+    // 🔹 KHẮC PHỤC LỖI TRÊN MOBILE:
+    // Trên điện thoại, không bọc trong <Draggable> để tránh chặn sự kiện chạm (tap)
+    if (isMobile) {
+      return <Paper {...props} />;
+    }
+
+    // 🔹 Chỉ desktop mới dùng draggable
     return (
       <Draggable
         nodeRef={dialogNodeRef}

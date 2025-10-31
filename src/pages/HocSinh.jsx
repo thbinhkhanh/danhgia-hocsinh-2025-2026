@@ -16,6 +16,7 @@ import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/fi
 import { onSnapshot } from "firebase/firestore";
 import CloseIcon from "@mui/icons-material/Close";
 import Draggable from "react-draggable";
+import { useTheme, useMediaQuery } from "@mui/material"; 
 
 export default function HocSinh() {
   // 🔹 Lấy context
@@ -223,7 +224,7 @@ useEffect(() => {
         }
       });
 
-      console.log(`✅ ${studentId}: ${hoVaTen} (${status}) đã lưu thành công`);
+      //console.log(`✅ ${studentId}: ${hoVaTen} (${status}) đã lưu thành công`);
     } catch (err) {
       console.error("❌ Lỗi khi lưu trạng thái học sinh:", err);
     }
@@ -361,11 +362,19 @@ useEffect(() => {
     "": { bg: "#ffffff", text: "#000000" },
   };
 
-   /// ref cho node (an toàn cho React StrictMode)
+  // ref cho node (an toàn cho React StrictMode)
   const dialogNodeRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   function PaperComponent(props) {
-    // sử dụng nodeRef để tránh findDOMNode warnings / errors
+    // 🔹 KHẮC PHỤC LỖI TRÊN MOBILE:
+    // Trên điện thoại, không bọc trong <Draggable> để tránh chặn sự kiện chạm (tap)
+    if (isMobile) {
+      return <Paper {...props} />;
+    }
+
+    // 🔹 Chỉ desktop mới dùng draggable
     return (
       <Draggable
         nodeRef={dialogNodeRef}
