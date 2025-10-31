@@ -42,14 +42,6 @@ function AppContent() {
   const navigate = useNavigate();
   const { config, setConfig } = useContext(ConfigContext);
 
-    // 🟢 Tự động chuyển sang trang Học sinh khi vào root "/"
-  React.useEffect(() => {
-    if (location.pathname === "/") {
-      navigate("/hocsinh", { replace: true });
-    }
-  }, [location.pathname, navigate]);
-
-
   // ✅ Hàm xử lý đăng xuất
   const handleLogout = () => {
     localStorage.removeItem("loggedIn");
