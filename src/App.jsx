@@ -18,6 +18,7 @@ import QuanTri from "./pages/QuanTri";
 import GiaoVien from "./pages/GiaoVien";
 import TongHopDanhGia from "./pages/TongHopDanhGia";
 import NhapdiemKTDK from "./pages/NhapdiemKTDK";
+import XuatDanhGia from "./pages/XuatDanhGia";
 import ThongKe from "./pages/ThongKe";
 import DanhSachHS from "./pages/DanhSachHS"; 
 
@@ -70,6 +71,7 @@ function AppContent() {
           { path: "/tonghopdanhgia", label: "ĐGTX", icon: <SummarizeIcon fontSize="small" /> },
           //{ path: "/nhapdiemktdk", label: "Nhập điểm", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/nhapdiemktdk", label: "KTĐK", icon: <SummarizeIcon fontSize="small" /> },
+          { path: "/xuatdanhgia", label: "Xuất đánh giá", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/thongke", label: "Thống kê", icon: <BarChartIcon fontSize="small" /> },
           { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
           { path: "/quan-tri", label: "Hệ thống", icon: <SettingsIcon fontSize="small" /> },
@@ -204,6 +206,11 @@ function AppContent() {
             path="/nhapdiemktdk"
             element={config.login ? <NhapdiemKTDK /> : <Navigate to="/login" replace />}
           />
+          <Route
+            path="/xuatdanhgia"
+            element={config.login ? <XuatDanhGia /> : <Navigate to="/login" replace />}
+          />
+
           <Route
             path="/tonghopdanhgia"
             element={config.login ? <TongHopDanhGia /> : <Navigate to="/login" replace />}
