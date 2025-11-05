@@ -1,9 +1,11 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
+// 🔹 Tạo context
 export const ConfigContext = createContext();
 
+// 🔹 Provider bao quanh toàn app
 export const ConfigProvider = ({ children }) => {
   const defaultConfig = {
     tuan: 1,
@@ -11,8 +13,10 @@ export const ConfigProvider = ({ children }) => {
     giaovien: false,
     mon: "Tin học",
     login: false,
+    hocky: "Giữa kỳ I", // thêm giá trị mặc định học kỳ
   };
 
+  // Lấy config từ localStorage nếu có
   const storedConfig = JSON.parse(localStorage.getItem("appConfig") || '{}');
   const [config, setConfig] = useState({ ...defaultConfig, ...storedConfig });
 
@@ -21,7 +25,7 @@ export const ConfigProvider = ({ children }) => {
     localStorage.setItem("appConfig", JSON.stringify(config));
   }, [config]);
 
-  // ⚡ Khi ứng dụng khởi động, nếu localStorage trống thì load từ Firestore
+  // ⚡ Khi app khởi động, nếu localStorage trống thì load từ Firestore
   useEffect(() => {
     if (!localStorage.getItem("appConfig")) {
       const fetchConfig = async () => {
@@ -36,6 +40,7 @@ export const ConfigProvider = ({ children }) => {
               giaovien: data.giaovien === true || false,
               mon: data.mon || "Tin học",
               login: data.login === true || false,
+              hocky: data.hocky || "Giữa kỳ I",
             };
             setConfig(restoredConfig);
           }
@@ -52,4 +57,9 @@ export const ConfigProvider = ({ children }) => {
       {children}
     </ConfigContext.Provider>
   );
+};
+
+// 🔹 Custom hook để dùng context dễ dàng
+export const useConfig = () => {
+  return useContext(ConfigContext);
 };

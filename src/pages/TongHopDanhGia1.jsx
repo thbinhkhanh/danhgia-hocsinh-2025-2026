@@ -45,7 +45,6 @@ export default function TongHopDanhGia() {
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentDataContext);
 
   const { config, setConfig } = useContext(ConfigContext);
-  const selectedSemester = config.hocky || "Giữa kỳ 1";
 
   // --- State ---
   const [classes, setClasses] = useState([]);
@@ -208,21 +207,14 @@ const [snackbar, setSnackbar] = useState({
   severity: "success", // success | error | warning | info
 });
 
-const handleSaveAll = async () => {
+const handleSaveAll = async () => { 
   if (!students || students.length === 0) return;
 
-  // ✅ Xác định học kỳ được chọn
-  let termDoc = "CN"; // mặc định
-  if (selectedSemester === "Giữa kỳ 1") termDoc = "GKI";
-  else if (selectedSemester === "Cuối kỳ 1") termDoc = "CKI";
-  else if (selectedSemester === "Giữa kỳ 2") termDoc = "GKII";
-  else termDoc = "CN";
-
-  // ✅ Tên lớp chỉ giữ "_CN" nếu là Công nghệ
-  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}`;
-
-  // ✅ Tham chiếu tài liệu Firestore
+  const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
+  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+  const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
   const docRef = doc(db, "KTDK", termDoc);
+
   const batch = writeBatch(db);
 
   students.forEach((s) => {
@@ -231,7 +223,7 @@ const handleSaveAll = async () => {
       lyThuyet: null,
       thucHanh: null,
       tongCong: null,
-      mucDat: s.mucDat || "",    // ✅ Giữ nguyên
+      mucDat: s.mucDat || "",    // ✅ Giữ nguyên, không cập nhật
       nhanXet: s.nhanXet || "",
       dgtx: s.dgtx || "",         // ✅ Mức đạt chung (HS + GV)
       dgtx_gv: s.dgtx_gv || "",
@@ -258,7 +250,7 @@ const handleSaveAll = async () => {
 
     setSnackbar({
       open: true,
-      message: `✅ Lưu thành công (${termDoc})!`,
+      message: `✅ Lưu thành công!`,
       severity: "success",
     });
   } catch (err) {
@@ -271,7 +263,6 @@ const handleSaveAll = async () => {
     });
   }
 };
-
 
 
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
@@ -352,31 +343,8 @@ const fetchStudentsAndStatus = async () => {
   if (!selectedClass) return;
 
   try {
-    // 🔹 Lấy học kỳ từ config
-    const selectedSemester = config.hocky || "Giữa kỳ 1";
-
-    // 🔹 Xác định tài liệu cần đọc trong Firestore
-    let termDoc;
-    switch (selectedSemester) {
-      case "Giữa kỳ 1":
-        termDoc = "GKI";
-        break;
-      case "Cuối kỳ 1":
-        termDoc = "CKI";
-        break;
-      case "Giữa kỳ 2":
-        termDoc = "GKII";
-        break;
-      default:
-        termDoc = "CN";
-        break;
-    }
-
-    // 🔹 Tên lớp thống nhất (không thêm _HK1/_CN_HK1)
-    const classKey = isCongNghe ? `${selectedClass}_CN` : selectedClass;
-
     // 🔹 Kiểm tra cache trước
-    const cacheKey = classKey;
+    const cacheKey = isCongNghe ? `${selectedClass}_CN` : selectedClass;
     const cachedData = studentData[cacheKey];
     if (cachedData && cachedData.length > 0) {
       setStudents(cachedData);
@@ -388,8 +356,8 @@ const fetchStudentsAndStatus = async () => {
     setLoadingProgress(0);
     setLoadingMessage(`Đang tổng hợp dữ liệu...`);
 
-    // 1️⃣ Lấy dữ liệu từ DGTX (đánh giá thường xuyên)
-    const classPath = classKey;
+    // 1️⃣ Lấy dữ liệu từ DGTX
+    const classPath = isCongNghe ? `${selectedClass}_CN` : selectedClass;
     const tuanRef = collection(db, `DGTX/${classPath}/tuan`);
     const snapshot = await getDocs(tuanRef);
 
@@ -408,14 +376,14 @@ const fetchStudentsAndStatus = async () => {
       }
     });
 
-    // 🔹 Sắp xếp tuần theo thứ tự
+    // 🔹 Chuẩn hóa danh sách tuần (đảm bảo thứ tự tăng dần)
     const sortedWeekIds = Object.keys(weekMap).sort((a, b) => {
       const nA = parseInt(a.replace(/\D/g, "")) || 0;
       const nB = parseInt(b.replace(/\D/g, "")) || 0;
       return nA - nB;
     });
 
-    // 🔹 Gom tất cả học sinh từ các tuần
+    // 🔹 👉 FIX LỖI: gom học sinh từ TẤT CẢ các tuần, không chỉ tuần đầu tiên
     const studentMap = {};
     Object.values(weekMap).forEach((weekData) => {
       Object.entries(weekData).forEach(([maDinhDanh, info]) => {
@@ -432,7 +400,7 @@ const fetchStudentsAndStatus = async () => {
       });
     });
 
-    // 2️⃣ Tổng hợp dữ liệu theo tuần
+    // 2️⃣ Tổng hợp dữ liệu theo từng tuần
     for (const weekId of sortedWeekIds) {
       const weekData = weekMap[weekId];
       if (!weekData) continue;
@@ -445,8 +413,10 @@ const fetchStudentsAndStatus = async () => {
       }
     }
 
-    // 3️⃣ Lấy đánh giá GV + nhận xét từ bảng KTDK (theo học kỳ)
-    const bangDiemRef = doc(db, "KTDK", termDoc);
+    // 3️⃣ Lấy đánh giá GV + nhận xét từ bảng điểm (KTDK)
+    const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
+    const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+    const bangDiemRef = doc(db, "KTDK", selectedTerm);
     const bangDiemSnap = await getDoc(bangDiemRef);
 
     if (bangDiemSnap.exists()) {
@@ -461,7 +431,7 @@ const fetchStudentsAndStatus = async () => {
       });
     }
 
-    // 4️⃣ Chuyển sang mảng & sắp xếp học sinh theo tên
+    // 4️⃣ Chuyển sang mảng và sắp xếp học sinh theo tên
     let studentList = Object.values(studentMap);
     studentList.sort((a, b) => {
       const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
@@ -470,7 +440,7 @@ const fetchStudentsAndStatus = async () => {
     });
     studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-    // 5️⃣ Tính mức đạt & nhận xét tự động
+    // 5️⃣ Tính mức đạt & nhận xét (ưu tiên nhận xét từ KTDK)
     const evaluatedList = studentList.map((s) => {
       const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
       const hs = xepLoai || "";
@@ -522,7 +492,6 @@ const fetchStudentsAndStatus = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
-
 
 
 const fetchStudentsDGTX = async () => {

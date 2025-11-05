@@ -46,7 +46,7 @@ export default function NhapdiemKTDK() {
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
   const [isCongNghe, setIsCongNghe] = useState(false);
- //const [selectedTerm, setSelectedTerm] = useState("HK1");
+  const [selectedTerm, setSelectedTerm] = useState("HK1");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -79,85 +79,63 @@ export default function NhapdiemKTDK() {
   }, [classData, setClassData]);
 
   const fetchStudentsAndStatus = async (cls) => {
-  const currentClass = cls || selectedClass;
-  if (!currentClass) return;
+    const currentClass = cls || selectedClass;
+    if (!currentClass) return;
 
-  try {
-    // 🔹 Lấy học kỳ từ config (đồng bộ với handleSaveAll)
-    const selectedSemester = config.hocky || "Giữa kỳ 1";
+    const classKey = `${currentClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+    const termDoc = selectedTerm === "HK1" ? "HK1" : "CN";
 
-    // 🔹 Xác định tài liệu học kỳ trong Firestore
-    let termDoc;
-    switch (selectedSemester) {
-      case "Giữa kỳ I":
-        termDoc = "GKI";
-        break;
-      case "Cuối kỳ I":
-        termDoc = "CKI";
-        break;
-      case "Giữa kỳ II":
-        termDoc = "GKII";
-        break;
-      default:
-        termDoc = "CN";
-        break;
-    }
-
-
-    // 🔹 Tên lớp: chỉ giữ dạng "4.1" hoặc "4.1_CN"
-    const classKey = isCongNghe ? `${currentClass}_CN` : currentClass;
-
-    // 🔹 Kiểm tra cache trước
     const cached = getStudentsForClass(termDoc, classKey);
     if (cached) {
       setStudents(cached);
       return;
     }
 
-    // 🔹 Lấy dữ liệu từ Firestore
-    const docRef = doc(db, "KTDK", termDoc);
-    const snap = await getDoc(docRef);
-    const termData = snap.exists() ? snap.data() : {};
-    const classData = termData[classKey] || {};
+    try {
+      const docRef = doc(db, "KTDK", termDoc);
+      const snap = await getDoc(docRef);
+      const termData = snap.exists() ? snap.data() : {};
+      const classData = termData[classKey] || {};
 
-    // 1️⃣ Tạo danh sách học sinh (chưa gán STT)
-    let studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      hoVaTen: info.hoVaTen || "",
-      dgtx: info.dgtx || "",
-      dgtx_gv: info.dgtx_gv || "",
-      lyThuyet: info.lyThuyet ?? null,
-      thucHanh: info.thucHanh ?? null,
-      tongCong: info.tongCong ?? null,
-      mucDat: info.mucDat || "",
-      nhanXet: info.nhanXet || "",
-    }));
+      // 1️⃣ Tạo danh sách học sinh (chưa gán STT)
+      let studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
+        hoVaTen: info.hoVaTen || "",
+        dgtx: info.dgtx || "",
+        dgtx_gv: info.dgtx_gv || "",
+        lyThuyet: info.lyThuyet ?? null,
+        thucHanh: info.thucHanh ?? null,
+        tongCong: info.tongCong ?? null,
+        mucDat: info.mucDat || "",
+        nhanXet: info.nhanXet_CK || "",
+      }));
 
-    // 2️⃣ Sắp xếp theo tên
-    studentList.sort((a, b) => {
-      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
+      // 2️⃣ Sắp xếp theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
 
-    // 3️⃣ Gán lại số thứ tự sau khi sắp xếp
-    studentList = studentList.map((s, idx) => ({
-      ...s,
-      stt: idx + 1,
-    }));
+      // 3️⃣ Gán lại số thứ tự sau khi sắp xếp
+      studentList = studentList.map((s, idx) => ({
+        ...s,
+        stt: idx + 1,
+      }));
 
-    // 4️⃣ Lưu và cache
-    setStudents(studentList);
-    setStudentsForClass(termDoc, classKey, studentList);
-  } catch (err) {
-    console.error("❌ Lỗi khi lấy dữ liệu:", err);
-    setStudents([]);
-  }
-};
+      // 4️⃣ Lưu và cache
+      setStudents(studentList);
+      setStudentsForClass(termDoc, classKey, studentList);
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy dữ liệu:", err);
+      setStudents([]);
+    }
+  };
+
 
  useEffect(() => {
-  fetchStudentsAndStatus();
-}, [selectedClass, isCongNghe, config.hocky]);
+    fetchStudentsAndStatus();
+    }, [selectedClass, selectedTerm, isCongNghe]);
 
 
     // Hàm nhận xét ngẫu nhiên dựa trên xếp loại
@@ -247,34 +225,12 @@ const parseOrNull = (val) => {
 const handleSaveAll = async () => {
   if (!students || students.length === 0) return;
 
-  // 🔹 Lấy học kỳ từ config (đồng bộ với CONFIG)
-  const selectedSemester = config.hocky || "Giữa kỳ I";
+  const term = selectedTerm;
+  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}_${term}`;
+  const docRef = doc(db, "KTDK", term);
 
-  // 🔹 Xác định tài liệu Firestore cần lưu
-  let termDoc;
-  switch (selectedSemester) {
-    case "Giữa kỳ I":
-      termDoc = "GKI";
-      break;
-    case "Cuối kỳ I":
-      termDoc = "CKI";
-      break;
-    case "Giữa kỳ II":
-      termDoc = "GKII";
-      break;
-    default:
-      termDoc = "CN";
-      break;
-  }
-
-
-  // 🔹 Tên lớp rút gọn (4.1 hoặc 4.1_CN)
-  const classKey = isCongNghe ? `${selectedClass}_CN` : selectedClass;
-
-  const docRef = doc(db, "KTDK", termDoc);
   const batch = writeBatch(db);
 
-  // 🔹 Chuẩn hóa dữ liệu học sinh
   const studentsMap = {};
   students.forEach((s) => {
     studentsMap[s.maDinhDanh] = {
@@ -283,39 +239,29 @@ const handleSaveAll = async () => {
       thucHanh: parseOrNull(s.thucHanh),
       tongCong: parseOrNull(s.tongCong),
       mucDat: s.mucDat || "",
-      nhanXet: s.nhanXet || "",
+      nhanXet_CK: s.nhanXet || "",
       dgtx: s.dgtx || "",
       dgtx_gv: s.dgtx_gv || "",
     };
   });
 
-  // 🔹 Gộp dữ liệu vào batch (merge để không ghi đè lớp khác)
   batch.set(docRef, { [classKey]: studentsMap }, { merge: true });
 
   try {
     await batch.commit();
 
-    // ✅ Cập nhật context cache
+    // ✅ Cập nhật context
     setStudentData((prev) => ({ ...prev, [classKey]: students }));
     if (typeof setStudentsForClass === "function") {
-      setStudentsForClass(termDoc, classKey, students);
+      setStudentsForClass(term, classKey, students);
     }
 
-    setSnackbar({
-      open: true,
-      message: "✅ Lưu thành công!",
-      severity: "success",
-    });
+    setSnackbar({ open: true, message: "✅ Lưu thành công!", severity: "success" });
   } catch (err) {
     console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Lỗi khi lưu dữ liệu học sinh!",
-      severity: "error",
-    });
+    setSnackbar({ open: true, message: "❌ Lỗi khi lưu dữ liệu học sinh!", severity: "error" });
   }
 };
-
 
  const handleDownload = async () => {
     try {
@@ -495,51 +441,16 @@ const nhanXetTheoMuc = {
               right: 12
             }}
           >
-            <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
               <Select
-                value={config.hocky || "Giữa kỳ 1"}
-                onChange={async (e) => {
-                  const newSemester = e.target.value;
-                  try {
-                    // 🔹 Cập nhật Firestore
-                    const docRef = doc(db, "CONFIG", "config");
-                    await setDoc(docRef, { hocky: newSemester }, { merge: true });
-
-                    // 🔹 Cập nhật context
-                    setConfig((prev) => ({ ...prev, hocky: newSemester }));
-
-                    // 🔹 Reload dữ liệu
-                    await fetchStudentsAndStatus(selectedClass);
-                  } catch (err) {
-                    console.error("❌ Lỗi khi đổi học kỳ:", err);
-                  }
-                }}
-                sx={{
-                  backgroundColor: "#fff",
-                  borderRadius: 1,
-                  fontSize: 14,
-                  height: 36, // 👈 chỉnh chiều cao giống QuanTri.jsx
-                  "& .MuiSelect-select": {
-                    display: "flex",
-                    alignItems: "center",
-                    py: 0.5,
-                    px: 1.2,
-                  },
-                  "& fieldset": {
-                    borderColor: "#ccc",
-                  },
-                  "&:hover fieldset": {
-                    borderColor: "#1976d2",
-                  },
-                }}
+                value={selectedTerm}
+                onChange={(e) => setSelectedTerm(e.target.value)}
+                size="small"
               >
-                <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
-                <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
-                <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-                <MenuItem value="Cả năm">Cả năm</MenuItem>
+                <MenuItem value="HK1">Học kì I</MenuItem>
+                <MenuItem value="ALL">Cả năm</MenuItem>
               </Select>
             </FormControl>
-
           </Box>
         )}
 

@@ -36,7 +36,6 @@ export default function QuanTri() {
   const { config, setConfig } = useContext(ConfigContext);
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [systemLocked, setSystemLocked] = useState(false);
-  const [selectedSemester, setSelectedSemester] = useState("Giữa kỳ 1"); // 🆕 học kỳ
 
   const { classData, setClassData } = useContext(StudentContext);
   const [classes, setClasses] = useState([]);
@@ -52,16 +51,14 @@ export default function QuanTri() {
         if (docSnap.exists()) {
           const data = docSnap.data();
 
-          // luôn set tuần, học kỳ và môn
+          // luôn set tuần và môn
           setSelectedWeek(data.tuan || 1);
-          setSelectedSemester(data.hocky || "Giữa kỳ 1"); // 🆕
           setSystemLocked(data.hethong === false);
           setSubject(data.mon || (data.congnghe ? "Công nghệ" : "Tin học"));
 
           setConfig(prev => ({
             ...prev,
             tuan: data.tuan || 1,
-            hocky: data.hocky || "Giữa kỳ 1", // 🆕
             hethong: data.hethong ?? false,
             congnghe: data.congnghe ?? false,
             mon: data.mon || (data.congnghe ? "Công nghệ" : "Tin học"),
@@ -73,6 +70,7 @@ export default function QuanTri() {
     };
     initConfig();
   }, [setConfig]);
+
 
   // Lấy danh sách lớp
   useEffect(() => {
@@ -95,7 +93,6 @@ export default function QuanTri() {
 
         setConfig(configData);
         setSelectedWeek(configData.tuan || 1);
-        setSelectedSemester(configData.hocky || "Giữa kỳ 1"); // 🆕
         setSystemLocked(configData.hethong === false);
 
         if (configData.lop && classList.includes(configData.lop)) {
@@ -112,27 +109,186 @@ export default function QuanTri() {
     init();
   }, [setClassData, setConfig]);
 
-  // 🆕 Xử lý thay đổi học kỳ
-  const handleSemesterChange = async (e) => {
-    const newSemester = e.target.value;
-    setSelectedSemester(newSemester);
-    try {
-      const docRef = doc(db, "CONFIG", "config");
-      await setDoc(docRef, { hocky: newSemester }, { merge: true });
-      setConfig(prev => ({ ...prev, hocky: newSemester }));
-    } catch (err) {
-      console.error("Lỗi cập nhật học kỳ:", err);
+  // Xử lý file Excel
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.name.endsWith('.xlsx')) {
+      setSelectedFile(file);
+      setMessage('');
+      setSuccess(false);
+    } else {
+      setSelectedFile(null);
+      setMessage('❌ Vui lòng chọn đúng định dạng file Excel (.xlsx)');
+      setSuccess(false);
     }
   };
 
-  // (các hàm khác giữ nguyên)
-  const handleFileChange = (event) => { /* ... giữ nguyên ... */ };
-  const handleUpload = async () => { /* ... giữ nguyên ... */ };
-  const processStudentData = async (jsonData) => { /* ... giữ nguyên ... */ };
-  const handleWeekChange = async (e) => { /* ... giữ nguyên ... */ };
-  const handleClassChange = async (e) => { /* ... giữ nguyên ... */ };
-  const handleCongNgheChange = async (e) => { /* ... giữ nguyên ... */ };
-  const handleSubjectChange = async (e) => { /* ... giữ nguyên ... */ };
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      setMessage('❗ Chưa chọn file!');
+      setSuccess(false);
+      return;
+    }
+
+    setLoading(true);
+    setMessage('🔄 Đang xử lý file...');
+    setProgress(0);
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const range = XLSX.utils.decode_range(sheet['!ref']);
+
+        const headerRow = [];
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: 2, c: C });
+          const cell = sheet[cellAddress];
+          headerRow.push((cell?.v || '').toString().trim().toUpperCase());
+        }
+
+        const expectedHeaders = ['STT', 'MÃ ĐỊNH DANH', 'HỌ VÀ TÊN', 'LỚP'];
+        const isValidHeader = headerRow.length === expectedHeaders.length &&
+          expectedHeaders.every((title, index) => headerRow[index] === title);
+
+        if (!isValidHeader) {
+          setLoading(false);
+          setSuccess(false);
+          setMessage('❌ Tiêu đề file không hợp lệ. Hàng 3 phải là: STT, MÃ ĐỊNH DANH, HỌ VÀ TÊN, LỚP.');
+          return;
+        }
+
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '', header: 1, range: 3 });
+        const formattedData = jsonData.map(row => {
+          const obj = {};
+          expectedHeaders.forEach((key, i) => { obj[key] = row[i] ?? ''; });
+          return obj;
+        });
+
+        await processStudentData(formattedData);
+      } catch (err) {
+        console.error(err);
+        setSuccess(false);
+        setMessage('❌ Lỗi khi xử lý file Excel.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(selectedFile);
+  };
+
+  const processStudentData = async (jsonData) => {
+    const studentCollection = "DANHSACH";
+    const groupedByClass = {};
+    jsonData.forEach(row => {
+      const lop = row['LỚP']?.toString().trim().toUpperCase();
+      const maDinhDanh = row['MÃ ĐỊNH DANH']?.toString().trim();
+      if (!lop || !maDinhDanh) return;
+      const student = { stt: row['STT'], maDinhDanh, hoVaTen: row['HỌ VÀ TÊN'], lop };
+      if (!groupedByClass[lop]) groupedByClass[lop] = [];
+      groupedByClass[lop].push(student);
+    });
+
+    let totalStudents = 0;
+    let errorCount = 0;
+    const allLopKeys = Object.keys(groupedByClass);
+    const BATCH_LIMIT = 500;
+
+    for (let i = 0; i < allLopKeys.length; i++) {
+      const lop = allLopKeys[i];
+      const students = groupedByClass[lop];
+      totalStudents += students.length;
+      setProgress(Math.round(((i + 1) / allLopKeys.length) * 100));
+
+      for (let j = 0; j < students.length; j += BATCH_LIMIT) {
+        const batch = writeBatch(db);
+        const chunk = students.slice(j, j + BATCH_LIMIT);
+        const classDocRef = doc(db, studentCollection, lop);
+        const dataToMerge = {};
+        chunk.forEach(student => {
+          dataToMerge[student.maDinhDanh] = { hoVaTen: student.hoVaTen, stt: student.stt, lop: student.lop };
+        });
+        batch.set(classDocRef, dataToMerge, { merge: true });
+        try { await batch.commit(); } catch { errorCount += chunk.length; }
+      }
+    }
+
+    if (errorCount === 0) {
+      setSuccess(true);
+      setMessage(`✅ Đã thêm thành công ${totalStudents} học sinh.`);
+      setSelectedFile(null);
+    } else {
+      setSuccess(false);
+      setMessage(`⚠️ Có ${errorCount} học sinh lỗi.`);
+    }
+  };
+
+  const handleWeekChange = async (e) => {
+    const newWeek = e.target.value;
+    setSelectedWeek(newWeek);
+
+    try {
+      const docRef = doc(db, "CONFIG", "config");
+      await setDoc(docRef, { tuan: newWeek }, { merge: true });
+      setConfig(prev => ({ ...prev, tuan: newWeek }));
+    } catch (err) {
+      console.error("Lỗi cập nhật tuần:", err);
+    }
+  };
+
+  const handleClassChange = async (e) => {
+    const newClass = e.target.value;
+    setSelectedClass(newClass);
+
+    try {
+      const docRef = doc(db, "CONFIG", "config");
+      await setDoc(docRef, { lop: newClass }, { merge: true });
+      setConfig(prev => ({ ...prev, lop: newClass }));
+    } catch (err) {
+      console.error("Lỗi cập nhật lớp:", err);
+    }
+  };
+
+  const handleCongNgheChange = async (e) => {
+    const newCongNghe = e.target.checked;
+    setIsCongNghe(newCongNghe);
+
+    try {
+      const docRef = doc(db, "CONFIG", "config");
+      await setDoc(docRef, { congnghe: newCongNghe }, { merge: true });
+      setConfig(prev => ({ ...prev, congnghe: newCongNghe }));
+    } catch (err) {
+      console.error("❌ Lỗi cập nhật Công nghệ:", err);
+    }
+  };
+
+  const handleSubjectChange = async (e) => {
+    const newSubject = e.target.value;
+    const isCongNghe = newSubject === "Công nghệ";
+
+    setSubject(newSubject);
+
+    try {
+      const docRef = doc(db, "CONFIG", "config");
+
+      // 🔄 Ghi cả mon và congnghe lên Firestore
+      await setDoc(docRef, {
+        mon: newSubject,
+        congnghe: isCongNghe,
+      }, { merge: true });
+
+      // 🔄 Cập nhật context đầy đủ
+      setConfig(prev => ({
+        ...prev,
+        mon: newSubject,
+        congnghe: isCongNghe,
+      }));
+    } catch (err) {
+      console.error("❌ Lỗi cập nhật môn học:", err);
+    }
+  };
 
   return (
   <Box sx={{ minHeight: '100vh', backgroundColor: '#e3f2fd', pt: 3 }}>
@@ -200,16 +356,6 @@ export default function QuanTri() {
         </Typography>
 
         <Stack spacing={2}>
-          {/* 🆕 Ô chọn học kỳ */}
-          <FormControl size="small" sx={{ flex: 1 }}>
-            <Select value={selectedSemester} onChange={handleSemesterChange}>
-              <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
-              <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
-              <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-              <MenuItem value="Cả năm">Cả năm</MenuItem>
-            </Select>
-          </FormControl>
-
           {/* 🔼 Môn học đặt lên trên */}
           <FormControl fullWidth size="small">
             <Select value={subject} onChange={handleSubjectChange}>
@@ -218,7 +364,7 @@ export default function QuanTri() {
             </Select>
           </FormControl>
 
-          {/* 🔽 Lớp, tuần, học kỳ đặt xuống dưới */}
+          {/* 🔽 Lớp và tuần đặt xuống dưới */}
           <Box sx={{ display: "flex", gap: 2 }}>
             <FormControl size="small" sx={{ flex: 1 }}>
               <Select value={selectedClass} onChange={handleClassChange}>
@@ -239,11 +385,11 @@ export default function QuanTri() {
                 ))}
               </Select>
             </FormControl>
-
           </Box>
         </Stack>
       </Box>
     </Card>
   </Box>
-  );
+);
+
 }
