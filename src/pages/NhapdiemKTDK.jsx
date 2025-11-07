@@ -45,10 +45,16 @@ export default function NhapdiemKTDK() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
-  const [isCongNghe, setIsCongNghe] = useState(false);
- //const [selectedTerm, setSelectedTerm] = useState("HK1");
-
+  
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const [selectedSubject, setSelectedSubject] = useState(() => config?.mon || "Tin học");
+
+  useEffect(() => {
+    if (config?.mon && config.mon !== selectedSubject) {
+      setSelectedSubject(config.mon);
+    }
+  }, [config?.mon]);
 
   useEffect(() => {
     if (config?.lop) setSelectedClass(config.lop);
@@ -84,7 +90,7 @@ export default function NhapdiemKTDK() {
 
   try {
     // 🔹 Lấy học kỳ từ config (đồng bộ với handleSaveAll)
-    const selectedSemester = config.hocky || "Giữa kỳ 1";
+    const selectedSemester = config.hocKy || "Giữa kỳ I";
 
     // 🔹 Xác định tài liệu học kỳ trong Firestore
     let termDoc;
@@ -105,7 +111,7 @@ export default function NhapdiemKTDK() {
 
 
     // 🔹 Tên lớp: chỉ giữ dạng "4.1" hoặc "4.1_CN"
-    const classKey = isCongNghe ? `${currentClass}_CN` : currentClass;
+    const classKey = config?.mon === "Công nghệ" ? `${currentClass}_CN` : currentClass;
 
     // 🔹 Kiểm tra cache trước
     const cached = getStudentsForClass(termDoc, classKey);
@@ -157,8 +163,7 @@ export default function NhapdiemKTDK() {
 
  useEffect(() => {
   fetchStudentsAndStatus();
-}, [selectedClass, isCongNghe, config.hocky]);
-
+}, [selectedClass, config.mon, config.hocKy]);
 
     // Hàm nhận xét ngẫu nhiên dựa trên xếp loại
 // Hàm lấy nhận xét tự động theo xếp loại
@@ -248,7 +253,7 @@ const handleSaveAll = async () => {
   if (!students || students.length === 0) return;
 
   // 🔹 Lấy học kỳ từ config (đồng bộ với CONFIG)
-  const selectedSemester = config.hocky || "Giữa kỳ I";
+  const selectedSemester = config.hocKy || "Giữa kỳ I";
 
   // 🔹 Xác định tài liệu Firestore cần lưu
   let termDoc;
@@ -269,7 +274,7 @@ const handleSaveAll = async () => {
 
 
   // 🔹 Tên lớp rút gọn (4.1 hoặc 4.1_CN)
-  const classKey = isCongNghe ? `${selectedClass}_CN` : selectedClass;
+  const classKey = config.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
 
   const docRef = doc(db, "KTDK", termDoc);
   const batch = writeBatch(db);
@@ -319,7 +324,7 @@ const handleSaveAll = async () => {
 
  const handleDownload = async () => {
     try {
-      await exportKTDK(students, selectedClass, selectedTerm);
+      await exportKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I");
     } catch (error) {
       console.error("❌ Lỗi khi xuất Excel:", error);
     }
@@ -421,13 +426,13 @@ const nhanXetTheoMuc = {
       return;
     }
     try {
-      // gọi hàm in, truyền class và học kỳ hiện tại
-      await inKTDK(selectedClass, selectedTerm);
+      await printKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I");
     } catch (err) {
       console.error("❌ Lỗi khi in:", err);
       alert("Lỗi khi in danh sách. Vui lòng thử lại!");
     }
   };
+
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
@@ -473,7 +478,7 @@ const nhanXetTheoMuc = {
 
           <Tooltip title="In danh sách KTĐK" arrow>
             <IconButton
-              onClick={() => printKTDK(students, selectedClass, selectedTerm)}
+              onClick={() => printKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I")}
               sx={{
                 color: "primary.main",
                 bgcolor: "white",
@@ -483,76 +488,23 @@ const nhanXetTheoMuc = {
             >
               <PrintIcon fontSize="small" />
             </IconButton>
+
           </Tooltip>
         </Box>
 
-        {/* 🟦 Ô chọn học kỳ ở góc phải (desktop) */}
-        {!isMobile && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 12,
-              right: 12
-            }}
+        {/* 🟨 Tiêu đề & Học kỳ hiện tại */}
+        <Box sx={{ textAlign: "center", mb: 3 }}>
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            color="primary"
+            sx={{ mb: 1 }}
           >
-            <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
-              <Select
-                value={config.hocky || "Giữa kỳ 1"}
-                onChange={async (e) => {
-                  const newSemester = e.target.value;
-                  try {
-                    // 🔹 Cập nhật Firestore
-                    const docRef = doc(db, "CONFIG", "config");
-                    await setDoc(docRef, { hocky: newSemester }, { merge: true });
+            {`NHẬP ĐIỂM ${config.hocKy?.toUpperCase() || "KTĐK"}`}
+          </Typography>
+        </Box>
 
-                    // 🔹 Cập nhật context
-                    setConfig((prev) => ({ ...prev, hocky: newSemester }));
 
-                    // 🔹 Reload dữ liệu
-                    await fetchStudentsAndStatus(selectedClass);
-                  } catch (err) {
-                    console.error("❌ Lỗi khi đổi học kỳ:", err);
-                  }
-                }}
-                sx={{
-                  backgroundColor: "#fff",
-                  borderRadius: 1,
-                  fontSize: 14,
-                  height: 36, // 👈 chỉnh chiều cao giống QuanTri.jsx
-                  "& .MuiSelect-select": {
-                    display: "flex",
-                    alignItems: "center",
-                    py: 0.5,
-                    px: 1.2,
-                  },
-                  "& fieldset": {
-                    borderColor: "#ccc",
-                  },
-                  "&:hover fieldset": {
-                    borderColor: "#1976d2",
-                  },
-                }}
-              >
-                <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
-                <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
-                <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-                <MenuItem value="Cả năm">Cả năm</MenuItem>
-              </Select>
-            </FormControl>
-
-          </Box>
-        )}
-
-        {/* 🟨 Tiêu đề */}
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          color="primary"
-          gutterBottom
-          sx={{ textAlign: "center", mb: 2 }}
-        >
-          NHẬP ĐIỂM KTĐK
-        </Typography>
 
         {/* 🟩 Hàng chọn Lớp – Môn – Học kỳ (3 ô cùng hàng khi mobile) */}
         <Box
@@ -592,44 +544,23 @@ const nhanXetTheoMuc = {
           </FormControl>
 
           {/* Môn học */}
-          <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0, mt: 1 }}>
-            <InputLabel id="monhoc-label">Môn học</InputLabel>
+          <FormControl size="small" sx={{ minWidth: 120, flexShrink: 0, mt: 1 }}>
+            <InputLabel id="monhoc-label">Môn</InputLabel>
             <Select
               labelId="monhoc-label"
-              value={isCongNghe ? "congnghe" : "tinhoc"}
-              label="Môn học"
+              value={selectedSubject}
+              label="Môn"
               onChange={async (e) => {
                 const value = e.target.value;
-                const isCN = value === "congnghe";
-                try {
-                  const docRef = doc(db, "CONFIG", "config");
-                  await setDoc(docRef, { congnghe: isCN }, { merge: true });
-                  setConfig((prev) => ({ ...prev, congnghe: isCN }));
-                  setIsCongNghe(isCN);
-                } catch (err) {
-                  console.error("❌ Lỗi cập nhật môn học:", err);
-                }
+                setSelectedSubject(value);
+                setConfig(prev => ({ ...prev, mon: value }));
+                await setDoc(doc(db, "CONFIG", "config"), { mon: value }, { merge: true });
               }}
             >
-              <MenuItem value="tinhoc">Tin học</MenuItem>
-              <MenuItem value="congnghe">Công nghệ</MenuItem>
+              <MenuItem value="Tin học">Tin học</MenuItem>
+              <MenuItem value="Công nghệ">Công nghệ</MenuItem>
             </Select>
           </FormControl>
-
-          {/* Học kỳ (hiển thị trong hàng này khi mobile) */}
-          {isMobile && (
-            <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0, mt: 1 }}>
-              <InputLabel id="term-label">Học kỳ</InputLabel>
-              <Select
-                labelId="term-label"
-                value={selectedTerm}
-                onChange={(e) => setSelectedTerm(e.target.value)}
-              >
-                <MenuItem value="HK1">Học kì I</MenuItem>
-                <MenuItem value="ALL">Cả năm</MenuItem>
-              </Select>
-            </FormControl>
-          )}
         </Box>
 
         {/* 🧾 Bảng học sinh (giữ nguyên định dạng gốc) */}

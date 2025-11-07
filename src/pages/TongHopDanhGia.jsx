@@ -45,7 +45,7 @@ export default function TongHopDanhGia() {
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentDataContext);
 
   const { config, setConfig } = useContext(ConfigContext);
-  const selectedSemester = config.hocky || "Giữa kỳ 1";
+  const selectedSemester = config.hocKy || "Giữa kỳ I";
 
   // --- State ---
   const [classes, setClasses] = useState([]);
@@ -55,8 +55,7 @@ export default function TongHopDanhGia() {
   const [weekFrom, setWeekFrom] = useState(1);
   const [weekTo, setWeekTo] = useState(9);
 
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [isCongNghe, setIsCongNghe] = useState(false);
+  //const [selectedWeek, setSelectedWeek] = useState(1);
   const [isTeacherChecked, setIsTeacherChecked] = useState(false);
 
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -65,6 +64,7 @@ export default function TongHopDanhGia() {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [showWeeks, setShowWeeks] = useState(true);
+  const [selectedSubject, setSelectedSubject] = useState(""); // không mặc định
 
   const nhanXetTheoMuc = {
     tot: [
@@ -219,7 +219,7 @@ const handleSaveAll = async () => {
   else termDoc = "CN";
 
   // ✅ Tên lớp chỉ giữ "_CN" nếu là Công nghệ
-  const classKey = `${selectedClass}${isCongNghe ? "_CN" : ""}`;
+  const classKey = `${selectedClass}${selectedSubject === "Công nghệ" ? "_CN" : ""}`;
 
   // ✅ Tham chiếu tài liệu Firestore
   const docRef = doc(db, "KTDK", termDoc);
@@ -272,8 +272,6 @@ const handleSaveAll = async () => {
   }
 };
 
-
-
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
   useEffect(() => {
     if (config?.lop) {
@@ -281,43 +279,51 @@ const handleSaveAll = async () => {
     }
   }, [config?.lop]);
 
+  const [selectedWeek, setSelectedWeek] = useState(null); // ban đầu null
 
-  // Lấy config tuần & công nghệ (chỉ hiển thị)
-  
+  // --- Khi load config ---
+useEffect(() => {
+  const fetchConfig = async () => {
+    try {
+      const docRef = doc(db, "CONFIG", "config");
+      const docSnap = await getDoc(docRef);
 
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const docRef = doc(db, "CONFIG", "config");
-        const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        // Cập nhật context
+        setConfig(data);
 
-          setSelectedWeek(data.tuan || 1);
-          setIsCongNghe(data.congnghe || false);
-          setConfig(data);
+        // Cập nhật state tuần
+        setWeekFrom(Number(data.th_tuan_from) || 1);
+        setWeekTo(Number(data.th_tuan_to) || 9);
+        setSelectedWeek(data.tuan || 1);
 
-          // ✅ Dùng Number() để đảm bảo kiểu số
-          setWeekFrom(Number(data.th_tuan_from) || 1);
-          setWeekTo(Number(data.th_tuan_to) || 9);
-        } else {
-          console.warn("⚠️ Chưa có document CONFIG/config, dùng giá trị mặc định.");
-          setWeekFrom(1);
-          setWeekTo(9);
-        }
-      } catch (err) {
-        console.error("❌ Lỗi khi tải cấu hình:", err);
+        // Cập nhật lớp/môn
+        setSelectedClass(prev => prev || data.lop || "");
+        setSelectedSubject(prev => prev || data.mon || "Tin học"); // 🔹 đồng bộ môn
+      } else {
         setWeekFrom(1);
         setWeekTo(9);
-      } finally {
-        // ✅ Luôn đánh dấu đã tải xong (thành công hoặc thất bại)
-        setIsConfigLoaded(true);
+        setSelectedWeek(1);
+        setSelectedClass("");
+        setSelectedSubject("Tin học");
       }
-    };
+    } catch (err) {
+      console.error("❌ Lỗi khi tải cấu hình:", err);
+      setWeekFrom(1);
+      setWeekTo(9);
+      setSelectedWeek(1);
+      setSelectedClass("");
+      setSelectedSubject("Tin học");
+    } finally {
+      setIsConfigLoaded(true);
+    }
+  };
 
-    fetchConfig();
-  }, [setConfig]);
+  fetchConfig();
+}, [setConfig]);
+
 
   // Lấy danh sách lớp
   useEffect(() => {
@@ -352,28 +358,18 @@ const fetchStudentsAndStatus = async () => {
   if (!selectedClass) return;
 
   try {
-    // 🔹 Lấy học kỳ từ config
-    const selectedSemester = config.hocky || "Giữa kỳ 1";
+    // 🔹 Lấy học kỳ từ config và ánh xạ sang tên tài liệu Firestore
+    const mapTerm = {
+      "Giữa kỳ I": "GKI",
+      "Cuối kỳ I": "CKI",
+      "Giữa kỳ II": "GKII",
+      "Cả năm": "CN",
+    };
+    const selectedSemester = config.hocKy || "Giữa kỳ I";
+    const termDoc = mapTerm[selectedSemester] || "CN";
 
-    // 🔹 Xác định tài liệu cần đọc trong Firestore
-    let termDoc;
-    switch (selectedSemester) {
-      case "Giữa kỳ 1":
-        termDoc = "GKI";
-        break;
-      case "Cuối kỳ 1":
-        termDoc = "CKI";
-        break;
-      case "Giữa kỳ 2":
-        termDoc = "GKII";
-        break;
-      default:
-        termDoc = "CN";
-        break;
-    }
-
-    // 🔹 Tên lớp thống nhất (không thêm _HK1/_CN_HK1)
-    const classKey = isCongNghe ? `${selectedClass}_CN` : selectedClass;
+    // 🔹 Tên lớp chuẩn hóa
+    const classKey = selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
 
     // 🔹 Kiểm tra cache trước
     const cacheKey = classKey;
@@ -388,40 +384,49 @@ const fetchStudentsAndStatus = async () => {
     setLoadingProgress(0);
     setLoadingMessage(`Đang tổng hợp dữ liệu...`);
 
-    // 1️⃣ Lấy dữ liệu từ DGTX (đánh giá thường xuyên)
-    const classPath = classKey;
-    const tuanRef = collection(db, `DGTX/${classPath}/tuan`);
+    // 1️⃣ Lấy dữ liệu DGTX
+    const tuanRef = collection(db, `DGTX/${classKey}/tuan`);
     const snapshot = await getDocs(tuanRef);
 
     if (snapshot.empty) {
-      setStudents([]);
-      setStudentData((prev) => ({ ...prev, [cacheKey]: [] }));
+      // Reset các cột nhưng vẫn giữ danh sách học sinh nếu đã có trước đó
+      setStudents(prev =>
+        prev.map(s => ({
+          ...s,
+          statusByWeek: {},
+          xepLoai: "",
+          dgtx_gv: "",
+          dgtx: "",
+          nhanXet: "",
+        }))
+      );
+
+      // Xóa cache dữ liệu lớp trong context
+      setStudentData(prev => ({ ...prev, [cacheKey]: [] }));
+
       setLoadingMessage("");
       return;
     }
 
-    // 🔹 Gom dữ liệu các tuần
+
     const weekMap = {};
     snapshot.forEach((docSnap) => {
-      if (docSnap.exists()) {
-        weekMap[docSnap.id] = docSnap.data();
-      }
+      if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
     });
 
-    // 🔹 Sắp xếp tuần theo thứ tự
     const sortedWeekIds = Object.keys(weekMap).sort((a, b) => {
       const nA = parseInt(a.replace(/\D/g, "")) || 0;
       const nB = parseInt(b.replace(/\D/g, "")) || 0;
       return nA - nB;
     });
 
-    // 🔹 Gom tất cả học sinh từ các tuần
+    // Gom học sinh từ các tuần
     const studentMap = {};
     Object.values(weekMap).forEach((weekData) => {
-      Object.entries(weekData).forEach(([maDinhDanh, info]) => {
-        if (!studentMap[maDinhDanh]) {
-          studentMap[maDinhDanh] = {
-            maDinhDanh,
+      Object.entries(weekData).forEach(([id, info]) => {
+        if (!studentMap[id]) {
+          studentMap[id] = {
+            maDinhDanh: id,
             hoVaTen: info.hoVaTen || "",
             statusByWeek: {},
             status: "",
@@ -436,23 +441,16 @@ const fetchStudentsAndStatus = async () => {
     for (const weekId of sortedWeekIds) {
       const weekData = weekMap[weekId];
       if (!weekData) continue;
-
       for (const [maHS, value] of Object.entries(weekData)) {
         const student = studentMap[maHS];
-        if (student) {
-          student.statusByWeek[weekId] = value.mucdat || value.status || "-";
-        }
+        if (student) student.statusByWeek[weekId] = value.mucdat || value.status || "-";
       }
     }
 
-    // 3️⃣ Lấy đánh giá GV + nhận xét từ bảng KTDK (theo học kỳ)
-    const bangDiemRef = doc(db, "KTDK", termDoc);
-    const bangDiemSnap = await getDoc(bangDiemRef);
-
+    // 3️⃣ Lấy đánh giá GV + nhận xét từ bảng KTDK
+    const bangDiemSnap = await getDoc(doc(db, "KTDK", termDoc));
     if (bangDiemSnap.exists()) {
-      const bangDiemData = bangDiemSnap.data();
-      const classData = bangDiemData[classKey] || {};
-
+      const classData = bangDiemSnap.data()[classKey] || {};
       Object.keys(studentMap).forEach((maHS) => {
         const s = studentMap[maHS];
         s.dgtx_gv = classData[maHS]?.dgtx_gv || "";
@@ -461,7 +459,7 @@ const fetchStudentsAndStatus = async () => {
       });
     }
 
-    // 4️⃣ Chuyển sang mảng & sắp xếp học sinh theo tên
+    // 4️⃣ Chuyển sang mảng & sắp xếp học sinh
     let studentList = Object.values(studentMap);
     studentList.sort((a, b) => {
       const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
@@ -476,6 +474,7 @@ const fetchStudentsAndStatus = async () => {
       const hs = xepLoai || "";
       const gv = s.dgtx_gv || "";
 
+      // Logic tổng hợp mức đạt
       let chung = "";
       if (!gv) chung = hs;
       else if (hs === "T" && gv === "T") chung = "T";
@@ -490,8 +489,7 @@ const fetchStudentsAndStatus = async () => {
       else chung = hs;
 
       const dgtx = chung;
-      const nhanXetTuDong = getNhanXetTuDong(dgtx);
-      const nhanXet = s.nhanXet?.trim() ? s.nhanXet.trim() : nhanXetTuDong;
+      const nhanXet = s.nhanXet?.trim() || getNhanXetTuDong(dgtx);
 
       const weekCols = sortedWeekIds.reduce((acc, weekId) => {
         const weekNum = parseInt(weekId.replace(/\D/g, "")) || weekId;
@@ -499,20 +497,12 @@ const fetchStudentsAndStatus = async () => {
         return acc;
       }, {});
 
-      return {
-        ...s,
-        ...weekCols,
-        xepLoai: hs,
-        dgtx_gv: gv,
-        dgtx,
-        nhanXet,
-      };
+      return { ...s, ...weekCols, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
     });
 
     // 6️⃣ Lưu cache & cập nhật UI
     setStudentData((prev) => ({ ...prev, [cacheKey]: evaluatedList }));
     setStudents(evaluatedList);
-
     setLoadingProgress(100);
     setTimeout(() => setLoadingMessage(""), 1500);
   } catch (err) {
@@ -525,6 +515,7 @@ const fetchStudentsAndStatus = async () => {
 
 
 
+
 const fetchStudentsDGTX = async () => {
   if (!selectedClass) return;
 
@@ -532,7 +523,7 @@ const fetchStudentsDGTX = async () => {
     setLoadingProgress(0);
     setLoadingMessage(`Đang tổng hợp dữ liệu...`);
 
-    const classPath = isCongNghe ? `${selectedClass}_CN` : selectedClass;
+    const classPath = selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
     const cacheKey = classPath;
 
     // 1️⃣ Lấy dữ liệu từ DGTX
@@ -587,7 +578,7 @@ const fetchStudentsDGTX = async () => {
 
     // 3️⃣ Lấy đánh giá GV + nhận xét từ KTDK
     const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
-    const classKeyForTerm = `${selectedClass}${isCongNghe ? "_CN" : ""}_${selectedTerm}`;
+    const classKeyForTerm = `${selectedClass}${selectedSubject === "Công nghệ" ? "_CN" : ""}_${selectedTerm}`;
     const bangDiemRef = doc(db, "KTDK", selectedTerm);
     const bangDiemSnap = await getDoc(bangDiemRef);
 
@@ -656,8 +647,15 @@ const fetchStudentsDGTX = async () => {
 };
 
 useEffect(() => {
-  fetchStudentsAndStatus();
-}, [selectedClass, weekFrom, weekTo, setStudentData, isTeacherChecked, isCongNghe]);
+  if (!selectedClass || !selectedSubject) return;
+
+  const fetchData = async () => {
+    await fetchStudentsAndStatus();
+  };
+
+  fetchData();
+}, [selectedClass, selectedSubject, weekFrom, weekTo]);
+
 
 const handleDownload = async () => {
   try {
@@ -699,7 +697,6 @@ const getStatistics = () => {
 
 const { totalT, totalH, totalC, totalBlank } = getStatistics();
 
-const handleCongNgheChange = (e) => setIsCongNghe(e.target.checked);
 const borderStyle = "1px solid #e0e0e0"; // màu nhạt như đường mặc định
 
 const handleCellChange = (maDinhDanh, field, value) => {
@@ -710,6 +707,14 @@ const handleCellChange = (maDinhDanh, field, value) => {
   );
 };
 
+const hocKyMap = {
+  "Giữa kỳ I": { from: 1, to: 9 },
+  "Cuối kỳ I": { from: 10, to: 18 },
+  "Giữa kỳ II": { from: 19, to: 27 },
+  "Cả năm": { from: 28, to: 35 },
+};
+// Lấy tuần bắt đầu và kết thúc dựa trên học kỳ đã chọn
+const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
 
 return (
   <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
@@ -724,15 +729,7 @@ return (
       }}
     >
       {/* 🔹 Nút tải Excel */}
-      <Box
-        sx={{
-          position: "absolute",
-          top: 12,
-          left: 12,
-          display: "flex",
-          gap: 1,
-        }}
-      >
+      <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
         <Tooltip title="Lưu Xếp loại" arrow>
           <IconButton
             onClick={handleSaveAll}
@@ -774,26 +771,6 @@ return (
             <RefreshIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-
-        {/*<Tooltip title="Đánh giá tự động" arrow>
-          <IconButton
-            onClick={() => {
-              const updated = students.map((s) => {
-                const { diemTB, xepLoai, nhanXet } = danhGiaHocSinh(s, weekFrom, weekTo);
-                return { ...s, diemTB, xepLoai, nhanXet };
-              });
-              setStudents(updated);
-            }}
-            sx={{
-              color: "primary.main",
-              bgcolor: "white",
-              boxShadow: 2,
-              "&:hover": { bgcolor: "primary.light", color: "white" },
-            }}
-          >
-            <AssessmentIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>*/}
       </Box>
 
       {/* ===== Header ===== */}
@@ -802,85 +779,15 @@ return (
         fontWeight="bold"
         color="primary"
         gutterBottom
-        sx={{ textAlign: "center", width: "100%", display: "block", mb: 2 }}
+        sx={{ textAlign: "center", width: "100%", display: "block", mb: 2, textTransform: "uppercase" }}
       >
-        TỔNG HỢP - ĐÁNH GIÁ
+        TỔNG HỢP ĐÁNH GIÁ - {selectedSemester ? `${selectedSemester}` : ""}
       </Typography>
 
-      {/* ===== Row tuần ===== */}
-      <Stack
-        direction="row"
-        spacing={2}
-        justifyContent="center"
-        alignItems="center"
-        mb={2}
-        flexWrap="wrap"
-      >
-        {!isConfigLoaded ? (
-          <Typography color="text.secondary">Đang tải cấu hình...</Typography>
-        ) : (
-          <>
-            <FormControl size="small" sx={{ minWidth: 100 }}>
-              <InputLabel>Tuần từ</InputLabel>
-              <Select
-                value={weekFrom}
-                label="Tuần từ"
-                onChange={async (e) => {
-                  const newFrom = Number(e.target.value);
-                  setWeekFrom(newFrom);
-                  try {
-                    const docRef = doc(db, "CONFIG", "config");
-                    await setDoc(docRef, { th_tuan_from: newFrom }, { merge: true });
-                  } catch (err) {
-                    console.error("❌ Lỗi cập nhật th_tuan_from:", err);
-                  }
-                }}
-              >
-                {[...Array(35)].map((_, i) => (
-                  <MenuItem key={i + 1} value={i + 1}>
-                    Tuần {i + 1}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl size="small" sx={{ minWidth: 100 }}>
-              <InputLabel>Đến tuần</InputLabel>
-              <Select
-                value={weekTo}
-                label="Đến tuần"
-                onChange={async (e) => {
-                  const newTo = Number(e.target.value);
-                  setWeekTo(newTo);
-                  try {
-                    const docRef = doc(db, "CONFIG", "config");
-                    await setDoc(docRef, { th_tuan_to: newTo }, { merge: true });
-                  } catch (err) {
-                    console.error("❌ Lỗi cập nhật th_tuan_to:", err);
-                  }
-                }}
-              >
-                {[...Array(35)].map((_, i) => (
-                  <MenuItem key={i + 1} value={i + 1}>
-                    Tuần {i + 1}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </>
-        )}
-      </Stack>
-
-      <Divider sx={{ mb: 3 }} />
+      {/*<Divider sx={{ mb: 3 }} />*/}
 
       {/* 🔹 Hàng chọn lớp và bộ lọc */}
-      <Stack
-        direction="row"
-        spacing={2}
-        justifyContent="center"
-        alignItems="center"
-        mb={3}
-      >
+      <Stack direction="row" spacing={2} justifyContent="center" alignItems="center" mb={3}>
         {/* Lớp */}
         <FormControl size="small" sx={{ minWidth: 80 }}>
           <InputLabel id="lop-label">Lớp</InputLabel>
@@ -890,23 +797,21 @@ return (
             label="Lớp"
             onChange={(e) => {
               const newClass = e.target.value;
-
               setSelectedClass(newClass);
-              setConfig((prev) => ({ ...prev, lop: newClass }));
 
+              // Reset dữ liệu học sinh cho lớp mới (cục bộ)
               setStudents((prev) =>
                 prev.map((s) => ({
                   ...s,
                   statusByWeek: {},
                   xepLoai: "",
                   nhanXet: "",
-                  dgtx_gv: "", 
-                  dgtx: "", 
+                  dgtx_gv: "",
+                  dgtx: "",
                 }))
               );
-
               setLoadingMessage("Đang tải dữ liệu lớp mới...");
-              setLoadingProgress(0);
+              fetchStudentsAndStatus();
             }}
           >
             {classes.map((cls) => (
@@ -917,50 +822,34 @@ return (
           </Select>
         </FormControl>
 
-
-        {/* Dropdown chọn môn học (Tin học / Công nghệ) */}
+        {/* Dropdown chọn môn học */}
         <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel id="monhoc-label">Môn học</InputLabel>
+          <InputLabel id="monhoc-label">Môn</InputLabel>
           <Select
             labelId="monhoc-label"
-            value={isCongNghe ? "congnghe" : "tinhoc"}
-            label="Môn học"
-            onChange={async (e) => {
+            label="Môn"
+            value={selectedSubject}
+            onChange={(e) => {
               const value = e.target.value;
-              const isCN = value === "congnghe";
+              setSelectedSubject(value);
 
-              try {
-                const docRef = doc(db, "CONFIG", "config");
-                await setDoc(docRef, { congnghe: isCN }, { merge: true });
-                setConfig((prev) => ({ ...prev, congnghe: isCN }));
-                setIsCongNghe(isCN);
-              } catch (err) {
-                console.error("❌ Lỗi cập nhật môn học:", err);
-              }
+              // Chỉ reload dữ liệu học sinh cục bộ
+              fetchStudentsAndStatus();
             }}
           >
-            <MenuItem value="tinhoc">Tin học</MenuItem>
-            <MenuItem value="congnghe">Công nghệ</MenuItem>
+            <MenuItem value="Tin học">Tin học</MenuItem>
+            <MenuItem value="Công nghệ">Công nghệ</MenuItem>
           </Select>
         </FormControl>
 
         <FormControlLabel
-          control={
-            <Checkbox
-              checked={showWeeks}
-              onChange={(e) => setShowWeeks(e.target.checked)}
-            />
-          }
+          control={<Checkbox checked={showWeeks} onChange={(e) => setShowWeeks(e.target.checked)} />}
           label={showWeeks ? "Ẩn tuần" : "Hiện tuần"}
         />
-
       </Stack>
 
       {/* --- Bảng dữ liệu --- */}
-      <TableContainer
-        component={Paper}
-        sx={{ maxHeight: "70vh", overflowY: "auto", overflowX: "auto" }}
-      >
+      <TableContainer component={Paper} sx={{ maxHeight: "70vh", overflowY: "auto", overflowX: "auto" }}>
         <Table
           stickyHeader
           size="small"
@@ -968,86 +857,32 @@ return (
             tableLayout: "fixed",
             minWidth: 800,
             borderCollapse: "collapse",
-            "& td, & th": {
-              borderRight: "1px solid #e0e0e0",
-              borderBottom: "1px solid #e0e0e0",
-            },
-            "& th:last-child, & td:last-child": {
-              borderRight: "none",
-            },
+            "& td, & th": { borderRight: "1px solid #e0e0e0", borderBottom: "1px solid #e0e0e0" },
+            "& th:last-child, & td:last-child": { borderRight: "none" },
           }}
         >
           <TableHead>
             <TableRow>
-              <TableCell
-                align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}
-              >
-                STT
-              </TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>STT</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220 }}>Họ và tên</TableCell>
 
-              <TableCell
-                align="center"
-                sx={{
-                  backgroundColor: "#1976d2",
-                  color: "white",
-                  width: 220,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                Họ và tên
-              </TableCell>
-
-              {/* 🔹 Các cột tuần — chỉ hiển thị khi showWeeks = true */}
               {showWeeks &&
-                Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
-                  const weekNum = weekFrom + i;
-                  return (
-                    <TableCell
-                      key={weekNum}
-                      align="center"
-                      sx={{
-                        backgroundColor: "#1976d2",
-                        color: "white",
-                        width: 25,
-                        transition: "all 0.3s ease",
-                      }}
-                    >
-                      Tuần {weekNum}
-                    </TableCell>
-                  );
-                })}
+                (() => {
+                  const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
+                  return Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
+                    const weekNum = startWeek + i;
+                    return (
+                      <TableCell key={weekNum} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>
+                        Tuần {weekNum}
+                      </TableCell>
+                    );
+                  });
+                })()}
 
-              {/* 🔹 Các tiêu đề cột cuối */}
-              <TableCell
-                align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}
-              >
-                Học sinh
-              </TableCell>
-
-              <TableCell
-                align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}
-              >
-                Giáo viên
-              </TableCell>
-
-              <TableCell
-                align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}
-              >
-                Mức đạt
-              </TableCell>
-
-              <TableCell
-                align="center"
-                sx={{ backgroundColor: "#1976d2", color: "white", width: 350 }}
-              >
-                Nhận xét
-              </TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>Học sinh</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>Giáo viên</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>Mức đạt</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 350 }}>Nhận xét</TableCell>
             </TableRow>
           </TableHead>
 
@@ -1057,51 +892,26 @@ return (
                 <TableCell align="center">{student.stt}</TableCell>
                 <TableCell align="left">{student.hoVaTen}</TableCell>
 
-                {/* 🔹 Các cột tuần — chỉ hiển thị khi showWeeks = true */}
                 {showWeeks &&
-                  Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
-                    const weekNum = weekFrom + i;
-                    const weekId = `tuan_${weekNum}`;
-                    const status = student.statusByWeek?.[weekId] || "";
-                    const statusShort =
-                      status === "Chưa hoàn thành"
-                        ? "C"
-                        : status === "Hoàn thành"
-                        ? "H"
-                        : status === "Hoàn thành tốt"
-                        ? "T"
-                        : "";
-                    return (
-                      <TableCell key={weekNum} align="center">
-                        {statusShort}
-                      </TableCell>
-                    );
-                  })}
+                  (() => {
+                    const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
+                    return Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
+                      const weekNum = startWeek + i;
+                      const weekId = `tuan_${weekNum}`;
+                      const status = student.statusByWeek?.[weekId] || "";
+                      const statusShort =
+                        status === "Chưa hoàn thành" ? "C" :
+                        status === "Hoàn thành" ? "H" :
+                        status === "Hoàn thành tốt" ? "T" : "";
+                      return <TableCell key={weekNum} align="center">{statusShort}</TableCell>;
+                    });
+                  })()}
 
-                {/* 🟩 Cột Xếp loại (Học sinh) */}
-                <TableCell
-                  align="center"
-                  sx={{
-                    color:
-                      student.xepLoai === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main,
-                  }}
-                >
+                <TableCell align="center" sx={{ color: student.xepLoai === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
                   {student.xepLoai || ""}
                 </TableCell>
 
-                {/* 🟦 Cột Giáo viên */}
-                <TableCell
-                  align="center"
-                  sx={{
-                    px: 1,
-                    color:
-                      student.dgtx_gv === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main,
-                  }}
-                >
+                <TableCell align="center" sx={{ px: 1, color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
                   <FormControl
                     variant="standard"
                     fullWidth
@@ -1114,16 +924,13 @@ return (
                       value={student.dgtx_gv || ""}
                       onChange={(e) => {
                         const newVal = e.target.value;
-
                         setStudents((prev) =>
                           prev.map((s) => {
                             if (s.maDinhDanh !== student.maDinhDanh) return s;
-
                             const updated = { ...s, dgtx_gv: newVal };
                             const hs = updated.xepLoai;
                             const gv = newVal;
                             let chung = "";
-
                             if (!gv) {
                               chung = hs;
                             } else {
@@ -1138,12 +945,8 @@ return (
                               else if (hs === "C" && gv === "C") chung = "C";
                               else chung = hs;
                             }
-
                             updated.dgtx = !gv ? hs : chung;
-                            updated.nhanXet = updated.dgtx
-                              ? getNhanXetTuDong(updated.dgtx)
-                              : "";
-
+                            updated.nhanXet = updated.dgtx ? getNhanXetTuDong(updated.dgtx) : "";
                             return updated;
                           })
                         );
@@ -1156,10 +959,7 @@ return (
                         "& .MuiSelect-select": {
                           py: 0.5,
                           fontSize: "14px",
-                          color:
-                            student.dgtx_gv === "C"
-                              ? "#dc2626"
-                              : (theme) => theme.palette.primary.main,
+                          color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main,
                         },
                       }}
                       onKeyDown={(e) => {
@@ -1180,19 +980,10 @@ return (
                   </FormControl>
                 </TableCell>
 
-                {/* 🟧 Cột ĐGTX (hiển thị kết quả chung) */}
-                <TableCell
-                  align="center"
-                  sx={{
-                    color:
-                      student.dgtx === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main,
-                  }}
-                >
+                <TableCell align="center" sx={{ color: student.dgtx === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
                   {student.dgtx || ""}
                 </TableCell>
-                {/* 🟨 Cột Nhận xét (có thể nhập thủ công) */}
+
                 <TableCell align="left" sx={{ px: 1 }}>
                   <TextField
                     variant="standard"
@@ -1200,102 +991,84 @@ return (
                     maxRows={4}
                     fullWidth
                     value={student.nhanXet || ""}
-                    onChange={(e) =>
-                      handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)
-                    }
+                    onChange={(e) => handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)}
                     id={`nhanXet-${idx}`}
                     onKeyDown={(e) => handleKeyNavigation(e, idx, "nhanXet")}
                     InputProps={{
-                      sx: {
-                        paddingLeft: 1,
-                        paddingRight: 1,
-                        fontSize: "14px",
-                        lineHeight: 1.3,
-                      },
+                      sx: { paddingLeft: 1, paddingRight: 1, fontSize: "14px", lineHeight: 1.3 },
                       disableUnderline: true,
                     }}
                   />
                 </TableCell>
-
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
 
-
-
-      {/* --- Bảng thống kê --- */}
-      <Box
-        sx={{
-          mt: isMobile ? 3 : 0,
-          position: isMobile ? "relative" : "absolute",
-          top: isMobile ? "auto" : 16,
-          right: isMobile ? "auto" : 16,
-          backgroundColor: "#f1f8e9",
-          borderRadius: 2,
-          border: "1px solid #e0e0e0",
-          p: 2,
-          minWidth: 260,
-          boxShadow: 2,
-          width: isMobile ? "90%" : "auto",
-        }}
+      {/* --- Bảng thống kê xuống cuối Card --- */}
+      {/* --- Bảng thống kê xuống cuối Card --- */}
+<Box
+  sx={{
+    mt: 3,
+    backgroundColor: "#f1f8e9",
+    borderRadius: 2,
+    border: "1px solid #e0e0e0",
+    p: 2,
+    width: 300,
+    maxWidth: "90%",
+    mx: "auto",
+    boxShadow: 2,
+  }}
+>
+  <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+    <Typography variant="subtitle1" fontWeight="bold" color="primary">
+      Thống kê:
+    </Typography>
+    <FormControl size="small" sx={{ minWidth: 100 }}>
+      <InputLabel>Tuần</InputLabel>
+      <Select
+        value={selectedWeek}
+        label="Tuần"
+        onChange={(e) => setSelectedWeek(Number(e.target.value))}
       >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-          <Typography variant="subtitle1" fontWeight="bold" color="primary">
-            Thống kê:
-          </Typography>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <InputLabel>Tuần</InputLabel>
-            <Select
-              value={selectedWeek}
-              label="Tuần"
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
-            >
-              {[...Array(35)].map((_, i) => (
-                <MenuItem key={i + 1} value={i + 1}>
-                  Tuần {i + 1}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Stack>
+        {/* Chỉ hiển thị tuần theo học kỳ */}
+        {Array.from(
+          { length: endWeek - startWeek + 1 },
+          (_, i) => startWeek + i
+        ).map((weekNum) => (
+          <MenuItem key={weekNum} value={weekNum}>
+            Tuần {weekNum}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Stack>
 
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2">Hoàn thành tốt (T):</Typography>
-          <Typography variant="body2" fontWeight="bold">{totalT}</Typography>
-        </Stack>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2">Hoàn thành (H):</Typography>
-          <Typography variant="body2" fontWeight="bold">{totalH}</Typography>
-        </Stack>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2">Chưa hoàn thành (C):</Typography>
-          <Typography variant="body2" fontWeight="bold">{totalC}</Typography>
-        </Stack>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2">Chưa đánh giá:</Typography>
-          <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
-        </Stack>
-      </Box>
+  <Stack direction="row" justifyContent="space-between">
+    <Typography variant="body2">Hoàn thành tốt (T):</Typography>
+    <Typography variant="body2" fontWeight="bold">{totalT}</Typography>
+  </Stack>
+  <Stack direction="row" justifyContent="space-between">
+    <Typography variant="body2">Hoàn thành (H):</Typography>
+    <Typography variant="body2" fontWeight="bold">{totalH}</Typography>
+  </Stack>
+  <Stack direction="row" justifyContent="space-between">
+    <Typography variant="body2">Chưa hoàn thành (C):</Typography>
+    <Typography variant="body2" fontWeight="bold">{totalC}</Typography>
+  </Stack>
+  <Stack direction="row" justifyContent="space-between">
+    <Typography variant="body2">Chưa đánh giá:</Typography>
+    <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
+  </Stack>
+</Box>
+
+
     </Card>
 
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={3000}
-      onClose={() => setSnackbar({ ...snackbar, open: false })}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-    >
-      <Alert
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        severity={snackbar.severity}
-        sx={{
-          width: "100%",
-          boxShadow: 3,
-          borderRadius: 2,
-          fontSize: "0.9rem",
-        }}
-      >
+    {/* Snackbar */}
+    <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
+      <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: "100%", boxShadow: 3, borderRadius: 2, fontSize: "0.9rem" }}>
         {snackbar.message}
       </Alert>
     </Snackbar>
