@@ -26,10 +26,8 @@ export default function Login() {
           setConfig(prev => ({
             ...prev,
             tuan: data.tuan || prev.tuan || 1,
-            hethong: data.hethong ?? prev.hethong ?? false,
             mon: data.mon || prev.mon || "Tin học", // ✅ giữ lại môn học
-            lop: data.lop || prev.lop || "",
-            //giaovien: data.giaovien ?? prev.giaovien ?? false,
+            lop: data.lop || prev.lop || "",          
             th_tuan_from: data.th_tuan_from ?? prev.th_tuan_from,
             th_tuan_to: data.th_tuan_to ?? prev.th_tuan_to,
           }));
@@ -52,7 +50,6 @@ export default function Login() {
       localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
       setConfig(updatedConfig);
 
-      //navigate("/giaovien");
       navigate("/tonghopdanhgia");
       
       // Ghi login: true vào Firestore (không log ra console)

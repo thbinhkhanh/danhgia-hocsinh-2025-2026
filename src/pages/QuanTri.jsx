@@ -1,5 +1,5 @@
-// src/pages/QuanTri.jsx
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from "react";
+
 import {
   Box,
   Typography,
@@ -12,32 +12,58 @@ import {
   MenuItem,
   FormControl,
   Divider,
-} from '@mui/material';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import * as XLSX from 'xlsx';
-import { doc, setDoc, getDoc, getDocs, collection } from "firebase/firestore";
+} from "@mui/material";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import BackupIcon from "@mui/icons-material/Backup";
+import RestoreIcon from "@mui/icons-material/Restore";
+import * as XLSX from "xlsx";
+import { doc, getDoc, getDocs, collection, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentContext } from "../context/StudentContext";
+import { fetchAllBackup, exportBackupToJson } from "../utils/backupFirestore";
+import { restoreAllFromJson } from "../utils/restoreFirestore";
 
 export default function QuanTri() {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [message, setMessage] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  // 🔹 File, thông báo, progress chung
+const [selectedFile, setSelectedFile] = useState(null);
+const [message, setMessage] = useState("");
+const [success, setSuccess] = useState(false);
+const [loading, setLoading] = useState(false);
+const [progress, setProgress] = useState(0);
 
-  const navigate = useNavigate();
-  const { config, setConfig } = useContext(ConfigContext);
-  const { classData, setClassData } = useContext(StudentContext);
+// 🔹 Thông báo riêng cho backup
+const [backupMessage, setBackupMessage] = useState("");
+const [backupSuccess, setBackupSuccess] = useState(false);
 
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [selectedSemester, setSelectedSemester] = useState("Giữa kỳ I");
-  const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState("");
-  const [subject, setSubject] = useState("Tin học");
+// 🔹 Riêng cho sao lưu
+const [backupLoading, setBackupLoading] = useState(false);
+const [backupProgress, setBackupProgress] = useState(0);
+
+// 🔹 Riêng cho phục hồi
+const [restoreMessage, setRestoreMessage] = useState("");
+const [restoreLoading, setRestoreLoading] = useState(false);
+const [restoreProgress, setRestoreProgress] = useState(0);
+const [isRestoring, setIsRestoring] = useState(false);
+
+// 🔹 Ref cho input file phục hồi
+const fileInputRef = useRef(null);
+
+// 🔹 Context & navigation
+const navigate = useNavigate();
+const { config, setConfig } = useContext(ConfigContext);
+const { classData, setClassData } = useContext(StudentContext);
+const { studentData, setStudentData } = useContext(StudentContext);
+
+// 🔹 Chọn tuần, học kỳ, lớp, môn
+const [selectedWeek, setSelectedWeek] = useState(1);
+const [selectedSemester, setSelectedSemester] = useState("Giữa kỳ I");
+const [classes, setClasses] = useState([]);
+const [selectedClass, setSelectedClass] = useState("");
+const [subject, setSubject] = useState("Tin học");
+
 
   // 🔹 Khởi tạo config + danh sách lớp
   useEffect(() => {
@@ -47,88 +73,82 @@ export default function QuanTri() {
         const docSnap = await getDoc(docRef);
         const data = docSnap.exists() ? docSnap.data() : {};
 
-        // Cập nhật context trực tiếp
-        setConfig(prev => ({
-          ...prev,
+        setConfig({
           tuan: data.tuan || 1,
           hocKy: data.hocKy || "Giữa kỳ I",
           mon: data.mon || "Tin học",
           lop: data.lop || "",
-        }));
+        });
 
-        // Cập nhật state local
         setSelectedWeek(data.tuan || 1);
         setSelectedSemester(data.hocKy || "Giữa kỳ I");
         setSubject(data.mon || "Tin học");
 
-        // Lấy danh sách lớp
         let classList = [];
         if (classData && classData.length > 0) {
           classList = classData;
         } else {
           const snapshot = await getDocs(collection(db, "DANHSACH"));
-          classList = snapshot.docs.map(doc => doc.id);
+          classList = snapshot.docs.map((doc) => doc.id);
           setClassData(classList);
         }
         setClasses(classList);
 
-        // Chọn lớp hiện tại
         if (data.lop && classList.includes(data.lop)) {
           setSelectedClass(data.lop);
         } else if (classList.length > 0) {
           setSelectedClass(classList[0]);
-          setConfig(prev => ({ ...prev, lop: classList[0] }));
+          setConfig((prev) => ({ ...prev, lop: classList[0] }));
         }
       } catch (err) {
         console.error("❌ Lỗi khi khởi tạo cấu hình:", err);
       }
     };
     initConfig();
-  }, [classData, setClassData]); // Bỏ setConfig khỏi dependency
+  }, [classData, setClassData]);
 
-
-  // 🔹 Helper cập nhật Firestore + context
-  const updateConfig = async (field, value) => {
+  // 🔹 Cập nhật Firestore + Context
+  const updateFirestoreAndContext = async (field, value) => {
     try {
+      const newConfig = { ...config, [field]: value };
       const docRef = doc(db, "CONFIG", "config");
-      await setDoc(docRef, { [field]: value }, { merge: true }); // object đúng
-      setConfig(prev => ({ ...prev, [field]: value })); // cập nhật context
+      await setDoc(docRef, newConfig, { merge: true });
+      setConfig(newConfig);
     } catch (err) {
-      console.error(`❌ Lỗi khi cập nhật Firestore:`, err);
+      console.error("❌ Lỗi khi cập nhật Firestore:", err);
     }
   };
 
-
-  // 🔹 Handle thay đổi
+  // 🔹 Các hàm thay đổi select
   const handleSemesterChange = (e) => {
     const newSemester = e.target.value;
     setSelectedSemester(newSemester);
-    updateConfig("hocKy", newSemester);
+    setConfig({ hocKy: newSemester }); // ✅ Gọi updateConfig, update cả Firestore và context
   };
 
   const handleSubjectChange = (e) => {
     const newSubject = e.target.value;
-    console.log("Chọn môn mới:", newSubject);
     setSubject(newSubject);
-    updateConfig("mon", newSubject);
+    setConfig({ mon: newSubject });
   };
 
   const handleClassChange = (e) => {
     const newClass = e.target.value;
     setSelectedClass(newClass);
-    updateConfig("lop", newClass);
+    setConfig({ lop: newClass });
   };
 
   const handleWeekChange = (e) => {
     const newWeek = e.target.value;
     setSelectedWeek(newWeek);
-    updateConfig("tuan", newWeek);
+    setConfig({ tuan: newWeek });
   };
+
 
   // 🔹 File Excel
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
-    setMessage('');
+    setMessage("");
     setSuccess(false);
   };
 
@@ -143,11 +163,11 @@ export default function QuanTri() {
       const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
       await processStudentData(jsonData);
-      setMessage('📥 Tải dữ liệu thành công!');
+      setMessage("📥 Tải dữ liệu thành công!");
       setSuccess(true);
     } catch (err) {
       console.error(err);
-      setMessage('❌ Lỗi khi tải file.');
+      setMessage("❌ Lỗi khi tải file.");
       setSuccess(false);
     }
     setLoading(false);
@@ -165,17 +185,99 @@ export default function QuanTri() {
     await setDoc(docRef, dataToSave, { merge: true });
   };
 
+  // 🔹 SAO LƯU
+  const handleBackup = async () => {
+    try {
+      // Reset trạng thái trước khi bắt đầu
+      setBackupProgress(0);
+      setBackupLoading(true);
+      setIsRestoring(false); // đảm bảo UI hiển thị đúng
+      setMessage("");
+      setSuccess(false);
+
+      // 🔹 Lấy dữ liệu backup toàn bộ và cập nhật tiến trình
+      const allData = await fetchAllBackup((progress) => {
+        setBackupProgress(progress);
+      });
+
+      // 🔹 Xuất ra file JSON
+      exportBackupToJson(allData);
+
+      setMessage("✅ Sao lưu dữ liệu thành công!");
+      setSuccess(true);
+
+      // Tự ẩn thông báo sau 3 giây
+      setTimeout(() => setMessage(""), 3000);
+
+    } catch (err) {
+      console.error(err);
+      setMessage("❌ Lỗi khi sao lưu dữ liệu.");
+      setSuccess(false);
+      setTimeout(() => setMessage(""), 3000);
+    } finally {
+      setBackupLoading(false);
+      setBackupProgress(0); // reset progress để lần sau có thể chạy lại
+    }
+  };
+
+  // 🔹 PHỤC HỒI
+  const handleRestore = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      // Reset trạng thái trước khi bắt đầu phục hồi
+      setBackupProgress(0);
+      //setBackupLoading(true);
+      setIsRestoring(true);
+      setMessage("");
+      setSuccess(false);
+
+      const success = await restoreAllFromJson(file, (progress) => {
+        setBackupProgress(progress);
+      });
+
+      if (success) {
+        setMessage("✅ Phục hồi dữ liệu thành công!");
+        setSuccess(true);
+      } else {
+        setMessage("❌ Lỗi khi phục hồi dữ liệu.");
+        setSuccess(false);
+      }
+
+      // Tự ẩn thông báo sau 3 giây
+      setTimeout(() => setMessage(""), 3000);
+
+    } catch (err) {
+      console.error(err);
+      setMessage("❌ Lỗi khi phục hồi dữ liệu.");
+      setSuccess(false);
+      setTimeout(() => setMessage(""), 3000);
+    } finally {
+      setIsRestoring(false);
+      setBackupLoading(false);
+      setBackupProgress(0);
+
+      // Reset input để chọn lại cùng file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+
+  // 🔹 UI
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#e3f2fd', pt: 3 }}>
+    <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
       <Card
         elevation={6}
         sx={{
           p: 4,
           borderRadius: 3,
-          maxWidth: 300,
-          mx: 'auto',
+          maxWidth: 320,
+          mx: "auto",
           mt: 3,
-          position: 'relative',
+          position: "relative",
         }}
       >
         <Typography
@@ -188,91 +290,141 @@ export default function QuanTri() {
           ⚙️ QUẢN TRỊ HỆ THỐNG
         </Typography>
 
-        <Divider sx={{ mb: 4 }} />
+        <Divider sx={{ mb: 3 }} />
 
-        <Box sx={{ width: "100%", maxWidth: 400, mx: "auto" }}>
-          {/* 📤 Danh sách học sinh */}
-          <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
-            📤 Danh sách học sinh
-          </Typography>
+        {/* 📤 DANH SÁCH HỌC SINH */}
+        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+          📤 Danh sách học sinh
+        </Typography>
 
-          <Stack spacing={2} sx={{ mb: 5 }}>
-            <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
-              Chọn file Excel
-              <input type="file" hidden accept=".xlsx" onChange={handleFileChange} />
-            </Button>
+        <Stack spacing={2} sx={{ mb: 4 }}>
+          <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
+            Chọn file Excel
+            <input type="file" hidden accept=".xlsx" onChange={handleFileChange} />
+          </Button>
 
-            {selectedFile && (
-              <Typography variant="body2">📄 File đã chọn: {selectedFile.name}</Typography>
-            )}
+          {selectedFile && (
+            <Typography variant="body2">📄 {selectedFile.name}</Typography>
+          )}
 
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<CloudUploadIcon />}
+            onClick={handleUpload}
+            disabled={loading}
+          >
+            {loading ? `🔄 Đang tải... (${progress}%)` : "Tải danh sách"}
+          </Button>
+        </Stack>
+
+        {/* ⚙️ CÀI ĐẶT HỆ THỐNG */}
+        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+          ⚙️ Cài đặt hệ thống
+        </Typography>
+
+        <Stack spacing={2} sx={{ mb: 4 }}>
+          <FormControl size="small">
+            <Select value={selectedSemester} onChange={handleSemesterChange}>
+              <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
+              <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
+              <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
+              <MenuItem value="Cả năm">Cả năm</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl size="small">
+            <Select value={subject} onChange={handleSubjectChange}>
+              <MenuItem value="Tin học">Tin học</MenuItem>
+              <MenuItem value="Công nghệ">Công nghệ</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <FormControl size="small" sx={{ flex: 1 }}>
+              <Select value={selectedClass} onChange={handleClassChange}>
+                {classes.map((cls) => (
+                  <MenuItem key={cls} value={cls}>
+                    {cls}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ flex: 1 }}>
+              <Select value={selectedWeek} onChange={handleWeekChange}>
+                {[...Array(35)].map((_, i) => (
+                  <MenuItem key={i + 1} value={i + 1}>
+                    Tuần {i + 1}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </Stack>
+
+        {/* 💾 SAO LƯU / PHỤC HỒI */}
+        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+          💾 Sao lưu & phục hồi
+        </Typography>
+
+        <Stack spacing={2}>
+          {/* Nút sao lưu: hiển thị khi không phục hồi */}
+          {!isRestoring && (
             <Button
               variant="contained"
-              color="success"
-              startIcon={<CloudUploadIcon />}
-              onClick={handleUpload}
-              disabled={loading}
+              color="primary"
+              startIcon={<BackupIcon />}
+              onClick={handleBackup}
+              disabled={backupLoading} // disable khi đang backup
             >
-              {loading ? `🔄 Đang tải... (${progress}%)` : 'Tải danh sách'}
+              Sao lưu dữ liệu
             </Button>
+          )}
 
-            {loading && <LinearProgress variant="determinate" value={progress} />}
+          {/* Nút phục hồi: hiển thị khi không sao lưu */}
+          {!backupLoading && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<RestoreIcon />}
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              disabled={isRestoring} // disable khi đang restore
+            >
+              Phục hồi dữ liệu
+            </Button>
+          )}
 
-            {message && (
-              <Alert severity={success ? 'success' : loading ? 'info' : 'error'}>
-                {message}
-              </Alert>
-            )}
-          </Stack>
+          {/* Thanh tiến trình */}
+          {(backupLoading || isRestoring) && (
+            <>
+              <LinearProgress variant="determinate" value={backupProgress} />
+              <Typography variant="body2" color="text.secondary" align="center">
+                {isRestoring
+                  ? `Đang phục hồi... ${backupProgress}%`
+                  : `Đang sao lưu... ${backupProgress}%`}
+              </Typography>
+            </>
+          )}
 
-          {/* ⚙️ Cài đặt hệ thống */}
-          <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
-            ⚙️ Cài đặt hệ thống
-          </Typography>
+          {/* Input file cho phục hồi (ẩn) */}
+          <input
+            type="file"
+            hidden
+            accept=".json"
+            ref={fileInputRef}
+            onChange={(e) => {
+              handleRestore(e);
+              e.target.value = ""; // reset để có thể chọn lại cùng file
+            }}
+          />
+        </Stack>
 
-          <Stack spacing={2}>
-            {/* 🆕 Học kỳ */}
-            <FormControl size="small" sx={{ flex: 1 }}>
-              <Select value={selectedSemester} onChange={handleSemesterChange}>
-                <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
-                <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
-                <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-                <MenuItem value="Cả năm">Cả năm</MenuItem>
-              </Select>
-            </FormControl>
-
-            {/* 🔼 Môn học */}
-            <FormControl fullWidth size="small">
-              <Select value={subject} onChange={handleSubjectChange}>
-                <MenuItem value="Tin học">Tin học</MenuItem>
-                <MenuItem value="Công nghệ">Công nghệ</MenuItem>
-              </Select>
-            </FormControl>
-
-            {/* 🔽 Lớp + Tuần */}
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <FormControl size="small" sx={{ flex: 1 }}>
-                <Select value={selectedClass} onChange={handleClassChange}>
-                  {classes.map(cls => (
-                    <MenuItem key={cls} value={cls}>
-                      {cls}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl size="small" sx={{ flex: 1 }}>
-                <Select value={selectedWeek} onChange={handleWeekChange}>
-                  {[...Array(35)].map((_, i) => (
-                    <MenuItem key={i + 1} value={i + 1}>
-                      Tuần {i + 1}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          </Stack>
-        </Box>
+        {message && (
+          <Alert sx={{ mt: 3 }} severity={success ? "success" : "error"}>
+            {message}
+          </Alert>
+        )}
       </Card>
     </Box>
   );

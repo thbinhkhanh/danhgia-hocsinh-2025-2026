@@ -513,9 +513,6 @@ const fetchStudentsAndStatus = async () => {
   }
 };
 
-
-
-
 const fetchStudentsDGTX = async () => {
   if (!selectedClass) return;
 

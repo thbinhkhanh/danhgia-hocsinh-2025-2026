@@ -1,6 +1,5 @@
-// src/context/ConfigContext.jsx
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
 export const ConfigContext = createContext();
@@ -8,46 +7,40 @@ export const ConfigContext = createContext();
 export const ConfigProvider = ({ children }) => {
   const defaultConfig = {
     tuan: 1,
-    hethong: false,
-    giaovien: false,
     mon: "Tin học",
     login: false,
     hocKy: "Giữa kỳ I",
     lop: "",
   };
 
-  // Load config từ localStorage
   const storedConfig = JSON.parse(localStorage.getItem("appConfig") || "{}");
-  const [config, setConfig] = useState({ ...defaultConfig, ...storedConfig });
+  const allowedKeys = Object.keys(defaultConfig);
+  const filteredStored = Object.fromEntries(
+    Object.entries(storedConfig).filter(([k]) => allowedKeys.includes(k))
+  );
 
-  // 🔄 Lưu localStorage khi config thay đổi
+  const [config, setConfig] = useState({ ...defaultConfig, ...filteredStored });
+
+  // Lưu localStorage khi config thay đổi
   useEffect(() => {
     localStorage.setItem("appConfig", JSON.stringify(config));
   }, [config]);
 
-  // ⚡ Lắng nghe realtime Firestore
+  // Chỉ đọc Firestore snapshot, không ghi lại
   useEffect(() => {
     const docRef = doc(db, "CONFIG", "config");
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          setConfig((prev) => {
-            const updated = {
-              ...prev,
-              tuan: data.tuan ?? prev.tuan,
-              hethong: data.hethong ?? prev.hethong,
-              giaovien: data.giaovien ?? prev.giaovien,
-              mon: data.mon ?? prev.mon,
-              login: data.login ?? prev.login,
-              hocKy: data.hocKy ?? prev.hocKy,
-              lop: data.lop ?? prev.lop,
-            };
-            // ✅ chỉ cập nhật nếu khác prev để tránh rerender thừa
-            return JSON.stringify(prev) !== JSON.stringify(updated) ? updated : prev;
-          });
-        }
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+
+        setConfig((prev) => {
+          const hasDiff = Object.keys(defaultConfig).some(
+            (key) => prev[key] !== data[key]
+          );
+          return hasDiff ? { ...prev, ...data } : prev;
+        });
       },
       (err) => console.error("❌ Firestore snapshot lỗi:", err)
     );
@@ -55,17 +48,21 @@ export const ConfigProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Hàm cập nhật config + Firestore
+  // Hàm cập nhật config do người dùng thao tác
   const updateConfig = async (newValues) => {
-    try {
-      const newConfig = { ...config, ...newValues };
-      setConfig(newConfig);
-      // Firestore merge
-      const docRef = doc(db, "CONFIG", "config");
-      await setDoc(docRef, newValues, { merge: true });
-    } catch (err) {
-      console.error("❌ Lỗi khi cập nhật Firestore:", err);
-    }
+    const filtered = Object.fromEntries(
+      Object.entries(newValues).filter(([k]) => allowedKeys.includes(k))
+    );
+
+    // Chỉ update nếu khác hẳn state hiện tại
+    const hasDiff = Object.keys(filtered).some((k) => filtered[k] !== config[k]);
+    if (!hasDiff) return;
+
+    setConfig((prev) => ({ ...prev, ...filtered }));
+
+    const docRef = doc(db, "CONFIG", "config");
+    await setDoc(docRef, filtered, { merge: true });
+    console.log("✅ Firestore cập nhật:", filtered);
   };
 
   return (
@@ -75,5 +72,4 @@ export const ConfigProvider = ({ children }) => {
   );
 };
 
-// Hook tiện lợi
 export const useConfig = () => useContext(ConfigContext);
