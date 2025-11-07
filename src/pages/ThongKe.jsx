@@ -19,7 +19,8 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
-import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+
 import { db } from "../firebase";
 
 export default function ThongKe() {
@@ -171,11 +172,20 @@ export default function ThongKe() {
 
   // 🔹 Khi load lần đầu
   useEffect(() => {
-    const init = async () => {
-      await fetchConfig(); // load hocKy + mon
-    };
-    init();
+    // Lắng nghe thay đổi trực tiếp từ Firestore CONFIG/config
+    const ref = doc(db, "CONFIG", "config");
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setConfig({
+          hocKy: data.hocKy || "Giữa kỳ I",
+          mon: data.mon || "Tin học",
+        });
+      }
+    });
+    return () => unsubscribe();
   }, []);
+
 
   // 🔹 Khi config thay đổi, load lại thống kê
   useEffect(() => {
