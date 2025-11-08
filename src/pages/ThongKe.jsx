@@ -241,37 +241,33 @@ export default function ThongKe() {
           return val;
         };
 
+        // 🔹 Style riêng cho Khối và Trường
+        const rowStyle = isTruong
+          ? { backgroundColor: "#ffe5e5" } // đỏ nhạt cho Trường
+          : isKhoi
+          ? { backgroundColor: "#e0f0ff" } // xanh nhạt cho Khối
+          : {};
+
+        const textColor = isKhoi ? "#1976d2" : isTruong ? "#d32f2f" : "inherit";
+        const fontWeight = isKhoi || isTruong ? "bold" : 500;
+
         return (
-          <TableRow
-            key={`${row.label}-${idx}`}
-            sx={
-              isTruong
-                ? { backgroundColor: "#f1f1f1" }
-                : isKhoi
-                ? { backgroundColor: "#fafafa" }
-                : {}
-            }
-          >
-            <TableCell
-              align="center"
-              sx={{
-                fontWeight: isKhoi || isTruong ? "bold" : 500,
-                borderRight: "1px solid #ccc",
-              }}
-            >
+          <TableRow key={`${row.label}-${idx}`} sx={rowStyle}>
+            <TableCell align="center" sx={{ fontWeight, color: textColor, borderRight: "1px solid #ccc" }}>
               {row.label}
             </TableCell>
-            <TableCell align="center">{display(siSo)}</TableCell>
-            <TableCell align="center">{display(row.tot)}</TableCell>
-            <TableCell align="center">{display(row.totTL)}</TableCell>
-            <TableCell align="center">{display(row.hoanThanh)}</TableCell>
-            <TableCell align="center">{display(row.hoanThanhTL)}</TableCell>
-            <TableCell align="center">{display(row.chuaHoanThanh)}</TableCell>
-            <TableCell align="center">{display(row.chuaHoanThanhTL)}</TableCell>
+            <TableCell align="center" sx={{ fontWeight }}>{display(siSo)}</TableCell>
+            <TableCell align="center" sx={{ fontWeight }}>{display(row.tot)}</TableCell>
+            <TableCell align="center" sx={{ fontWeight }}>{display(row.totTL)}</TableCell>
+            <TableCell align="center" sx={{ fontWeight }}>{display(row.hoanThanh)}</TableCell>
+            <TableCell align="center" sx={{ fontWeight }}>{display(row.hoanThanhTL)}</TableCell>
+            <TableCell align="center" sx={{ fontWeight }}>{display(row.chuaHoanThanh)}</TableCell>
+            <TableCell align="center" sx={{ fontWeight }}>{display(row.chuaHoanThanhTL)}</TableCell>
           </TableRow>
         );
       });
   };
+
 
 
   return (
