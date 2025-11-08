@@ -268,8 +268,6 @@ export default function ThongKe() {
       });
   };
 
-
-
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
       <Card
@@ -305,7 +303,7 @@ export default function ThongKe() {
           gutterBottom
           sx={{ textAlign: "center", mb: 2 }}
         >
-          {`THỐNG KÊ ${config.hocKy?.toUpperCase() || ""}`}
+          {`THỐNG KÊ CHẤT LƯỢNG ${config.hocKy?.toUpperCase() || ""}`}
         </Typography>
 
         {/* 🔹 Chọn môn */}
