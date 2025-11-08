@@ -303,7 +303,7 @@ export default function ThongKe() {
           gutterBottom
           sx={{ textAlign: "center", mb: 2 }}
         >
-          {`THỐNG KÊ CHẤT LƯỢNG ${config.hocKy?.toUpperCase() || ""}`}
+          {`THỐNG KÊ ${config.hocKy?.toUpperCase() || ""}`}
         </Typography>
 
         {/* 🔹 Chọn môn */}
