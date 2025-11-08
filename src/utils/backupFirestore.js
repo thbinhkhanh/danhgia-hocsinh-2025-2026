@@ -17,21 +17,29 @@ export const fetchAllBackup = async (onProgress) => {
 
     const collections = ["DANHSACH", "CONFIG", "KTDK", "DGTX"];
     let progressCount = 0;
-    const totalCollections = collections.length;
 
     for (const colName of collections) {
       if (colName === "DGTX") {
-        // Lấy tất cả lớp từ DANHSACH
+        // ✅ Lấy tất cả lớp từ DANHSACH
         const classSnap = await getDocs(collection(db, "DANHSACH"));
         const classIds = classSnap.docs.map(d => d.id);
-        const totalClasses = classIds.length;
+
+        // ✅ Thêm phiên bản "_CN" cho mỗi lớp
+        const classIdsWithCN = [
+          ...classIds,
+          ...classIds.map(id => `${id}_CN`)
+        ];
+
+        const totalClasses = classIdsWithCN.length;
 
         for (let j = 0; j < totalClasses; j++) {
-          const lopId = classIds[j];
-          backupData.DGTX[lopId] = { tuan: {} };
-
+          const lopId = classIdsWithCN[j];
           const tuanSnap = await getDocs(collection(db, "DGTX", lopId, "tuan"));
+
+          // Chỉ xử lý nếu có tuần
           if (!tuanSnap.empty) {
+            backupData.DGTX[lopId] = { tuan: {} };
+
             await Promise.all(
               tuanSnap.docs.map(async (tuanDoc) => {
                 const tuanId = tuanDoc.id;
@@ -43,9 +51,9 @@ export const fetchAllBackup = async (onProgress) => {
             );
           }
 
-          // Cập nhật tiến trình chi tiết theo từng lớp
+          // Cập nhật tiến trình chi tiết
           if (onProgress) {
-            const dgtxProgress = Math.round(((j + 1) / totalClasses) * 70); // DGTX chiếm ~70% tiến trình
+            const dgtxProgress = Math.round(((j + 1) / totalClasses) * 70); // DGTX chiếm ~70%
             const overallProgress = Math.round(progressCount + dgtxProgress * (30 / 70));
             onProgress(Math.min(overallProgress, 99));
           }
@@ -53,17 +61,25 @@ export const fetchAllBackup = async (onProgress) => {
 
         progressCount += 70; // sau khi DGTX xong
       } else {
-        // Các collection còn lại
+        // ✅ Các collection còn lại
         const snap = await getDocs(collection(db, colName));
         snap.forEach(docSnap => {
           backupData[colName][docSnap.id] = docSnap.data();
         });
 
-        // Cập nhật tiến trình cho mỗi collection còn lại (chiếm 10% mỗi collection)
+        // Cập nhật tiến trình
         progressCount += 10;
         if (onProgress) onProgress(Math.min(progressCount, 99));
       }
     }
+
+    // ✅ Lọc bỏ lớp không có dữ liệu tuan
+    Object.keys(backupData.DGTX).forEach(lopId => {
+      const tuan = backupData.DGTX[lopId]?.tuan;
+      if (!tuan || Object.keys(tuan).length === 0) {
+        delete backupData.DGTX[lopId];
+      }
+    });
 
     if (onProgress) onProgress(100);
     console.log("✅ Đã tổng hợp dữ liệu toàn bộ!");

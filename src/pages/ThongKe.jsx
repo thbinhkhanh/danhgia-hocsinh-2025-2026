@@ -85,11 +85,22 @@ export default function ThongKe() {
           hoanThanh = 0,
           chuaHoanThanh = 0;
         Object.values(classScores).forEach((s) => {
-          const mucDat = s?.mucDat || s?.xepLoai || "";
+          let mucDat = "";
+
+          // 🔹 Nếu là Giữa kỳ → dùng dgtx
+          if (selectedTerm === "GKI" || selectedTerm === "GKII") {
+            mucDat = s?.dgtx?.trim() || "";
+          } 
+          // 🔹 Còn lại (Cuối kỳ I, Cả năm) → dùng mucDat
+          else {
+            mucDat = s?.mucDat?.trim() || "";
+          }
+
           if (mucDat === "T") tot++;
           else if (mucDat === "H") hoanThanh++;
           else chuaHoanThanh++;
         });
+
         const tong = tot + hoanThanh + chuaHoanThanh;
         dataByClass[lop] = {
           tot,
@@ -195,42 +206,73 @@ export default function ThongKe() {
   }, [config]);
 
   // 🔹 Render bảng
-  const renderRows = (rows) =>
-    rows.map((row, idx) => {
-      const isKhoi = row.type === "khoi";
-      const isTruong = row.type === "truong";
-      const siSo = (row.tot || 0) + (row.hoanThanh || 0) + (row.chuaHoanThanh || 0);
-      const display = (val) => (val && val !== 0 ? val : "");
-      return (
-        <TableRow
-          key={`${row.label}-${idx}`}
-          sx={
-            isTruong
-              ? { backgroundColor: "#f1f1f1" }
-              : isKhoi
-              ? { backgroundColor: "#fafafa" }
-              : {}
-          }
-        >
-          <TableCell
-            align="center"
-            sx={{
-              fontWeight: isKhoi || isTruong ? "bold" : 500,
-              borderRight: "1px solid #ccc",
-            }}
-          >
-            {row.label}
-          </TableCell>
-          <TableCell align="center">{display(siSo)}</TableCell>
-          <TableCell align="center">{display(row.tot)}</TableCell>
-          <TableCell align="center">{display(row.totTL)}</TableCell>
-          <TableCell align="center">{display(row.hoanThanh)}</TableCell>
-          <TableCell align="center">{display(row.hoanThanhTL)}</TableCell>
-          <TableCell align="center">{display(row.chuaHoanThanh)}</TableCell>
-          <TableCell align="center">{display(row.chuaHoanThanhTL)}</TableCell>
-        </TableRow>
-      );
+  const renderRows = (rows) => {
+    // 🔹 Nhóm các lớp theo khối để biết khối nào có dữ liệu
+    const khoiMap = {};
+    rows.forEach((row) => {
+      if (row.type === "class") {
+        if (!khoiMap[row.khoi]) khoiMap[row.khoi] = 0;
+        const total = (row.tot || 0) + (row.hoanThanh || 0) + (row.chuaHoanThanh || 0);
+        khoiMap[row.khoi] += total;
+      }
     });
+
+    return rows
+      // 🔹 Lọc bỏ lớp trống và khối trống
+      .filter((row) => {
+        if (row.type === "class") {
+          const total = (row.tot || 0) + (row.hoanThanh || 0) + (row.chuaHoanThanh || 0);
+          return total > 0;
+        }
+        if (row.type === "khoi") {
+          return khoiMap[row.khoi] > 0;
+        }
+        return true; // TRƯỜNG luôn hiện
+      })
+      .map((row, idx) => {
+        const isKhoi = row.type === "khoi";
+        const isTruong = row.type === "truong";
+        const siSo =
+          (row.tot || 0) + (row.hoanThanh || 0) + (row.chuaHoanThanh || 0);
+
+        // 🔹 Ẩn các giá trị 0 hoặc 0.0
+        const display = (val) => {
+          if (!val || Number(val) === 0) return "";
+          return val;
+        };
+
+        return (
+          <TableRow
+            key={`${row.label}-${idx}`}
+            sx={
+              isTruong
+                ? { backgroundColor: "#f1f1f1" }
+                : isKhoi
+                ? { backgroundColor: "#fafafa" }
+                : {}
+            }
+          >
+            <TableCell
+              align="center"
+              sx={{
+                fontWeight: isKhoi || isTruong ? "bold" : 500,
+                borderRight: "1px solid #ccc",
+              }}
+            >
+              {row.label}
+            </TableCell>
+            <TableCell align="center">{display(siSo)}</TableCell>
+            <TableCell align="center">{display(row.tot)}</TableCell>
+            <TableCell align="center">{display(row.totTL)}</TableCell>
+            <TableCell align="center">{display(row.hoanThanh)}</TableCell>
+            <TableCell align="center">{display(row.hoanThanhTL)}</TableCell>
+            <TableCell align="center">{display(row.chuaHoanThanh)}</TableCell>
+            <TableCell align="center">{display(row.chuaHoanThanhTL)}</TableCell>
+          </TableRow>
+        );
+      });
+  };
+
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>

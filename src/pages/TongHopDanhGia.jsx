@@ -23,10 +23,11 @@ import {
   LinearProgress,
   useMediaQuery,
   TextField,
+  Snackbar, 
+  Alert,
 } from "@mui/material";
 
 import { db } from "../firebase";
-//import { StudentContext } from "../context/StudentContext";
 import { StudentDataContext } from "../context/StudentDataContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, setDoc, collection, writeBatch } from "firebase/firestore";
@@ -37,7 +38,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
-import { Snackbar, Alert } from "@mui/material";
+import { nhanXetTinHoc, nhanXetCongNghe } from '../utils/nhanXet.js';
 
 export default function TongHopDanhGia() {
   // --- Context ---
@@ -65,60 +66,6 @@ export default function TongHopDanhGia() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [showWeeks, setShowWeeks] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState(""); // không mặc định
-
-  const nhanXetTheoMuc = {
-    tot: [
-      "Em có ý thức học tập tốt, thao tác thành thạo và tích cực trong các hoạt động thực hành Tin học.",
-      "Em chủ động, tự tin, biết vận dụng CNTT vào học tập và đời sống.",
-      "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
-      "Em thể hiện kỹ năng sử dụng máy tính thành thạo, làm việc khoa học và hiệu quả.",
-      "Em yêu thích môn Tin học, chủ động khám phá và hỗ trợ bạn bè trong học tập.",
-      "Em có khả năng vận dụng kiến thức vào giải quyết tình huống thực tế liên quan đến CNTT.",
-      "Em thao tác nhanh, chính xác, sử dụng phần mềm đúng quy trình và sáng tạo.",
-      "Em có tư duy logic tốt, biết trình bày và lưu trữ sản phẩm học tập khoa học.",
-      "Em tiếp thu nhanh, thực hành thuần thục, hoàn thành tốt các nhiệm vụ học tập.",
-      "Em thể hiện tinh thần hợp tác, chia sẻ và giúp đỡ bạn trong hoạt động nhóm."
-    ],
-
-    kha: [
-      "Em có ý thức học tập tốt, biết sử dụng thiết bị và phần mềm cơ bản.",
-      "Em tiếp thu bài khá, cần chủ động hơn trong việc thực hành và vận dụng kiến thức.",
-      "Em làm bài cẩn thận, có tinh thần học hỏi nhưng cần rèn luyện thêm thao tác thực hành.",
-      "Em nắm được kiến thức trọng tâm, thực hiện thao tác tương đối chính xác.",
-      "Em có khả năng sử dụng máy tính ở mức khá, cần luyện tập thêm để tăng tốc độ thao tác.",
-      "Em có tinh thần học tập tích cực nhưng đôi khi còn thiếu tự tin khi thực hành.",
-      "Em đã biết áp dụng kiến thức để tạo sản phẩm học tập, cần sáng tạo hơn trong trình bày.",
-      "Em có tiến bộ rõ, cần phát huy thêm tính chủ động trong học tập Tin học.",
-      "Em biết hợp tác trong nhóm, hoàn thành nhiệm vụ được giao tương đối tốt.",
-      "Em thực hành đúng hướng dẫn, cần nâng cao hơn khả năng vận dụng vào tình huống mới."
-    ],
-
-    trungbinh: [
-      "Em hoàn thành các yêu cầu cơ bản, cần cố gắng hơn khi thực hành.",
-      "Em còn lúng túng trong thao tác, cần sự hỗ trợ thêm từ giáo viên.",
-      "Em có tiến bộ nhưng cần rèn luyện thêm kỹ năng sử dụng phần mềm.",
-      "Em hiểu bài nhưng thao tác chậm, cần rèn luyện thêm để nâng cao hiệu quả.",
-      "Em đôi khi còn quên thao tác cơ bản, cần ôn tập thường xuyên hơn.",
-      "Em hoàn thành nhiệm vụ học tập ở mức trung bình, cần chủ động hơn trong giờ thực hành.",
-      "Em có thái độ học tập đúng đắn nhưng cần tập trung hơn khi làm việc với máy tính.",
-      "Em nắm được một phần kiến thức, cần hỗ trợ thêm để vận dụng chính xác.",
-      "Em có cố gắng, tuy nhiên còn gặp khó khăn khi làm bài thực hành.",
-      "Em cần tăng cường luyện tập để cải thiện kỹ năng và độ chính xác khi thao tác."
-    ],
-
-    yeu: [
-      "Em chưa nắm chắc kiến thức, thao tác còn chậm, cần được hướng dẫn nhiều hơn.",
-      "Em cần cố gắng hơn trong học tập, đặc biệt là phần thực hành Tin học.",
-      //"Em cần tăng cường luyện tập để nắm vững kiến thức và thao tác máy tính.",
-      "Em còn gặp nhiều khó khăn khi sử dụng phần mềm, cần được hỗ trợ thường xuyên.",
-      "Em chưa chủ động trong học tập, cần khuyến khích và theo dõi thêm.",
-      "Em thao tác thiếu chính xác, cần rèn luyện thêm kỹ năng cơ bản.",
-      "Em tiếp thu chậm, cần sự kèm cặp sát sao để tiến bộ hơn.",
-      "Em cần dành nhiều thời gian hơn cho việc luyện tập trên máy tính.",
-      "Em chưa hoàn thành được yêu cầu bài học, cần hỗ trợ từ giáo viên và bạn bè.",
-      "Em cần được củng cố lại kiến thức nền tảng và hướng dẫn thực hành cụ thể hơn."
-    ]
-  };
 
   // Chọn ngẫu nhiên một phần tử trong mảng
   function randomItem(arr) {
@@ -163,21 +110,22 @@ export default function TongHopDanhGia() {
     if (diemTB === null)
       return { xepLoai: "", nhanXet: "" }; // Không hiển thị nếu chưa có dữ liệu
 
+    const nhanXetMuc = getNhanXetMuc(selectedSubject); // ✅ truyền state vào
     let xepLoaiDayDu, nhanXet;
 
     // Ưu tiên: ≥50% T -> Tốt
     if (tyLeT >= 0.5 || diemTB >= 2.8) {
       xepLoaiDayDu = "Tốt";
-      nhanXet = randomItem(nhanXetTheoMuc.tot);
+      nhanXet = randomItem(nhanXetMuc.tot);
     } else if (diemTB >= 2.0) {
       xepLoaiDayDu = "Khá";
-      nhanXet = randomItem(nhanXetTheoMuc.kha);
+      nhanXet = randomItem(nhanXetMuc.kha);
     } else if (diemTB >= 1.5) {
       xepLoaiDayDu = "Trung bình";
-      nhanXet = randomItem(nhanXetTheoMuc.trungbinh);
+      nhanXet = randomItem(nhanXetMuc.trungbinh);
     } else {
       xepLoaiDayDu = "Yếu";
-      nhanXet = randomItem(nhanXetTheoMuc.yeu);
+      nhanXet = randomItem(nhanXetMuc.yeu);
     }
 
     // 🔹 Rút gọn loại hiển thị:
@@ -192,15 +140,23 @@ export default function TongHopDanhGia() {
     return { xepLoai: xepLoaiRutGon, nhanXet };
   }
 
-  // 🔹 Sinh nhận xét tự động dựa vào xếp loại rút gọn
-  function getNhanXetTuDong(xepLoai) {
-    if (!xepLoai) return "";
-    if (xepLoai === "T") return randomItem(nhanXetTheoMuc.tot);
-    if (xepLoai === "H") return randomItem(nhanXetTheoMuc.kha);
-    if (xepLoai === "C") return randomItem(nhanXetTheoMuc.yeu);
-    return "";
+  function getNhanXetMuc(subject) {
+    return subject === "Công nghệ" ? nhanXetCongNghe : nhanXetTinHoc;
   }
 
+  // 🔹 Sinh nhận xét tự động dựa vào xếp loại rút gọn
+  function getNhanXetTuDong(xepLoai) {
+  if (!xepLoai) return "";
+
+  const nhanXetMuc = getNhanXetMuc(selectedSubject); // truyền selectedSubject vào
+  let nhanXet = "";
+
+  if (xepLoai === "T") nhanXet = randomItem(nhanXetMuc.tot);
+  else if (xepLoai === "H") nhanXet = randomItem(nhanXetMuc.kha);
+  else if (xepLoai === "C") nhanXet = randomItem(nhanXetMuc.yeu);
+
+  return nhanXet;
+}
 
 const [snackbar, setSnackbar] = useState({
   open: false,
@@ -212,10 +168,10 @@ const handleSaveAll = async () => {
   if (!students || students.length === 0) return;
 
   // ✅ Xác định học kỳ được chọn
-  let termDoc = "CN"; // mặc định
-  if (selectedSemester === "Giữa kỳ 1") termDoc = "GKI";
-  else if (selectedSemester === "Cuối kỳ 1") termDoc = "CKI";
-  else if (selectedSemester === "Giữa kỳ 2") termDoc = "GKII";
+  let termDoc = "GKI"; // mặc định
+  if (selectedSemester === "Giữa kỳ I") termDoc = "GKI";
+  else if (selectedSemester === "Cuối kỳ I") termDoc = "CKI";
+  else if (selectedSemester === "Giữa kỳ II") termDoc = "GKII";
   else termDoc = "CN";
 
   // ✅ Tên lớp chỉ giữ "_CN" nếu là Công nghệ
@@ -258,7 +214,8 @@ const handleSaveAll = async () => {
 
     setSnackbar({
       open: true,
-      message: `✅ Lưu thành công (${termDoc})!`,
+      //message: `✅ Lưu thành công (${termDoc})!`,
+      message: `✅ Lưu thành công!`,
       severity: "success",
     });
   } catch (err) {
@@ -622,9 +579,11 @@ const fetchStudentsDGTX = async () => {
       const nhanXetTuDong = getNhanXetTuDong(dgtx);
 
       // ✅ Ưu tiên lấy nhận xét từ KTDK (field nhanXet), nếu trống thì sinh tự động
-      const nhanXet = s.nhanXet?.trim()
+      /*const nhanXet = s.nhanXet?.trim()
         ? s.nhanXet.trim()
-        : nhanXetTuDong;
+        : nhanXetTuDong;*/
+      
+        const nhanXet = nhanXetTuDong; // Luôn sinh nhận xét mới, bỏ KTDK
 
       return { ...s, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
     });
@@ -778,7 +737,7 @@ return (
         gutterBottom
         sx={{ textAlign: "center", width: "100%", display: "block", mb: 2, textTransform: "uppercase" }}
       >
-        TỔNG HỢP ĐÁNH GIÁ - {selectedSemester ? `${selectedSemester}` : ""}
+        NHẬN XÉT {selectedSemester ? `${selectedSemester}` : ""}
       </Typography>
 
       {/*<Divider sx={{ mb: 3 }} />*/}
@@ -1004,61 +963,60 @@ return (
       </TableContainer>
 
       {/* --- Bảng thống kê xuống cuối Card --- */}
-      {/* --- Bảng thống kê xuống cuối Card --- */}
-<Box
-  sx={{
-    mt: 3,
-    backgroundColor: "#f1f8e9",
-    borderRadius: 2,
-    border: "1px solid #e0e0e0",
-    p: 2,
-    width: 300,
-    maxWidth: "90%",
-    mx: "auto",
-    boxShadow: 2,
-  }}
->
-  <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-    <Typography variant="subtitle1" fontWeight="bold" color="primary">
-      Thống kê:
-    </Typography>
-    <FormControl size="small" sx={{ minWidth: 100 }}>
-      <InputLabel>Tuần</InputLabel>
-      <Select
-        value={selectedWeek}
-        label="Tuần"
-        onChange={(e) => setSelectedWeek(Number(e.target.value))}
+      <Box
+        sx={{
+          mt: 3,
+          backgroundColor: "#f1f8e9",
+          borderRadius: 2,
+          border: "1px solid #e0e0e0",
+          p: 2,
+          width: 300,
+          maxWidth: "90%",
+          mx: "auto",
+          boxShadow: 2,
+        }}
       >
-        {/* Chỉ hiển thị tuần theo học kỳ */}
-        {Array.from(
-          { length: endWeek - startWeek + 1 },
-          (_, i) => startWeek + i
-        ).map((weekNum) => (
-          <MenuItem key={weekNum} value={weekNum}>
-            Tuần {weekNum}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-  </Stack>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+          <Typography variant="subtitle1" fontWeight="bold" color="primary">
+            Thống kê:
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 100 }}>
+            <InputLabel>Tuần</InputLabel>
+            <Select
+              value={selectedWeek}
+              label="Tuần"
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            >
+              {/* Chỉ hiển thị tuần theo học kỳ */}
+              {Array.from(
+                { length: endWeek - startWeek + 1 },
+                (_, i) => startWeek + i
+              ).map((weekNum) => (
+                <MenuItem key={weekNum} value={weekNum}>
+                  Tuần {weekNum}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
 
-  <Stack direction="row" justifyContent="space-between">
-    <Typography variant="body2">Hoàn thành tốt (T):</Typography>
-    <Typography variant="body2" fontWeight="bold">{totalT}</Typography>
-  </Stack>
-  <Stack direction="row" justifyContent="space-between">
-    <Typography variant="body2">Hoàn thành (H):</Typography>
-    <Typography variant="body2" fontWeight="bold">{totalH}</Typography>
-  </Stack>
-  <Stack direction="row" justifyContent="space-between">
-    <Typography variant="body2">Chưa hoàn thành (C):</Typography>
-    <Typography variant="body2" fontWeight="bold">{totalC}</Typography>
-  </Stack>
-  <Stack direction="row" justifyContent="space-between">
-    <Typography variant="body2">Chưa đánh giá:</Typography>
-    <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
-  </Stack>
-</Box>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Hoàn thành tốt (T):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalT}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Hoàn thành (H):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalH}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Chưa hoàn thành (C):</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalC}</Typography>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography variant="body2">Chưa đánh giá:</Typography>
+          <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
+        </Stack>
+      </Box>
 
 
     </Card>

@@ -199,7 +199,7 @@ export default function XuatDanhGia() {
 
         setMessage(
           <div style={{ lineHeight: 1.6, fontSize: "0.95rem" }}>
-            ✅ <strong>Đã xuất kết quả học kỳ {termText}:</strong>
+            ✅ <strong>Đã xuất kết quả {termText}:</strong>
 
             <div style={{ marginTop: 8, marginLeft: 20 }}>
               • <strong>Tin học:</strong>
@@ -282,7 +282,7 @@ export default function XuatDanhGia() {
             onClick={handleExportAll}
             disabled={loading || !folderHandle}
           >
-            Thực hiện xuất
+            Xuất kết quả
           </Button>
 
           {loading && (

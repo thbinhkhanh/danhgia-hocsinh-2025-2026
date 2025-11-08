@@ -29,6 +29,7 @@ import { StudentKTDKContext } from "../context/StudentKTDKContext";
 
 import { exportKTDK } from "../utils/exportKTDK";
 import { printKTDK } from "../utils/printKTDK";
+import { nhanXetTinHoc, nhanXetCongNghe } from '../utils/nhanXet.js';
 
 import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from "firebase/firestore";
 
@@ -85,14 +86,298 @@ export default function NhapdiemKTDK() {
   }, [classData, setClassData]);
 
   const fetchStudentsAndStatus = async (cls) => {
-  const currentClass = cls || selectedClass;
-  if (!currentClass) return;
+    const currentClass = cls || selectedClass;
+    if (!currentClass) return;
 
-  try {
-    // 🔹 Lấy học kỳ từ config (đồng bộ với handleSaveAll)
+    try {
+      // 🔹 Lấy học kỳ từ config (đồng bộ với handleSaveAll)
+      const selectedSemester = config.hocKy || "Giữa kỳ I";
+
+      // 🔹 Xác định tài liệu học kỳ trong Firestore
+      let termDoc;
+      switch (selectedSemester) {
+        case "Giữa kỳ I":
+          termDoc = "GKI";
+          break;
+        case "Cuối kỳ I":
+          termDoc = "CKI";
+          break;
+        case "Giữa kỳ II":
+          termDoc = "GKII";
+          break;
+        default:
+          termDoc = "CN";
+          break;
+      }
+
+
+      // 🔹 Tên lớp: chỉ giữ dạng "4.1" hoặc "4.1_CN"
+      const classKey = config?.mon === "Công nghệ" ? `${currentClass}_CN` : currentClass;
+
+      // 🔹 Kiểm tra cache trước
+      const cached = getStudentsForClass(termDoc, classKey);
+      if (cached) {
+        setStudents(cached);
+        return;
+      }
+
+      // 🔹 Lấy dữ liệu từ Firestore
+      const docRef = doc(db, "KTDK", termDoc);
+      const snap = await getDoc(docRef);
+      const termData = snap.exists() ? snap.data() : {};
+      const classData = termData[classKey] || {};
+
+      // 1️⃣ Tạo danh sách học sinh (chưa gán STT)
+      let studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
+        hoVaTen: info.hoVaTen || "",
+        dgtx: info.dgtx || "",
+        dgtx_gv: info.dgtx_gv || "",
+        lyThuyet: info.lyThuyet ?? null,
+        thucHanh: info.thucHanh ?? null,
+        tongCong: info.tongCong ?? null,
+        mucDat: info.mucDat || "",
+        nhanXet: info.nhanXet || "",
+      }));
+
+      // 2️⃣ Sắp xếp theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+      // 3️⃣ Gán lại số thứ tự sau khi sắp xếp
+      studentList = studentList.map((s, idx) => ({
+        ...s,
+        stt: idx + 1,
+      }));
+
+      // 4️⃣ Lưu và cache
+      setStudents(studentList);
+      setStudentsForClass(termDoc, classKey, studentList);
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy dữ liệu:", err);
+      setStudents([]);
+    }
+  };
+
+  const fetchNhanXet = (cls, mon) => {
+  const subject = mon || selectedSubject; // ưu tiên tham số
+  if (!students || students.length === 0) return;
+
+  // Hàm sinh nhận xét dựa trên mức đạt hoặc HS đánh giá
+  const getNhanXet = (xepLoai) => {
+    if (!xepLoai) return "";
+    const loaiNhanXet =
+      xepLoai === "T"
+        ? "tot"
+        : xepLoai === "H"
+        ? "kha"
+        : xepLoai === "C"
+        ? "trungbinh"
+        : "yeu";
+    const arrNhanXet =
+      subject === "Công nghệ"
+        ? nhanXetCongNghe[loaiNhanXet]
+        : nhanXetTinHoc[loaiNhanXet];
+    if (!arrNhanXet || arrNhanXet.length === 0) return "";
+    return arrNhanXet[Math.floor(Math.random() * arrNhanXet.length)];
+  };
+
+  // Cập nhật nhận xét cho từng học sinh
+  const updatedStudents = students.map((s) => {
+    const nhanXet = s.mucDat ? getNhanXet(s.mucDat) : getNhanXet(s.dgtx || "");
+    return { ...s, nhanXet };
+  });
+
+  setStudents(updatedStudents);
+};
+
+
+  /*const fetchStudentsAndStatus_Fetch_NX_moi = async (cls, mon) => {
+    const currentClass = cls || selectedClass;
+    const subject = mon || selectedSubject; // dùng tham số ưu tiên
+    if (!currentClass) return;
+
+    try {
+      const selectedSemester = config.hocKy || "Giữa kỳ I";
+
+      let termDoc;
+      switch (selectedSemester) {
+        case "Giữa kỳ I": termDoc = "GKI"; break;
+        case "Cuối kỳ I": termDoc = "CKI"; break;
+        case "Giữa kỳ II": termDoc = "GKII"; break;
+        default: termDoc = "CN"; break;
+      }
+
+      const classKey = subject === "Công nghệ" ? `${currentClass}_CN` : currentClass;
+
+      const cached = getStudentsForClass(termDoc, classKey);
+      if (cached) {
+        setStudents(cached);
+        return;
+      }
+
+      const docRef = doc(db, "KTDK", termDoc);
+      const snap = await getDoc(docRef);
+      const termData = snap.exists() ? snap.data() : {};
+      const classData = termData[classKey] || {};
+
+      let studentList = Object.entries(classData).map(([maDinhDanh, info]) => {
+
+        const getNhanXet = (xepLoai) => {
+          if (!xepLoai) return "";
+          const loaiNhanXet =
+            xepLoai === "T"
+              ? "tot"
+              : xepLoai === "H"
+              ? "kha"
+              : xepLoai === "C"
+              ? "trungbinh"
+              : "yeu";
+          const arrNhanXet =
+            subject === "Công nghệ"
+              ? nhanXetCongNghe[loaiNhanXet]
+              : nhanXetTinHoc[loaiNhanXet];
+          if (!arrNhanXet || arrNhanXet.length === 0) return "";
+          return arrNhanXet[Math.floor(Math.random() * arrNhanXet.length)];
+        };
+
+        // Nếu mucDat rỗng → dùng HS đánh giá dgtx để sinh nhận xét
+        const nhanXet = info.mucDat
+          ? getNhanXet(info.mucDat)
+          : getNhanXet(info.dgtx || "");
+
+        return {
+          maDinhDanh,
+          hoVaTen: info.hoVaTen || "",
+          dgtx: info.dgtx || "",
+          dgtx_gv: info.dgtx_gv || "",
+          lyThuyet: info.lyThuyet ?? null,
+          thucHanh: info.thucHanh ?? null,
+          tongCong: info.tongCong ?? null,
+          mucDat: info.mucDat || "",
+          nhanXet,
+        };
+      });
+
+      // Sắp xếp theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+      // Gán số thứ tự
+      studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+      setStudents(studentList);
+      setStudentsForClass(termDoc, classKey, studentList);
+
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy dữ liệu:", err);
+      setStudents([]);
+    }
+  };*/
+
+  useEffect(() => {
+    fetchStudentsAndStatus();
+  }, [selectedClass, config.mon, config.hocKy]);
+
+  // Hàm lấy nhận xét tự động theo xếp loại
+  const getNhanXetTuDong = (xepLoai) => {
+    if (!xepLoai) return "";
+
+    let loaiNhanXet;
+    if (xepLoai === "T") loaiNhanXet = "tot";
+    else if (xepLoai === "H") loaiNhanXet = "kha";
+    else if (xepLoai === "C") loaiNhanXet = "trungbinh";
+    else loaiNhanXet = "yeu";
+
+    // Chọn bộ nhận xét theo môn
+    const arrNhanXet = selectedSubject === "Công nghệ" ? nhanXetCongNghe[loaiNhanXet] : nhanXetTinHoc[loaiNhanXet];
+
+    return arrNhanXet[Math.floor(Math.random() * arrNhanXet.length)];
+  };
+
+
+  // Hàm xử lý thay đổi ô bảng
+  const handleCellChange = (maDinhDanh, field, value) => {
+    // ✅ Kiểm tra dữ liệu nhập vào Lí thuyết / Thực hành
+    if ((field === "lyThuyet" || field === "thucHanh") && value !== "") {
+      const num = parseFloat(value);
+      if (isNaN(num) || num < 0 || num > 5) return; // Chỉ nhận 0–5
+    }
+
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.maDinhDanh === maDinhDanh) {
+          const updated = { ...s, [field]: value };
+
+          // ✅ Nếu chỉnh cột Lí thuyết / Thực hành / GV đánh giá → tính lại
+          if (["lyThuyet", "thucHanh", "dgtx_gv"].includes(field)) {
+            const lt = parseFloat(updated.lyThuyet) || 0;
+            const th = parseFloat(updated.thucHanh) || 0;
+
+            if (updated.lyThuyet !== "" && updated.thucHanh !== "") {
+              updated.tongCong = Math.round(lt + th);
+
+              const gv = updated.dgtx_gv;
+
+              // ⚙️ Quy tắc đánh giá Mức đạt
+              if (!gv) {
+                // GV chưa đánh giá → logic mặc định
+                if (updated.tongCong >= 9) updated.mucDat = "T";
+                else if (updated.tongCong >= 5) updated.mucDat = "H";
+                else updated.mucDat = "C";
+              } else {
+                // GV đánh giá → ưu tiên theo gv
+                updated.mucDat = gv;
+              }
+
+              // ✅ Cập nhật nhận xét tự động
+              updated.nhanXet = getNhanXetTuDong(updated.mucDat);
+            } else {
+              // Chưa nhập đủ điểm
+              updated.tongCong = null;
+              updated.mucDat = "";
+              updated.nhanXet = "";
+            }
+          }
+
+          // ✅ Nếu chỉnh trực tiếp Mức đạt → tự động cập nhật nhận xét
+          if (field === "mucDat") {
+            updated.nhanXet = getNhanXetTuDong(updated.mucDat);
+          }
+
+          return updated;
+        }
+        return s;
+      })
+    );
+  };
+
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success", // "success" | "error" | "info" | "warning"
+  });
+
+  // ✅ Lưu null nếu rỗng
+  const parseOrNull = (val) => {
+    if (val === "" || val === null || val === undefined) return null;
+    return Number(val);
+  };
+
+  const handleSaveAll = async () => {
+    if (!students || students.length === 0) return;
+
+    // 🔹 Lấy học kỳ từ config (đồng bộ với CONFIG)
     const selectedSemester = config.hocKy || "Giữa kỳ I";
 
-    // 🔹 Xác định tài liệu học kỳ trong Firestore
+    // 🔹 Xác định tài liệu Firestore cần lưu
     let termDoc;
     switch (selectedSemester) {
       case "Giữa kỳ I":
@@ -110,219 +395,56 @@ export default function NhapdiemKTDK() {
     }
 
 
-    // 🔹 Tên lớp: chỉ giữ dạng "4.1" hoặc "4.1_CN"
-    const classKey = config?.mon === "Công nghệ" ? `${currentClass}_CN` : currentClass;
+    // 🔹 Tên lớp rút gọn (4.1 hoặc 4.1_CN)
+    const classKey = config.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
 
-    // 🔹 Kiểm tra cache trước
-    const cached = getStudentsForClass(termDoc, classKey);
-    if (cached) {
-      setStudents(cached);
-      return;
-    }
-
-    // 🔹 Lấy dữ liệu từ Firestore
     const docRef = doc(db, "KTDK", termDoc);
-    const snap = await getDoc(docRef);
-    const termData = snap.exists() ? snap.data() : {};
-    const classData = termData[classKey] || {};
+    const batch = writeBatch(db);
 
-    // 1️⃣ Tạo danh sách học sinh (chưa gán STT)
-    let studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      hoVaTen: info.hoVaTen || "",
-      dgtx: info.dgtx || "",
-      dgtx_gv: info.dgtx_gv || "",
-      lyThuyet: info.lyThuyet ?? null,
-      thucHanh: info.thucHanh ?? null,
-      tongCong: info.tongCong ?? null,
-      mucDat: info.mucDat || "",
-      nhanXet: info.nhanXet || "",
-    }));
-
-    // 2️⃣ Sắp xếp theo tên
-    studentList.sort((a, b) => {
-      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      return nameA.localeCompare(nameB);
+    // 🔹 Chuẩn hóa dữ liệu học sinh
+    const studentsMap = {};
+    students.forEach((s) => {
+      studentsMap[s.maDinhDanh] = {
+        hoVaTen: s.hoVaTen || "",
+        lyThuyet: parseOrNull(s.lyThuyet),
+        thucHanh: parseOrNull(s.thucHanh),
+        tongCong: parseOrNull(s.tongCong),
+        mucDat: s.mucDat || "",
+        nhanXet: s.nhanXet || "",
+        dgtx: s.dgtx || "",
+        dgtx_gv: s.dgtx_gv || "",
+      };
     });
 
-    // 3️⃣ Gán lại số thứ tự sau khi sắp xếp
-    studentList = studentList.map((s, idx) => ({
-      ...s,
-      stt: idx + 1,
-    }));
+    // 🔹 Gộp dữ liệu vào batch (merge để không ghi đè lớp khác)
+    batch.set(docRef, { [classKey]: studentsMap }, { merge: true });
 
-    // 4️⃣ Lưu và cache
-    setStudents(studentList);
-    setStudentsForClass(termDoc, classKey, studentList);
-  } catch (err) {
-    console.error("❌ Lỗi khi lấy dữ liệu:", err);
-    setStudents([]);
-  }
-};
+    try {
+      await batch.commit();
 
- useEffect(() => {
-  fetchStudentsAndStatus();
-}, [selectedClass, config.mon, config.hocKy]);
-
-    // Hàm nhận xét ngẫu nhiên dựa trên xếp loại
-// Hàm lấy nhận xét tự động theo xếp loại
-const getNhanXetTuDong = (xepLoai) => {
-  if (!xepLoai) return "";
-
-  let loaiNhanXet;
-  if (xepLoai === "T") loaiNhanXet = "tot";
-  else if (xepLoai === "H") loaiNhanXet = "kha";
-  else if (xepLoai === "C") loaiNhanXet = "trungbinh";
-  else loaiNhanXet = "yeu"; // cho các trường hợp khác
-
-  const arrNhanXet = nhanXetTheoMuc[loaiNhanXet];
-  return arrNhanXet[Math.floor(Math.random() * arrNhanXet.length)];
-};
-
-// Hàm xử lý thay đổi ô bảng
-const handleCellChange = (maDinhDanh, field, value) => {
-  // ✅ Kiểm tra dữ liệu nhập vào Lí thuyết / Thực hành
-  if ((field === "lyThuyet" || field === "thucHanh") && value !== "") {
-    const num = parseFloat(value);
-    if (isNaN(num) || num < 0 || num > 5) return; // Chỉ nhận 0–5
-  }
-
-  setStudents((prev) =>
-    prev.map((s) => {
-      if (s.maDinhDanh === maDinhDanh) {
-        const updated = { ...s, [field]: value };
-
-        // ✅ Nếu chỉnh cột Lí thuyết / Thực hành / GV đánh giá → tính lại
-        if (["lyThuyet", "thucHanh", "dgtx_gv"].includes(field)) {
-          const lt = parseFloat(updated.lyThuyet) || 0;
-          const th = parseFloat(updated.thucHanh) || 0;
-
-          if (updated.lyThuyet !== "" && updated.thucHanh !== "") {
-            updated.tongCong = Math.round(lt + th);
-
-            const gv = updated.dgtx_gv;
-
-            // ⚙️ Quy tắc đánh giá Mức đạt
-            if (!gv) {
-              // GV chưa đánh giá → logic mặc định
-              if (updated.tongCong >= 9) updated.mucDat = "T";
-              else if (updated.tongCong >= 5) updated.mucDat = "H";
-              else updated.mucDat = "C";
-            } else {
-              // GV đánh giá → ưu tiên theo gv
-              updated.mucDat = gv;
-            }
-
-            // ✅ Cập nhật nhận xét tự động
-            updated.nhanXet = getNhanXetTuDong(updated.mucDat);
-          } else {
-            // Chưa nhập đủ điểm
-            updated.tongCong = null;
-            updated.mucDat = "";
-            updated.nhanXet = "";
-          }
-        }
-
-        // ✅ Nếu chỉnh trực tiếp Mức đạt → tự động cập nhật nhận xét
-        if (field === "mucDat") {
-          updated.nhanXet = getNhanXetTuDong(updated.mucDat);
-        }
-
-        return updated;
+      // ✅ Cập nhật context cache
+      setStudentData((prev) => ({ ...prev, [classKey]: students }));
+      if (typeof setStudentsForClass === "function") {
+        setStudentsForClass(termDoc, classKey, students);
       }
-      return s;
-    })
-  );
-};
 
-
-const [snackbar, setSnackbar] = useState({
-  open: false,
-  message: "",
-  severity: "success", // "success" | "error" | "info" | "warning"
-});
-
-// ✅ Lưu null nếu rỗng
-const parseOrNull = (val) => {
-  if (val === "" || val === null || val === undefined) return null;
-  return Number(val);
-};
-
-const handleSaveAll = async () => {
-  if (!students || students.length === 0) return;
-
-  // 🔹 Lấy học kỳ từ config (đồng bộ với CONFIG)
-  const selectedSemester = config.hocKy || "Giữa kỳ I";
-
-  // 🔹 Xác định tài liệu Firestore cần lưu
-  let termDoc;
-  switch (selectedSemester) {
-    case "Giữa kỳ I":
-      termDoc = "GKI";
-      break;
-    case "Cuối kỳ I":
-      termDoc = "CKI";
-      break;
-    case "Giữa kỳ II":
-      termDoc = "GKII";
-      break;
-    default:
-      termDoc = "CN";
-      break;
-  }
-
-
-  // 🔹 Tên lớp rút gọn (4.1 hoặc 4.1_CN)
-  const classKey = config.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-
-  const docRef = doc(db, "KTDK", termDoc);
-  const batch = writeBatch(db);
-
-  // 🔹 Chuẩn hóa dữ liệu học sinh
-  const studentsMap = {};
-  students.forEach((s) => {
-    studentsMap[s.maDinhDanh] = {
-      hoVaTen: s.hoVaTen || "",
-      lyThuyet: parseOrNull(s.lyThuyet),
-      thucHanh: parseOrNull(s.thucHanh),
-      tongCong: parseOrNull(s.tongCong),
-      mucDat: s.mucDat || "",
-      nhanXet: s.nhanXet || "",
-      dgtx: s.dgtx || "",
-      dgtx_gv: s.dgtx_gv || "",
-    };
-  });
-
-  // 🔹 Gộp dữ liệu vào batch (merge để không ghi đè lớp khác)
-  batch.set(docRef, { [classKey]: studentsMap }, { merge: true });
-
-  try {
-    await batch.commit();
-
-    // ✅ Cập nhật context cache
-    setStudentData((prev) => ({ ...prev, [classKey]: students }));
-    if (typeof setStudentsForClass === "function") {
-      setStudentsForClass(termDoc, classKey, students);
+      setSnackbar({
+        open: true,
+        message: "✅ Lưu thành công!",
+        severity: "success",
+      });
+    } catch (err) {
+      console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
+      setSnackbar({
+        open: true,
+        message: "❌ Lỗi khi lưu dữ liệu học sinh!",
+        severity: "error",
+      });
     }
-
-    setSnackbar({
-      open: true,
-      message: "✅ Lưu thành công!",
-      severity: "success",
-    });
-  } catch (err) {
-    console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Lỗi khi lưu dữ liệu học sinh!",
-      severity: "error",
-    });
-  }
-};
+  };
 
 
- const handleDownload = async () => {
+  const handleDownload = async () => {
     try {
       await exportKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I");
     } catch (error) {
@@ -332,92 +454,36 @@ const handleSaveAll = async () => {
 
 
   const columns = ["lyThuyet", "thucHanh", "mucDat", "nhanXet"];
+  const handleKeyNavigation = (e, rowIndex, col) => {
+    const navigKeys = ["Enter", "ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "Tab"];
+    if (!navigKeys.includes(e.key)) return; // cho phép nhập bình thường
 
-const handleKeyNavigation = (e, rowIndex, col) => {
-  const navigKeys = ["Enter", "ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "Tab"];
-  if (!navigKeys.includes(e.key)) return; // cho phép nhập bình thường
+    e.preventDefault();
 
-  e.preventDefault();
+    let nextRow = rowIndex;
+    let nextCol = columns.indexOf(col);
 
-  let nextRow = rowIndex;
-  let nextCol = columns.indexOf(col);
-
-  if (e.key === "Enter" || e.key === "ArrowDown") {
-    nextRow = Math.min(students.length - 1, rowIndex + 1);
-  } else if (e.key === "ArrowUp") {
-    nextRow = Math.max(0, rowIndex - 1);
-  } else if (e.key === "ArrowRight" || e.key === "Tab") {
-    if (col === "lyThuyet") {
-      nextCol = columns.indexOf("thucHanh");
-    } else if (col === "thucHanh") {
-      nextCol = columns.indexOf("lyThuyet");
+    if (e.key === "Enter" || e.key === "ArrowDown") {
       nextRow = Math.min(students.length - 1, rowIndex + 1);
-    } else {
-      // các cột khác: đi theo cột bình thường
-      nextCol = Math.min(columns.length - 1, nextCol + 1);
+    } else if (e.key === "ArrowUp") {
+      nextRow = Math.max(0, rowIndex - 1);
+    } else if (e.key === "ArrowRight" || e.key === "Tab") {
+      if (col === "lyThuyet") {
+        nextCol = columns.indexOf("thucHanh");
+      } else if (col === "thucHanh") {
+        nextCol = columns.indexOf("lyThuyet");
+        nextRow = Math.min(students.length - 1, rowIndex + 1);
+      } else {
+        // các cột khác: đi theo cột bình thường
+        nextCol = Math.min(columns.length - 1, nextCol + 1);
+      }
+    } else if (e.key === "ArrowLeft") {
+      if (col === "thucHanh") nextCol = columns.indexOf("lyThuyet");
+      else nextCol = Math.max(0, nextCol - 1);
     }
-  } else if (e.key === "ArrowLeft") {
-    if (col === "thucHanh") nextCol = columns.indexOf("lyThuyet");
-    else nextCol = Math.max(0, nextCol - 1);
-  }
 
-  const nextInput = document.getElementById(`${columns[nextCol]}-${nextRow}`);
-  nextInput?.focus();
-};
-
-
-const nhanXetTheoMuc = {
-    tot: [
-      "Em có ý thức học tập tốt, thao tác thành thạo và tích cực trong các hoạt động thực hành Tin học.",
-      "Em chủ động, tự tin, biết vận dụng CNTT vào học tập và đời sống.",
-      "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
-      "Em thể hiện kỹ năng sử dụng máy tính thành thạo, làm việc khoa học và hiệu quả.",
-      "Em yêu thích môn Tin học, chủ động khám phá và hỗ trợ bạn bè trong học tập.",
-      "Em có khả năng vận dụng kiến thức vào giải quyết tình huống thực tế liên quan đến CNTT.",
-      "Em thao tác nhanh, chính xác, sử dụng phần mềm đúng quy trình và sáng tạo.",
-      "Em có tư duy logic tốt, biết trình bày và lưu trữ sản phẩm học tập khoa học.",
-      "Em tiếp thu nhanh, thực hành thuần thục, hoàn thành tốt các nhiệm vụ học tập.",
-      "Em thể hiện tinh thần hợp tác, chia sẻ và giúp đỡ bạn trong hoạt động nhóm."
-    ],
-
-    kha: [
-      "Em có ý thức học tập tốt, biết sử dụng thiết bị và phần mềm cơ bản.",
-      "Em tiếp thu bài khá, cần chủ động hơn trong việc thực hành và vận dụng kiến thức.",
-      "Em làm bài cẩn thận, có tinh thần học hỏi nhưng cần rèn luyện thêm thao tác thực hành.",
-      "Em nắm được kiến thức trọng tâm, thực hiện thao tác tương đối chính xác.",
-      "Em có khả năng sử dụng máy tính ở mức khá, cần luyện tập thêm để tăng tốc độ thao tác.",
-      "Em có tinh thần học tập tích cực nhưng đôi khi còn thiếu tự tin khi thực hành.",
-      "Em đã biết áp dụng kiến thức để tạo sản phẩm học tập, cần sáng tạo hơn trong trình bày.",
-      "Em có tiến bộ rõ, cần phát huy thêm tính chủ động trong học tập Tin học.",
-      "Em biết hợp tác trong nhóm, hoàn thành nhiệm vụ được giao tương đối tốt.",
-      "Em thực hành đúng hướng dẫn, cần nâng cao hơn khả năng vận dụng vào tình huống mới."
-    ],
-
-    trungbinh: [
-      "Em hoàn thành các yêu cầu cơ bản, cần cố gắng hơn khi thực hành.",
-      "Em còn lúng túng trong thao tác, cần sự hỗ trợ thêm từ giáo viên.",
-      "Em có tiến bộ nhưng cần rèn luyện thêm kỹ năng sử dụng phần mềm.",
-      "Em hiểu bài nhưng thao tác chậm, cần rèn luyện thêm để nâng cao hiệu quả.",
-      "Em đôi khi còn quên thao tác cơ bản, cần ôn tập thường xuyên hơn.",
-      "Em hoàn thành nhiệm vụ học tập ở mức trung bình, cần chủ động hơn trong giờ thực hành.",
-      "Em có thái độ học tập đúng đắn nhưng cần tập trung hơn khi làm việc với máy tính.",
-      "Em nắm được một phần kiến thức, cần hỗ trợ thêm để vận dụng chính xác.",
-      "Em có cố gắng, tuy nhiên còn gặp khó khăn khi làm bài thực hành.",
-      "Em cần tăng cường luyện tập để cải thiện kỹ năng và độ chính xác khi thao tác."
-    ],
-
-    yeu: [
-      "Em chưa nắm chắc kiến thức, thao tác còn chậm, cần được hướng dẫn nhiều hơn.",
-      "Em cần cố gắng hơn trong học tập, đặc biệt là phần thực hành Tin học.",
-      //"Em cần tăng cường luyện tập để nắm vững kiến thức và thao tác máy tính.",
-      "Em còn gặp nhiều khó khăn khi sử dụng phần mềm, cần được hỗ trợ thường xuyên.",
-      "Em chưa chủ động trong học tập, cần khuyến khích và theo dõi thêm.",
-      "Em thao tác thiếu chính xác, cần rèn luyện thêm kỹ năng cơ bản.",
-      "Em tiếp thu chậm, cần sự kèm cặp sát sao để tiến bộ hơn.",
-      "Em cần dành nhiều thời gian hơn cho việc luyện tập trên máy tính.",
-      "Em chưa hoàn thành được yêu cầu bài học, cần hỗ trợ từ giáo viên và bạn bè.",
-      "Em cần được củng cố lại kiến thức nền tảng và hướng dẫn thực hành cụ thể hơn."
-    ]
+    const nextInput = document.getElementById(`${columns[nextCol]}-${nextRow}`);
+    nextInput?.focus();
   };
 
   const handlePrint = async () => {
@@ -490,6 +556,20 @@ const nhanXetTheoMuc = {
             </IconButton>
 
           </Tooltip>
+
+          <Tooltip title="Làm mới nhận xét" arrow>
+            <IconButton
+              onClick={fetchNhanXet}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         {/* 🟨 Tiêu đề & Học kỳ hiện tại */}
@@ -503,8 +583,6 @@ const nhanXetTheoMuc = {
             {`NHẬP ĐIỂM ${config.hocKy?.toUpperCase() || "KTĐK"}`}
           </Typography>
         </Box>
-
-
 
         {/* 🟩 Hàng chọn Lớp – Môn – Học kỳ (3 ô cùng hàng khi mobile) */}
         <Box
