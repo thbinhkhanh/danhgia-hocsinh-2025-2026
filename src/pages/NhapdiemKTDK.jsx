@@ -124,8 +124,33 @@ export default function NhapdiemKTDK() {
       // 🔹 Lấy dữ liệu từ Firestore
       const docRef = doc(db, "KTDK", termDoc);
       const snap = await getDoc(docRef);
+      //const termData = snap.exists() ? snap.data() : {};
+      //const classData = termData[classKey] || {};
+
       const termData = snap.exists() ? snap.data() : {};
-      const classData = termData[classKey] || {};
+      let classData = termData[classKey] || {};
+
+      // 🟡 Nếu chưa có dữ liệu trong KTDK, lấy danh sách học sinh từ DANHSACH
+      if (Object.keys(classData).length === 0) {
+        const docRefList = doc(db, "DANHSACH", currentClass);
+        const snapList = await getDoc(docRefList);
+        if (snapList.exists()) {
+          const listData = snapList.data();
+          classData = {};
+          Object.entries(listData).forEach(([maDinhDanh, info]) => {
+            classData[maDinhDanh] = {
+              hoVaTen: info.hoVaTen || "",
+              dgtx: info.dgtx || "",
+              dgtx_gv: "",
+              lyThuyet: null,
+              thucHanh: null,
+              tongCong: null,
+              mucDat: "",
+              nhanXet: "",
+            };
+          });
+        }
+      }
 
       // 1️⃣ Tạo danh sách học sinh (chưa gán STT)
       let studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
@@ -507,7 +532,7 @@ export default function NhapdiemKTDK() {
         sx={{
           p: 4,
           borderRadius: 3,
-          maxWidth: 1300,
+          maxWidth: 1420,
           mx: "auto",
           position: "relative"
         }}

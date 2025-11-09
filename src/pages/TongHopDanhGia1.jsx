@@ -311,20 +311,11 @@ useEffect(() => {
     fetchClasses();
   }, [setClassData]); // chỉ dependency là setClassData
 
-const hocKyMap = {
-  "Giữa kỳ I": { from: 1, to: 9 },
-  "Cuối kỳ I": { from: 10, to: 18 },
-  "Giữa kỳ II": { from: 19, to: 27 },
-  "Cả năm": { from: 28, to: 35 },
-};
-
 const fetchStudentsAndStatus = async () => {
   if (!selectedClass) return;
 
   try {
-    setLoadingProgress(0);
-    setLoadingMessage("Đang tải dữ liệu học sinh...");
-
+    // 🔹 Lấy học kỳ từ config và ánh xạ sang tên tài liệu Firestore
     const mapTerm = {
       "Giữa kỳ I": "GKI",
       "Cuối kỳ I": "CKI",
@@ -334,11 +325,11 @@ const fetchStudentsAndStatus = async () => {
     const selectedSemester = config.hocKy || "Giữa kỳ I";
     const termDoc = mapTerm[selectedSemester] || "CN";
 
-    // ✅ Sửa ở đây:
-    const listKey = selectedClass; // DANHSACH luôn không có _CN
-    const classKey = selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass; // DGTX, KTDK có thể có _CN
-    const cacheKey = `${selectedClass}_${selectedSubject}`; // cache tách riêng từng môn
+    // 🔹 Tên lớp chuẩn hóa
+    const classKey = selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
 
+    // 🔹 Kiểm tra cache trước
+    const cacheKey = classKey;
     const cachedData = studentData[cacheKey];
     if (cachedData && cachedData.length > 0) {
       setStudents(cachedData);
@@ -347,34 +338,38 @@ const fetchStudentsAndStatus = async () => {
       return;
     }
 
-    // 🔹 Bước 1: Lấy danh sách học sinh từ DANHSACH (chỉ dùng listKey)
-    const danhSachSnap = await getDoc(doc(db, "DANHSACH", listKey));
-    let studentList = [];
-    if (danhSachSnap.exists()) {
-      const data = danhSachSnap.data();
-      studentList = Object.entries(data).map(([id, info]) => ({
-        maDinhDanh: id,
-        hoVaTen: info.hoVaTen || "",
-        statusByWeek: {},
-        status: "",
-        dgtx_gv: "",
-        nhanXet: "",
-      }));
+    setLoadingProgress(0);
+    setLoadingMessage(`Đang tổng hợp dữ liệu...`);
+
+    // 1️⃣ Lấy dữ liệu DGTX
+    const tuanRef = collection(db, `DGTX/${classKey}/tuan`);
+    const snapshot = await getDocs(tuanRef);
+
+    if (snapshot.empty) {
+      // Reset các cột nhưng vẫn giữ danh sách học sinh nếu đã có trước đó
+      setStudents(prev =>
+        prev.map(s => ({
+          ...s,
+          statusByWeek: {},
+          xepLoai: "",
+          dgtx_gv: "",
+          dgtx: "",
+          nhanXet: "",
+        }))
+      );
+
+      // Xóa cache dữ liệu lớp trong context
+      setStudentData(prev => ({ ...prev, [cacheKey]: [] }));
+
+      setLoadingMessage("");
+      return;
     }
 
-    // 🔹 Bước 2: Song song fetch dữ liệu tuần + KTDK (theo classKey)
-    const [tuanSnap, bangDiemSnap] = await Promise.all([
-      getDocs(collection(db, `DGTX/${classKey}/tuan`)),
-      getDoc(doc(db, "KTDK", termDoc)),
-    ]);
 
-    // Gom dữ liệu tuần
     const weekMap = {};
-    if (!tuanSnap.empty) {
-      tuanSnap.forEach(docSnap => {
-        if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
-      });
-    }
+    snapshot.forEach((docSnap) => {
+      if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
+    });
 
     const sortedWeekIds = Object.keys(weekMap).sort((a, b) => {
       const nA = parseInt(a.replace(/\D/g, "")) || 0;
@@ -382,12 +377,9 @@ const fetchStudentsAndStatus = async () => {
       return nA - nB;
     });
 
-    // Map học sinh theo maDinhDanh từ DANHSACH
+    // Gom học sinh từ các tuần
     const studentMap = {};
-    studentList.forEach(s => studentMap[s.maDinhDanh] = { ...s });
-
-    // Merge dữ liệu tuần vào studentMap
-    Object.entries(weekMap).forEach(([weekId, weekData]) => {
+    Object.values(weekMap).forEach((weekData) => {
       Object.entries(weekData).forEach(([id, info]) => {
         if (!studentMap[id]) {
           studentMap[id] = {
@@ -399,27 +391,47 @@ const fetchStudentsAndStatus = async () => {
             nhanXet: "",
           };
         }
-        studentMap[id].statusByWeek[weekId] = info.mucdat || info.status || "-";
       });
     });
 
-    // Merge dữ liệu KTDK
+    // 2️⃣ Tổng hợp dữ liệu theo tuần
+    for (const weekId of sortedWeekIds) {
+      const weekData = weekMap[weekId];
+      if (!weekData) continue;
+      for (const [maHS, value] of Object.entries(weekData)) {
+        const student = studentMap[maHS];
+        if (student) student.statusByWeek[weekId] = value.mucdat || value.status || "-";
+      }
+    }
+
+    // 3️⃣ Lấy đánh giá GV + nhận xét từ bảng KTDK
+    const bangDiemSnap = await getDoc(doc(db, "KTDK", termDoc));
     if (bangDiemSnap.exists()) {
       const classData = bangDiemSnap.data()[classKey] || {};
-      Object.keys(studentMap).forEach(id => {
-        const s = studentMap[id];
-        s.dgtx_gv = classData[id]?.dgtx_gv || "";
-        s.nhanXet = classData[id]?.nhanXet || "";
-        s.status = classData[id]?.status || "";
+      Object.keys(studentMap).forEach((maHS) => {
+        const s = studentMap[maHS];
+        s.dgtx_gv = classData[maHS]?.dgtx_gv || "";
+        s.nhanXet = classData[maHS]?.nhanXet || "";
+        s.status = classData[maHS]?.status || "";
       });
     }
 
-    // 🔹 Bước 3: Tính mức đạt, nhận xét tự động, sắp xếp và đánh số thứ tự
-    const evaluatedList = Object.values(studentMap).map(s => {
+    // 4️⃣ Chuyển sang mảng & sắp xếp học sinh
+    let studentList = Object.values(studentMap);
+    studentList.sort((a, b) => {
+      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+    // 5️⃣ Tính mức đạt & nhận xét tự động
+    const evaluatedList = studentList.map((s) => {
       const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
       const hs = xepLoai || "";
       const gv = s.dgtx_gv || "";
 
+      // Logic tổng hợp mức đạt
       let chung = "";
       if (!gv) chung = hs;
       else if (hs === "T" && gv === "T") chung = "T";
@@ -445,27 +457,11 @@ const fetchStudentsAndStatus = async () => {
       return { ...s, ...weekCols, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
     });
 
-    // Sắp xếp theo tên cuối và đánh số thứ tự
-    function getLastName(fullName) {
-      const parts = fullName.trim().split(" ");
-      return parts.length > 1 ? parts[parts.length - 1] : fullName;
-    }
-
-    evaluatedList.sort((a, b) => {
-      const lastA = getLastName(a.hoVaTen);
-      const lastB = getLastName(b.hoVaTen);
-      const cmpLast = lastA.localeCompare(lastB, "vi", { sensitivity: "base" });
-      if (cmpLast !== 0) return cmpLast;
-      return a.hoVaTen.localeCompare(b.hoVaTen, "vi", { sensitivity: "base" });
-    });
-
-    const finalList = evaluatedList.map((s, idx) => ({ ...s, stt: idx + 1 }));
-
-    setStudentData(prev => ({ ...prev, [cacheKey]: finalList }));
-    setStudents(finalList);
+    // 6️⃣ Lưu cache & cập nhật UI
+    setStudentData((prev) => ({ ...prev, [cacheKey]: evaluatedList }));
+    setStudents(evaluatedList);
     setLoadingProgress(100);
     setTimeout(() => setLoadingMessage(""), 1500);
-
   } catch (err) {
     console.error(`❌ Lỗi khi lấy dữ liệu lớp "${selectedClass}":`, err);
     setStudents([]);
@@ -473,99 +469,95 @@ const fetchStudentsAndStatus = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
-
 
 const fetchStudentsDGTX = async () => {
   if (!selectedClass) return;
 
   try {
     setLoadingProgress(0);
-    setLoadingMessage("Đang tải dữ liệu học sinh...");
+    setLoadingMessage(`Đang tổng hợp dữ liệu...`);
 
-    const mapTerm = {
-      "Giữa kỳ I": "GKI",
-      "Cuối kỳ I": "CKI",
-      "Giữa kỳ II": "GKII",
-      "Cả năm": "CN",
-    };
-    const selectedSemester = config.hocKy || "Giữa kỳ I";
-    const termDoc = mapTerm[selectedSemester] || "CN";
+    const classPath = selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+    const cacheKey = classPath;
 
-    // ✅ Sửa tại đây:
-    const listKey = selectedClass; // DANHSACH luôn không có _CN
-    const classKey =
-      selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass; // DGTX, KTDK có thể có _CN
-    const cacheKey = `${selectedClass}_${selectedSubject}`; // cache tách theo môn
+    // 1️⃣ Lấy dữ liệu từ DGTX
+    const tuanRef = collection(db, `DGTX/${classPath}/tuan`);
+    const snapshot = await getDocs(tuanRef);
 
-    // 🔹 Bước 1: Lấy danh sách học sinh từ DANHSACH
-    const danhSachSnap = await getDoc(doc(db, "DANHSACH", listKey));
-    let studentList = [];
-    if (danhSachSnap.exists()) {
-      const data = danhSachSnap.data();
-      studentList = Object.entries(data).map(([id, info]) => ({
-        maDinhDanh: id,
-        hoVaTen: info.hoVaTen || "",
-        statusByWeek: {},
-        status: "",
-        dgtx_gv: "",
-        nhanXet: "",
-      }));
+    if (snapshot.empty) {
+      setStudents([]);
+      setStudentData((prev) => ({ ...prev, [cacheKey]: [] }));
+      setLoadingMessage("");
+      return;
     }
 
-    // 🔹 Bước 2: Song song fetch dữ liệu tuần + KTDK
-    const [tuanSnap, bangDiemSnap] = await Promise.all([
-      getDocs(collection(db, `DGTX/${classKey}/tuan`)),
-      getDoc(doc(db, "KTDK", termDoc)),
-    ]);
-
-    // Gom dữ liệu tuần
+    // Gom dữ liệu các tuần
     const weekMap = {};
-    if (!tuanSnap.empty) {
-      tuanSnap.forEach((docSnap) => {
-        if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
-      });
-    }
-
-    const sortedWeekIds = Object.keys(weekMap).sort((a, b) => {
-      const nA = parseInt(a.replace(/\D/g, "")) || 0;
-      const nB = parseInt(b.replace(/\D/g, "")) || 0;
-      return nA - nB;
+    snapshot.forEach((docSnap) => {
+      if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
     });
 
-    // Map học sinh theo maDinhDanh từ DANHSACH
+    // 🔹 Gom danh sách học sinh từ tất cả các tuần
     const studentMap = {};
-    studentList.forEach((s) => (studentMap[s.maDinhDanh] = { ...s }));
-
-    // Merge dữ liệu tuần vào studentMap
-    Object.entries(weekMap).forEach(([weekId, weekData]) => {
-      Object.entries(weekData).forEach(([id, info]) => {
-        if (!studentMap[id]) {
-          studentMap[id] = {
-            maDinhDanh: id,
+    Object.values(weekMap).forEach((weekData) => {
+      Object.entries(weekData).forEach(([maDinhDanh, info]) => {
+        if (!studentMap[maDinhDanh]) {
+          studentMap[maDinhDanh] = {
+            maDinhDanh,
             hoVaTen: info.hoVaTen || "",
             statusByWeek: {},
             status: "",
             dgtx_gv: "",
-            nhanXet: "",
+            nhanXet: "", // ⚙️ sẽ ghi đè sau từ KTDK
           };
         }
-        studentMap[id].statusByWeek[weekId] = info.mucdat || info.status || "-";
       });
     });
 
-    // Merge dữ liệu KTDK
-    if (bangDiemSnap.exists()) {
-      const classData = bangDiemSnap.data()[classKey] || {};
-      Object.keys(studentMap).forEach((id) => {
-        const s = studentMap[id];
-        s.dgtx_gv = classData[id]?.dgtx_gv || "";
-        s.nhanXet = classData[id]?.nhanXet || "";
-        s.status = classData[id]?.status || "";
-      });
+    let studentList = Object.values(studentMap);
+
+    // 2️⃣ Tổng hợp trạng thái theo tuần
+    const totalWeeks = weekTo - weekFrom + 1;
+    const weekIds = Array.from({ length: totalWeeks }, (_, i) => `tuan_${weekFrom + i}`);
+
+    for (const weekId of weekIds) {
+      const weekData = weekMap[weekId];
+      if (!weekData) continue;
+
+      for (const [maHS, value] of Object.entries(weekData)) {
+        const student = studentMap[maHS];
+        if (student) student.statusByWeek[weekId] = value.status || "-";
+      }
     }
 
-    // 🔹 Bước 3: Tính mức đạt, nhận xét tự động, sắp xếp và đánh số thứ tự
-    const evaluatedList = Object.values(studentMap).map((s) => {
+    // 3️⃣ Lấy đánh giá GV + nhận xét từ KTDK
+    const selectedTerm = weekTo <= 18 ? "HK1" : "CN";
+    const classKeyForTerm = `${selectedClass}${selectedSubject === "Công nghệ" ? "_CN" : ""}_${selectedTerm}`;
+    const bangDiemRef = doc(db, "KTDK", selectedTerm);
+    const bangDiemSnap = await getDoc(bangDiemRef);
+
+    if (bangDiemSnap.exists()) {
+      const bangDiemData = bangDiemSnap.data();
+      const classData = bangDiemData[classKeyForTerm] || {};
+
+      studentList = studentList.map((s) => ({
+        ...s,
+        dgtx_gv: classData[s.maDinhDanh]?.dgtx_gv || "",
+        nhanXet: classData[s.maDinhDanh]?.nhanXet || "", // ✅ Lấy nhận xét từ KTDK
+        status: classData[s.maDinhDanh]?.status || "",
+      }));
+    }
+
+    // 4️⃣ Sắp xếp học sinh theo tên
+    studentList.sort((a, b) => {
+      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+    // 5️⃣ Tính mức đạt & nhận xét (ưu tiên nhận xét từ KTDK)
+    const evaluatedList = studentList.map((s) => {
       const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
       const hs = xepLoai || "";
       const gv = s.dgtx_gv || "";
@@ -584,39 +576,21 @@ const fetchStudentsDGTX = async () => {
       else chung = hs;
 
       const dgtx = chung;
-      const nhanXet = s.nhanXet?.trim() || getNhanXetTuDong(dgtx);
+      const nhanXetTuDong = getNhanXetTuDong(dgtx);
 
-      const weekCols = sortedWeekIds.reduce((acc, weekId) => {
-        const weekNum = parseInt(weekId.replace(/\D/g, "")) || weekId;
-        acc[`Tuan_${weekNum}`] = s.statusByWeek[weekId] || "-";
-        return acc;
-      }, {});
+      // ✅ Ưu tiên lấy nhận xét từ KTDK (field nhanXet), nếu trống thì sinh tự động
+      /*const nhanXet = s.nhanXet?.trim()
+        ? s.nhanXet.trim()
+        : nhanXetTuDong;*/
+      
+        const nhanXet = nhanXetTuDong; // Luôn sinh nhận xét mới, bỏ KTDK
 
-      return { ...s, ...weekCols, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
+      return { ...s, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
     });
 
-    // Sắp xếp theo tên cuối và đánh số thứ tự
-    function getLastName(fullName) {
-      const parts = fullName.trim().split(" ");
-      return parts.length > 1 ? parts[parts.length - 1] : fullName;
-    }
-
-    evaluatedList.sort((a, b) => {
-      const lastA = getLastName(a.hoVaTen);
-      const lastB = getLastName(b.hoVaTen);
-      const cmpLast = lastA.localeCompare(lastB, "vi", { sensitivity: "base" });
-      if (cmpLast !== 0) return cmpLast;
-      return a.hoVaTen.localeCompare(b.hoVaTen, "vi", { sensitivity: "base" });
-    });
-
-    const finalList = evaluatedList.map((s, idx) => ({
-      ...s,
-      stt: idx + 1,
-    }));
-
-    // ✅ Cập nhật UI và cache
-    setStudentData((prev) => ({ ...prev, [cacheKey]: finalList }));
-    setStudents(finalList);
+    // 6️⃣ Lưu cache & cập nhật UI
+    setStudentData((prev) => ({ ...prev, [cacheKey]: evaluatedList }));
+    setStudents(evaluatedList);
 
     setLoadingProgress(100);
     setTimeout(() => setLoadingMessage(""), 1500);
@@ -627,7 +601,6 @@ const fetchStudentsDGTX = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
-
 
 useEffect(() => {
   if (!selectedClass || !selectedSubject) return;
@@ -689,6 +662,12 @@ const handleCellChange = (maDinhDanh, field, value) => {
   );
 };
 
+const hocKyMap = {
+  "Giữa kỳ I": { from: 1, to: 9 },
+  "Cuối kỳ I": { from: 10, to: 18 },
+  "Giữa kỳ II": { from: 19, to: 27 },
+  "Cả năm": { from: 28, to: 35 },
+};
 // Lấy tuần bắt đầu và kết thúc dựa trên học kỳ đã chọn
 const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
 
@@ -863,22 +842,15 @@ return (
           </TableHead>
 
           <TableBody>
-            {students.map((student, idx) => {
-              // Kiểm tra tất cả tuần trong học kỳ có dữ liệu không
-              const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
-              const allWeeksEmpty = Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
-                const weekNum = startWeek + i;
-                const weekId = `tuan_${weekNum}`;
-                return student.statusByWeek?.[weekId];
-              }).every(status => !status); // true nếu tất cả trống
+            {students.map((student, idx) => (
+              <TableRow key={student.maDinhDanh} hover>
+                <TableCell align="center">{student.stt}</TableCell>
+                <TableCell align="left">{student.hoVaTen}</TableCell>
 
-              return (
-                <TableRow key={student.maDinhDanh} hover>
-                  <TableCell align="center">{student.stt}</TableCell>
-                  <TableCell align="left">{student.hoVaTen}</TableCell>
-
-                  {showWeeks &&
-                    Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
+                {showWeeks &&
+                  (() => {
+                    const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
+                    return Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
                       const weekNum = startWeek + i;
                       const weekId = `tuan_${weekNum}`;
                       const status = student.statusByWeek?.[weekId] || "";
@@ -887,95 +859,104 @@ return (
                         status === "Hoàn thành" ? "H" :
                         status === "Hoàn thành tốt" ? "T" : "";
                       return <TableCell key={weekNum} align="center">{statusShort}</TableCell>;
-                    })}
+                    });
+                  })()}
 
-                  {/* 4 cột cuối chỉ hiển thị nếu allWeeksEmpty === false */}
-                  <TableCell align="center" sx={{ color: student.xepLoai === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
-                    {allWeeksEmpty ? "" : student.xepLoai || ""}
-                  </TableCell>
+                <TableCell align="center" sx={{ color: student.xepLoai === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
+                  {student.xepLoai || ""}
+                </TableCell>
 
-                  <TableCell align="center" sx={{ px: 1, color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
-                    {allWeeksEmpty ? null : (
-                      <FormControl variant="standard" fullWidth sx={{
-                        "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
-                        "&:hover .MuiSelect-icon": { opacity: 1 },
-                      }}>
-                        <Select
-                          value={student.dgtx_gv || ""}
-                          onChange={(e) => {
-                            const newVal = e.target.value;
-                            setStudents((prev) =>
-                              prev.map((s) => {
-                                if (s.maDinhDanh !== student.maDinhDanh) return s;
-                                const updated = { ...s, dgtx_gv: newVal };
-                                const hs = updated.xepLoai;
-                                const gv = newVal;
-                                let chung = "";
-                                if (!gv) chung = hs;
-                                else {
-                                  if (hs === "T" && gv === "T") chung = "T";
-                                  else if (hs === "H" && gv === "T") chung = "T";
-                                  else if (hs === "C" && gv === "T") chung = "H";
-                                  else if (hs === "T" && gv === "H") chung = "H";
-                                  else if (hs === "H" && gv === "H") chung = "H";
-                                  else if (hs === "C" && gv === "H") chung = "H";
-                                  else if (hs === "T" && gv === "C") chung = "H";
-                                  else if (hs === "H" && gv === "C") chung = "C";
-                                  else if (hs === "C" && gv === "C") chung = "C";
-                                  else chung = hs;
-                                }
-                                updated.dgtx = !gv ? hs : chung;
-                                updated.nhanXet = updated.dgtx ? getNhanXetTuDong(updated.dgtx) : "";
-                                return updated;
-                              })
-                            );
-                          }}
-                          disableUnderline
-                          id={`teacher-dgtx-${idx}`}
-                          sx={{
-                            textAlign: "center",
-                            px: 1,
-                            "& .MuiSelect-select": {
-                              py: 0.5,
-                              fontSize: "14px",
-                              color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main,
-                            },
-                          }}
-                        >
-                          <MenuItem value=""><em>-</em></MenuItem>
-                          <MenuItem value="T">T</MenuItem>
-                          <MenuItem value="H">H</MenuItem>
-                          <MenuItem value="C">C</MenuItem>
-                        </Select>
-                      </FormControl>
-                    )}
-                  </TableCell>
+                <TableCell align="center" sx={{ px: 1, color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
+                  <FormControl
+                    variant="standard"
+                    fullWidth
+                    sx={{
+                      "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
+                      "&:hover .MuiSelect-icon": { opacity: 1 },
+                    }}
+                  >
+                    <Select
+                      value={student.dgtx_gv || ""}
+                      onChange={(e) => {
+                        const newVal = e.target.value;
+                        setStudents((prev) =>
+                          prev.map((s) => {
+                            if (s.maDinhDanh !== student.maDinhDanh) return s;
+                            const updated = { ...s, dgtx_gv: newVal };
+                            const hs = updated.xepLoai;
+                            const gv = newVal;
+                            let chung = "";
+                            if (!gv) {
+                              chung = hs;
+                            } else {
+                              if (hs === "T" && gv === "T") chung = "T";
+                              else if (hs === "H" && gv === "T") chung = "T";
+                              else if (hs === "C" && gv === "T") chung = "H";
+                              else if (hs === "T" && gv === "H") chung = "H";
+                              else if (hs === "H" && gv === "H") chung = "H";
+                              else if (hs === "C" && gv === "H") chung = "H";
+                              else if (hs === "T" && gv === "C") chung = "H";
+                              else if (hs === "H" && gv === "C") chung = "C";
+                              else if (hs === "C" && gv === "C") chung = "C";
+                              else chung = hs;
+                            }
+                            updated.dgtx = !gv ? hs : chung;
+                            updated.nhanXet = updated.dgtx ? getNhanXetTuDong(updated.dgtx) : "";
+                            return updated;
+                          })
+                        );
+                      }}
+                      disableUnderline
+                      id={`teacher-dgtx-${idx}`}
+                      sx={{
+                        textAlign: "center",
+                        px: 1,
+                        "& .MuiSelect-select": {
+                          py: 0.5,
+                          fontSize: "14px",
+                          color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main,
+                        },
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const next = document.getElementById(`teacher-dgtx-${idx + 1}`);
+                          if (next) next.focus();
+                        }
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>-</em>
+                      </MenuItem>
+                      <MenuItem value="T">T</MenuItem>
+                      <MenuItem value="H">H</MenuItem>
+                      <MenuItem value="C">C</MenuItem>
+                    </Select>
+                  </FormControl>
+                </TableCell>
 
-                  <TableCell align="center" sx={{ color: student.dgtx === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
-                    {allWeeksEmpty ? "" : student.dgtx || ""}
-                  </TableCell>
+                <TableCell align="center" sx={{ color: student.dgtx === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
+                  {student.dgtx || ""}
+                </TableCell>
 
-                  <TableCell align="left" sx={{ px: 1 }}>
-                    {allWeeksEmpty ? null : (
-                      <TextField
-                        variant="standard"
-                        multiline
-                        maxRows={4}
-                        fullWidth
-                        value={student.nhanXet || ""}
-                        onChange={(e) => handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)}
-                        id={`nhanXet-${idx}`}
-                        onKeyDown={(e) => handleKeyNavigation(e, idx, "nhanXet")}
-                        InputProps={{
-                          sx: { paddingLeft: 1, paddingRight: 1, fontSize: "14px", lineHeight: 1.3 },
-                          disableUnderline: true,
-                        }}
-                      />
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                <TableCell align="left" sx={{ px: 1 }}>
+                  <TextField
+                    variant="standard"
+                    multiline
+                    maxRows={4}
+                    fullWidth
+                    value={student.nhanXet || ""}
+                    onChange={(e) => handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)}
+                    id={`nhanXet-${idx}`}
+                    onKeyDown={(e) => handleKeyNavigation(e, idx, "nhanXet")}
+                    InputProps={{
+                      sx: { paddingLeft: 1, paddingRight: 1, fontSize: "14px", lineHeight: 1.3 },
+                      disableUnderline: true,
+                    }}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

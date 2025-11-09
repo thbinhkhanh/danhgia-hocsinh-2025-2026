@@ -297,7 +297,7 @@ useEffect(() => {
         p: 4,
         borderRadius: 3,
         width: "100%",
-        maxWidth: 1300,
+        maxWidth: 1420,
         bgcolor: "white",
       }}
     >
