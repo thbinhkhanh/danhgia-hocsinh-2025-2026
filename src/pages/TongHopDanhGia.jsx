@@ -371,8 +371,14 @@ const fetchStudentsAndStatus = async () => {
     // Gom dữ liệu tuần
     const weekMap = {};
     if (!tuanSnap.empty) {
+      const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 35 };
       tuanSnap.forEach(docSnap => {
-        if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
+        if (docSnap.exists()) {
+          const weekNum = parseInt(docSnap.id.replace(/\D/g, "")) || 0;
+          if (weekNum >= weekFrom && weekNum <= weekTo) { // 🔹 Lọc tuần theo học kỳ
+            weekMap[docSnap.id] = docSnap.data();
+          }
+        }
       });
     }
 
@@ -521,8 +527,14 @@ const fetchStudentsDGTX = async () => {
     // Gom dữ liệu tuần
     const weekMap = {};
     if (!tuanSnap.empty) {
-      tuanSnap.forEach((docSnap) => {
-        if (docSnap.exists()) weekMap[docSnap.id] = docSnap.data();
+      const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 35 };
+      tuanSnap.forEach(docSnap => {
+        if (docSnap.exists()) {
+          const weekNum = parseInt(docSnap.id.replace(/\D/g, "")) || 0;
+          if (weekNum >= weekFrom && weekNum <= weekTo) { // 🔹 Lọc tuần theo học kỳ
+            weekMap[docSnap.id] = docSnap.data();
+          }
+        }
       });
     }
 
