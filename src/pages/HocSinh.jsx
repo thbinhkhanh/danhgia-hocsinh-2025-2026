@@ -188,56 +188,65 @@ useEffect(() => {
 
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
     setStudentStatus((prev) => {
-      const currentStatus = prev[maDinhDanh] || "";
-      const newStatus = currentStatus === status ? "" : status;
+      const updated = { ...prev };
 
-      // 🧠 Nếu không thay đổi trạng thái → bỏ qua, không ghi Firestore, không re-render
-      if (currentStatus === newStatus) return prev;
+      // Nếu chọn lại trạng thái đã chọn, hủy đánh giá
+      const newStatus = prev[maDinhDanh] === status ? "" : status;
+      updated[maDinhDanh] = newStatus;
 
-      const updated = { ...prev, [maDinhDanh]: newStatus };
-
-      // 🔹 Ghi Firestore bất đồng bộ sau khi setState
+      // 🔹 Lưu vào Firestore ngay
       saveStudentStatus(maDinhDanh, hoVaTen, newStatus);
 
       return updated;
     });
   };
 
-
   useEffect(() => {
-  // 🛑 Nếu chưa đủ thông tin, thoát
-  if (!expandedStudent?.maDinhDanh || !selectedClass || !selectedWeek) return;
+    // 🔹 Nếu chưa có thông tin cần thiết → thoát
+    if (!expandedStudent || !selectedClass || !selectedWeek) return;
 
-  const classKey =
-    config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-  const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+    const classKey = config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+    const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-  // 🟢 Lắng nghe realtime CHỈ học sinh đang được mở
-  const unsubscribe = onSnapshot(
-    tuanRef,
-    (docSnap) => {
-      if (!docSnap.exists()) return;
+    // 🔹 Đăng ký lắng nghe realtime
+    const unsubscribe = onSnapshot(
+      tuanRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const record = data[expandedStudent.maDinhDanh];
 
-      const record = docSnap.data()?.[expandedStudent.maDinhDanh];
-      const currentStatus = record?.status || "";
+          if (record && record.status) {
+            // 🟢 Có dữ liệu đánh giá → cập nhật UI
+            setStudentStatus((prev) => ({
+              ...prev,
+              [expandedStudent.maDinhDanh]: record.status,
+            }));
+          } else {
+            // 🔵 Không có đánh giá → xóa trạng thái cũ nếu có
+            setStudentStatus((prev) => {
+              const updated = { ...prev };
+              delete updated[expandedStudent.maDinhDanh];
+              return updated;
+            });
+          }
+        } else {
+          // Document chưa tồn tại → không có đánh giá nào
+          setStudentStatus((prev) => {
+            const updated = { ...prev };
+            delete updated[expandedStudent.maDinhDanh];
+            return updated;
+          });
+        }
+      },
+      (error) => {
+        console.error("❌ Lỗi khi lắng nghe đánh giá realtime:", error);
+      }
+    );
 
-      setStudentStatus((prev) => {
-        // 🔸 Nếu trạng thái không đổi → không setState (tránh render lặp)
-        if (prev[expandedStudent.maDinhDanh] === currentStatus) return prev;
-        return {
-          ...prev,
-          [expandedStudent.maDinhDanh]: currentStatus,
-        };
-      });
-    },
-    (error) => {
-      console.error("❌ Lỗi khi lắng nghe đánh giá realtime:", error);
-    }
-  );
-
-  // 🧹 Khi đóng dialog → hủy lắng nghe
-  return () => unsubscribe();
-}, [expandedStudent?.maDinhDanh, selectedClass, selectedWeek, config?.mon]);
+    // 🔹 Khi đóng dialog → hủy lắng nghe
+    return () => unsubscribe();
+  }, [expandedStudent, selectedClass, selectedWeek, config?.mon]);
 
   const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff", label: "T", color: "primary" },
