@@ -9,6 +9,7 @@ import {
   Chip,
   FormControl, 
   InputLabel,
+  TextField,
 } from "@mui/material";
 
 import { db } from "../firebase";
@@ -36,43 +37,23 @@ export default function HocSinh() {
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [systemLocked, setSystemLocked] = useState(false);
 
-  // 🔹 useEffect chỉ quản lý config chung (tuan, hethong, congnghe, giaovien)
+
 useEffect(() => {
   const docRef = doc(db, "CONFIG", "config");
 
   const unsubscribe = onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data();
+    const data = docSnap.exists() ? docSnap.data() : {};
 
-      const tuan = data.tuan || 1;
-      const hethong = data.hethong ?? false;
-      const congnghe = data.congnghe === true;
-      //const giaovien = data.giaovien === true;
+    const tuan = data.tuan || 1;
+    const mon = data.mon || "Tin học";
+    const lop = data.lop || "";
 
-      // 🔹 Cập nhật local state các phần config khác
-      setSelectedWeek(tuan);
-      setSystemLocked(!hethong);
+    // 🔹 Cập nhật ConfigContext
+    setConfig({ tuan, mon, lop });
 
-      // 🔹 Cập nhật ConfigContext (không bao gồm lop)
-      setConfig((prev) => ({
-        ...prev,
-        tuan,
-        hethong,
-        congnghe,
-        //giaovien,
-      }));
-    } else {
-      console.warn("⚠️ Không tìm thấy CONFIG/config trong Firestore, dùng mặc định");
-      setSelectedWeek(1);
-      setSystemLocked(false);
-      setConfig({
-        tuan: 1,
-        hethong: false,
-        lop: "",
-        congnghe: false,
-        //giaovien: false,
-      });
-    }
+    // 🔹 Cập nhật local state
+    setSelectedWeek(tuan);
+    setSelectedClass(lop);
   }, (err) => {
     console.error("❌ Lỗi khi lắng nghe CONFIG/config:", err);
   });
@@ -80,33 +61,6 @@ useEffect(() => {
   return () => unsubscribe();
 }, []);
 
-// 🔹 useEffect riêng chỉ fetch lop từ Firestore
-useEffect(() => {
-  const docRef = doc(db, "CONFIG", "config");
-
-  const unsubscribe = onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const lopConfig = data.lop || "";
-
-      // 🔹 Cập nhật lớp realtime
-      setSelectedClass(lopConfig);
-
-      // 🔹 Cập nhật ConfigContext với lop
-      setConfig((prev) => ({
-        ...prev,
-        lop: lopConfig,
-      }));
-    } else {
-      setSelectedClass("");
-      setConfig((prev) => ({ ...prev, lop: "" }));
-    }
-  }, (err) => {
-    console.error("❌ Lỗi khi lắng nghe CONFIG/config (lop):", err);
-  });
-
-  return () => unsubscribe();
-}, []);
 
   // 🔹 Lấy danh sách lớp (ưu tiên cache từ context)
 useEffect(() => {
@@ -206,7 +160,7 @@ useEffect(() => {
 
     try {
       // 🔹 Nếu là lớp công nghệ, thêm hậu tố "_CN"
-      const classKey = config?.congnghe ? `${selectedClass}_CN` : selectedClass;
+      const classKey = config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
 
       // 🔹 Đường dẫn tài liệu Firestore cho tuần hiện tại
       const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
@@ -232,69 +186,6 @@ useEffect(() => {
     }
   };
 
-  {/*const saveStudentStatusOK = async (studentId, hoVaTen, status) => {
-    if (!selectedWeek || !selectedClass) return;
-
-    try {
-      // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
-      const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
-
-      // 🔹 Tham chiếu tới DGTX / [lop] / tuan / [tuan_x]
-      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
-
-      // 🔹 Lấy dữ liệu hiện có (nếu cần)
-      const docSnap = await getDoc(tuanRef);
-      const existingData = docSnap.exists() ? docSnap.data() : {};
-
-      // 🔹 Cập nhật dữ liệu học sinh
-      const updatedData = {
-        ...existingData,
-        [studentId]: { hoVaTen, status },
-      };
-
-      // 🔹 Lưu vào Firestore
-      await setDoc(tuanRef, updatedData, { merge: true });
-
-      console.log(
-        `✅ Đã lưu học sinh ${studentId}: ${hoVaTen} (${status}) tuần ${selectedWeek} lớp ${classKey}`
-      );
-    } catch (err) {
-      console.error("❌ Lỗi lưu trạng thái học sinh vào DGTX:", err);
-    }
-  };*/}
-
-
-  const saveStudentStatus1 = async (studentId, hoVaTen, status) => {
-    if (!selectedWeek || !selectedClass) return;
-
-    // ✅ Nếu config.congnghe === true → thêm hậu tố "_CN"
-    const classKey = config?.congnghe === true ? `${selectedClass}_CN` : selectedClass;
-    //console.log("👉 classKey được sử dụng:", classKey);
-
-    const docRef = doc(db, "DANHGIA", `tuan_${selectedWeek}`);
-
-    try {
-      const docSnap = await getDoc(docRef);
-      const data = docSnap.exists() ? docSnap.data() : {};
-
-      // ⚠️ dùng classKey ở đây thay vì selectedClass
-      const classData = data[classKey] || {};
-
-      // Ghi hoVaTen + status
-      classData[studentId] = { hoVaTen, status };
-
-      //await setDoc(docRef, { ...data, [classKey]: classData });
-      await setDoc(
-        docRef,
-        { [`${classKey}.${studentId}`]: { hoVaTen, status } },
-        { merge: true }
-      );
-
-    } catch (err) {
-      console.error("❌ Lỗi lưu trạng thái học sinh:", err);
-    }
-  };
-
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
     setStudentStatus((prev) => {
       const updated = { ...prev };
@@ -314,7 +205,7 @@ useEffect(() => {
     // 🔹 Nếu chưa có thông tin cần thiết → thoát
     if (!expandedStudent || !selectedClass || !selectedWeek) return;
 
-    const classKey = config?.congnghe ? `${selectedClass}_CN` : selectedClass;
+    const classKey = config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
     const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
     // 🔹 Đăng ký lắng nghe realtime
@@ -355,7 +246,7 @@ useEffect(() => {
 
     // 🔹 Khi đóng dialog → hủy lắng nghe
     return () => unsubscribe();
-  }, [expandedStudent, selectedClass, selectedWeek, config?.congnghe]);
+  }, [expandedStudent, selectedClass, selectedWeek, config?.mon]);
 
   const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff", label: "T", color: "primary" },
@@ -406,18 +297,18 @@ useEffect(() => {
         p: 4,
         borderRadius: 3,
         width: "100%",
-        maxWidth: 1300,
+        maxWidth: 1420,
         bgcolor: "white",
       }}
     >
       {/* 🔹 Tiêu đề */}
-      <Box sx={{ textAlign: "center", mb: 4 }}>
+      <Box sx={{ textAlign: "center", mb: -1 }}>
         <Typography
           variant="h5"
           fontWeight="bold"
           sx={{
             color: "#1976d2",
-            borderBottom: "3px solid #1976d2",
+            //borderBottom: "3px solid #1976d2",
             display: "inline-block",
             pb: 1,
           }}
@@ -436,57 +327,37 @@ useEffect(() => {
           alignItems: "center",
           gap: 2,
           mt: 2,
-          mb: 3,
+          mb: 4,
         }}
       >
         {/* 🔹 Môn (chỉ hiển thị, không cho thay đổi) */}
-        <FormControl
+        <TextField
+          label="Môn"
+          value={config.mon || "Tin học"}
+          InputProps={{ readOnly: true }}
           size="small"
-          sx={{ minWidth: 120, bgcolor: "white" }}
-        >
-          <InputLabel id="mon-label">Môn</InputLabel>
-          <Select
-            labelId="mon-label"
-            label="Môn"
-            value={config.mon || "Tin học"}
-            sx={{
-              pointerEvents: "none", // 🔒 Không cho click
-              fontWeight: "bold",    // 💪 Hiển thị đậm
-            }}
-          >
-            <MenuItem value="Tin học">Tin học</MenuItem>
-            <MenuItem value="Công nghệ">Công nghệ</MenuItem>
-          </Select>
-        </FormControl>
+          sx={{
+            width: 120,
+            //bgcolor: "#f5f5f5",
+            "& .MuiInputBase-input.Mui-disabled": { color: "#000" },
+            fontWeight: "bold",
+          }}
+        />
 
         {/* 🔹 Tuần (chỉ hiển thị, không cho thay đổi) */}
-        <FormControl
+        <TextField
+          label="Tuần"
+          value={`Tuần ${config.tuan || 1}`}
+          InputProps={{ readOnly: true }}
           size="small"
-          sx={{ minWidth: 120, bgcolor: "white" }}
-        >
-          <InputLabel id="tuan-label">Tuần</InputLabel>
-          <Select
-            labelId="tuan-label"
-            label="Tuần"
-            value={config.tuan || 9}
-            sx={{
-              pointerEvents: "none",
-              fontWeight: "bold",
-            }}
-          >
-            {Array.from(
-              { length: (config.th_tuan_to || 9) - (config.th_tuan_from || 1) + 1 },
-              (_, i) => (config.th_tuan_from || 1) + i
-            ).map((week) => (
-              <MenuItem key={week} value={week}>
-                Tuần {week}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+          sx={{
+            width: 120,
+            //bgcolor: "#f5f5f5",
+            "& .MuiInputBase-input.Mui-disabled": { color: "#000" },
+            fontWeight: "bold",
+          }}
+        />
       </Box>
-
-
 
       {/* 🔹 Danh sách học sinh */}
       <Grid container spacing={2} justifyContent="center">
