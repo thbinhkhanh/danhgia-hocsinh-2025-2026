@@ -54,11 +54,15 @@ function AppContent() {
 
     navigate("/login");
 
-    setTimeout(() => {
-      const docRef = doc(db, "CONFIG", "config");
-      setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
-    }, 0);
+    // 🔹 Chỉ ghi lên Firestore nếu KHÔNG phải máy học sinh
+    if (!isStudentDevice) {
+      setTimeout(() => {
+        const docRef = doc(db, "CONFIG", "config");
+        setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
+      }, 0);
+    }
   };
+
 
   // ✅ Hàm thay đổi học kỳ
   const handleHocKyChange = async (e) => {
