@@ -54,10 +54,10 @@ function AppContent() {
 
     navigate("/login");
 
-    /*setTimeout(() => {
+    setTimeout(() => {
       const docRef = doc(db, "CONFIG", "config");
       setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
-    }, 0);*/
+    }, 0);
   };
 
   // ✅ Hàm thay đổi học kỳ
