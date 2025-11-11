@@ -35,15 +35,19 @@ export const ConfigProvider = ({ children }) => {
         if (!snapshot.exists()) return;
         const data = snapshot.data();
 
+        // 🧹 Bỏ qua field login
+        const { login, ...filteredData } = data;
+
         setConfig((prev) => {
           const hasDiff = Object.keys(defaultConfig).some(
-            (key) => prev[key] !== data[key]
+            (key) => key !== "login" && prev[key] !== filteredData[key]
           );
-          return hasDiff ? { ...prev, ...data } : prev;
+          return hasDiff ? { ...prev, ...filteredData } : prev;
         });
       },
       (err) => console.error("❌ Firestore snapshot lỗi:", err)
     );
+
 
     return () => unsubscribe();
   }, []);
