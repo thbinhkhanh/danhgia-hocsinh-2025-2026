@@ -36,7 +36,7 @@ export default function HocSinh() {
   const { config, setConfig } = useContext(ConfigContext);
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [systemLocked, setSystemLocked] = useState(false);
-
+  const [saving, setSaving] = useState(false); // 🔒 trạng thái đang lưu
 
 useEffect(() => {
   const docRef = doc(db, "CONFIG", "config");
@@ -155,7 +155,7 @@ useEffect(() => {
     setExpandedStudent(expandedStudent === maDinhDanh ? null : maDinhDanh);
   };
 
-  const saveStudentStatus = async (studentId, hoVaTen, status) => {
+  {/*const saveStudentStatus = async (studentId, hoVaTen, status) => {
     if (!selectedWeek || !selectedClass) return;
 
     try {
@@ -184,7 +184,38 @@ useEffect(() => {
     } catch (err) {
       console.error("❌ Lỗi khi lưu trạng thái học sinh:", err);
     }
+  };*/}
+
+  const saveStudentStatus = async (studentId, hoVaTen, status) => {
+    if (!selectedWeek || !selectedClass) return;
+
+    try {
+      setSaving(true); // 🔒 Bắt đầu lưu
+
+      const classKey =
+        config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+
+      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+
+      await updateDoc(tuanRef, {
+        [`${studentId}.hoVaTen`]: hoVaTen,
+        [`${studentId}.status`]: status,
+      }).catch(async (err) => {
+        if (err.code === "not-found") {
+          await setDoc(tuanRef, {
+            [studentId]: { hoVaTen, status },
+          });
+        } else {
+          throw err;
+        }
+      });
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu trạng thái học sinh:", err);
+    } finally {
+      setSaving(false); // ✅ Ghi xong, mở lại nút X
+    }
   };
+
 
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
     setStudentStatus((prev) => {
@@ -438,7 +469,7 @@ useEffect(() => {
               </Typography>
             </Box>
 
-            <IconButton
+            {/*<IconButton
               onClick={() => setExpandedStudent(null)}
               sx={{
                 color: "#f44336",
@@ -446,7 +477,19 @@ useEffect(() => {
               }}
             >
               <CloseIcon />
+            </IconButton>*/}
+
+            <IconButton
+              onClick={() => setExpandedStudent(null)}
+              disabled={saving} // 🔒 khóa khi đang lưu
+              sx={{
+                color: saving ? "#ccc" : "#f44336",
+                "&:hover": saving ? {} : { bgcolor: "rgba(244,67,54,0.1)" },
+              }}
+            >
+              <CloseIcon />
             </IconButton>
+
           </DialogTitle>
 
           <DialogContent sx={{ mt: 2 }}>
