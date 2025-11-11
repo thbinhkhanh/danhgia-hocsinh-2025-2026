@@ -8,7 +8,7 @@ export const ConfigProvider = ({ children }) => {
   const defaultConfig = {
     tuan: 1,
     mon: "Tin học",
-    //login: false,
+    login: false,
     hocKy: "Giữa kỳ I",
     lop: "",
   };

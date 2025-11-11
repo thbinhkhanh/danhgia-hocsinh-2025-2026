@@ -42,7 +42,6 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { config, setConfig } = useContext(ConfigContext);
-  const [loggedIn, setLoggedIn] = React.useState(localStorage.getItem("loggedIn") === "true");
 
   // ✅ Hàm xử lý đăng xuất
   const handleLogout = () => {
@@ -51,8 +50,7 @@ function AppContent() {
 
     const updatedConfig = { ...config, login: false };
     localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
-    //setConfig(updatedConfig);
-    setLoggedIn(false);
+    setConfig(updatedConfig);
 
     navigate("/login");
 
