@@ -44,19 +44,10 @@ export default function Login() {
       localStorage.setItem("loggedIn", "true");
       localStorage.setItem("account", DEFAULT_USERNAME);
 
-      const storedConfig = localStorage.getItem("appConfig");
-      const parsedConfig = storedConfig ? JSON.parse(storedConfig) : {};
-      const updatedConfig = { ...parsedConfig, login: true };
-      localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
-      setConfig(updatedConfig);
+      // ✅ Gửi sự kiện để AppContent cập nhật lại trạng thái
+      window.dispatchEvent(new Event("storage"));
 
       navigate("/tonghopdanhgia");
-      
-      // Ghi login: true vào Firestore (không log ra console)
-      setTimeout(() => {
-        const docRef = doc(db, "CONFIG", "config");
-        updateDoc(docRef, { login: true }).catch(() => {});
-      }, 0);
     } else {
       alert("❌ Tài khoản hoặc mật khẩu sai!");
     }

@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Routes,
   Route,
@@ -8,8 +8,6 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { AppBar, Toolbar, Button, Typography, Box } from "@mui/material";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "./firebase"; // 🔹 import db
 
 // 🔹 Import các trang
 import HocSinh from "./pages/HocSinh";
@@ -20,16 +18,15 @@ import TongHopDanhGia from "./pages/TongHopDanhGia";
 import NhapdiemKTDK from "./pages/NhapdiemKTDK";
 import XuatDanhGia from "./pages/XuatDanhGia";
 import ThongKe from "./pages/ThongKe";
-import DanhSachHS from "./pages/DanhSachHS"; 
+import DanhSachHS from "./pages/DanhSachHS";
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
-import { ConfigProvider, ConfigContext } from "./context/ConfigContext";
+import { ConfigProvider } from "./context/ConfigContext";
 import { StudentDataProvider } from "./context/StudentDataContext";
 import { StudentKTDKProvider } from "./context/StudentKTDKContext";
 
 // 🔹 Import icon
-//import HocSinhIcon from "@mui/icons-material/HocSinh";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
 import SummarizeIcon from "@mui/icons-material/Summarize";
@@ -41,36 +38,32 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { config, setConfig } = useContext(ConfigContext);
 
-  // ✅ Hàm xử lý đăng xuất
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const loggedIn = localStorage.getItem("loggedIn") === "true";
+    setIsLoggedIn(loggedIn);
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setIsLoggedIn(localStorage.getItem("loggedIn") === "true");
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("loggedIn");
     localStorage.removeItem("account");
-
-    const updatedConfig = { ...config, login: false };
-    localStorage.setItem("appConfig", JSON.stringify(updatedConfig));
-    setConfig(updatedConfig);
-
+    setIsLoggedIn(false);
     navigate("/login");
-
-    setTimeout(() => {
-      const docRef = doc(db, "CONFIG", "config");
-      setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
-    }, 0);
   };
 
-  // ✅ Hàm thay đổi học kỳ
-  const handleHocKyChange = async (e) => {
-    const hocKy = e.target.value;
-    await setConfig({ hocKy }); // 🔹 Dùng context updateConfig
-  };
-
-
-  // ✅ Danh sách menu
   const navItems = [
     { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
-    ...(config.login
+    ...(isLoggedIn
       ? [
           { path: "/giaovien", label: "Đánh giá", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/tonghopdanhgia", label: "ĐGTX", icon: <SummarizeIcon fontSize="small" /> },
@@ -102,7 +95,6 @@ function AppContent() {
             whiteSpace: "nowrap",
           }}
         >
-          {/* 🔹 Logo + Menu */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Box
               component="img"
@@ -115,8 +107,6 @@ function AppContent() {
                 mr: 1,
               }}
             />
-
-            {/* 🔹 Menu buttons */}
             {navItems.map((item) => (
               <Button
                 key={item.path || item.label}
@@ -146,93 +136,33 @@ function AppContent() {
               </Button>
             ))}
           </Box>
-
-          {/* 🔹 Dropdown chọn Học kỳ */}
-          {config.login && (
-            <Box sx={{ minWidth: 140, mr: 1 }}>
-              <select
-                value={config.hocKy || "Giữa kỳ I"}
-                onChange={handleHocKyChange}
-                style={{
-                  backgroundColor: "transparent",   // 🔹 Nền trong suốt
-                  color: "white",                   // 🔹 Chữ trắng
-                  borderRadius: "4px",              // 🔹 Bo góc nhẹ
-                  padding: "6px 12px",
-                  border: "2px solid white",        // 🔹 Viền trắng
-                  outline: "none",
-                  fontSize: "0.95rem",
-                  width: "100%",
-                  appearance: "none",               // 🔹 Ẩn mũi tên mặc định
-                  WebkitAppearance: "none",
-                  MozAppearance: "none",
-                  backgroundImage:
-                    "url(\"data:image/svg+xml;utf8,<svg fill='white' height='18' viewBox='0 0 24 24' width='18' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPositionX: "calc(100% - 10px)",
-                  backgroundPositionY: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <option style={{ color: "#1976d2" }} value="Giữa kỳ I">Giữa kỳ I</option>
-                <option style={{ color: "#1976d2" }} value="Cuối kỳ I">Cuối kỳ I</option>
-                <option style={{ color: "#1976d2" }} value="Giữa kỳ II">Giữa kỳ II</option>
-                <option style={{ color: "#1976d2" }} value="Cả năm">Cả năm</option>
-              </select>
-            </Box>
-
-          )}
-
         </Toolbar>
       </AppBar>
 
-      {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
         <Routes>
           <Route path="/" element={<Navigate to="/hocsinh" replace />} />
           <Route path="/hocsinh" element={<HocSinh />} />
-          <Route
-            path="/danhsach"
-            element={config.login ? <DanhSachHS /> : <Navigate to="/login" replace />}
-          />
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/giaovien"
-            element={config.login ? <GiaoVien /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/nhapdiemktdk"
-            element={config.login ? <NhapdiemKTDK /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/xuatdanhgia"
-            element={config.login ? <XuatDanhGia /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/tonghopdanhgia"
-            element={config.login ? <TongHopDanhGia /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/thongke"
-            element={config.login ? <ThongKe /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/quan-tri"
-            element={config.login ? <QuanTri /> : <Navigate to="/login" replace />}
-          />
+          <Route path="/danhsach" element={isLoggedIn ? <DanhSachHS /> : <Navigate to="/login" replace />} />
+          <Route path="/giaovien" element={isLoggedIn ? <GiaoVien /> : <Navigate to="/login" replace />} />
+          <Route path="/nhapdiemktdk" element={isLoggedIn ? <NhapdiemKTDK /> : <Navigate to="/login" replace />} />
+          <Route path="/xuatdanhgia" element={isLoggedIn ? <XuatDanhGia /> : <Navigate to="/login" replace />} />
+          <Route path="/tonghopdanhgia" element={isLoggedIn ? <TongHopDanhGia /> : <Navigate to="/login" replace />} />
+          <Route path="/thongke" element={isLoggedIn ? <ThongKe /> : <Navigate to="/login" replace />} />
+          <Route path="/quan-tri" element={isLoggedIn ? <QuanTri /> : <Navigate to="/login" replace />} />
         </Routes>
       </Box>
     </>
   );
 }
 
-
-
 export default function App() {
   return (
     <ConfigProvider>
       <StudentProvider>
         <StudentDataProvider>
-          <StudentKTDKProvider> {/* 🔹 thêm context mới */}
+          <StudentKTDKProvider>
             <AppContent />
           </StudentKTDKProvider>
         </StudentDataProvider>
@@ -240,4 +170,3 @@ export default function App() {
     </ConfigProvider>
   );
 }
-
