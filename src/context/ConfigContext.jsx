@@ -8,7 +8,7 @@ export const ConfigProvider = ({ children }) => {
   const defaultConfig = {
     tuan: 1,
     mon: "Tin học",
-    login: false,
+    //login: false,
     hocKy: "Giữa kỳ I",
     lop: "",
   };
@@ -28,35 +28,25 @@ export const ConfigProvider = ({ children }) => {
 
   // Chỉ đọc Firestore snapshot, không ghi lại
   useEffect(() => {
-  const docRef = doc(db, "CONFIG", "config");
+    const docRef = doc(db, "CONFIG", "config");
+    const unsubscribe = onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
 
-  const unsubscribe = onSnapshot(
-    docRef,
-    (snapshot) => {
-      if (!snapshot.exists()) return;
-      const data = snapshot.data();
+        setConfig((prev) => {
+          const hasDiff = Object.keys(defaultConfig).some(
+            (key) => prev[key] !== data[key]
+          );
+          return hasDiff ? { ...prev, ...data } : prev;
+        });
+      },
+      (err) => console.error("❌ Firestore snapshot lỗi:", err)
+    );
 
-      // 🧹 Loại bỏ field login
-      const { login, ...filteredData } = data;
-
-      setConfig((prev) => {
-        // ⚠️ Giữ nguyên login cục bộ, không lấy từ Firestore
-        const merged = { ...prev, ...filteredData, login: prev.login };
-
-        // 🔍 Chỉ cập nhật nếu có khác biệt ở các field khác (trừ login)
-        const hasDiff = Object.keys(filteredData).some(
-          (key) => prev[key] !== filteredData[key]
-        );
-
-        return hasDiff ? merged : prev;
-      });
-    },
-    (err) => console.error("❌ Firestore snapshot lỗi:", err)
-  );
-
-  return () => unsubscribe();
-}, []);
-
+    return () => unsubscribe();
+  }, []);
 
   // Hàm cập nhật config do người dùng thao tác
   const updateConfig = async (newValues) => {
