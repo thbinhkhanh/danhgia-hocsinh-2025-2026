@@ -153,8 +153,8 @@ export default function GiaoVien() {
         [`${studentId}.status`]: status,
       }).catch(async err => {
         if (err.code === "not-found") {
-          //await setDoc(tuanRef, { [studentId]: { hoVaTen, status } });
-          await setDoc(tuanRef, { [studentId]: { hoVaTen, status } }, { merge: true });
+          await setDoc(tuanRef, { [studentId]: { hoVaTen, status } });
+          //await setDoc(tuanRef, { [studentId]: { hoVaTen, status } }, { merge: true });
         } else throw err;
       });
 

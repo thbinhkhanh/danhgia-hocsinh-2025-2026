@@ -68,21 +68,7 @@ function AppContent() {
 
 
   // ✅ Danh sách menu
-  // ✅ Xác định máy học sinh
-const isStudentDevice = localStorage.getItem("role") === "student";
-
-// ✅ Danh sách menu (phân biệt máy)
-let navItems;
-
-if (isStudentDevice) {
-  // 👉 Máy học sinh chỉ có 2 mục
-  navItems = [
-    { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
-    { path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> },
-  ];
-} else {
-  // 👉 Máy giáo viên hoặc máy quản trị
-  navItems = [
+  const navItems = [
     { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
     ...(config.login
       ? [
@@ -99,8 +85,6 @@ if (isStudentDevice) {
           { path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> },
         ]),
   ];
-}
-
 
   return (
     <>
