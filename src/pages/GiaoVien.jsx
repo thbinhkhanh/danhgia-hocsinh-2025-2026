@@ -111,7 +111,7 @@ export default function GiaoVien() {
     const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
     const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
 
-    const unsubscribe = onSnapshot(tuanRef, snap => {
+    /*const unsubscribe = onSnapshot(tuanRef, snap => {
       if (snap.exists()) {
         const data = snap.data();
         const updated = {};
@@ -120,6 +120,22 @@ export default function GiaoVien() {
         });
         setStudentStatus(updated);
       } else setStudentStatus({});
+    });*/
+
+    const unsubscribe = onSnapshot(tuanRef, snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const updated = {};
+        Object.entries(data).forEach(([id, info]) => {
+          // ✅ tránh lỗi khi info bị undefined hoặc không có status
+          if (info && typeof info === "object" && "status" in info) {
+            updated[id] = info.status || "";
+          }
+        });
+        setStudentStatus(updated);
+      } else {
+        setStudentStatus({});
+      }
     });
 
     return () => unsubscribe();
@@ -137,9 +153,11 @@ export default function GiaoVien() {
         [`${studentId}.status`]: status,
       }).catch(async err => {
         if (err.code === "not-found") {
-          await setDoc(tuanRef, { [studentId]: { hoVaTen, status } });
+          //await setDoc(tuanRef, { [studentId]: { hoVaTen, status } });
+          await setDoc(tuanRef, { [studentId]: { hoVaTen, status } }, { merge: true });
         } else throw err;
       });
+
     } catch (err) {
       console.error("❌ Lỗi lưu đánh giá:", err);
     }

@@ -37,6 +37,7 @@ export default function HocSinh() {
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [systemLocked, setSystemLocked] = useState(false);
 
+  const ignoreNextSnapshot = useRef(false);
 
 useEffect(() => {
   const docRef = doc(db, "CONFIG", "config");
@@ -188,65 +189,63 @@ useEffect(() => {
 
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
     setStudentStatus((prev) => {
-      const updated = { ...prev };
+        const current = prev[maDinhDanh] || "";
+        const newStatus = current === status ? "" : status;
 
-      // Nếu chọn lại trạng thái đã chọn, hủy đánh giá
-      const newStatus = prev[maDinhDanh] === status ? "" : status;
-      updated[maDinhDanh] = newStatus;
+        // ⚡ Nếu không có thay đổi → bỏ qua
+        if (current === newStatus) return prev;
 
-      // 🔹 Lưu vào Firestore ngay
-      saveStudentStatus(maDinhDanh, hoVaTen, newStatus);
+        // 🧠 Đặt cờ → snapshot tới sẽ bị bỏ qua
+        ignoreNextSnapshot.current = true;
 
-      return updated;
+        // 🔹 Cập nhật local để UI phản ứng ngay
+        const updated = { ...prev, [maDinhDanh]: newStatus };
+
+        // 🔹 Ghi Firestore (bất đồng bộ)
+        saveStudentStatus(maDinhDanh, hoVaTen, newStatus);
+
+        return updated;
     });
-  };
+    };
 
   useEffect(() => {
-    // 🔹 Nếu chưa có thông tin cần thiết → thoát
-    if (!expandedStudent || !selectedClass || !selectedWeek) return;
+    if (!expandedStudent?.maDinhDanh || !selectedClass || !selectedWeek) return;
 
-    const classKey = config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+    const classKey =
+        config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
     const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-    // 🔹 Đăng ký lắng nghe realtime
     const unsubscribe = onSnapshot(
-      tuanRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const record = data[expandedStudent.maDinhDanh];
+        tuanRef,
+        (docSnap) => {
+        if (!docSnap.exists()) return;
+        const record = docSnap.data()?.[expandedStudent.maDinhDanh];
+        const firestoreStatus = record?.status || "";
 
-          if (record && record.status) {
-            // 🟢 Có dữ liệu đánh giá → cập nhật UI
-            setStudentStatus((prev) => ({
-              ...prev,
-              [expandedStudent.maDinhDanh]: record.status,
-            }));
-          } else {
-            // 🔵 Không có đánh giá → xóa trạng thái cũ nếu có
-            setStudentStatus((prev) => {
-              const updated = { ...prev };
-              delete updated[expandedStudent.maDinhDanh];
-              return updated;
-            });
-          }
-        } else {
-          // Document chưa tồn tại → không có đánh giá nào
-          setStudentStatus((prev) => {
-            const updated = { ...prev };
-            delete updated[expandedStudent.maDinhDanh];
-            return updated;
-          });
-        }
-      },
-      (error) => {
+        setStudentStatus((prev) => {
+            const local = prev[expandedStudent.maDinhDanh] || "";
+
+            // 🧠 Nếu vừa tự update → bỏ qua snapshot này
+            if (ignoreNextSnapshot.current) {
+            ignoreNextSnapshot.current = false;
+            return prev;
+            }
+
+            // 🔹 Nếu dữ liệu khác local → cập nhật
+            if (local !== firestoreStatus) {
+            return { ...prev, [expandedStudent.maDinhDanh]: firestoreStatus };
+            }
+
+            return prev;
+        });
+        },
+        (error) => {
         console.error("❌ Lỗi khi lắng nghe đánh giá realtime:", error);
-      }
+        }
     );
 
-    // 🔹 Khi đóng dialog → hủy lắng nghe
     return () => unsubscribe();
-  }, [expandedStudent, selectedClass, selectedWeek, config?.mon]);
+    }, [expandedStudent?.maDinhDanh, selectedClass, selectedWeek, config?.mon]);
 
   const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff", label: "T", color: "primary" },
