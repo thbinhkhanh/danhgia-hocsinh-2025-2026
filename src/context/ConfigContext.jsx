@@ -13,26 +13,21 @@ export const ConfigProvider = ({ children }) => {
     lop: "",
   };
 
-  // ✅ Xác định có phải máy học sinh không
-  const isStudentDevice = localStorage.getItem("role") === "student";
-
   const storedConfig = JSON.parse(localStorage.getItem("appConfig") || "{}");
   const allowedKeys = Object.keys(defaultConfig);
   const filteredStored = Object.fromEntries(
     Object.entries(storedConfig).filter(([k]) => allowedKeys.includes(k))
   );
 
-  const [config, setConfigState] = useState({ ...defaultConfig, ...filteredStored });
+  const [config, setConfig] = useState({ ...defaultConfig, ...filteredStored });
 
-  // ✅ Lưu localStorage mỗi khi config thay đổi
+  // 🔸 Lưu vào localStorage mỗi khi config thay đổi
   useEffect(() => {
     localStorage.setItem("appConfig", JSON.stringify(config));
   }, [config]);
 
-  // ✅ CHỈ máy giáo viên mới đọc Firestore
+  // 🔸 Lắng nghe Firestore để đồng bộ các trường chia sẻ (trừ login)
   useEffect(() => {
-    if (isStudentDevice) return; // ❌ học sinh không nghe Firestore
-
     const docRef = doc(db, "CONFIG", "config");
     const unsubscribe = onSnapshot(
       docRef,
@@ -40,36 +35,44 @@ export const ConfigProvider = ({ children }) => {
         if (!snapshot.exists()) return;
         const data = snapshot.data();
 
-        setConfigState((prev) => {
-          const hasDiff = Object.keys(defaultConfig).some(
-            (key) => prev[key] !== data[key]
+        // Bỏ qua trường login để tránh đồng bộ giữa các máy
+        const filteredData = Object.fromEntries(
+          Object.entries(data).filter(([key]) => key !== "login")
+        );
+
+        setConfig((prev) => {
+          const hasDiff = Object.keys(filteredData).some(
+            (key) => prev[key] !== filteredData[key]
           );
-          return hasDiff ? { ...prev, ...data } : prev;
+          return hasDiff ? { ...prev, ...filteredData } : prev;
         });
       },
       (err) => console.error("❌ Firestore snapshot lỗi:", err)
     );
 
     return () => unsubscribe();
-  }, [isStudentDevice]);
+  }, []);
 
-  // ✅ Hàm cập nhật config
+  // 🔸 Hàm cập nhật config (chỉ ghi các trường không phải login)
   const updateConfig = async (newValues) => {
     const filtered = Object.fromEntries(
       Object.entries(newValues).filter(([k]) => allowedKeys.includes(k))
     );
 
-    // Chỉ update nếu khác state hiện tại
     const hasDiff = Object.keys(filtered).some((k) => filtered[k] !== config[k]);
     if (!hasDiff) return;
 
-    setConfigState((prev) => ({ ...prev, ...filtered }));
+    setConfig((prev) => ({ ...prev, ...filtered }));
 
-    // 🔹 Chỉ GHI Firestore nếu KHÔNG phải máy học sinh
-    if (!isStudentDevice) {
+    // Chỉ ghi các trường không phải login
+    const firestoreData = Object.fromEntries(
+      Object.entries(filtered).filter(([key]) => key !== "login")
+    );
+
+    if (Object.keys(firestoreData).length > 0) {
       const docRef = doc(db, "CONFIG", "config");
-      await setDoc(docRef, filtered, { merge: true });
-      console.log("✅ Firestore cập nhật:", filtered);
+      await setDoc(docRef, firestoreData, { merge: true });
+      console.log("✅ Firestore cập nhật:", firestoreData);
     }
   };
 

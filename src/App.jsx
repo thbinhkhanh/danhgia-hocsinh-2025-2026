@@ -54,15 +54,11 @@ function AppContent() {
 
     navigate("/login");
 
-    // 🔹 Chỉ ghi lên Firestore nếu KHÔNG phải máy học sinh
-    if (!isStudentDevice) {
-      setTimeout(() => {
-        const docRef = doc(db, "CONFIG", "config");
-        setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
-      }, 0);
-    }
+    /*setTimeout(() => {
+      const docRef = doc(db, "CONFIG", "config");
+      setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
+    }, 0);*/
   };
-
 
   // ✅ Hàm thay đổi học kỳ
   const handleHocKyChange = async (e) => {
@@ -72,21 +68,7 @@ function AppContent() {
 
 
   // ✅ Danh sách menu
-  // ✅ Xác định máy học sinh
-const isStudentDevice = localStorage.getItem("role") === "student";
-
-// ✅ Danh sách menu (phân biệt máy)
-let navItems;
-
-if (isStudentDevice) {
-  // 👉 Máy học sinh chỉ có 2 mục
-  navItems = [
-    { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
-    { path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> },
-  ];
-} else {
-  // 👉 Máy giáo viên hoặc máy quản trị
-  navItems = [
+  const navItems = [
     { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
     ...(config.login
       ? [
@@ -103,8 +85,6 @@ if (isStudentDevice) {
           { path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> },
         ]),
   ];
-}
-
 
   return (
     <>
