@@ -11,6 +11,8 @@ export const ConfigProvider = ({ children }) => {
     login: false,
     hocKy: "Giữa kỳ I",
     lop: "",
+    tracNghiem: false,
+    deTracNghiem: "",
   };
 
   const storedConfig = JSON.parse(localStorage.getItem("appConfig") || "{}");

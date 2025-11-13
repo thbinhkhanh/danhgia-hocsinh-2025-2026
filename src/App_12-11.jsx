@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Routes,
   Route,
@@ -8,8 +8,6 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { AppBar, Toolbar, Button, Typography, Box } from "@mui/material";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "./firebase";
 
 // 🔹 Import các trang
 import HocSinh from "./pages/HocSinh";
@@ -22,11 +20,11 @@ import XuatDanhGia from "./pages/XuatDanhGia";
 import ThongKe from "./pages/ThongKe";
 import DanhSachHS from "./pages/DanhSachHS";
 import TracNghiem from "./pages/TracNghiem";
-import TracNghiemGV from "./pages/TracNghiemGV";
+import TracNghiemGV from "./pages/TracNghiemGV";  // đường dẫn tương ứng
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
-import { ConfigProvider, ConfigContext } from "./context/ConfigContext";
+import { ConfigProvider } from "./context/ConfigContext";
 import { StudentDataProvider } from "./context/StudentDataContext";
 import { StudentKTDKProvider } from "./context/StudentKTDKContext";
 
@@ -42,16 +40,14 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { config, setConfig } = useContext(ConfigContext);
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // ✅ Lấy trạng thái login ban đầu
   useEffect(() => {
     const loggedIn = localStorage.getItem("loggedIn") === "true";
     setIsLoggedIn(loggedIn);
   }, []);
 
-  // ✅ Theo dõi thay đổi login giữa các tab
   useEffect(() => {
     const handleStorageChange = () => {
       setIsLoggedIn(localStorage.getItem("loggedIn") === "true");
@@ -60,71 +56,31 @@ function AppContent() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // ✅ Hàm xử lý đăng xuất
   const handleLogout = () => {
     localStorage.removeItem("loggedIn");
     localStorage.removeItem("account");
     setIsLoggedIn(false);
-
-    // chỉ cập nhật config.login = false, không reset học kỳ
-    setConfig((prev) => ({ ...prev, login: false }));
-
     navigate("/login");
-
-    setTimeout(() => {
-      const docRef = doc(db, "CONFIG", "config");
-      setDoc(docRef, { login: false }, { merge: true }).catch(() => {});
-    }, 0);
   };
 
-  // ✅ Hàm thay đổi học kỳ
-  const handleHocKyChange = (e) => {
-    const hocKy = e.target.value;
-
-    // 🔹 Cập nhật ngay trong context (merge với config cũ)
-    const newConfig = { ...config, hocKy };
-    setConfig(newConfig);
-
-    // 🔹 Lưu vào localStorage để không mất khi reload
-    localStorage.setItem("appConfig", JSON.stringify(newConfig));
-  };
-
-
-  // ✅ Danh sách menu
-  const navItems1 = [
+  const navItems = [
     { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
+    { path: "/tracnghiem", label: "Trắc nghiệm", icon: <SchoolIcon fontSize="small" /> },
     ...(isLoggedIn
-      ? [          
+      ? [
           { path: "/giaovien", label: "Đánh giá", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/tonghopdanhgia", label: "ĐGTX", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/nhapdiemktdk", label: "KTĐK", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/xuatdanhgia", label: "Xuất đánh giá", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/thongke", label: "Thống kê", icon: <BarChartIcon fontSize="small" /> },
           { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
-          { path: "/tracnghiem", label: "Trắc nghiệm", icon: <SchoolIcon fontSize="small" /> },  
-          { path: "/tracnghiem-gv", label: "Soạn đề", icon: <MenuBookIcon fontSize="small" /> },
+          { path: "/tracnghiem-gv", label: "Thiết kế TN", icon: <MenuBookIcon fontSize="small" /> },
           { path: "/quan-tri", label: "Hệ thống", icon: <SettingsIcon fontSize="small" /> },
           { label: "Đăng xuất", onClick: handleLogout, icon: <LogoutIcon fontSize="small" /> },
         ]
-      : [{ path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> }]),
-  ];
-
-  const navItems = [
-    { path: "/hocsinh", label: "Học sinh" },
-    ...(isLoggedIn
-      ? [                     
-          { path: "/giaovien", label: "Đánh giá" },
-          { path: "/tonghopdanhgia", label: "ĐGTX" },
-          { path: "/nhapdiemktdk", label: "KTĐK" },
-          { path: "/xuatdanhgia", label: "Xuất đánh giá" },
-          { path: "/thongke", label: "Thống kê" },
-          { path: "/danhsach", label: "Danh sách" },
-          { path: "/tracnghiem", label: "Trắc nghiệm" },
-          { path: "/tracnghiem-gv", label: "Soạn đề" },
-          { path: "/quan-tri", label: "Hệ thống" },
-          { label: "Đăng xuất", onClick: handleLogout }
-        ]
-      : [{ path: "/login", label: "Đăng nhập" }]),
+      : [
+          { path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> },
+        ]),
   ];
 
   return (
@@ -143,7 +99,6 @@ function AppContent() {
             whiteSpace: "nowrap",
           }}
         >
-          {/* 🔹 Logo + Menu */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Box
               component="img"
@@ -185,90 +140,23 @@ function AppContent() {
               </Button>
             ))}
           </Box>
-
-          {/* 🔹 Dropdown chọn Học kỳ (chỉ khi đã đăng nhập) */}
-          {isLoggedIn && (
-            <Box sx={{ minWidth: 140, mr: 1 }}>
-              <select
-                value={config?.hocKy || "Giữa kỳ I"}
-                onChange={handleHocKyChange}
-                style={{
-                  backgroundColor: "transparent",
-                  color: "white",
-                  borderRadius: "4px",
-                  padding: "6px 12px",
-                  border: "2px solid white",
-                  outline: "none",
-                  fontSize: "0.95rem",
-                  width: "100%",
-                  appearance: "none",
-                  WebkitAppearance: "none",
-                  MozAppearance: "none",
-                  backgroundImage:
-                    "url(\"data:image/svg+xml;utf8,<svg fill='white' height='18' viewBox='0 0 24 24' width='18' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPositionX: "calc(100% - 10px)",
-                  backgroundPositionY: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <option style={{ color: "#1976d2" }} value="Giữa kỳ I">
-                  Giữa kỳ I
-                </option>
-                <option style={{ color: "#1976d2" }} value="Cuối kỳ I">
-                  Cuối kỳ I
-                </option>
-                <option style={{ color: "#1976d2" }} value="Giữa kỳ II">
-                  Giữa kỳ II
-                </option>
-                <option style={{ color: "#1976d2" }} value="Cả năm">
-                  Cả năm
-                </option>
-              </select>
-            </Box>
-          )}
         </Toolbar>
       </AppBar>
 
-      {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
         <Routes>
           <Route path="/" element={<Navigate to="/hocsinh" replace />} />
           <Route path="/hocsinh" element={<HocSinh />} />
           <Route path="/tracnghiem" element={<TracNghiem />} />
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/danhsach"
-            element={isLoggedIn ? <DanhSachHS /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/giaovien"
-            element={isLoggedIn ? <GiaoVien /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/nhapdiemktdk"
-            element={isLoggedIn ? <NhapdiemKTDK /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/xuatdanhgia"
-            element={isLoggedIn ? <XuatDanhGia /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/tonghopdanhgia"
-            element={isLoggedIn ? <TongHopDanhGia /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/thongke"
-            element={isLoggedIn ? <ThongKe /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/tracnghiem-gv"
-            element={isLoggedIn ? <TracNghiemGV /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/quan-tri"
-            element={isLoggedIn ? <QuanTri /> : <Navigate to="/login" replace />}
-          />
+          <Route path="/danhsach" element={isLoggedIn ? <DanhSachHS /> : <Navigate to="/login" replace />} />
+          <Route path="/giaovien" element={isLoggedIn ? <GiaoVien /> : <Navigate to="/login" replace />} />
+          <Route path="/nhapdiemktdk" element={isLoggedIn ? <NhapdiemKTDK /> : <Navigate to="/login" replace />} />
+          <Route path="/xuatdanhgia" element={isLoggedIn ? <XuatDanhGia /> : <Navigate to="/login" replace />} />
+          <Route path="/tonghopdanhgia" element={isLoggedIn ? <TongHopDanhGia /> : <Navigate to="/login" replace />} />
+          <Route path="/thongke" element={isLoggedIn ? <ThongKe /> : <Navigate to="/login" replace />} />
+          <Route path="/tracnghiem-gv" element={isLoggedIn ? <TracNghiemGV /> : <Navigate to="/login" replace />} /> {/* ✅ route GV */}
+          <Route path="/quan-tri" element={isLoggedIn ? <QuanTri /> : <Navigate to="/login" replace />} />
         </Routes>
       </Box>
     </>

@@ -12,8 +12,6 @@ import {
   MenuItem,
   FormControl,
   Divider,
-  Checkbox, 
-  FormControlLabel,
 } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -65,8 +63,6 @@ const [selectedSemester, setSelectedSemester] = useState("Giữa kỳ I");
 const [classes, setClasses] = useState([]);
 const [selectedClass, setSelectedClass] = useState("");
 const [subject, setSubject] = useState("Tin học");
-
-//const [isTracNghiem, setIsTracNghiem] = useState(false);
 
 
   // 🔹 Khởi tạo config + danh sách lớp
@@ -148,11 +144,6 @@ const [subject, setSubject] = useState("Tin học");
     setConfig({ tuan: newWeek });
   };
 
-  const handleTracNghiemChange = (e) => {
-    const value = e.target.checked;
-    setIsTracNghiem(value);
-    setConfig({ ...config, tracNghiem: value }); // chỉ cập nhật context
-  };
 
   // 🔹 File Excel
   const handleFileChange = (event) => {
@@ -369,19 +360,6 @@ const [subject, setSubject] = useState("Tin học");
                 ))}
               </Select>
             </FormControl>
-            
-          </Box>
-          <Box sx={{ mt: 1 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={config.tracNghiem || false} // nếu chưa có key thì mặc định false
-                  onChange={(e) => setConfig({ tracNghiem: e.target.checked })}
-                  color="primary"
-                />
-              }
-              label="Làm trắc nghiệm"
-            />
           </Box>
         </Stack>
 

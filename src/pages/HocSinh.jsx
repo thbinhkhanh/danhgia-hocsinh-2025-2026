@@ -5,11 +5,12 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   IconButton,
   Chip,
-  FormControl, 
-  InputLabel,
   TextField,
+  FormControl, 
+  InputLabel
 } from "@mui/material";
 
 import { db } from "../firebase";
@@ -20,11 +21,12 @@ import { onSnapshot } from "firebase/firestore";
 import CloseIcon from "@mui/icons-material/Close";
 import Draggable from "react-draggable";
 import { useTheme, useMediaQuery } from "@mui/material"; 
+import { useNavigate } from "react-router-dom";
 
 export default function HocSinh() {
   // 🔹 Lấy context
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
-  
+  const navigate = useNavigate();
 
   // 🔹 Local state
   const [classes, setClasses] = useState([]);
@@ -38,106 +40,138 @@ export default function HocSinh() {
   const [systemLocked, setSystemLocked] = useState(false);
   const [saving, setSaving] = useState(false); // 🔒 trạng thái đang lưu
 
-useEffect(() => {
-  const docRef = doc(db, "CONFIG", "config");
+  const [openDoneDialog, setOpenDoneDialog] = useState(false);
+  const [doneMessage, setDoneMessage] = useState("");
+  const [doneStudent, setDoneStudent] = useState(null);
+  const [weekData, setWeekData] = useState({});
 
-  const unsubscribe = onSnapshot(docRef, (docSnap) => {
-    const data = docSnap.exists() ? docSnap.data() : {};
+  useEffect(() => {
+    const docRef = doc(db, "CONFIG", "config");
 
-    const tuan = data.tuan || 1;
-    const mon = data.mon || "Tin học";
-    const lop = data.lop || "";
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        const data = docSnap.exists() ? docSnap.data() : {};
 
-    // 🔹 Cập nhật ConfigContext
-    setConfig({ tuan, mon, lop });
+        const tuan = data.tuan || 1;
+        const mon = data.mon || "Tin học";
+        const lop = data.lop || "";
+        const deTracNghiem = data.deTracNghiem || ""; // 🔹 Thêm dòng này
 
-    // 🔹 Cập nhật local state
-    setSelectedWeek(tuan);
-    setSelectedClass(lop);
-  }, (err) => {
-    console.error("❌ Lỗi khi lắng nghe CONFIG/config:", err);
-  });
+        // 🔹 Cập nhật ConfigContext đầy đủ
+        setConfig({ tuan, mon, lop, deTracNghiem });
 
-  return () => unsubscribe();
-}, []);
+        // 🔹 Cập nhật local state
+        setSelectedWeek(tuan);
+        setSelectedClass(lop);
+      },
+      (err) => {
+        console.error("❌ Lỗi khi lắng nghe CONFIG/config:", err);
+      }
+    );
 
+    return () => unsubscribe();
+  }, []);
 
   // 🔹 Lấy danh sách lớp (ưu tiên cache từ context)
-useEffect(() => {
-  const fetchClasses = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, "DANHSACH"));
-      const classList = snapshot.docs.map((doc) => doc.id);
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "DANHSACH"));
+        const classList = snapshot.docs.map((doc) => doc.id);
 
-      setClassData(classList);
-      setClasses(classList);
+        setClassData(classList);
+        setClasses(classList);
 
-      // ✅ Chọn lớp từ config trước, nếu không có mới dùng lớp đầu tiên
-      if (classList.length > 0) {
-        setSelectedClass((prev) => prev || config.lop || classList[0]);
+        // ✅ Chọn lớp từ config trước, nếu không có mới dùng lớp đầu tiên
+        if (classList.length > 0) {
+          setSelectedClass((prev) => prev || config.lop || classList[0]);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi lấy danh sách lớp:", err);
+        setClasses([]);
+        setClassData([]);
       }
-    } catch (err) {
-      console.error("❌ Lỗi khi lấy danh sách lớp:", err);
-      setClasses([]);
-      setClassData([]);
+    };
+
+    fetchClasses();
+  }, [config.lop]); // ✅ phụ thuộc config.lop để set lớp đúng
+
+  // 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
+  useEffect(() => {
+    if (!selectedClass) return;
+
+    const cached = studentData[selectedClass];
+    if (cached && cached.length > 0) {
+      // 🟢 Dùng cache nếu có
+      setStudents(cached);
+      return;
     }
-  };
 
-  fetchClasses();
-}, [config.lop]); // ✅ phụ thuộc config.lop để set lớp đúng
+    // 🔵 Nếu chưa có trong context thì tải từ Firestore
+    const fetchStudents = async () => {
+      try {
+        //console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
+        const classDocRef = doc(db, "DANHSACH", selectedClass);
+        const classSnap = await getDoc(classDocRef);
+        if (classSnap.exists()) {
+          const data = classSnap.data();
+          let studentList = Object.entries(data).map(([maDinhDanh, info]) => ({
+            maDinhDanh,
+            hoVaTen: info.hoVaTen,
+          }));
 
-// 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
-useEffect(() => {
-  if (!selectedClass) return;
+          // Sắp xếp theo tên
+          studentList.sort((a, b) => {
+            const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+            const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
 
-  const cached = studentData[selectedClass];
-  if (cached && cached.length > 0) {
-    // 🟢 Dùng cache nếu có
-    setStudents(cached);
-    return;
-  }
+          studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-  // 🔵 Nếu chưa có trong context thì tải từ Firestore
-  const fetchStudents = async () => {
-    try {
-      //console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
-      const classDocRef = doc(db, "DANHSACH", selectedClass);
-      const classSnap = await getDoc(classDocRef);
-      if (classSnap.exists()) {
-        const data = classSnap.data();
-        let studentList = Object.entries(data).map(([maDinhDanh, info]) => ({
-          maDinhDanh,
-          hoVaTen: info.hoVaTen,
-        }));
+          //console.log(`✅ Đã tải học sinh lớp "${selectedClass}" từ Firestore:`, studentList);
 
-        // Sắp xếp theo tên
-        studentList.sort((a, b) => {
-          const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-          const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
-
-        studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
-
-        //console.log(`✅ Đã tải học sinh lớp "${selectedClass}" từ Firestore:`, studentList);
-
-        // ⬇️ Lưu vào context và state
-        setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
-        setStudents(studentList);
-      } else {
-        console.warn(`⚠️ Không tìm thấy dữ liệu lớp "${selectedClass}" trong Firestore.`);
+          // ⬇️ Lưu vào context và state
+          setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
+          setStudents(studentList);
+        } else {
+          console.warn(`⚠️ Không tìm thấy dữ liệu lớp "${selectedClass}" trong Firestore.`);
+          setStudents([]);
+          setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
+        }
+      } catch (err) {
+        console.error(`❌ Lỗi khi lấy học sinh lớp "${selectedClass}":`, err);
         setStudents([]);
-        setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
       }
-    } catch (err) {
-      console.error(`❌ Lỗi khi lấy học sinh lớp "${selectedClass}":`, err);
-      setStudents([]);
-    }
-  };
+    };
 
-  fetchStudents();
-}, [selectedClass, studentData, setStudentData]);
+    fetchStudents();
+  }, [selectedClass, studentData, setStudentData]);
 
+  //tải dữ liệu tuần
+  useEffect(() => {
+    if (!selectedClass || !selectedWeek) return;
+
+    const fetchWeekData = async () => {
+      try {
+        const classKey = config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+        const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+        const tuanSnap = await getDoc(tuanRef);
+
+        if (tuanSnap.exists()) {
+          setWeekData(tuanSnap.data());
+        } else {
+          setWeekData({});
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi tải dữ liệu tuần:", err);
+        setWeekData({});
+      }
+    };
+
+    fetchWeekData();
+  }, [selectedClass, selectedWeek, config?.mon]);
 
   // 🔹 Cột hiển thị
   const getColumns = () => {
@@ -154,37 +188,6 @@ useEffect(() => {
   const toggleExpand = (maDinhDanh) => {
     setExpandedStudent(expandedStudent === maDinhDanh ? null : maDinhDanh);
   };
-
-  {/*const saveStudentStatus = async (studentId, hoVaTen, status) => {
-    if (!selectedWeek || !selectedClass) return;
-
-    try {
-      // 🔹 Nếu là lớp công nghệ, thêm hậu tố "_CN"
-      const classKey = config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-
-      // 🔹 Đường dẫn tài liệu Firestore cho tuần hiện tại
-      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
-
-      // 🔹 Ghi trực tiếp vào field con của học sinh
-      await updateDoc(tuanRef, {
-        [`${studentId}.hoVaTen`]: hoVaTen,
-        [`${studentId}.status`]: status,
-      }).catch(async (err) => {
-        if (err.code === "not-found") {
-          // 🔹 Nếu document chưa tồn tại → tạo mới
-          await setDoc(tuanRef, {
-            [studentId]: { hoVaTen, status },
-          });
-        } else {
-          throw err;
-        }
-      });
-
-      //console.log(`✅ ${studentId}: ${hoVaTen} (${status}) đã lưu thành công`);
-    } catch (err) {
-      console.error("❌ Lỗi khi lưu trạng thái học sinh:", err);
-    }
-  };*/}
 
   const saveStudentStatus = async (studentId, hoVaTen, status) => {
     if (!selectedWeek || !selectedClass) return;
@@ -216,7 +219,6 @@ useEffect(() => {
     }
   };
 
-
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
     setStudentStatus((prev) => {
       const currentStatus = prev[maDinhDanh] || "";
@@ -236,39 +238,39 @@ useEffect(() => {
 
 
   useEffect(() => {
-  // 🛑 Nếu chưa đủ thông tin, thoát
-  if (!expandedStudent?.maDinhDanh || !selectedClass || !selectedWeek) return;
+    // 🛑 Nếu chưa đủ thông tin, thoát
+    if (!expandedStudent?.maDinhDanh || !selectedClass || !selectedWeek) return;
 
-  const classKey =
-    config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-  const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+    const classKey =
+      config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+    const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-  // 🟢 Lắng nghe realtime CHỈ học sinh đang được mở
-  const unsubscribe = onSnapshot(
-    tuanRef,
-    (docSnap) => {
-      if (!docSnap.exists()) return;
+    // 🟢 Lắng nghe realtime CHỈ học sinh đang được mở
+    const unsubscribe = onSnapshot(
+      tuanRef,
+      (docSnap) => {
+        if (!docSnap.exists()) return;
 
-      const record = docSnap.data()?.[expandedStudent.maDinhDanh];
-      const currentStatus = record?.status || "";
+        const record = docSnap.data()?.[expandedStudent.maDinhDanh];
+        const currentStatus = record?.status || "";
 
-      setStudentStatus((prev) => {
-        // 🔸 Nếu trạng thái không đổi → không setState (tránh render lặp)
-        if (prev[expandedStudent.maDinhDanh] === currentStatus) return prev;
-        return {
-          ...prev,
-          [expandedStudent.maDinhDanh]: currentStatus,
-        };
-      });
-    },
-    (error) => {
-      console.error("❌ Lỗi khi lắng nghe đánh giá realtime:", error);
-    }
-  );
+        setStudentStatus((prev) => {
+          // 🔸 Nếu trạng thái không đổi → không setState (tránh render lặp)
+          if (prev[expandedStudent.maDinhDanh] === currentStatus) return prev;
+          return {
+            ...prev,
+            [expandedStudent.maDinhDanh]: currentStatus,
+          };
+        });
+      },
+      (error) => {
+        console.error("❌ Lỗi khi lắng nghe đánh giá realtime:", error);
+      }
+    );
 
-  // 🧹 Khi đóng dialog → hủy lắng nghe
-  return () => unsubscribe();
-}, [expandedStudent?.maDinhDanh, selectedClass, selectedWeek, config?.mon]);
+    // 🧹 Khi đóng dialog → hủy lắng nghe
+    return () => unsubscribe();
+  }, [expandedStudent?.maDinhDanh, selectedClass, selectedWeek, config?.mon]);
 
   const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff", label: "T", color: "primary" },
@@ -300,6 +302,20 @@ useEffect(() => {
       </Draggable>
     );
   }
+
+  const convertPercentToScore = (percent) => {
+    if (percent === undefined || percent === null) return "?";
+
+    const raw = percent / 10; // % → thang 10
+    const decimal = raw % 1;
+
+    let rounded;
+    if (decimal < 0.25) rounded = Math.floor(raw);
+    else if (decimal < 0.75) rounded = Math.floor(raw) + 0.5;
+    else rounded = Math.ceil(raw);
+
+    return rounded;
+  };
 
   return (
   <Box
@@ -407,7 +423,48 @@ useEffect(() => {
                         bgcolor: "#f5f5f5",
                       },
                     }}
-                    onClick={() => setExpandedStudent(student)}
+                    onClick={async () => {
+                      const deTracNghiem = config?.deTracNghiem || ""; // ví dụ: "quiz_Lớp 5_Tin học_10"
+                      const lopDangMo = selectedClass || "";           // ví dụ: "4.3"
+
+                      const khoiDe = deTracNghiem.match(/Lớp (\d+)/)?.[1]; // "5"
+                      const khoiLop = lopDangMo.match(/^(\d+)/)?.[1];      // "4"
+                      const isTracNghiem = config?.tracNghiem === true;
+
+                      if (isTracNghiem && khoiDe && khoiLop && khoiDe === khoiLop) {
+                        try {
+                          const hsData = weekData?.[student.maDinhDanh];
+                          const daLamBai = hsData?.diemTracNghiem !== undefined && hsData?.diemTracNghiem !== null;
+
+                          if (daLamBai) {
+                            setDoneStudent({
+                              hoVaTen: student.hoVaTen,
+                              diemTracNghiem: hsData.diemTracNghiem
+                            });
+                            setOpenDoneDialog(true);
+                            return;
+                          }
+
+                          // ✅ Nếu chưa làm bài thì cho vào làm
+                          navigate("/tracnghiem", {
+                            state: {
+                              studentId: student.maDinhDanh,
+                              studentName: student.hoVaTen,
+                              studentClass: selectedClass,
+                              selectedWeek,
+                              mon: config.mon,
+                            },
+                          });
+                        } catch (err) {
+                          console.error("❌ Lỗi khi kiểm tra diemTracNghiem:", err);
+                          setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài trắc nghiệm. Vui lòng thử lại!");
+                          setOpenDoneDialog(true);
+                        }
+                      } else {
+                        setExpandedStudent(student);
+                      }
+                    }}
+
                   >
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <Typography variant="subtitle2" fontWeight="medium">
@@ -554,6 +611,74 @@ useEffect(() => {
           </DialogContent>
         </>
       )}
+    </Dialog>
+
+    {/* Dialog thông báo học sinh đã làm bài */}
+    <Dialog
+      open={openDoneDialog}
+      onClose={() => setOpenDoneDialog(false)}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 3,
+          bgcolor: "#e3f2fd", // 🌤 cùng màu nền trang chính
+          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+        },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <Box
+          sx={{
+            bgcolor: "#42a5f5",
+            color: "#fff",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mr: 1.5,
+            fontWeight: "bold",
+            fontSize: 18,
+          }}
+        >
+          ℹ️
+        </Box>
+        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
+          Thông báo
+        </DialogTitle>
+      </Box>
+
+      <DialogContent sx={{ textAlign: "center" }}>
+        <Typography sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}>
+          {doneStudent?.hoVaTen || "Học sinh"}
+        </Typography>
+        <Typography sx={{ fontSize: 16, color: "#1565c0", mb: 0.5 }}>
+          Đã làm xong bài trắc nghiệm.
+        </Typography>
+        <Typography sx={{ fontSize: 16, color: "#0d47a1", fontWeight: 500 }}>
+          Điểm của bạn: {convertPercentToScore(doneStudent?.diemTracNghiem)}
+        </Typography>
+
+      </DialogContent>
+
+      <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenDoneDialog(false)}
+          sx={{
+            borderRadius: 2,
+            px: 4,
+            bgcolor: "#64b5f6",
+            color: "#fff",
+            "&:hover": { bgcolor: "#42a5f5" },
+          }}
+        >
+          OK
+        </Button>
+      </DialogActions>
     </Dialog>
   </Box>
 );
