@@ -27,6 +27,7 @@ import TracNghiemGV from "./pages/TracNghiemGV";
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
 import { ConfigProvider, ConfigContext } from "./context/ConfigContext";
+import { TracNghiemProvider } from "./context/TracNghiemContext";
 import { StudentDataProvider } from "./context/StudentDataContext";
 import { StudentKTDKProvider } from "./context/StudentKTDKContext";
 
@@ -278,13 +279,15 @@ function AppContent() {
 export default function App() {
   return (
     <ConfigProvider>
-      <StudentProvider>
-        <StudentDataProvider>
-          <StudentKTDKProvider>
-            <AppContent />
-          </StudentKTDKProvider>
-        </StudentDataProvider>
-      </StudentProvider>
+      <TracNghiemProvider>
+        <StudentProvider>
+          <StudentDataProvider>
+            <StudentKTDKProvider>
+              <AppContent />
+            </StudentKTDKProvider>
+          </StudentDataProvider>
+        </StudentProvider>
+      </TracNghiemProvider>
     </ConfigProvider>
   );
 }

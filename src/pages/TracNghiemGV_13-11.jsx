@@ -383,328 +383,327 @@ const handleOpenSelectedDoc = async () => {
 };
 
 
-  // -----------------------
-  // Giao diện chính
-  // -----------------------
   return (
-  <Box
-    sx={{
-      minHeight: "100vh",
-      p: 3,
-      background: "#e3f2fd",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-    }}
-  >
-    {/* ------------------ DIALOG MỞ ĐỀ ------------------ */}
-    <Dialog
-  open={openDialog}
-  onClose={() => setOpenDialog(false)}
-  maxWidth="sm"
-  fullWidth
-  PaperProps={{
-    sx: { borderRadius: 3, p: 1.5, bgcolor: "#f9fbfc" },
-  }}
->
-  <DialogTitle sx={{ textAlign: "center", fontWeight: "bold", color: "#1976d2" }}>
-    📂 Chọn đề để mở
-  </DialogTitle>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        p: 3,
+        background: "#e3f2fd",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      {/* ------------------ DIALOG MỞ ĐỀ ------------------ */}
+          <Dialog
+            open={openDialog}
+            onClose={() => setOpenDialog(false)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+              sx: { borderRadius: 3, p: 1.5, bgcolor: "#f9fbfc" },
+            }}
+          >
+            <DialogTitle sx={{ textAlign: "center", fontWeight: "bold", color: "#1976d2" }}>
+              📂 Chọn đề để mở
+            </DialogTitle>
 
-  <DialogContent dividers sx={{ maxHeight: 200, overflowY: "auto" }}>
-    {loadingList ? (
-      <Typography align="center" sx={{ py: 4 }}>
-        ⏳ Đang tải danh sách đề...
-      </Typography>
-    ) : docList.length === 0 ? (
-      <Typography align="center" sx={{ py: 4, color: "text.secondary" }}>
-        Không có đề nào trong Firestore.
-      </Typography>
-    ) : (
-      <Stack spacing={1.2}>
-  {docList.map((doc) => {
-    const selected = selectedDoc === doc.id;
-    return (
+            <DialogContent dividers sx={{ maxHeight: 200, overflowY: "auto" }}>
+              {loadingList ? (
+                <Typography align="center" sx={{ py: 4 }}>
+                  ⏳ Đang tải danh sách đề...
+                </Typography>
+              ) : docList.length === 0 ? (
+                <Typography align="center" sx={{ py: 4, color: "text.secondary" }}>
+                  Không có đề nào trong Firestore.
+                </Typography>
+              ) : (
+                <Stack spacing={1.2}>
+            {docList.map((doc) => {
+              const selected = selectedDoc === doc.id;
+              return (
+                <Paper
+                  key={doc.id}
+                  elevation={selected ? 4 : 1}
+                  onClick={() => setSelectedDoc(doc.id)}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    cursor: "pointer",
+                    transition: "0.2s",
+                    border: selected ? "2px solid #1976d2" : "1px solid #e0e0e0",
+                    bgcolor: selected ? "#e3f2fd" : "#fff",
+                    "&:hover": {
+                      borderColor: "#90caf9",
+                      transform: "translateY(-2px)",
+                    },
+                  }}
+                >
+                  {/* Ẩn doc.id */}
+                  {/* <Typography variant="subtitle1" fontWeight="600" color="#1976d2">
+                    {doc.id}
+                  </Typography> */}
+                  
+                  {/* Chỉ hiển thị gọn */}
+                  <Typography variant="body1" fontWeight="600" color="#1976d2">
+                    {doc.class} - {doc.subject} - Tuần {doc.week}
+                  </Typography>
+                </Paper>
+              );
+            })}
+          </Stack>
+
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={handleOpenSelectedDoc}
+            variant="contained"
+            disabled={!selectedDoc}
+            sx={{ borderRadius: 2 }}
+          >
+            Mở đề
+          </Button>
+
+          <Button
+            onClick={() => setOpenDialog(false)}
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
+            Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+
+      {/* Card chứa tiêu đề và các ô chọn */}
       <Paper
-        key={doc.id}
-        elevation={selected ? 4 : 1}
-        onClick={() => setSelectedDoc(doc.id)}
         sx={{
           p: 2,
+          mb: 3,
           borderRadius: 2,
-          cursor: "pointer",
-          transition: "0.2s",
-          border: selected ? "2px solid #1976d2" : "1px solid #e0e0e0",
-          bgcolor: selected ? "#e3f2fd" : "#fff",
-          "&:hover": {
-            borderColor: "#90caf9",
-            transform: "translateY(-2px)",
-          },
+          backgroundColor: "#fff",
+          width: "100%",
+          maxWidth: 970,
+          position: "relative",
         }}
+        elevation={3}
       >
-        {/* Ẩn doc.id */}
-        {/* <Typography variant="subtitle1" fontWeight="600" color="#1976d2">
-          {doc.id}
-        </Typography> */}
-        
-        {/* Chỉ hiển thị gọn */}
-        <Typography variant="body1" fontWeight="600" color="#1976d2">
-          {doc.class} - {doc.subject} - Tuần {doc.week}
+        {/* Icon mở/lưu ở góc trên trái */}
+        <Stack direction="row" spacing={0.2} sx={{ position: "absolute", top: 8, left: 8 }}>
+          <IconButton onClick={fetchQuizList} sx={{ color: "#1976d2" }}>
+            <FolderOpenIcon />
+          </IconButton>
+          <IconButton onClick={handleSaveAll} sx={{ color: "#1976d2" }}>
+            <SaveIcon />
+          </IconButton>
+        </Stack>
+
+        {/* Tiêu đề căn giữa */}
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          sx={{ textAlign: "center", mb: 3, color: "#1976d2", textTransform: "uppercase" }}
+        >
+          Soạn đề trắc nghiệm
         </Typography>
-      </Paper>
-    );
-  })}
-</Stack>
 
-    )}
-  </DialogContent>
-
-  <DialogActions sx={{ px: 3, pb: 2 }}>
-    <Button
-      onClick={handleOpenSelectedDoc}
-      variant="contained"
-      disabled={!selectedDoc}
-      sx={{ borderRadius: 2 }}
-    >
-      Mở đề
-    </Button>
-
-    <Button
-      onClick={() => setOpenDialog(false)}
-      variant="outlined"
-      sx={{ borderRadius: 2 }}
-    >
-      Đóng
-    </Button>
-  </DialogActions>
-</Dialog>
-
-
-    {/* Card chứa tiêu đề và các ô chọn */}
-    <Paper
-      sx={{
-        p: 2,
-        mb: 3,
-        borderRadius: 2,
-        backgroundColor: "#fff",
-        width: "100%",
-        maxWidth: 970,
-        position: "relative",
-      }}
-      elevation={3}
-    >
-      {/* Icon mở/lưu ở góc trên trái */}
-      <Stack direction="row" spacing={0.2} sx={{ position: "absolute", top: 8, left: 8 }}>
-        <IconButton onClick={fetchQuizList} sx={{ color: "#1976d2" }}>
-          <FolderOpenIcon />
-        </IconButton>
-        <IconButton onClick={handleSaveAll} sx={{ color: "#1976d2" }}>
-          <SaveIcon />
-        </IconButton>
-      </Stack>
-
-      {/* Tiêu đề căn giữa */}
-      <Typography
-        variant="h5"
-        fontWeight="bold"
-        sx={{ textAlign: "center", mb: 3, color: "#1976d2", textTransform: "uppercase" }}
-      >
-        Soạn đề trắc nghiệm
-      </Typography>
-
-      {/* Stack chứa các ô chọn */}
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        justifyContent="center"
-      >
-        <FormControl size="small" sx={{ width: 130 }}>
-          <InputLabel>Lớp</InputLabel>
-          <Select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} label="Lớp">
-            {classes.map((lop) => (
-              <MenuItem key={lop} value={lop}>
-                {lop}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={{ width: 130 }}>
-          <InputLabel>Môn học</InputLabel>
-          <Select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} label="Môn học">
-            {subjects.map((mon) => (
-              <MenuItem key={mon} value={mon}>
-                {mon}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={{ width: 130 }}>
-          <InputLabel>Học kỳ</InputLabel>
-          <Select value={semester} label="Học kỳ" onChange={(e) => setSemester(e.target.value)}>
-            {Object.keys(hocKyMap).map((hk) => (
-              <MenuItem key={hk} value={hk}>
-                {hk}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={{ width: 130 }}>
-          <InputLabel>Tuần</InputLabel>
-          <Select
-            value={week}
-            label="Tuần"
-            onChange={(e) => setWeek(Number(e.target.value))}
-          >
-            {semester &&
-              Array.from(
-                { length: hocKyMap[semester].to - hocKyMap[semester].from + 1 },
-                (_, i) => i + hocKyMap[semester].from
-              ).map((t) => (
-                <MenuItem key={t} value={t}>
-                  Tuần {t}
+        {/* Stack chứa các ô chọn */}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          justifyContent="center"
+        >
+          <FormControl size="small" sx={{ width: 130 }}>
+            <InputLabel>Lớp</InputLabel>
+            <Select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} label="Lớp">
+              {classes.map((lop) => (
+                <MenuItem key={lop} value={lop}>
+                  {lop}
                 </MenuItem>
               ))}
-          </Select>
-        </FormControl>
-      </Stack>
-    </Paper>
+            </Select>
+          </FormControl>
 
-    {/* Danh sách câu hỏi */}
-    <Stack spacing={2} sx={{ width: "100%", maxWidth: 1000 }}>
-      {questions.map((q, qi) => (
-        <Paper key={q.id} sx={{ p: 3, borderRadius: 2 }} elevation={2}>
-          <Stack spacing={1}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Typography variant="h6">Câu {qi + 1}</Typography>
+          <FormControl size="small" sx={{ width: 130 }}>
+            <InputLabel>Môn học</InputLabel>
+            <Select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} label="Môn học">
+              {subjects.map((mon) => (
+                <MenuItem key={mon} value={mon}>
+                  {mon}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-                <FormControl size="small" sx={{ width: 150 }}>
-                  <InputLabel>Loại câu hỏi</InputLabel>
-                  <Select
-                    value={q.type}
+          <FormControl size="small" sx={{ width: 130 }}>
+            <InputLabel>Học kỳ</InputLabel>
+            <Select value={semester} label="Học kỳ" onChange={(e) => setSemester(e.target.value)}>
+              {Object.keys(hocKyMap).map((hk) => (
+                <MenuItem key={hk} value={hk}>
+                  {hk}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" sx={{ width: 130 }}>
+            <InputLabel>Tuần</InputLabel>
+            <Select
+              value={week}
+              label="Tuần"
+              onChange={(e) => setWeek(Number(e.target.value))}
+            >
+              {semester &&
+                Array.from(
+                  { length: hocKyMap[semester].to - hocKyMap[semester].from + 1 },
+                  (_, i) => i + hocKyMap[semester].from
+                ).map((t) => (
+                  <MenuItem key={t} value={t}>
+                    Tuần {t}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+        </Stack>
+      </Paper>
+
+      {/* Danh sách câu hỏi */}
+      <Stack spacing={2} sx={{ width: "100%", maxWidth: 1000 }}>
+        {questions.map((q, qi) => (
+          <Paper key={q.id} sx={{ p: 3, borderRadius: 2 }} elevation={2}>
+            <Stack spacing={1}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Typography variant="h6">Câu {qi + 1}</Typography>
+
+                  <FormControl size="small" sx={{ width: 150 }}>
+                    <InputLabel>Loại câu hỏi</InputLabel>
+                    <Select
+                      value={q.type}
+                      onChange={(e) =>
+                        updateQuestionAt(qi, {
+                          type: e.target.value,
+                          correct: e.target.value === "single" ? null : [],
+                        })
+                      }
+                      label="Loại câu hỏi"
+                    >
+                      <MenuItem value="single">1 đáp án</MenuItem>
+                      <MenuItem value="multiple">Nhiều đáp án</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    label="Điểm"
+                    type="number"
+                    size="small"
+                    value={q.score ?? 1}
                     onChange={(e) =>
                       updateQuestionAt(qi, {
-                        type: e.target.value,
-                        correct: e.target.value === "single" ? null : [],
+                        score: parseFloat(e.target.value) || 1,
                       })
                     }
-                    label="Loại câu hỏi"
-                  >
-                    <MenuItem value="single">1 đáp án</MenuItem>
-                    <MenuItem value="multiple">Nhiều đáp án</MenuItem>
-                  </Select>
-                </FormControl>
-
-                <TextField
-                  label="Điểm"
-                  type="number"
-                  size="small"
-                  value={q.score ?? 1}
-                  onChange={(e) =>
-                    updateQuestionAt(qi, {
-                      score: parseFloat(e.target.value) || 1,
-                    })
-                  }
-                  sx={{ width: 80 }}
-                />
-
-                <FormControl size="small" sx={{ width: 120 }}>
-                  <InputLabel>Kiểu sắp xếp</InputLabel>
-                  <Select
-                    value={q.sortType || "fixed"}
-                    onChange={(e) => updateQuestionAt(qi, { sortType: e.target.value })}
-                    label="Kiểu sắp xếp"
-                  >
-                    <MenuItem value="fixed">Cố định</MenuItem>
-                    <MenuItem value="shuffle">Đảo câu</MenuItem>
-                  </Select>
-                </FormControl>
-              </Stack>
-
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography sx={{ color: isQuestionValid(q) ? "green" : "red" }}>
-                  {isQuestionValid(q) ? "Hợp lệ" : "Chưa hợp lệ"}
-                </Typography>
-                <IconButton onClick={() => handleDeleteQuestion(qi)}>
-                  <DeleteIcon color="error" />
-                </IconButton>
-              </Stack>
-            </Stack>
-
-            <TextField
-              fullWidth
-              multiline
-              placeholder="Nhập nội dung câu hỏi..."
-              value={q.question}
-              onChange={(e) => updateQuestionAt(qi, { question: e.target.value })}
-              size="small"
-            />
-
-            <Stack spacing={0.5}>
-              {q.options.map((opt, oi) => (
-                <Stack key={oi} direction="row" spacing={1} alignItems="flex-start">
-                  {q.type === "single" ? (
-                    <Radio
-                      checked={q.correct === oi}
-                      onChange={() => updateQuestionAt(qi, { correct: oi })}
-                      sx={{ mt: 0.5, p: 0 }}
-                    />
-                  ) : (
-                    <Checkbox
-                      checked={Array.isArray(q.correct) && q.correct.includes(oi)}
-                      onChange={() => {
-                        const prev = Array.isArray(q.correct) ? [...q.correct] : [];
-                        updateQuestionAt(qi, {
-                          correct: prev.includes(oi)
-                            ? prev.filter((x) => x !== oi)
-                            : [...prev, oi],
-                        });
-                      }}
-                      sx={{ mt: 0.5, p: 0 }}
-                    />
-                  )}
-                  <TextField
-                    fullWidth
-                    placeholder={`Phương án ${oi + 1}`}
-                    value={opt}
-                    onChange={(e) => {
-                      const opts = [...q.options];
-                      opts[oi] = e.target.value;
-                      updateQuestionAt(qi, { options: opts });
-                    }}
-                    size="small"
+                    sx={{ width: 80 }}
                   />
+
+                  <FormControl size="small" sx={{ width: 120 }}>
+                    <InputLabel>Kiểu sắp xếp</InputLabel>
+                    <Select
+                      value={q.sortType || "fixed"}
+                      onChange={(e) => updateQuestionAt(qi, { sortType: e.target.value })}
+                      label="Kiểu sắp xếp"
+                    >
+                      <MenuItem value="fixed">Cố định</MenuItem>
+                      <MenuItem value="shuffle">Đảo câu</MenuItem>
+                    </Select>
+                  </FormControl>
                 </Stack>
-              ))}
+
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography sx={{ color: isQuestionValid(q) ? "green" : "red" }}>
+                    {isQuestionValid(q) ? "Hợp lệ" : "Chưa hợp lệ"}
+                  </Typography>
+                  <IconButton onClick={() => handleDeleteQuestion(qi)}>
+                    <DeleteIcon color="error" />
+                  </IconButton>
+                </Stack>
+              </Stack>
+
+              <TextField
+                fullWidth
+                multiline
+                placeholder="Nhập nội dung câu hỏi..."
+                value={q.question}
+                onChange={(e) => updateQuestionAt(qi, { question: e.target.value })}
+                size="small"
+                InputProps={{
+                  sx: {
+                    fontWeight: "bold", // in đậm
+                  },
+                }}
+              />
+
+              <Stack spacing={0.5}>
+                {q.options.map((opt, oi) => (
+                  <Stack key={oi} direction="row" spacing={1} alignItems="flex-start">
+                    {q.type === "single" ? (
+                      <Radio
+                        checked={q.correct === oi}
+                        onChange={() => updateQuestionAt(qi, { correct: oi })}
+                        sx={{ mt: 0.5, p: 0 }}
+                      />
+                    ) : (
+                      <Checkbox
+                        checked={Array.isArray(q.correct) && q.correct.includes(oi)}
+                        onChange={() => {
+                          const prev = Array.isArray(q.correct) ? [...q.correct] : [];
+                          updateQuestionAt(qi, {
+                            correct: prev.includes(oi)
+                              ? prev.filter((x) => x !== oi)
+                              : [...prev, oi],
+                          });
+                        }}
+                        sx={{ mt: 0.5, p: 0 }}
+                      />
+                    )}
+                    <TextField
+                      fullWidth
+                      placeholder={`Phương án ${oi + 1}`}
+                      value={opt}
+                      onChange={(e) => {
+                        const opts = [...q.options];
+                        opts[oi] = e.target.value;
+                        updateQuestionAt(qi, { options: opts });
+                      }}
+                      size="small"
+                    />
+                  </Stack>
+                ))}
+              </Stack>
             </Stack>
-          </Stack>
-        </Paper>
-      ))}
+          </Paper>
+        ))}
 
-      <Stack direction="row" spacing={2}>
-        <Button variant="contained" onClick={handleAddQuestion}>
-          Thêm câu hỏi
-        </Button>
-        <Button variant="outlined" color="secondary" onClick={handleSaveAll} disabled={questions.length === 0}>
-          Lưu đề
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button variant="contained" onClick={handleAddQuestion}>
+            Thêm câu hỏi
+          </Button>
+          <Button variant="outlined" color="secondary" onClick={handleSaveAll} disabled={questions.length === 0}>
+            Lưu đề
+          </Button>
+        </Stack>
       </Stack>
-    </Stack>
 
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={4000}
-      onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-    >
-      <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-    </Snackbar>
-  </Box>
-);
-
-
-
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
+    </Box>
+  );
 }
