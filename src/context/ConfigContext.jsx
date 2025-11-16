@@ -13,6 +13,7 @@ export const ConfigProvider = ({ children }) => {
     lop: "",
     tracNghiem: false,
     deTracNghiem: "",
+    timeLimit: 1, // ✅ Thêm thời gian mặc định 15 phút
   };
 
   const storedConfig = JSON.parse(localStorage.getItem("appConfig") || "{}");

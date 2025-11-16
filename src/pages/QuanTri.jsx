@@ -15,6 +15,7 @@ import {
   Checkbox, 
   FormControlLabel,
 } from "@mui/material";
+import TextField from "@mui/material/TextField";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import BackupIcon from "@mui/icons-material/Backup";
@@ -27,6 +28,8 @@ import { ConfigContext } from "../context/ConfigContext";
 import { StudentContext } from "../context/StudentContext";
 import { fetchAllBackup, exportBackupToJson } from "../utils/backupFirestore";
 import { restoreAllFromJson } from "../utils/restoreFirestore";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 export default function QuanTri() {
   // 🔹 File, thông báo, progress chung
@@ -146,6 +149,12 @@ const [subject, setSubject] = useState("Tin học");
     const newWeek = e.target.value;
     setSelectedWeek(newWeek);
     setConfig({ tuan: newWeek });
+  };
+
+  const handleTimeLimitChange = async (newValue) => {
+    const value = Math.max(1, Number(newValue)); // đảm bảo ≥ 1
+    setTimeInput(value);                          // cập nhật state local
+    await setConfig({ timeLimit: value });       // cập nhật context + Firestore
   };
 
   const handleTracNghiemChange = (e) => {
@@ -274,6 +283,27 @@ const [subject, setSubject] = useState("Tin học");
     }
   };
 
+  /*const increment = () => {
+    if (!config.tracNghiem) return;
+    const newValue = (timeInput || 1) + 1;
+    setTimeInput(newValue);
+    setConfig(prev => ({ ...prev, timeLimit: newValue }));
+  };
+
+  const decrement = () => {
+    if (!config.tracNghiem) return;
+    const newValue = Math.max(1, (timeInput || 1) - 1);
+    setTimeInput(newValue);
+    setConfig(prev => ({ ...prev, timeLimit: newValue }));
+  };*/
+
+  const [timeInput, setTimeInput] = useState(0);
+  useEffect(() => {
+    if (config.timeLimit !== undefined) {
+      setTimeInput(config.timeLimit);
+    }
+  }, [config.timeLimit]);
+
 
   // 🔹 UI
   return (
@@ -368,20 +398,35 @@ const [subject, setSubject] = useState("Tin học");
                   </MenuItem>
                 ))}
               </Select>
-            </FormControl>
-            
+            </FormControl>            
           </Box>
-          <Box sx={{ mt: 1 }}>
+          
+          <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
             <FormControlLabel
               control={
                 <Checkbox
-                  checked={config.tracNghiem || false} // nếu chưa có key thì mặc định false
-                  onChange={(e) => setConfig({ tracNghiem: e.target.checked })}
+                  checked={config.tracNghiem || false}
+                  onChange={(e) =>
+                    setConfig(prev => ({ ...prev, tracNghiem: e.target.checked }))
+                  }
                   color="primary"
                 />
               }
               label="Làm trắc nghiệm"
             />
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <TextField
+                label="Thời gian (phút)"
+                type="number"
+                size="small"
+                disabled={!config.tracNghiem}
+                value={timeInput}
+                onChange={(e) => handleTimeLimitChange(e.target.value)}
+                inputProps={{ min: 1, style: { textAlign: "center", width: 100 } }}
+              />
+            </Box>
+
           </Box>
         </Stack>
 

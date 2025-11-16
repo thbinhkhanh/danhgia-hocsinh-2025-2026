@@ -14,7 +14,6 @@ import {
   Tooltip,
   Snackbar, 
   Alert,
-  Divider,
 } from "@mui/material";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
@@ -26,7 +25,6 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 
 import Dialog from "@mui/material/Dialog";
@@ -69,48 +67,12 @@ export default function TracNghiem() {
   const { studentId, studentName, studentClass, selectedWeek, mon } = location.state || {};
   const navigate = useNavigate(); // dùng để điều hướng về trang trước
 
-  const [started, setStarted] = useState(false); // đã bấm Bắt đầu chưa
-  //const [timeLeft, setTimeLeft] = useState(0); // giây còn lại
-  
-
   // dùng studentName và studentClass thay cho studentInfo cứng
   const studentInfo = {
     name: studentName || "Họ và tên: Test",
     class: studentClass || "Test"
   };
 
-  const [timeLeft, setTimeLeft] = useState(0); // khởi tạo tạm 0
-
-  // Đồng bộ với config.timeLimit khi nó thay đổi
-  useEffect(() => {
-    if (config?.timeLimit) {
-      setTimeLeft(config.timeLimit * 60); // phút → giây
-    }
-  }, [config?.timeLimit]);
-
-
-  // Timer chạy khi started = true
-  useEffect(() => {
-    if (!started || submitted) return; // chưa bắt đầu hoặc đã nộp -> dừng
-
-    if (timeLeft <= 0) {
-      autoSubmit(); // hết giờ -> tự động nộp
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [started, timeLeft, submitted]);
-
-  // Hiển thị timeLeft phút:giây
-  const formatTime = (sec) => {
-    const m = Math.floor(sec / 60).toString().padStart(2, "0");
-    const s = (sec % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -285,67 +247,6 @@ export default function TracNghiem() {
     }
 };
 
-const autoSubmit = async () => {
-  if (!studentId || !studentClass || !selectedWeek) return;
-
-  try {
-    setSaving(true);
-
-    // 🔹 Tính điểm (bỏ qua câu chưa trả lời)
-    let total = 0;
-    const maxScore = questions.reduce((sum, q) => sum + (q.score ?? 1), 0);
-
-    questions.forEach(q => {
-      const userAnswer = answers[q.id];
-      if (q.type === "single" && userAnswer === q.correct) total += q.score ?? 1;
-      else if (q.type === "multiple") {
-        const correctSet = new Set(q.correct);
-        const userSet = new Set(userAnswer || []);
-        if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
-          total += q.score ?? 1;
-        }
-      }
-    });
-
-    const percent = maxScore > 0 ? Math.round((total / maxScore) * 100) : 0;
-    setScore(total);
-    setSubmitted(true);
-
-    // 🔹 Chuỗi kết quả
-    let resultText = "";
-    if (percent >= 75) resultText = "Hoàn thành tốt";
-    else if (percent >= 50) resultText = "Hoàn thành";
-    else resultText = "Chưa hoàn thành";
-
-    // 🔹 Lưu vào Firestore
-    const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
-    const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
-
-    await updateDoc(tuanRef, {
-      [`${studentId}.hoVaTen`]: studentName,
-      [`${studentId}.status`]: "",
-      [`${studentId}.diemTracNghiem`]: resultText,
-    }).catch(async (err) => {
-      if (err.code === "not-found") {
-        await setDoc(tuanRef, {
-          [studentId]: {
-            hoVaTen: studentName,
-            status: "",
-            diemTracNghiem: resultText,
-          },
-        });
-      } else throw err;
-    });
-
-    console.log(`✅ Đã lưu (auto): ${resultText} cho học sinh ${studentId}`);
-  } catch (err) {
-    console.error("❌ Lỗi khi lưu diemTracNghiem:", err);
-  } finally {
-    setSaving(false);
-  }
-};
-
-
 const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
 const handlePrev = () => currentIndex > 0 && setCurrentIndex(currentIndex - 1);
 
@@ -364,14 +265,6 @@ const convertPercentToScore = (percent) => {
     return rounded;
 };
 
-// Đồng bộ với config.timeLimit
-useEffect(() => {
-  if (config.timeLimit) {
-    setTimeLeft(config.timeLimit * 60); // mỗi phút = 60 giây
-  }
-}, [config.timeLimit]);
-
-
 return (
   <Box
     sx={{
@@ -386,11 +279,11 @@ return (
   >
     <Paper
       sx={{
-        p: { xs: 2, sm: 4 },
+        p: { xs: 2, sm: 4 },                // giảm padding trên mobile
         borderRadius: 3,
         width: "100%",
-        maxWidth: 1000,
-        minWidth: { xs: "auto", sm: 600 },
+        maxWidth: 1000,                     // giữ giới hạn trên desktop
+        minWidth: { xs: "auto", sm: 600 },  // co giãn hợp lý
         minHeight: { xs: "auto", sm: 500 },
         display: "flex",
         flexDirection: "column",
@@ -399,7 +292,7 @@ return (
         boxSizing: "border-box",
       }}
     >
-      {/* Nút thoát */}
+
       <Tooltip title="Thoát trắc nghiệm" arrow>
         <IconButton
           onClick={() => {
@@ -422,7 +315,6 @@ return (
         </IconButton>
       </Tooltip>
 
-      {/* Thông tin học sinh */}
       <Box
         sx={{
           p: 1.5,
@@ -439,65 +331,62 @@ return (
           zIndex: 2,
         }}
       >
-        <Typography variant="subtitle1" fontWeight="bold">
+        <Typography
+          variant="subtitle1"
+          fontWeight="bold"
+          sx={{ lineHeight: 1.4, fontSize: { xs: "0.95rem", sm: "1rem" } }}
+        >
           {studentInfo.name}
         </Typography>
-        <Typography variant="subtitle1" fontWeight="bold">
+        <Typography
+          variant="subtitle1"
+          fontWeight="bold"
+          sx={{ lineHeight: 1.4, fontSize: { xs: "0.95rem", sm: "1rem" } }}
+        >
           Lớp: {studentInfo.class}
         </Typography>
       </Box>
 
-      {/* Tiêu đề */}
       <Typography
         variant="h5"
         fontWeight="bold"
-        sx={{ color: "#1976d2", mb: { xs: 1, sm: -1 }, textAlign: "center" }}
+        sx={{
+          color: "#1976d2",
+          mb: { xs: 1, sm: 2 },
+          textAlign: "center",
+          fontSize: { xs: "1.2rem", sm: "1.5rem" },
+        }}
       >
         LUYỆN TẬP{quizClass ? ` - ${quizClass.toUpperCase()}` : ""}
       </Typography>
 
-      {/* Đồng hồ */}
-      {started && !loading && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 1,
-            mt: 0.5,  // khoảng cách trên, nhỏ hơn mặc định
-            mb: -1,    // khoảng cách dưới
-            px: 3,
-            py: 0.5,
-            borderRadius: 2,
-            width: "fit-content",
-            mx: "auto",
-            //bgcolor: "#fdecea",
-          }}
-        >
-          <AccessTimeIcon sx={{ color: "#d32f2f" }} />
-          <Typography variant="h6" sx={{ fontWeight: "bold", color: "#d32f2f" }}>
-            {formatTime(timeLeft)}
-          </Typography>
-        </Box>
-      )}
-
-      {/* Loading */}
       {loading && (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 1, width: "100%" }}>
           <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
-            <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
-            <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+              sx={{ height: 3, borderRadius: 3 }}
+            />
+            <Typography
+              variant="body2"
+              sx={{ mt: 0.5, textAlign: "center", fontSize: { xs: "0.8rem", sm: "0.9rem" } }}
+            >
               🔄 Đang tải... {progress}%
             </Typography>
           </Box>
         </Box>
       )}
 
-      {/* Câu hỏi */}
       {!loading && currentQuestion && (
         <>
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+          <div style={{ borderBottom: "1px solid #ccc", width: "100%", marginTop: 4 }} />
+
+          <Typography
+            variant="h6"
+            fontWeight="bold"
+            sx={{ mb: { xs: 1.5, sm: 2 }, fontSize: { xs: "1rem", sm: "1.1rem" } }}
+          >
             Câu {currentIndex + 1}: {currentQuestion.question}
           </Typography>
 
@@ -521,10 +410,18 @@ return (
                     control={<Radio />}
                     label={opt}
                     sx={{
-                      mb: 2,
-                      bgcolor: isCorrect ? "#c8e6c9" : isWrong ? "#ffcdd2" : "transparent",
+                      mb: { xs: 1, sm: 2 },
+                      bgcolor: isCorrect
+                        ? "#c8e6c9"
+                        : isWrong
+                        ? "#ffcdd2"
+                        : "transparent",
                       borderRadius: 1,
                       px: 1,
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: { xs: "0.95rem", sm: "1.1rem" },
+                        lineHeight: 1.4,
+                      },
                     }}
                     disabled={submitted}
                   />
@@ -536,7 +433,8 @@ return (
               {currentQuestion.options.map((opt, i) => {
                 const checked = answers[currentQuestion.id]?.includes(i) ?? false;
                 const isCorrect = submitted && currentQuestion.correct.includes(i);
-                const isWrong = submitted && checked && !currentQuestion.correct.includes(i);
+                const isWrong =
+                  submitted && checked && !currentQuestion.correct.includes(i);
                 return (
                   <FormControlLabel
                     key={i}
@@ -544,17 +442,29 @@ return (
                       <Checkbox
                         checked={checked}
                         onChange={(e) =>
-                          handleMultipleSelect(currentQuestion.id, i, e.target.checked)
+                          handleMultipleSelect(
+                            currentQuestion.id,
+                            i,
+                            e.target.checked
+                          )
                         }
                         disabled={submitted}
                       />
                     }
                     label={opt}
                     sx={{
-                      mb: 2,
-                      bgcolor: isCorrect ? "#c8e6c9" : isWrong ? "#ffcdd2" : "transparent",
+                      mb: { xs: 1, sm: 2 },
+                      bgcolor: isCorrect
+                        ? "#c8e6c9"
+                        : isWrong
+                        ? "#ffcdd2"
+                        : "transparent",
                       borderRadius: 1,
                       px: 1,
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: { xs: "0.95rem", sm: "1.1rem" },
+                        lineHeight: 1.4,
+                      },
                     }}
                   />
                 );
@@ -564,112 +474,113 @@ return (
         </>
       )}
 
-      {/* Stack chứa nút + điểm + đồng hồ */}
-      <Stack direction="column" sx={{ width: "100%", mt: 3 }} spacing={0}>
-        {/* Hàng nút Bắt đầu hoặc 2 nút + Điểm */}
-        {!started && !loading ? (
-          <Box sx={{ width: "100%", display: "flex", justifyContent: "center" }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setStarted(true)}
-              sx={{ width: { xs: "150px", sm: "150px" } }}
-            >
-              Bắt đầu
-            </Button>
-          </Box>
-        ) : null}
+      <Stack
+        direction="row"
+        justifyContent="space-between" // 👈 đẩy hai nút ra hai phía
+        alignItems="center"
+        mt={3}
+        sx={{ width: "100%" }}
+      >
+        {/* Nút Câu trước - bên trái */}
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
+          onClick={handlePrev}
+          disabled={currentIndex === 0}
+          sx={{
+            width: { xs: "150px", sm: "150px" }, // 👈 chiều rộng nhỏ gọn
+            bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
+            borderRadius: 2,
+            color: "#0d47a1",
+            "&:hover": {
+              bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9",
+            },
+          }}
+        >
+          Câu trước
+        </Button>
 
-        {/* Chỉ hiển thị câu trước/câu sau/nộp bài + đồng hồ khi đã start và đã load xong */}
-        {started && !loading && (
-          <>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
-              {/* Câu trước */}
-              <Button
-                variant="outlined"
-                startIcon={<ArrowBackIcon />}
-                onClick={handlePrev}
-                disabled={currentIndex === 0}
-                sx={{
-                  width: { xs: "150px", sm: "150px" },
-                  bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
-                  borderRadius: 1,
-                  color: "#0d47a1",
-                  "&:hover": { bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9" },
-                }}
-              >
-                Câu trước
-              </Button>
-
-              {/* Điểm của bạn */}
-              {!loading && submitted && (
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: "bold",
-                    color: "#1976d2",
-                    textAlign: "center",
-                    bgcolor: "#e3f2fd",
-                    px: 3,
-                    py: 1,
-                    borderRadius: 2,
-                    boxShadow: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    fontSize: { xs: "1rem", sm: "1.2rem" },
-                  }}
-                >
-                  {convertPercentToScore(
-                    Math.round(
-                      (score / questions.reduce((sum, q) => sum + (q.score ?? 1), 0)) * 100
-                    )
-                  ) >= 5 ? (
-                    <CheckCircleIcon sx={{ color: "#4caf50" }} />
-                  ) : (
-                    <HighlightOffIcon sx={{ color: "#f44336" }} />
-                  )}
-                  Điểm của bạn:{" "}
-                  {convertPercentToScore(
-                    Math.round(
-                      (score / questions.reduce((sum, q) => sum + (q.score ?? 1), 0)) * 100
-                    )
-                  )}
-                </Typography>
-              )}
-
-              {/* Câu sau / Nộp bài */}
-              {currentIndex < questions.length - 1 ? (
-                <Button
-                  variant="outlined"
-                  endIcon={<ArrowForwardIcon />}
-                  onClick={handleNext}
-                  sx={{
-                    width: { xs: "150px", sm: "150px" },
-                    bgcolor: "#bbdefb",
-                    borderRadius: 1,
-                    color: "#0d47a1",
-                    "&:hover": { bgcolor: "#90caf9" },
-                  }}
-                >
-                  Câu sau
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSubmit}
-                  disabled={submitted || isEmptyQuestion}
-                  sx={{ width: { xs: "120px", sm: "150px" }, borderRadius: 1 }}
-                >
-                  Nộp bài
-                </Button>
-              )}
-            </Stack>
-          </>
+        {/* Nút Câu sau hoặc Nộp bài - bên phải */}
+        {currentIndex < questions.length - 1 ? (
+          <Button
+            variant="outlined"
+            endIcon={<ArrowForwardIcon />}
+            onClick={handleNext}
+            sx={{
+              width: { xs: "150px", sm: "150px" },
+              bgcolor: "#bbdefb",
+              borderRadius: 2,
+              color: "#0d47a1",
+              "&:hover": { bgcolor: "#90caf9" },
+            }}
+          >
+            Câu sau
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSubmit}
+            disabled={submitted || isEmptyQuestion}
+            sx={{
+              width: { xs: "120px", sm: "150px" },
+              borderRadius: 2,
+            }}
+          >
+            Nộp bài
+          </Button>
         )}
       </Stack>
 
+      {!loading && submitted && (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            mb: 2,
+            mt: { xs: 2, sm: -7 },
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{
+              color: "#1976d2",
+              fontWeight: "bold",
+              textAlign: "center",
+              bgcolor: "#e3f2fd",
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              boxShadow: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              fontSize: { xs: "1rem", sm: "1.2rem" },
+            }}
+          >
+            {convertPercentToScore(
+              Math.round(
+                (score /
+                  questions.reduce((sum, q) => sum + (q.score ?? 1), 0)) *
+                  100
+              )
+            ) >= 5 ? (
+              <CheckCircleIcon sx={{ color: "#4caf50" }} />
+            ) : (
+              <HighlightOffIcon sx={{ color: "#f44336" }} />
+            )}
+            Điểm của bạn:{" "}
+            {convertPercentToScore(
+              Math.round(
+                (score /
+                  questions.reduce((sum, q) => sum + (q.score ?? 1), 0)) *
+                  100
+              )
+            )}
+          </Typography>
+        </Box>
+      )}
     </Paper>
 
     {/* Dialog cảnh báo nếu chưa chọn câu */}
@@ -790,8 +701,23 @@ return (
         </Button>
       </DialogActions>
     </Dialog>
+
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={handleCloseSnackbar}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }} // ⬅ đổi vị trí
+    >
+      <Alert
+        onClose={handleCloseSnackbar}
+        severity={snackbar.severity}
+        sx={{ width: "100%" }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+
   </Box>
 );
-
 
 }
