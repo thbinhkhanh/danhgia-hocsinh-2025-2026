@@ -204,14 +204,19 @@ export default function TracNghiem() {
 
   const handleSubmit = async () => {
     if (!studentId || !studentClass || !selectedWeek) {
-        //console.warn("⚠️ Thiếu thông tin: studentId, studentClass hoặc selectedWeek");
-        setSnackbar({
+      // Reset open trước khi mở lại
+      setSnackbar(prev => ({ ...prev, open: false }));
+      // Mở snackbar sau khi reset
+      setTimeout(() => {
+        setSnackbar(prev => ({
+          ...prev,
           open: true,
           message: "Đây là trang test",
           severity: "info",
-        });
+        }));
+      }, 50);
 
-        return;
+      return;
     }
 
     // 🔹 Kiểm tra câu hỏi chưa trả lời
@@ -790,8 +795,21 @@ return (
         </Button>
       </DialogActions>
     </Dialog>
+
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={handleCloseSnackbar}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }} // ⬅ đổi vị trí
+    >
+      <Alert
+        onClose={handleCloseSnackbar}
+        severity={snackbar.severity}
+        sx={{ width: "100%" }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
   </Box>
 );
-
-
 }
