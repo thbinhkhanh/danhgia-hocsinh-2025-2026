@@ -12,6 +12,8 @@ import {
   LinearProgress,
   IconButton,
   Tooltip,
+  Snackbar, 
+  Alert,
 } from "@mui/material";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
@@ -151,10 +153,28 @@ export default function TracNghiem() {
     });
   };
 
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info", // info | success | warning | error
+  });
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === "clickaway") return;
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+
 
   const handleSubmit = async () => {
     if (!studentId || !studentClass || !selectedWeek) {
-        console.warn("⚠️ Thiếu thông tin: studentId, studentClass hoặc selectedWeek");
+        //console.warn("⚠️ Thiếu thông tin: studentId, studentClass hoặc selectedWeek");
+        setSnackbar({
+          open: true,
+          message: "Đây là trang test",
+          severity: "info",
+        });
+
         return;
     }
 
@@ -685,6 +705,22 @@ return (
         </Button>
       </DialogActions>
     </Dialog>
+
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={handleCloseSnackbar}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }} // ⬅ đổi vị trí
+    >
+      <Alert
+        onClose={handleCloseSnackbar}
+        severity={snackbar.severity}
+        sx={{ width: "100%" }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+
   </Box>
 );
 
