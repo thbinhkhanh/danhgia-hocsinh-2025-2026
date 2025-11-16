@@ -76,69 +76,45 @@ export default function TongHopDanhGia() {
   // -> Trả thêm tỉ lệ số T (để xét ưu tiên xếp loại tốt)
   function tinhDiemTrungBinhTheoKhoang(statusByWeek, from, to) {
     const diemMap = { T: 3, H: 2, C: 1 };
-    let tong = 0, dem = 0;
+    let tong = 0, dem = 0, demT = 0;
 
     for (let i = from; i <= to; i++) {
       const weekId = `tuan_${i}`;
-      const raw = statusByWeek?.[weekId];
+      const status = statusByWeek?.[weekId] || "";
+      const short =
+        status === "Hoàn thành tốt"
+          ? "T"
+          : status === "Hoàn thành"
+          ? "H"
+          : status === "Chưa hoàn thành"
+          ? "C"
+          : "";
 
-      // Lấy cả HS và GV
-      let hs = "";
-      let gv = "";
-
-      if (raw) {
-        if (typeof raw === "object") {
-          hs = raw.hs || "";
-          gv = raw.gv || "";
-        } else {
-          hs = raw;
-        }
-      }
-
-      const toShort = (statusStr) =>
-        statusStr === "Hoàn thành tốt" ? "T" :
-        statusStr === "Hoàn thành" ? "H" :
-        statusStr === "Chưa hoàn thành" ? "C" : "";
-
-      const hsShort = toShort(hs);
-      const gvShort = toShort(gv);
-
-      // Nếu cả HS và GV đều rỗng → bỏ qua
-      if (!hsShort && !gvShort) continue;
-
-      // Nếu chỉ 1 trong 2 có → dùng giá trị đó
-      if (hsShort && !gvShort) {
-        tong += diemMap[hsShort];
+      if (short && diemMap[short]) {
+        tong += diemMap[short];
         dem++;
-      } else if (!hsShort && gvShort) {
-        tong += diemMap[gvShort];
-        dem++;
-      } else {
-        // Cả HS + GV đều có → lấy trung bình
-        tong += (diemMap[hsShort] + diemMap[gvShort]) / 2;
-        dem++;
+        if (short === "T") demT++;
       }
     }
 
     const diemTB = dem > 0 ? tong / dem : null;
+    const tyLeT = dem > 0 ? demT / dem : 0;
 
-    return { diemTB };
+    return { diemTB, tyLeT };
   }
-
-
 
   // Đánh giá học sinh & sinh nhận xét
   function danhGiaHocSinh(student, from, to) {
-    const { diemTB } = tinhDiemTrungBinhTheoKhoang(student.statusByWeek, from, to);
+    const { diemTB, tyLeT } = tinhDiemTrungBinhTheoKhoang(student.statusByWeek, from, to);
 
     if (diemTB === null)
       return { xepLoai: "", nhanXet: "" }; // Không hiển thị nếu chưa có dữ liệu
 
-    const nhanXetMuc = getNhanXetMuc(selectedSubject);
+    const nhanXetMuc = getNhanXetMuc(selectedSubject); // ✅ truyền state vào
     let xepLoaiDayDu, nhanXet;
 
-    // Xếp loại dựa vào điểm trung bình
-    if (diemTB >= 2.8) {
+    // Ưu tiên: ≥50% T -> Tốt
+    if (tyLeT >= 0.5 || diemTB >= 2.8) {
       xepLoaiDayDu = "Tốt";
       nhanXet = randomItem(nhanXetMuc.tot);
     } else if (diemTB >= 2.0) {
@@ -152,7 +128,8 @@ export default function TongHopDanhGia() {
       nhanXet = randomItem(nhanXetMuc.yeu);
     }
 
-    // Rút gọn loại hiển thị: Tốt → T | Khá/Trung bình → H | Yếu → C
+    // 🔹 Rút gọn loại hiển thị:
+    // Tốt → T | Khá, Trung bình → H | Yếu → C
     let xepLoaiRutGon =
       xepLoaiDayDu === "Tốt"
         ? "T"
@@ -162,7 +139,6 @@ export default function TongHopDanhGia() {
 
     return { xepLoai: xepLoaiRutGon, nhanXet };
   }
-
 
   function getNhanXetMuc(subject) {
     return subject === "Công nghệ" ? nhanXetCongNghe : nhanXetTinHoc;
@@ -358,9 +334,10 @@ const fetchStudentsAndStatus = async () => {
     const selectedSemester = config.hocKy || "Giữa kỳ I";
     const termDoc = mapTerm[selectedSemester] || "CN";
 
-    const listKey = selectedClass; 
-    const classKey = selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-    const cacheKey = `${selectedClass}_${selectedSubject}`;
+    // ✅ Sửa ở đây:
+    const listKey = selectedClass; // DANHSACH luôn không có _CN
+    const classKey = selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass; // DGTX, KTDK có thể có _CN
+    const cacheKey = `${selectedClass}_${selectedSubject}`; // cache tách riêng từng môn
 
     const cachedData = studentData[cacheKey];
     if (cachedData && cachedData.length > 0) {
@@ -370,7 +347,7 @@ const fetchStudentsAndStatus = async () => {
       return;
     }
 
-    // Bước 1: Lấy danh sách học sinh
+    // 🔹 Bước 1: Lấy danh sách học sinh từ DANHSACH (chỉ dùng listKey)
     const danhSachSnap = await getDoc(doc(db, "DANHSACH", listKey));
     let studentList = [];
     if (danhSachSnap.exists()) {
@@ -385,20 +362,20 @@ const fetchStudentsAndStatus = async () => {
       }));
     }
 
-    // Bước 2: Lấy dữ liệu tuần và KTDK
+    // 🔹 Bước 2: Song song fetch dữ liệu tuần + KTDK (theo classKey)
     const [tuanSnap, bangDiemSnap] = await Promise.all([
       getDocs(collection(db, `DGTX/${classKey}/tuan`)),
       getDoc(doc(db, "KTDK", termDoc)),
     ]);
 
     // Gom dữ liệu tuần
-    const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 35 };
     const weekMap = {};
     if (!tuanSnap.empty) {
+      const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 35 };
       tuanSnap.forEach(docSnap => {
         if (docSnap.exists()) {
           const weekNum = parseInt(docSnap.id.replace(/\D/g, "")) || 0;
-          if (weekNum >= weekFrom && weekNum <= weekTo) {
+          if (weekNum >= weekFrom && weekNum <= weekTo) { // 🔹 Lọc tuần theo học kỳ
             weekMap[docSnap.id] = docSnap.data();
           }
         }
@@ -411,11 +388,11 @@ const fetchStudentsAndStatus = async () => {
       return nA - nB;
     });
 
-    // Map học sinh theo maDinhDanh
+    // Map học sinh theo maDinhDanh từ DANHSACH
     const studentMap = {};
     studentList.forEach(s => studentMap[s.maDinhDanh] = { ...s });
 
-    // Merge dữ liệu tuần
+    // Merge dữ liệu tuần vào studentMap
     Object.entries(weekMap).forEach(([weekId, weekData]) => {
       Object.entries(weekData).forEach(([id, info]) => {
         if (!studentMap[id]) {
@@ -428,13 +405,7 @@ const fetchStudentsAndStatus = async () => {
             nhanXet: "",
           };
         }
-        const hsVal = info.status ?? info.mucdat ?? "";
-        const gvVal = info.diemTracNghiem ?? info.GV ?? "";
-
-        studentMap[id].statusByWeek[weekId] = {
-          hs: hsVal === "-" ? "" : hsVal,
-          gv: gvVal === "-" ? "" : gvVal,
-        };
+        studentMap[id].statusByWeek[weekId] = info.mucdat || info.status || "-";
       });
     });
 
@@ -449,25 +420,38 @@ const fetchStudentsAndStatus = async () => {
       });
     }
 
-    // Bước 3: Tính mức đạt, nhận xét tự động
+    // 🔹 Bước 3: Tính mức đạt, nhận xét tự động, sắp xếp và đánh số thứ tự
     const evaluatedList = Object.values(studentMap).map(s => {
-      const { xepLoai: dgtx } = danhGiaHocSinh(s, weekFrom, weekTo);
+      const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
+      const hs = xepLoai || "";
+      const gv = s.dgtx_gv || "";
+
+      let chung = "";
+      if (!gv) chung = hs;
+      else if (hs === "T" && gv === "T") chung = "T";
+      else if (hs === "H" && gv === "T") chung = "T";
+      else if (hs === "C" && gv === "T") chung = "H";
+      else if (hs === "T" && gv === "H") chung = "H";
+      else if (hs === "H" && gv === "H") chung = "H";
+      else if (hs === "C" && gv === "H") chung = "H";
+      else if (hs === "T" && gv === "C") chung = "H";
+      else if (hs === "H" && gv === "C") chung = "C";
+      else if (hs === "C" && gv === "C") chung = "C";
+      else chung = hs;
+
+      const dgtx = chung;
       const nhanXet = s.nhanXet?.trim() || getNhanXetTuDong(dgtx);
 
       const weekCols = sortedWeekIds.reduce((acc, weekId) => {
         const weekNum = parseInt(weekId.replace(/\D/g, "")) || weekId;
-        const raw = s.statusByWeek?.[weekId];
-        const hsVal = raw && typeof raw === "object" ? (raw.hs || "") : (raw || "");
-        const gvVal = raw && typeof raw === "object" ? (raw.gv || "") : "";
-        acc[`Tuan_${weekNum}_HS`] = hsVal || "-";
-        acc[`Tuan_${weekNum}_GV`] = gvVal || "-";
+        acc[`Tuan_${weekNum}`] = s.statusByWeek[weekId] || "-";
         return acc;
       }, {});
 
-      return { ...s, ...weekCols, xepLoai: dgtx, dgtx_gv: s.dgtx_gv, dgtx, nhanXet };
+      return { ...s, ...weekCols, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
     });
 
-    // Sắp xếp theo tên cuối
+    // Sắp xếp theo tên cuối và đánh số thứ tự
     function getLastName(fullName) {
       const parts = fullName.trim().split(" ");
       return parts.length > 1 ? parts[parts.length - 1] : fullName;
@@ -495,7 +479,6 @@ const fetchStudentsAndStatus = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
-
 
 const fetchStudentsDGTX = async () => {
   if (!selectedClass) return;
@@ -513,29 +496,41 @@ const fetchStudentsDGTX = async () => {
     const selectedSemester = config.hocKy || "Giữa kỳ I";
     const termDoc = mapTerm[selectedSemester] || "CN";
 
-    const classKey = selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-    const cacheKey = `${selectedClass}_${selectedSubject}`;
+    // ✅ Sửa tại đây:
+    const listKey = selectedClass; // DANHSACH luôn không có _CN
+    const classKey =
+      selectedSubject === "Công nghệ" ? `${selectedClass}_CN` : selectedClass; // DGTX, KTDK có thể có _CN
+    const cacheKey = `${selectedClass}_${selectedSubject}`; // cache tách theo môn
 
-    // Lấy danh sách học sinh hiện có trong state (không fetch lại)
-    const existingStudents = studentData[cacheKey] || [];
-    if (!existingStudents || existingStudents.length === 0) {
-      setLoadingMessage("❌ Chưa có dữ liệu học sinh, vui lòng load danh sách trước!");
-      return;
+    // 🔹 Bước 1: Lấy danh sách học sinh từ DANHSACH
+    const danhSachSnap = await getDoc(doc(db, "DANHSACH", listKey));
+    let studentList = [];
+    if (danhSachSnap.exists()) {
+      const data = danhSachSnap.data();
+      studentList = Object.entries(data).map(([id, info]) => ({
+        maDinhDanh: id,
+        hoVaTen: info.hoVaTen || "",
+        statusByWeek: {},
+        status: "",
+        dgtx_gv: "",
+        nhanXet: "",
+      }));
     }
 
-    // Bước 1: Lấy dữ liệu tuần + KTDK
+    // 🔹 Bước 2: Song song fetch dữ liệu tuần + KTDK
     const [tuanSnap, bangDiemSnap] = await Promise.all([
       getDocs(collection(db, `DGTX/${classKey}/tuan`)),
       getDoc(doc(db, "KTDK", termDoc)),
     ]);
 
-    const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 35 };
+    // Gom dữ liệu tuần
     const weekMap = {};
     if (!tuanSnap.empty) {
+      const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 35 };
       tuanSnap.forEach(docSnap => {
         if (docSnap.exists()) {
           const weekNum = parseInt(docSnap.id.replace(/\D/g, "")) || 0;
-          if (weekNum >= weekFrom && weekNum <= weekTo) {
+          if (weekNum >= weekFrom && weekNum <= weekTo) { // 🔹 Lọc tuần theo học kỳ
             weekMap[docSnap.id] = docSnap.data();
           }
         }
@@ -548,30 +543,31 @@ const fetchStudentsDGTX = async () => {
       return nA - nB;
     });
 
-    // Map học sinh hiện có
+    // Map học sinh theo maDinhDanh từ DANHSACH
     const studentMap = {};
-    existingStudents.forEach(s => {
-      studentMap[s.maDinhDanh] = { ...s, statusByWeek: {} };
-    });
+    studentList.forEach((s) => (studentMap[s.maDinhDanh] = { ...s }));
 
-    // Merge dữ liệu tuần
+    // Merge dữ liệu tuần vào studentMap
     Object.entries(weekMap).forEach(([weekId, weekData]) => {
       Object.entries(weekData).forEach(([id, info]) => {
-        if (!studentMap[id]) return; // chỉ merge cho học sinh đã có
-        const hsVal = info.status ?? info.mucdat ?? "";
-        const gvVal = info.diemTracNghiem ?? info.GV ?? "";
-
-        studentMap[id].statusByWeek[weekId] = {
-          hs: hsVal === "-" ? "" : hsVal,
-          gv: gvVal === "-" ? "" : gvVal,
-        };
+        if (!studentMap[id]) {
+          studentMap[id] = {
+            maDinhDanh: id,
+            hoVaTen: info.hoVaTen || "",
+            statusByWeek: {},
+            status: "",
+            dgtx_gv: "",
+            nhanXet: "",
+          };
+        }
+        studentMap[id].statusByWeek[weekId] = info.mucdat || info.status || "-";
       });
     });
 
     // Merge dữ liệu KTDK
     if (bangDiemSnap.exists()) {
       const classData = bangDiemSnap.data()[classKey] || {};
-      Object.keys(studentMap).forEach(id => {
+      Object.keys(studentMap).forEach((id) => {
         const s = studentMap[id];
         s.dgtx_gv = classData[id]?.dgtx_gv || "";
         s.nhanXet = classData[id]?.nhanXet || "";
@@ -579,27 +575,38 @@ const fetchStudentsDGTX = async () => {
       });
     }
 
-    // Bước 2: Tính mức đạt, nhận xét tự động và tạo cột tuần
-    const evaluatedList = Object.values(studentMap).map(s => {
-      const { xepLoai: dgtx } = danhGiaHocSinh(s, weekFrom, weekTo);
+    // 🔹 Bước 3: Tính mức đạt, nhận xét tự động, sắp xếp và đánh số thứ tự
+    const evaluatedList = Object.values(studentMap).map((s) => {
+      const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
+      const hs = xepLoai || "";
+      const gv = s.dgtx_gv || "";
+
+      let chung = "";
+      if (!gv) chung = hs;
+      else if (hs === "T" && gv === "T") chung = "T";
+      else if (hs === "H" && gv === "T") chung = "T";
+      else if (hs === "C" && gv === "T") chung = "H";
+      else if (hs === "T" && gv === "H") chung = "H";
+      else if (hs === "H" && gv === "H") chung = "H";
+      else if (hs === "C" && gv === "H") chung = "H";
+      else if (hs === "T" && gv === "C") chung = "H";
+      else if (hs === "H" && gv === "C") chung = "C";
+      else if (hs === "C" && gv === "C") chung = "C";
+      else chung = hs;
+
+      const dgtx = chung;
       const nhanXet = s.nhanXet?.trim() || getNhanXetTuDong(dgtx);
 
       const weekCols = sortedWeekIds.reduce((acc, weekId) => {
         const weekNum = parseInt(weekId.replace(/\D/g, "")) || weekId;
-        const raw = s.statusByWeek?.[weekId];
-        const hsVal = raw && typeof raw === "object" ? (raw.hs || "") : "";
-        const gvVal = raw && typeof raw === "object" ? (raw.gv || "") : "";
-        const hocSinh = hsVal || gvVal || "-"; // cột đánh giá chung HS
-        acc[`Tuan_${weekNum}_HS`] = hsVal || "-";
-        acc[`Tuan_${weekNum}_GV`] = gvVal || "-";
-        acc[`Tuan_${weekNum}_HocSinh`] = hocSinh;
+        acc[`Tuan_${weekNum}`] = s.statusByWeek[weekId] || "-";
         return acc;
       }, {});
 
-      return { ...s, ...weekCols, xepLoai: dgtx, dgtx_gv: s.dgtx_gv, dgtx, nhanXet };
+      return { ...s, ...weekCols, xepLoai: hs, dgtx_gv: gv, dgtx, nhanXet };
     });
 
-    // Sắp xếp theo tên cuối
+    // Sắp xếp theo tên cuối và đánh số thứ tự
     function getLastName(fullName) {
       const parts = fullName.trim().split(" ");
       return parts.length > 1 ? parts[parts.length - 1] : fullName;
@@ -613,14 +620,17 @@ const fetchStudentsDGTX = async () => {
       return a.hoVaTen.localeCompare(b.hoVaTen, "vi", { sensitivity: "base" });
     });
 
-    const finalList = evaluatedList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+    const finalList = evaluatedList.map((s, idx) => ({
+      ...s,
+      stt: idx + 1,
+    }));
 
-    setStudentData(prev => ({ ...prev, [cacheKey]: finalList }));
+    // ✅ Cập nhật UI và cache
+    setStudentData((prev) => ({ ...prev, [cacheKey]: finalList }));
     setStudents(finalList);
 
     setLoadingProgress(100);
     setTimeout(() => setLoadingMessage(""), 1500);
-
   } catch (err) {
     console.error(`❌ Lỗi khi lấy dữ liệu lớp "${selectedClass}":`, err);
     setStudents([]);
@@ -628,6 +638,7 @@ const fetchStudentsDGTX = async () => {
     setLoadingMessage("❌ Đã xảy ra lỗi khi tải dữ liệu!");
   }
 };
+
 
 useEffect(() => {
   if (!selectedClass || !selectedSubject) return;
@@ -656,8 +667,7 @@ const getStatistics = () => {
   const weekId = `tuan_${selectedWeek}`;
 
   students.forEach((student) => {
-    const raw = student.statusByWeek?.[weekId];
-    const status = raw && typeof raw === "object" ? (raw.hs || "") : (raw || "");
+    const status = student.statusByWeek?.[weekId] || "";
     const short =
       status === "Hoàn thành tốt"
         ? "T"
@@ -700,7 +710,7 @@ return (
       sx={{
         p: 4,
         borderRadius: 3,
-        maxWidth: 1500,
+        maxWidth: 1420,
         mx: "auto",
         position: "relative",
       }}
@@ -761,10 +771,12 @@ return (
         NHẬN XÉT {selectedSemester ? `${selectedSemester}` : ""}
       </Typography>
 
+      {/*<Divider sx={{ mb: 3 }} />*/}
+
       {/* 🔹 Hàng chọn lớp và bộ lọc */}
       <Stack direction="row" spacing={2} justifyContent="center" alignItems="center" mb={3}>
         {/* Lớp */}
-        <FormControl size="small" sx={{ minWidth: 60 }}>
+        <FormControl size="small" sx={{ minWidth: 80 }}>
           <InputLabel id="lop-label">Lớp</InputLabel>
           <Select
             labelId="lop-label"
@@ -773,6 +785,8 @@ return (
             onChange={(e) => {
               const newClass = e.target.value;
               setSelectedClass(newClass);
+
+              // Reset dữ liệu học sinh cho lớp mới (cục bộ)
               setStudents((prev) =>
                 prev.map((s) => ({
                   ...s,
@@ -805,6 +819,8 @@ return (
             onChange={(e) => {
               const value = e.target.value;
               setSelectedSubject(value);
+
+              // Chỉ reload dữ liệu học sinh cục bộ
               fetchStudentsAndStatus();
             }}
           >
@@ -833,10 +849,9 @@ return (
           }}
         >
           <TableHead>
-            {/* HÀNG HEADER 1 — merge tuần */}
             <TableRow>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>STT</TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 200 }}>Họ và tên</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>STT</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220 }}>Họ và tên</TableCell>
 
               {showWeeks &&
                 (() => {
@@ -844,47 +859,29 @@ return (
                   return Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
                     const weekNum = startWeek + i;
                     return (
-                      <TableCell
-                        key={weekNum}
-                        align="center"
-                        colSpan={2}
-                        sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}
-                      >
+                      <TableCell key={weekNum} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>
                         Tuần {weekNum}
                       </TableCell>
                     );
                   });
                 })()}
 
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Học sinh</TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Giáo viên</TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Mức đạt</TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 300 }}>Nhận xét</TableCell>
-            </TableRow>
-
-            {/* HÀNG HEADER 2 — HS, GV */}
-            <TableRow>
-              {showWeeks &&
-                (() => {
-                  const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
-                  return Array.from({ length: endWeek - startWeek + 1 }, (_, i) => (
-                    <React.Fragment key={`sub-${i}`}>
-                      <TableCell align="center" sx={{ backgroundColor: "#42a5f5", color: "white", width: 30 }}>HS</TableCell>
-                      <TableCell align="center" sx={{ backgroundColor: "#42a5f5", color: "white", width: 30 }}>GV</TableCell>
-                    </React.Fragment>
-                  ));
-                })()}
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>Học sinh</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>Giáo viên</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 25 }}>Mức đạt</TableCell>
+              <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 350 }}>Nhận xét</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {students.map((student, idx) => {
+              // Kiểm tra tất cả tuần trong học kỳ có dữ liệu không
               const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
               const allWeeksEmpty = Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
                 const weekNum = startWeek + i;
                 const weekId = `tuan_${weekNum}`;
                 return student.statusByWeek?.[weekId];
-              }).every(status => !status);
+              }).every(status => !status); // true nếu tất cả trống
 
               return (
                 <TableRow key={student.maDinhDanh} hover>
@@ -895,32 +892,18 @@ return (
                     Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
                       const weekNum = startWeek + i;
                       const weekId = `tuan_${weekNum}`;
-                      const raw = student.statusByWeek?.[weekId];
-                      const hs = raw && typeof raw === "object" ? (raw.hs || "") : (raw || "");
-                      const gv = raw && typeof raw === "object" ? (raw.gv || "") : "";
-
-                      const toShort = (statusStr) =>
-                        statusStr === "Hoàn thành tốt" ? "T" :
-                        statusStr === "Hoàn thành" ? "H" :
-                        statusStr === "Chưa hoàn thành" ? "C" : "";
-
-                      const hsShort = toShort(hs);
-                      const gvShort = toShort(gv);
-
-                      return (
-                        <React.Fragment key={weekNum}>
-                          <TableCell align="center" sx={{ width: 30 }}>{hsShort}</TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{ width: 30, color: gvShort === "C" ? "#dc2626" : "#1976d2" }}
-                          >
-                            {gvShort}
-                          </TableCell>
-                        </React.Fragment>
-                      );
+                      const status = student.statusByWeek?.[weekId] || "";
+                      const statusShort =
+                        status === "Chưa hoàn thành" ? "C" :
+                        status === "Hoàn thành" ? "H" :
+                        status === "Hoàn thành tốt" ? "T" : "";
+                      return <TableCell key={weekNum} align="center">{statusShort}</TableCell>;
                     })}
 
-                  <TableCell align="center" sx={{ color: student.xepLoai === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>{allWeeksEmpty ? "" : student.xepLoai || ""}</TableCell>
+                  {/* 4 cột cuối chỉ hiển thị nếu allWeeksEmpty === false */}
+                  <TableCell align="center" sx={{ color: student.xepLoai === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
+                    {allWeeksEmpty ? "" : student.xepLoai || ""}
+                  </TableCell>
 
                   <TableCell align="center" sx={{ px: 1, color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
                     {allWeeksEmpty ? null : (
@@ -979,7 +962,9 @@ return (
                     )}
                   </TableCell>
 
-                  <TableCell align="center" sx={{ color: student.dgtx === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>{allWeeksEmpty ? "" : student.dgtx || ""}</TableCell>
+                  <TableCell align="center" sx={{ color: student.dgtx === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
+                    {allWeeksEmpty ? "" : student.dgtx || ""}
+                  </TableCell>
 
                   <TableCell align="left" sx={{ px: 1 }}>
                     {allWeeksEmpty ? null : (
@@ -1031,6 +1016,7 @@ return (
               label="Tuần"
               onChange={(e) => setSelectedWeek(Number(e.target.value))}
             >
+              {/* Chỉ hiển thị tuần theo học kỳ */}
               {Array.from(
                 { length: endWeek - startWeek + 1 },
                 (_, i) => startWeek + i
@@ -1060,24 +1046,18 @@ return (
           <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
         </Stack>
       </Box>
+
+
     </Card>
 
     {/* Snackbar */}
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={3000}
-      onClose={() => setSnackbar({ ...snackbar, open: false })}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-    >
-      <Alert
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        severity={snackbar.severity}
-        sx={{ width: "100%", boxShadow: 3, borderRadius: 2, fontSize: "0.9rem" }}
-      >
+    <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
+      <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: "100%", boxShadow: 3, borderRadius: 2, fontSize: "0.9rem" }}>
         {snackbar.message}
       </Alert>
     </Snackbar>
   </Box>
 );
+
 
 }

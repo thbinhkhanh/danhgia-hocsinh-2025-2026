@@ -147,7 +147,6 @@ useEffect(() => {
     }
   }, []);
 
-
   // 🔹 Lưu config vào localStorage khi thay đổi
   useEffect(() => {
     const cfg = {
@@ -175,13 +174,19 @@ useEffect(() => {
   const handleCreateNewQuiz = () => {
     setSelectedDoc(null);
     setQuestions([createEmptyQuestion()]);
-    updateQuizConfig({ deTracNghiem: null }); // nếu dùng context
+    updateQuizConfig({ deTracNghiem: null });
     setIsEditingNewDoc(true);
-    setSnackbar({
-      open: true,
-      message: "🆕 Đang soạn đề mới",
-      severity: "info",
-    });
+
+    setSelectedClass("");
+    setSelectedSubject("");
+
+    localStorage.setItem("teacherQuiz", JSON.stringify([createEmptyQuestion()]));
+    localStorage.setItem("teacherConfig", JSON.stringify({
+      selectedClass: "",
+      selectedSubject: "",
+      semester: "",
+      week: 1
+    }));
   };
 
   const handleAddQuestion = () => setQuestions((prev) => [...prev, createEmptyQuestion()]);
@@ -353,11 +358,11 @@ const handleOpenSelectedDoc = async () => {
       localStorage.setItem("teacherQuiz", JSON.stringify(data.questions));
 
       // 🔹 Hiển thị thông báo
-      setSnackbar({
+      /*setSnackbar({
         open: true,
         message: `✅ Đã mở đề: ${data.class} - ${data.subject} - Tuần ${data.week}`,
         severity: "success",
-      });
+      });*/
 
       // 🔹 Đóng dialog
       setOpenDialog(false);
@@ -506,15 +511,16 @@ return (
       </Typography>
 
       <Typography
-        variant="subtitle1"
-        textAlign="center"
-        fontWeight="bold"
-        sx={{ color: "text.secondary", mb: 3 }}
-      >
-        {isEditingNewDoc
-          ? "🆕 Đang soạn đề mới"
-          : `📝 Đề: ${selectedClass} - ${selectedSubject} - Tuần ${week}`}
-      </Typography>
+  variant="subtitle1"
+  textAlign="center"
+  fontWeight="bold"
+  sx={{ color: "text.secondary", mb: 3 }}
+>
+  {isEditingNewDoc || !selectedClass || !selectedSubject
+    ? "🆕 Đang soạn đề mới"
+    : `📝 Đề: ${selectedClass} - ${selectedSubject} - Tuần ${week}`}
+</Typography>
+
 
       {/* FORM LỚP / MÔN / HỌC KỲ / TUẦN */}
       <Paper elevation={2} sx={{ p: 2, mb: 3 }}>

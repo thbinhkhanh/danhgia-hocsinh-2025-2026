@@ -154,86 +154,109 @@ export default function TracNghiem() {
 
   const handleSubmit = async () => {
     if (!studentId || !studentClass || !selectedWeek) {
-        console.warn("⚠️ Thiếu thông tin: studentId, studentClass hoặc selectedWeek");
-        return;
+      console.warn("⚠️ Thiếu thông tin: studentId, studentClass hoặc selectedWeek");
+      return;
     }
 
     // 🔹 Kiểm tra câu hỏi chưa trả lời
     const unanswered = questions.filter(q => {
-        const userAnswer = answers[q.id];
-        if (q.type === "single") return userAnswer === undefined || userAnswer === null;
-        if (q.type === "multiple") return !Array.isArray(userAnswer) || userAnswer.length === 0;
-        return false;
+      const userAnswer = answers[q.id];
+      if (q.type === "single") return userAnswer === undefined || userAnswer === null;
+      if (q.type === "multiple") return !Array.isArray(userAnswer) || userAnswer.length === 0;
+      return false;
     });
 
     if (unanswered.length > 0) {
-        setUnansweredQuestions(unanswered.map((q, i) => i + 1));
-        setOpenAlertDialog(true);
-        return;
+      setUnansweredQuestions(unanswered.map((q, i) => i + 1));
+      setOpenAlertDialog(true);
+      return; // ⚠️ dừng nộp bài nếu còn câu chưa trả lời
     }
 
     try {
-        setSaving(true);
+      setSaving(true);
 
-        // 🔹 Tính điểm
-        let total = 0;
-        const maxScore = questions.reduce((sum, q) => sum + (q.score ?? 1), 0);
+      // 🔹 Tính điểm
+      let total = 0;
+      const maxScore = questions.reduce((sum, q) => sum + (q.score ?? 1), 0);
 
-        questions.forEach(q => {
+      questions.forEach(q => {
         const userAnswer = answers[q.id];
         if (q.type === "single" && userAnswer === q.correct) total += q.score ?? 1;
         else if (q.type === "multiple") {
-            const correctSet = new Set(q.correct);
-            const userSet = new Set(userAnswer || []);
-            if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
+          const correctSet = new Set(q.correct);
+          const userSet = new Set(userAnswer || []);
+          if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
             total += q.score ?? 1;
-            }
+          }
         }
-        });
+      });
 
-        const percent = maxScore > 0 ? Math.round((total / maxScore) * 100) : 0;
-        setScore(total);
-        setSubmitted(true);
+      const percent = maxScore > 0 ? Math.round((total / maxScore) * 100) : 0;
+      setScore(total);
+      setSubmitted(true);
 
-        // 🔹 Xác định chuỗi kết quả
-        let resultText = "";
-        if (percent >= 75) resultText = "Hoàn thành tốt";
-        else if (percent >= 50) resultText = "Hoàn thành";
-        else resultText = "Chưa hoàn thành";
+      // 🔹 Lưu điểm vào Firestore
+      const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
+      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-        // 🔹 Lưu vào Firestore
-        const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
-        const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
-
-        await updateDoc(tuanRef, {
+      await updateDoc(tuanRef, {
         [`${studentId}.hoVaTen`]: studentName,
         [`${studentId}.status`]: "",
-        [`${studentId}.diemTracNghiem`]: resultText,   // ⬅ lưu chuỗi mới
-        }).catch(async (err) => {
+        [`${studentId}.diemTracNghiem`]: percent,
+      }).catch(async (err) => {
         if (err.code === "not-found") {
-            await setDoc(tuanRef, {
-            [studentId]: {
-                hoVaTen: studentName,
-                status: "",
-                diemTracNghiem: resultText,             // ⬅ lưu chuỗi mới
-            },
-            });
+          await setDoc(tuanRef, {
+            [studentId]: { hoVaTen: studentName, status: "", diemTracNghiem: percent },
+          });
         } else throw err;
-        });
+      });
 
-        console.log(`✅ Đã lưu: ${resultText} cho học sinh ${studentId}`);
+      console.log(`✅ Đã lưu diemTracNghiem: ${percent}% cho học sinh ${studentId}`);
     } catch (err) {
-        console.error("❌ Lỗi khi lưu diemTracNghiem:", err);
+      console.error("❌ Lỗi khi lưu diemTracNghiem:", err);
     } finally {
-        setSaving(false);
+      setSaving(false);
     }
-};
+  };
 
-const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
-const handlePrev = () => currentIndex > 0 && setCurrentIndex(currentIndex - 1);
 
-// % → điểm thang 10, làm tròn gần nhất 0.5
-const convertPercentToScore = (percent) => {
+  const handleSubmit1 = () => {
+    const unanswered = questions.filter(q => {
+      const userAnswer = answers[q.id];
+      if (q.type === "single") return userAnswer === undefined || userAnswer === null;
+      if (q.type === "multiple") return !Array.isArray(userAnswer) || userAnswer.length === 0;
+      return false;
+    });
+
+    if (unanswered.length > 0) {
+      setUnansweredQuestions(unanswered.map((q, i) => i + 1));
+      setOpenAlertDialog(true);
+      return;
+    }
+
+    let total = 0;
+    questions.forEach(q => {
+      const userAnswer = answers[q.id];
+      if (q.type === "single" && userAnswer === q.correct) {
+        total += q.score ?? 1;
+      } else if (q.type === "multiple") {
+        const correctSet = new Set(q.correct);
+        const userSet = new Set(userAnswer || []);
+        if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
+          total += q.score ?? 1;
+        }
+      }
+    });
+
+    setScore(total);
+    setSubmitted(true);
+  };
+
+  const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
+  const handlePrev = () => currentIndex > 0 && setCurrentIndex(currentIndex - 1);
+
+  // % → điểm thang 10, làm tròn gần nhất 0.5
+  const convertPercentToScore = (percent) => {
     if (percent === undefined || percent === null) return "?";
 
     const raw = percent / 10; // % → thang 10
@@ -245,9 +268,9 @@ const convertPercentToScore = (percent) => {
     else rounded = Math.ceil(raw);
 
     return rounded;
-};
+  };
 
-return (
+  return (
   <Box
     sx={{
       minHeight: "100vh",
