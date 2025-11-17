@@ -111,27 +111,32 @@ export default function GiaoVien() {
     const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
     const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
 
+    /*const unsubscribe = onSnapshot(tuanRef, snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const updated = {};
+        Object.entries(data).forEach(([id, info]) => {
+          updated[id] = info.status || "";
+        });
+        setStudentStatus(updated);
+      } else setStudentStatus({});
+    });*/
+
     const unsubscribe = onSnapshot(tuanRef, snap => {
       if (snap.exists()) {
         const data = snap.data();
         const updated = {};
-
         Object.entries(data).forEach(([id, info]) => {
-          if (info && typeof info === "object") {
-
-            // 👇 QUAN TRỌNG: chọn field theo config.tracNghiem
-            updated[id] = config.tracNghiem
-              ? info.diemTracNghiem || ""
-              : info.status || "";
+          // ✅ tránh lỗi khi info bị undefined hoặc không có status
+          if (info && typeof info === "object" && "status" in info) {
+            updated[id] = info.status || "";
           }
         });
-
         setStudentStatus(updated);
       } else {
         setStudentStatus({});
       }
     });
-
 
     return () => unsubscribe();
   }, [config.lop, config.tuan, config.mon]);

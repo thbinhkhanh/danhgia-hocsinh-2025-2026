@@ -439,7 +439,7 @@ export default function HocSinh() {
                           if (daLamBai) {
                             setDoneStudent({
                               hoVaTen: student.hoVaTen,
-                              diemTracNghiem: hsData.diemTracNghiem
+                              diemTN: hsData.diemTN,
                             });
                             setOpenDoneDialog(true);
                             return;
@@ -659,10 +659,10 @@ export default function HocSinh() {
           Đã làm xong bài trắc nghiệm.
         </Typography>
         <Typography sx={{ fontSize: 16, color: "#0d47a1", fontWeight: 500 }}>
-          Điểm của bạn: {convertPercentToScore(doneStudent?.diemTracNghiem)}
+          Điểm của bạn: {convertPercentToScore(doneStudent?.diemTN)}
         </Typography>
-
       </DialogContent>
+
 
       <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
         <Button

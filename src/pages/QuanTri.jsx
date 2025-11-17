@@ -407,7 +407,7 @@ const [subject, setSubject] = useState("Tin học");
                 <Checkbox
                   checked={config.tracNghiem || false}
                   onChange={(e) =>
-                    setConfig(prev => ({ ...prev, tracNghiem: e.target.checked }))
+                    updateFirestoreAndContext("tracNghiem", e.target.checked)
                   }
                   color="primary"
                 />

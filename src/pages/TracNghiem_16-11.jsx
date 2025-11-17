@@ -195,29 +195,41 @@ export default function TracNghiem() {
       setScore(total);
       setSubmitted(true);
 
-      // 🔹 Lưu điểm vào Firestore
+      // 🔹 Xác định chuỗi kết quả
+      let resultText = "";
+      if (percent >= 75) resultText = "Hoàn thành tốt";
+      else if (percent >= 50) resultText = "Hoàn thành";
+      else resultText = "Chưa hoàn thành";
+
+      // 🔹 Lưu vào Firestore cả diemTracNghiem (chuỗi) và diemTN (số)
       const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
       const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
+      const studentDataToSave = {
+        hoVaTen: studentName,
+        status: "",
+        diemTracNghiem: resultText,  // chuỗi đánh giá
+        diemTN: percent,             // điểm số thực
+      };
+
       await updateDoc(tuanRef, {
-        [`${studentId}.hoVaTen`]: studentName,
-        [`${studentId}.status`]: "",
-        [`${studentId}.diemTracNghiem`]: percent,
+        [studentId]: studentDataToSave
       }).catch(async (err) => {
         if (err.code === "not-found") {
           await setDoc(tuanRef, {
-            [studentId]: { hoVaTen: studentName, status: "", diemTracNghiem: percent },
+            [studentId]: studentDataToSave
           });
         } else throw err;
       });
 
-      console.log(`✅ Đã lưu diemTracNghiem: ${percent}% cho học sinh ${studentId}`);
+      console.log(`✅ Đã lưu: ${resultText} và diemTN: ${percent} cho học sinh ${studentId}`);
     } catch (err) {
-      console.error("❌ Lỗi khi lưu diemTracNghiem:", err);
+      console.error("❌ Lỗi khi lưu điểm:", err);
     } finally {
       setSaving(false);
     }
   };
+
 
 
   const handleSubmit1 = () => {

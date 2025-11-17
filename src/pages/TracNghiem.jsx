@@ -113,66 +113,82 @@ export default function TracNghiem() {
   };
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        setLoading(true);
-        let prog = 0;
-        const configRef = doc(db, "CONFIG", "config");
-        const configSnap = await getDoc(configRef);
-        prog += 50;
-        setProgress(prog);
+  const fetchQuestions = async () => {
+    try {
+      setLoading(true);
+      let prog = 0;
 
-        if (!configSnap.exists()) return;
+      const configRef = doc(db, "CONFIG", "config");
+      const configSnap = await getDoc(configRef);
+      prog += 50;
+      setProgress(prog);
 
-        const configData = configSnap.data();
-        const docId = configData.deTracNghiem;
-        if (!docId) return;
+      if (!configSnap.exists()) return;
 
-        const docRef = doc(db, "TRACNGHIEM", docId);
-        const docSnap = await getDoc(docRef);
-        prog += 30;
-        setProgress(prog);
+      const configData = configSnap.data();
+      const docId = configData.deTracNghiem;
+      if (!docId) return;
 
-        let loadedQuestions = [];
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setQuizClass(data.class || "");
-          let saved = Array.isArray(data.questions) ? data.questions : [];
-          saved = shuffleArray(saved);
-          loadedQuestions = saved.map(q => {
-            if (!q.options) q.options = ["", "", "", ""];
+      const docRef = doc(db, "TRACNGHIEM", docId);
+      const docSnap = await getDoc(docRef);
+      prog += 30;
+      setProgress(prog);
+
+      let loadedQuestions = [];
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setQuizClass(data.class || "");
+
+        let saved = Array.isArray(data.questions) ? data.questions : [];
+        saved = shuffleArray(saved);
+
+        loadedQuestions = saved
+          .map((q, index) => {
+            const questionId = q.id ?? `q_${index}`;
+            const questionText = typeof q.question === "string" ? q.question.trim() : "";
+            const options = Array.isArray(q.options) && q.options.length > 0 ? q.options : ["", "", "", ""];
+            const type = q.type === "single" || q.type === "multiple" ? q.type : "single";
+            const correctRaw = q.correct ?? (type === "multiple" ? [] : null);
+
             const sortType = q.sortType || data.sortType || "default";
-            const indexedOptions = q.options.map((opt, idx) => ({ opt, idx }));
+            const indexedOptions = options.map((opt, idx) => ({ opt, idx }));
             const processedOptions = sortType === "shuffle" ? shuffleArray(indexedOptions) : indexedOptions;
-            let newCorrect;
-            if (q.type === "single") {
-              newCorrect = processedOptions.findIndex(item => item.idx === q.correct);
-            } else if (q.type === "multiple") {
+
+            let newCorrect = null;
+            if (type === "single" && typeof correctRaw === "number") {
+              newCorrect = processedOptions.findIndex(item => item.idx === correctRaw);
+            } else if (type === "multiple" && Array.isArray(correctRaw)) {
               newCorrect = processedOptions
-                .map((item, i) => (q.correct.includes(item.idx) ? i : null))
+                .map((item, i) => (correctRaw.includes(item.idx) ? i : null))
                 .filter(x => x !== null);
             }
+
             return {
               ...q,
+              id: questionId,
+              type,
+              question: questionText,
               options: processedOptions.map(item => item.opt),
-              correct: newCorrect ?? null,
+              correct: newCorrect,
             };
-          });
-        }
-
-        setQuestions(loadedQuestions);
-        prog = 100;
-        setProgress(prog);
-      } catch (err) {
-        console.error(err);
-        setQuestions([]);
-      } finally {
-        setLoading(false);
+          })
+          .filter(q => q.question !== "" && q.options.length > 0); // loại bỏ câu rỗng
       }
-    };
 
-    fetchQuestions();
-  }, []);
+      setQuestions(loadedQuestions);
+      console.log("✅ Câu hỏi đã load:", loadedQuestions);
+      prog = 100;
+      setProgress(prog);
+    } catch (err) {
+      console.error("❌ Lỗi khi tải câu hỏi:", err);
+      setQuestions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchQuestions();
+}, []);
 
   const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";
@@ -183,13 +199,16 @@ export default function TracNghiem() {
 
   const handleMultipleSelect = (questionId, optionIndex, checked) => {
     setAnswers(prev => {
-      const prevArr = prev[questionId] || [];
+      const prevArr = Array.isArray(prev[questionId]) ? prev[questionId] : [];
+
       const newArr = checked
         ? [...prevArr, optionIndex]
         : prevArr.filter(x => x !== optionIndex);
+
       return { ...prev, [questionId]: newArr };
     });
   };
+
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -204,9 +223,7 @@ export default function TracNghiem() {
 
   const handleSubmit = async () => {
     if (!studentId || !studentClass || !selectedWeek) {
-      // Reset open trước khi mở lại
       setSnackbar(prev => ({ ...prev, open: false }));
-      // Mở snackbar sau khi reset
       setTimeout(() => {
         setSnackbar(prev => ({
           ...prev,
@@ -215,80 +232,93 @@ export default function TracNghiem() {
           severity: "info",
         }));
       }, 50);
-
       return;
     }
 
     // 🔹 Kiểm tra câu hỏi chưa trả lời
     const unanswered = questions.filter(q => {
-        const userAnswer = answers[q.id];
-        if (q.type === "single") return userAnswer === undefined || userAnswer === null;
-        if (q.type === "multiple") return !Array.isArray(userAnswer) || userAnswer.length === 0;
-        return false;
+      const userAnswer = answers[q.id];
+
+      if (q.type === "single") {
+        return userAnswer === undefined || userAnswer === null || userAnswer === "";
+      }
+      if (q.type === "multiple") {
+        return !Array.isArray(userAnswer) || userAnswer.length === 0;
+      }
+      return false;
     });
 
+
     if (unanswered.length > 0) {
-        setUnansweredQuestions(unanswered.map((q, i) => i + 1));
-        setOpenAlertDialog(true);
-        return;
+      const unansweredIndexes = unanswered.map(q => {
+        const index = questions.findIndex(item => item.id === q.id);
+        return index >= 0 ? index + 1 : "?";
+      });
+
+      setUnansweredQuestions(unansweredIndexes);
+      setOpenAlertDialog(true);
+      return;
     }
 
     try {
-        setSaving(true);
+      setSaving(true);
 
-        // 🔹 Tính điểm
-        let total = 0;
-        const maxScore = questions.reduce((sum, q) => sum + (q.score ?? 1), 0);
+      // 🔹 Tính điểm
+      let total = 0;
+      const maxScore = questions.reduce((sum, q) => sum + (q.score ?? 1), 0);
 
-        questions.forEach(q => {
+      questions.forEach(q => {
         const userAnswer = answers[q.id];
         if (q.type === "single" && userAnswer === q.correct) total += q.score ?? 1;
         else if (q.type === "multiple") {
-            const correctSet = new Set(q.correct);
-            const userSet = new Set(userAnswer || []);
-            if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
+          const correctSet = new Set(q.correct);
+          const userSet = new Set(userAnswer || []);
+          if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
             total += q.score ?? 1;
-            }
+          }
         }
-        });
+      });
 
-        const percent = maxScore > 0 ? Math.round((total / maxScore) * 100) : 0;
-        setScore(total);
-        setSubmitted(true);
+      const percent = maxScore > 0 ? Math.round((total / maxScore) * 100) : 0;
+      setScore(total);
+      setSubmitted(true);
 
-        // 🔹 Xác định chuỗi kết quả
-        let resultText = "";
-        if (percent >= 75) resultText = "Hoàn thành tốt";
-        else if (percent >= 50) resultText = "Hoàn thành";
-        else resultText = "Chưa hoàn thành";
+      // 🔹 Xác định chuỗi kết quả
+      let resultText = "";
+      if (percent >= 75) resultText = "Hoàn thành tốt";
+      else if (percent >= 50) resultText = "Hoàn thành";
+      else resultText = "Chưa hoàn thành";
 
-        // 🔹 Lưu vào Firestore
-        const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
-        const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+      // 🔹 Lưu vào Firestore
+      const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
+      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-        await updateDoc(tuanRef, {
+      await updateDoc(tuanRef, {
         [`${studentId}.hoVaTen`]: studentName,
         [`${studentId}.status`]: "",
-        [`${studentId}.diemTracNghiem`]: resultText,   // ⬅ lưu chuỗi mới
-        }).catch(async (err) => {
+        [`${studentId}.diemTracNghiem`]: resultText,  // chuỗi đánh giá
+        [`${studentId}.diemTN`]: percent,            // điểm số thực
+      }).catch(async (err) => {
         if (err.code === "not-found") {
-            await setDoc(tuanRef, {
+          await setDoc(tuanRef, {
             [studentId]: {
-                hoVaTen: studentName,
-                status: "",
-                diemTracNghiem: resultText,             // ⬅ lưu chuỗi mới
+              hoVaTen: studentName,
+              status: "",
+              diemTracNghiem: resultText,
+              diemTN: percent,
             },
-            });
+          });
         } else throw err;
-        });
+      });
 
-        console.log(`✅ Đã lưu: ${resultText} cho học sinh ${studentId}`);
+      console.log(`✅ Đã lưu: ${resultText} và diemTN: ${percent} cho học sinh ${studentId}`);
     } catch (err) {
-        console.error("❌ Lỗi khi lưu diemTracNghiem:", err);
+      console.error("❌ Lỗi khi lưu điểm:", err);
     } finally {
-        setSaving(false);
+      setSaving(false);
     }
-};
+  };
+
 
 const autoSubmit = async () => {
   if (!studentId || !studentClass || !selectedWeek) return;
@@ -531,15 +561,18 @@ return (
                       borderRadius: 1,
                       px: 1,
                     }}
-                    disabled={submitted}
+                    disabled={submitted || !started}  // ⬅ sửa ở đây
                   />
                 );
               })}
             </RadioGroup>
+
           ) : (
             <Stack>
               {currentQuestion.options.map((opt, i) => {
-                const checked = answers[currentQuestion.id]?.includes(i) ?? false;
+                const userAns = answers[currentQuestion.id];
+                const checked = Array.isArray(userAns) && userAns.includes(i);
+
                 const isCorrect = submitted && currentQuestion.correct.includes(i);
                 const isWrong = submitted && checked && !currentQuestion.correct.includes(i);
                 return (
@@ -551,7 +584,7 @@ return (
                         onChange={(e) =>
                           handleMultipleSelect(currentQuestion.id, i, e.target.checked)
                         }
-                        disabled={submitted}
+                        disabled={submitted || !started}  // ⬅ sửa ở đây
                       />
                     }
                     label={opt}
@@ -565,6 +598,7 @@ return (
                 );
               })}
             </Stack>
+
           )}
         </>
       )}
