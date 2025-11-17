@@ -113,82 +113,82 @@ export default function TracNghiem() {
   };
 
   useEffect(() => {
-  const fetchQuestions = async () => {
-    try {
-      setLoading(true);
-      let prog = 0;
+    const fetchQuestions = async () => {
+      try {
+        setLoading(true);
+        let prog = 0;
 
-      const configRef = doc(db, "CONFIG", "config");
-      const configSnap = await getDoc(configRef);
-      prog += 50;
-      setProgress(prog);
+        const configRef = doc(db, "CONFIG", "config");
+        const configSnap = await getDoc(configRef);
+        prog += 50;
+        setProgress(prog);
 
-      if (!configSnap.exists()) return;
+        if (!configSnap.exists()) return;
 
-      const configData = configSnap.data();
-      const docId = configData.deTracNghiem;
-      if (!docId) return;
+        const configData = configSnap.data();
+        const docId = configData.deTracNghiem;
+        if (!docId) return;
 
-      const docRef = doc(db, "TRACNGHIEM", docId);
-      const docSnap = await getDoc(docRef);
-      prog += 30;
-      setProgress(prog);
+        const docRef = doc(db, "TRACNGHIEM", docId);
+        const docSnap = await getDoc(docRef);
+        prog += 30;
+        setProgress(prog);
 
-      let loadedQuestions = [];
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setQuizClass(data.class || "");
+        let loadedQuestions = [];
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setQuizClass(data.class || "");
 
-        let saved = Array.isArray(data.questions) ? data.questions : [];
-        saved = shuffleArray(saved);
+          let saved = Array.isArray(data.questions) ? data.questions : [];
+          saved = shuffleArray(saved);
 
-        loadedQuestions = saved
-          .map((q, index) => {
-            const questionId = q.id ?? `q_${index}`;
-            const questionText = typeof q.question === "string" ? q.question.trim() : "";
-            const options = Array.isArray(q.options) && q.options.length > 0 ? q.options : ["", "", "", ""];
-            const type = q.type === "single" || q.type === "multiple" ? q.type : "single";
-            const correctRaw = q.correct ?? (type === "multiple" ? [] : null);
+          loadedQuestions = saved
+            .map((q, index) => {
+              const questionId = q.id ?? `q_${index}`;
+              const questionText = typeof q.question === "string" ? q.question.trim() : "";
+              const options = Array.isArray(q.options) && q.options.length > 0 ? q.options : ["", "", "", ""];
+              const type = q.type === "single" || q.type === "multiple" ? q.type : "single";
+              const correctRaw = q.correct ?? (type === "multiple" ? [] : null);
 
-            const sortType = q.sortType || data.sortType || "default";
-            const indexedOptions = options.map((opt, idx) => ({ opt, idx }));
-            const processedOptions = sortType === "shuffle" ? shuffleArray(indexedOptions) : indexedOptions;
+              const sortType = q.sortType || data.sortType || "default";
+              const indexedOptions = options.map((opt, idx) => ({ opt, idx }));
+              const processedOptions = sortType === "shuffle" ? shuffleArray(indexedOptions) : indexedOptions;
 
-            let newCorrect = null;
-            if (type === "single" && typeof correctRaw === "number") {
-              newCorrect = processedOptions.findIndex(item => item.idx === correctRaw);
-            } else if (type === "multiple" && Array.isArray(correctRaw)) {
-              newCorrect = processedOptions
-                .map((item, i) => (correctRaw.includes(item.idx) ? i : null))
-                .filter(x => x !== null);
-            }
+              let newCorrect = null;
+              if (type === "single" && typeof correctRaw === "number") {
+                newCorrect = processedOptions.findIndex(item => item.idx === correctRaw);
+              } else if (type === "multiple" && Array.isArray(correctRaw)) {
+                newCorrect = processedOptions
+                  .map((item, i) => (correctRaw.includes(item.idx) ? i : null))
+                  .filter(x => x !== null);
+              }
 
-            return {
-              ...q,
-              id: questionId,
-              type,
-              question: questionText,
-              options: processedOptions.map(item => item.opt),
-              correct: newCorrect,
-            };
-          })
-          .filter(q => q.question !== "" && q.options.length > 0); // loại bỏ câu rỗng
+              return {
+                ...q,
+                id: questionId,
+                type,
+                question: questionText,
+                options: processedOptions.map(item => item.opt),
+                correct: newCorrect,
+              };
+            })
+            .filter(q => q.question !== "" && q.options.length > 0); // loại bỏ câu rỗng
+        }
+
+        setQuestions(loadedQuestions);
+        console.log("✅ Câu hỏi đã load:", loadedQuestions);
+        prog = 100;
+        setProgress(prog);
+      } catch (err) {
+        console.error("❌ Lỗi khi tải câu hỏi:", err);
+        setQuestions([]);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setQuestions(loadedQuestions);
-      console.log("✅ Câu hỏi đã load:", loadedQuestions);
-      prog = 100;
-      setProgress(prog);
-    } catch (err) {
-      console.error("❌ Lỗi khi tải câu hỏi:", err);
-      setQuestions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchQuestions();
-}, []);
+    fetchQuestions();
+  }, []);
 
   const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";
@@ -295,7 +295,7 @@ export default function TracNghiem() {
 
       await updateDoc(tuanRef, {
         [`${studentId}.hoVaTen`]: studentName,
-        [`${studentId}.status`]: "",
+        //[`${studentId}.status`]: "",
         [`${studentId}.diemTracNghiem`]: resultText,  // chuỗi đánh giá
         [`${studentId}.diemTN`]: percent,            // điểm số thực
       }).catch(async (err) => {
@@ -358,8 +358,9 @@ const autoSubmit = async () => {
 
     await updateDoc(tuanRef, {
       [`${studentId}.hoVaTen`]: studentName,
-      [`${studentId}.status`]: "",
+      // [`${studentId}.status`]: "", 
       [`${studentId}.diemTracNghiem`]: resultText,
+      [`${studentId}.diemTN`]: percent,
     }).catch(async (err) => {
       if (err.code === "not-found") {
         await setDoc(tuanRef, {

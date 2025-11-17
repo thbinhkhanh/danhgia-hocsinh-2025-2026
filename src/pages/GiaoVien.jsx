@@ -20,7 +20,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
-import { doc, getDoc, getDocs, collection, setDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteField, onSnapshot } from "firebase/firestore";
 import Draggable from "react-draggable";
 import { useTheme, useMediaQuery } from "@mui/material";
 
@@ -32,7 +32,13 @@ export default function GiaoVien() {
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
   const [studentStatus, setStudentStatus] = useState({});
+  const [studentScores, setStudentScores] = useState({}); // 👈 thêm dòng này
+  
   const [expandedStudent, setExpandedStudent] = useState(null);
+  const [selectedForDanhGia, setSelectedForDanhGia] = useState(null); 
+
+  const [studentForDanhGia, setStudentForDanhGia] = useState(null);
+  const [studentForTracNghiem, setStudentForTracNghiem] = useState(null);
 
   // ref cho dialog draggable
   const dialogNodeRef = useRef(null);
@@ -104,37 +110,59 @@ export default function GiaoVien() {
     fetchStudents();
   }, [config.lop, studentData]);
 
+  const convertPercentToScore = (percent) => {
+    if (percent === undefined || percent === null) return "?";
+
+    const raw = percent / 10;
+    const decimal = raw % 1;
+
+    let rounded;
+    if (decimal < 0.25) rounded = Math.floor(raw);
+    else if (decimal < 0.75) rounded = Math.floor(raw) + 0.5;
+    else rounded = Math.ceil(raw);
+
+    return rounded;
+  };
+
   // Lắng nghe realtime trạng thái đánh giá
   useEffect(() => {
-    const { lop, tuan, mon } = config;
-    if (!lop || !tuan || !mon) return;
-    const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
-    const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
+  const { lop, tuan, mon } = config;
+  if (!lop || !tuan || !mon) return;
 
-    const unsubscribe = onSnapshot(tuanRef, snap => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const updated = {};
+  const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
+  const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
 
-        Object.entries(data).forEach(([id, info]) => {
-          if (info && typeof info === "object") {
+  const unsubscribe = onSnapshot(tuanRef, snap => {
+    if (snap.exists()) {
+      const data = snap.data();
+      const updated = {};
+      const scores = {};
 
-            // 👇 QUAN TRỌNG: chọn field theo config.tracNghiem
-            updated[id] = config.tracNghiem
-              ? info.diemTracNghiem || ""
-              : info.status || "";
-          }
-        });
+      Object.entries(data).forEach(([id, info]) => {
+        if (info && typeof info === "object") {
+          // ✅ Trạng thái hiển thị chính (status hoặc diemTracNghiem)
+          updated[id] = config.tracNghiem
+            ? info.diemTracNghiem || ""
+            : info.status || "";
 
-        setStudentStatus(updated);
-      } else {
-        setStudentStatus({});
-      }
-    });
+          // ✅ Lưu điểm chi tiết vào studentScores
+          scores[id] = {
+            diemTN: info.diemTN ?? null,
+            diemTracNghiem: info.diemTracNghiem || "",
+          };
+        }
+      });
 
+      setStudentStatus(updated);
+      setStudentScores(scores);
+    } else {
+      setStudentStatus({});
+      setStudentScores({});
+    }
+  });
 
-    return () => unsubscribe();
-  }, [config.lop, config.tuan, config.mon]);
+  return () => unsubscribe();
+}, [config.lop, config.tuan, config.mon]);
 
   // Lưu trạng thái học sinh
   const saveStudentStatus = async (studentId, hoVaTen, status) => {
@@ -189,109 +217,315 @@ export default function GiaoVien() {
     "": { bg: "#ffffff", text: "#000000" },
   };
 
+  const deleteStudentScore = async (studentId, hoVaTen) => {
+    const confirmDelete = window.confirm(`Bạn có chắc muốn xóa kết quả của ${hoVaTen}?`);
+    if (!confirmDelete) return;
+
+    const { lop, tuan, mon } = config;
+    if (!lop || !tuan || !mon) return;
+
+    const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
+    const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
+
+    try {
+      await updateDoc(tuanRef, {
+        [`${studentId}.diemTN`]: deleteField(),
+        [`${studentId}.diemTracNghiem`]: deleteField(),
+      });
+    } catch (err) {
+      console.error("❌ Lỗi xóa điểm:", err);
+    }
+  };
+
+
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)", pt: 3, px: 3 }}>
-      <Paper elevation={6} sx={{ p: 4, borderRadius: 3, width: "100%", maxWidth: 1420, bgcolor: "white" }}>
-        <Box sx={{ textAlign: "center", mb: 1 }}>
-          <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2", pb: 1 }}>
-            THEO DÕI - ĐÁNH GIÁ HỌC SINH
-          </Typography>
-        </Box>
+  <Box
+    sx={{
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
+      pt: 3,
+      px: 3,
+    }}
+  >
+    <Paper
+      elevation={6}
+      sx={{
+        p: 4,
+        borderRadius: 3,
+        width: "100%",
+        maxWidth: 1420,
+        bgcolor: "white",
+      }}
+    >
+      <Box sx={{ textAlign: "center", mb: 1 }}>
+        <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2", pb: 1 }}>
+          THEO DÕI - ĐÁNH GIÁ HỌC SINH
+        </Typography>
+      </Box>
 
-        {/* Bộ chọn Lớp / Môn / Tuần */}
-        <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 4 }}>
-          <FormControl size="small" sx={{ minWidth: 80 }}>
-            <InputLabel>Lớp</InputLabel>
-            <Select value={config.lop || ""} onChange={handleClassChange} label="Lớp">
-              {classes.map(cls => <MenuItem key={cls} value={cls}>{cls}</MenuItem>)}
-            </Select>
-          </FormControl>
+      {/* Bộ chọn Lớp / Môn / Tuần */}
+      <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 4 }}>
+        <FormControl size="small" sx={{ minWidth: 80 }}>
+          <InputLabel>Lớp</InputLabel>
+          <Select value={config.lop || ""} onChange={handleClassChange} label="Lớp">
+            {classes.map(cls => (
+              <MenuItem key={cls} value={cls}>
+                {cls}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: 120, bgcolor: "white" }}>
-            <InputLabel id="mon-label">Môn</InputLabel>
-            <Select
-              labelId="mon-label"
-              value={config.mon === "Công nghệ" ? "congnghe" : "tinhoc"}
-              onChange={handleMonChange}
-              label="Môn"
-            >
-              <MenuItem value="tinhoc">Tin học</MenuItem>
-              <MenuItem value="congnghe">Công nghệ</MenuItem>
-            </Select>
-          </FormControl>
+        <FormControl size="small" sx={{ minWidth: 120, bgcolor: "white" }}>
+          <InputLabel id="mon-label">Môn</InputLabel>
+          <Select
+            labelId="mon-label"
+            value={config.mon === "Công nghệ" ? "congnghe" : "tinhoc"}
+            onChange={handleMonChange}
+            label="Môn"
+          >
+            <MenuItem value="tinhoc">Tin học</MenuItem>
+            <MenuItem value="congnghe">Công nghệ</MenuItem>
+          </Select>
+        </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Tuần</InputLabel>
-            <Select value={config.tuan || 1} onChange={handleWeekChange} label="Tuần">
-              {[...Array(35)].map((_, i) => <MenuItem key={i + 1} value={i + 1}>Tuần {i + 1}</MenuItem>)}
-            </Select>
-          </FormControl>
-        </Box>
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>Tuần</InputLabel>
+          <Select value={config.tuan || 1} onChange={handleWeekChange} label="Tuần">
+            {[...Array(35)].map((_, i) => (
+              <MenuItem key={i + 1} value={i + 1}>
+                Tuần {i + 1}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
-        {/* Danh sách học sinh */}
-        <Grid container spacing={2} justifyContent="center">
-          {columns.map((col, colIdx) => (
-            <Grid item key={colIdx}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {col.map(student => {
-                  const status = studentStatus[student.maDinhDanh];
-                  const chipProps = {
+      {/* Danh sách học sinh */}
+      <Grid container spacing={2} justifyContent="center">
+        {columns.map((col, colIdx) => (
+          <Grid item key={colIdx}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {col.map(student => {
+                const status = studentStatus[student.maDinhDanh];
+                const chipProps =
+                  {
                     "Hoàn thành tốt": { label: "T", color: "primary" },
                     "Hoàn thành": { label: "H", color: "secondary" },
                     "Chưa hoàn thành": { label: "C", color: "warning" },
                   }[status] || null;
 
-                  return (
-                    <Paper key={student.maDinhDanh} elevation={3} onClick={() => setExpandedStudent(student)} sx={{ minWidth: 120, width: { xs: "75vw", sm: "auto" }, p: 2, borderRadius: 2, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", bgcolor: "#ffffff", color: "inherit", transition: "0.2s", boxShadow: 1, "&:hover": { transform: "scale(1.03)", boxShadow: 4, bgcolor: "#f5f5f5" } }}>
-                      <Typography variant="subtitle2" fontWeight="medium" noWrap>
-                        {student.stt}. {student.hoVaTen}
-                      </Typography>
-                      {chipProps && <Chip label={chipProps.label} color={chipProps.color} size="small" sx={{ fontWeight: "bold", borderRadius: "50%", width: 28, height: 28, minWidth: 0, p: 0, justifyContent: "center", fontSize: "0.8rem", boxShadow: "0 0 4px rgba(0,0,0,0.15)" }} />}
-                    </Paper>
-                  );
-                })}
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
+                return (
+                  <Paper
+                    key={student.maDinhDanh}
+                    elevation={3}
+                    onClick={() => {
+                      config.tracNghiem
+                        ? setStudentForTracNghiem(student)
+                        : setStudentForDanhGia(student);
+                    }}
+                    sx={{
+                      minWidth: 120,
+                      width: { xs: "75vw", sm: "auto" },
+                      p: 2,
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      bgcolor: "#ffffff",
+                      color: "inherit",
+                      transition: "0.2s",
+                      boxShadow: 1,
+                      "&:hover": {
+                        transform: "scale(1.03)",
+                        boxShadow: 4,
+                        bgcolor: "#f5f5f5",
+                      },
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight="medium" noWrap>
+                      {student.stt}. {student.hoVaTen}
+                    </Typography>
+                    {chipProps && (
+                      <Chip
+                        label={chipProps.label}
+                        color={chipProps.color}
+                        size="small"
+                        sx={{
+                          fontWeight: "bold",
+                          borderRadius: "50%",
+                          width: 28,
+                          height: 28,
+                          minWidth: 0,
+                          p: 0,
+                          justifyContent: "center",
+                          fontSize: "0.8rem",
+                          boxShadow: "0 0 4px rgba(0,0,0,0.15)",
+                        }}
+                      />
+                    )}
+                  </Paper>
+                );
+              })}
+            </Box>
+          </Grid>
+        ))}
+      </Grid>
+    </Paper>
 
-      {/* Dialog chọn đánh giá */}
-      <Dialog open={Boolean(expandedStudent)} onClose={() => setExpandedStudent(null)} maxWidth="xs" fullWidth PaperComponent={PaperComponent}>
-        {expandedStudent && (
-          <>
-            <DialogTitle id="draggable-dialog-title" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#64b5f6", flexWrap: "wrap", py: 1.5, cursor: "move" }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ color: "#ffffff" }}>
-                {expandedStudent.hoVaTen.toUpperCase()}
-              </Typography>
-              <IconButton onClick={() => setExpandedStudent(null)} sx={{ color: "#f44336", "&:hover": { bgcolor: "rgba(244,67,54,0.1)" } }}>
-                <CloseIcon />
-              </IconButton>
-            </DialogTitle>
+    {/* Dialog đánh giá */}
+    <Dialog
+      open={Boolean(studentForDanhGia)}
+      onClose={() => setStudentForDanhGia(null)}
+      maxWidth="xs"
+      fullWidth
+      PaperComponent={PaperComponent}
+    >
+      {studentForDanhGia && (
+        <>
+          <DialogTitle
+            id="draggable-dialog-title"
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              bgcolor: "#64b5f6",
+              py: 1.5,
+              cursor: "move",
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ color: "#ffffff" }}>
+              {studentForDanhGia.hoVaTen.toUpperCase()}
+            </Typography>
+            <IconButton
+              onClick={() => setStudentForDanhGia(null)}
+              sx={{ color: "#f44336", "&:hover": { bgcolor: "rgba(244,67,54,0.1)" } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
 
-            <DialogContent>
-              <Stack spacing={1.5} sx={{ mt: 2 }}>
-                {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map(s => {
-                  const isSelected = studentStatus[expandedStudent.maDinhDanh] === s;
-                  return (
-                    <Button key={s} variant={isSelected ? "contained" : "outlined"} color={s === "Hoàn thành tốt" ? "primary" : s === "Hoàn thành" ? "secondary" : "warning"} onClick={() => handleStatusChange(expandedStudent.maDinhDanh, expandedStudent.hoVaTen, s)}>
-                      {isSelected ? `✓ ${s}` : s}
-                    </Button>
-                  );
-                })}
+          <DialogContent>
+            <Stack spacing={1.5} sx={{ mt: 2 }}>
+              {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map(s => {
+                const isSelected = studentStatus[studentForDanhGia.maDinhDanh] === s;
+                return (
+                  <Button
+                    key={s}
+                    variant={isSelected ? "contained" : "outlined"}
+                    color={
+                      s === "Hoàn thành tốt"
+                        ? "primary"
+                        : s === "Hoàn thành"
+                        ? "secondary"
+                        : "warning"
+                    }
+                    onClick={() =>
+                      handleStatusChange(studentForDanhGia.maDinhDanh, studentForDanhGia.hoVaTen, s)
+                    }
+                  >
+                    {isSelected ? `✓ ${s}` : s}
+                  </Button>
+                );
+              })}
 
-                {studentStatus[expandedStudent.maDinhDanh] && (
-                  <Box sx={{ textAlign: "center", mt: 2 }}>
-                    <Button onClick={() => { handleStatusChange(expandedStudent.maDinhDanh, expandedStudent.hoVaTen, ""); setExpandedStudent(null); }} sx={{ bgcolor: "#4caf50", color: "#fff", "&:hover": { bgcolor: "#388e3c" }, mt: 1 }}>
-                      HỦY ĐÁNH GIÁ
-                    </Button>
-                  </Box>
-                )}
-              </Stack>
-            </DialogContent>
-          </>
-        )}
-      </Dialog>
-    </Box>
-  );
+              {studentStatus[studentForDanhGia.maDinhDanh] && (
+                <Box sx={{ textAlign: "center", mt: 2 }}>
+                  <Button
+                    onClick={() => {
+                      handleStatusChange(studentForDanhGia.maDinhDanh, studentForDanhGia.hoVaTen, "");
+                      setStudentForDanhGia(null);
+                    }}
+                    sx={{
+                      bgcolor: "#4caf50",
+                      color: "#fff",
+                      "&:hover": { bgcolor: "#388e3c" },
+                      mt: 1,
+                    }}
+                  >
+                    HỦY ĐÁNH GIÁ
+                  </Button>
+                </Box>
+              )}
+            </Stack>
+          </DialogContent>
+        </>
+      )}
+    </Dialog>
+
+    {/* Dialog điểm trắc nghiệm */}
+    <Dialog
+      open={Boolean(studentForTracNghiem)}
+      onClose={() => setStudentForTracNghiem(null)}
+      maxWidth="xs"
+      fullWidth
+      PaperComponent={PaperComponent}
+    >
+      {studentForTracNghiem && (
+        <>
+          <DialogTitle
+            id="draggable-dialog-title"
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              bgcolor: "#1976d2",
+              py: 1.5,
+              cursor: "move",
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ color: "#ffffff" }}>
+              {studentForTracNghiem.hoVaTen.toUpperCase()}
+            </Typography>
+            <IconButton
+              onClick={() => setStudentForTracNghiem(null)}
+              sx={{ color: "#f44336", "&:hover": { bgcolor: "rgba(244,67,54,0.1)" } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 2 }}>
+              {(() => {
+                const score = studentScores[studentForTracNghiem.maDinhDanh] || {};
+                                return (
+                  <>
+                    <Typography variant="body1">
+                      <strong>Điểm trắc nghiệm:</strong>{" "}
+                      {score.diemTN != null ? `${convertPercentToScore(score.diemTN)} điểm` : "Chưa có"}
+                    </Typography>
+                    <Typography variant="body1">
+                      <strong>Mức đạt:</strong> {score.diemTracNghiem || "Chưa có"}
+                    </Typography>
+                    <Box sx={{ textAlign: "center", mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() => {
+                          deleteStudentScore(
+                            studentForTracNghiem.maDinhDanh,
+                            studentForTracNghiem.hoVaTen
+                          );
+                          setStudentForTracNghiem(null);
+                        }}
+                      >
+                        XÓA KẾT QUẢ
+                      </Button>
+                    </Box>
+                  </>
+                );
+              })()}
+            </Stack>
+          </DialogContent>
+        </>
+      )}
+    </Dialog>
+  </Box>
+);
 }
