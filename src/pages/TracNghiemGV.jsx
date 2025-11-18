@@ -51,6 +51,10 @@ export default function TracNghiemGV() {
   const [isEditingNewDoc, setIsEditingNewDoc] = useState(true);
 
   const { config: quizConfig, updateConfig: updateQuizConfig } = useTracNghiem();
+  //const [filterClass, setFilterClass] = useState("");
+  const [filterClass, setFilterClass] = useState("Tất cả");
+
+
   const [questions, setQuestions] = useState([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -277,12 +281,14 @@ useEffect(() => {
   // --- Hàm mở dialog và fetch danh sách document ---
   const handleOpenDialog = () => {
     setSelectedDoc(null); 
+    setFilterClass("Tất cả"); // reset về "Tất cả"
     setOpenDialog(true);
   };
 
 // 🔹 Hàm lấy danh sách đề trong Firestore
 const fetchQuizList = async () => {
   setLoadingList(true);
+  setFilterClass("Tất cả"); // ← reset mỗi khi mở dialog
 
   try {
     // Nếu context đã có danh sách đề, dùng luôn
@@ -511,16 +517,15 @@ return (
       </Typography>
 
       <Typography
-  variant="subtitle1"
-  textAlign="center"
-  fontWeight="bold"
-  sx={{ color: "text.secondary", mb: 3 }}
->
-  {isEditingNewDoc || !selectedClass || !selectedSubject
-    ? "🆕 Đang soạn đề mới"
-    : `📝 Đề: ${selectedClass} - ${selectedSubject} - Tuần ${week}`}
-</Typography>
-
+        variant="subtitle1"
+        textAlign="center"
+        fontWeight="bold"
+        sx={{ color: "text.secondary", mb: 3 }}
+      >
+        {isEditingNewDoc || !selectedClass || !selectedSubject
+          ? "🆕 Đang soạn đề mới"
+          : `📝 Đề: ${selectedClass} - ${selectedSubject} - Tuần ${week}`}
+      </Typography>
 
       {/* FORM LỚP / MÔN / HỌC KỲ / TUẦN */}
       <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
@@ -718,7 +723,7 @@ return (
         <DialogTitle
           sx={{
             textAlign: "center",
-            py: 1.2, // 🔽 Giảm chiều cao tiêu đề
+            py: 1.2,
             fontWeight: "bold",
             fontSize: "1.1rem",
             background: "linear-gradient(to right, #1976d2, #42a5f5)",
@@ -740,6 +745,25 @@ return (
             bgcolor: "#fff",
           }}
         >
+          {/* Bộ lọc lớp */}
+          <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ alignSelf: "center" }}>
+              Lọc theo lớp:
+            </Typography>
+
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <Select
+                value={filterClass}
+                onChange={(e) => setFilterClass(e.target.value)}
+                displayEmpty // để hiển thị giá trị mặc định
+              >
+                <MenuItem value="Tất cả">Tất cả</MenuItem>
+                <MenuItem value="Lớp 4">Lớp 4</MenuItem>
+                <MenuItem value="Lớp 5">Lớp 5</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+
           {loadingList ? (
             <Typography align="center" sx={{ py: 4, color: "text.secondary" }}>
               ⏳ Đang tải danh sách đề...
@@ -750,38 +774,46 @@ return (
             </Typography>
           ) : (
             <Stack spacing={1}>
-              {docList.map((doc) => {
-                const isSelected = selectedDoc === doc.id;
-                return (
-                  <Paper
-                    key={doc.id}
-                    elevation={isSelected ? 4 : 1}
-                    onClick={() => setSelectedDoc(doc.id)}
-                    onDoubleClick={() => {
-                      setSelectedDoc(doc.id);
-                      handleOpenSelectedDoc(doc.id);
-                    }}
-                    sx={{
-                      px: 2,
-                      py: 1.1, // 🔽 Giảm chiều cao thẻ đề
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      userSelect: "none",
-                      transition: "all 0.2s ease",
-                      border: isSelected ? "2px solid #1976d2" : "1px solid #e0e0e0",
-                      bgcolor: isSelected ? "#e3f2fd" : "#fff",
-                      "&:hover": {
-                        boxShadow: 3,
-                        bgcolor: isSelected ? "#e3f2fd" : "#f5f5f5",
-                      },
-                    }}
-                  >
-                    <Typography variant="body1" fontWeight="600" color="#1976d2">
-                      {doc.class} - {doc.subject} - Tuần {doc.week}
-                    </Typography>
-                  </Paper>
-                );
-              })}
+              {docList
+                .filter((doc) =>
+                  //selectedClass ? doc.class === selectedClass : true
+                  //filterClass ? doc.class === filterClass : true
+                  filterClass === "Tất cả" ? true : doc.class === filterClass
+                )
+                .map((doc) => {
+                  const isSelected = selectedDoc === doc.id;
+                  return (
+                    <Paper
+                      key={doc.id}
+                      elevation={isSelected ? 4 : 1}
+                      onClick={() => setSelectedDoc(doc.id)}
+                      onDoubleClick={() => {
+                        setSelectedDoc(doc.id);
+                        handleOpenSelectedDoc(doc.id);
+                      }}
+                      sx={{
+                        px: 2,
+                        py: 1.1,
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        userSelect: "none",
+                        transition: "all 0.2s ease",
+                        border: isSelected
+                          ? "2px solid #1976d2"
+                          : "1px solid #e0e0e0",
+                        bgcolor: isSelected ? "#e3f2fd" : "#fff",
+                        "&:hover": {
+                          boxShadow: 3,
+                          bgcolor: isSelected ? "#e3f2fd" : "#f5f5f5",
+                        },
+                      }}
+                    >
+                      <Typography variant="body1" fontWeight="600" color="#1976d2">
+                        {doc.class} - {doc.subject} - Tuần {doc.week}
+                      </Typography>
+                    </Paper>
+                  );
+                })}
             </Stack>
           )}
         </DialogContent>
@@ -790,14 +822,14 @@ return (
           sx={{
             px: 3,
             pb: 2,
-            justifyContent: "center", // ✅ Căn giữa
+            justifyContent: "center",
             gap: 1.5,
           }}
         >
           <Button
             onClick={() => handleOpenSelectedDoc(selectedDoc)}
             variant="contained"
-            startIcon={<i className="material-icons"></i>}             
+            startIcon={<i className="material-icons"></i>}
           >
             Mở đề
           </Button>
@@ -805,7 +837,7 @@ return (
             onClick={handleDeleteSelectedDoc}
             variant="outlined"
             color="error"
-            startIcon={<i className="material-icons"></i>}            
+            startIcon={<i className="material-icons"></i>}
           >
             Xóa đề
           </Button>
