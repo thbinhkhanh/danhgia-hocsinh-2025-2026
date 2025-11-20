@@ -16,9 +16,6 @@ import {
   Alert,
   Divider,
   TextField,
-  FormControl,
-  Select,
-  MenuItem,
 } from "@mui/material";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 // Thay cho react-beautiful-dnd
@@ -153,11 +150,8 @@ export default function TracNghiem() {
               let rawType = (q.type || "").toString().trim().toLowerCase();
               if (rawType === "matching") rawType = "matching";
               if (rawType === "single" || rawType === "multiple") rawType = rawType;
-              if (rawType === "truefalse") rawType = "truefalse";
 
-              const type = ["sort", "matching", "single", "multiple", "truefalse"].includes(rawType)
-                ? rawType
-                : null;
+              const type = ["sort", "matching", "single", "multiple"].includes(rawType) ? rawType : null;
               if (!type) return null;
 
               // --- Câu ghép đôi ---
@@ -191,22 +185,22 @@ export default function TracNghiem() {
               // --- Câu sắp xếp ---
               else if (type === "sort") {
                 const originalOptions = Array.isArray(q.options) && q.options.length > 0
-                  ? q.options
-                  : ["", "", "", ""];
+                    ? q.options
+                    : ["", "", "", ""];
 
                 const options = [...originalOptions];
                 const indexed = options.map((opt, idx) => ({ opt, idx }));
                 const processed = q.sortType === "shuffle" ? shuffleArray(indexed) : indexed;
 
                 return {
-                  ...q,
-                  id: questionId,
-                  type: "sort",
-                  question: questionText,
-                  options,
-                  initialSortOrder: processed.map(i => i.idx),
-                  correct: options.map((_, i) => i),
-                  score: q.score ?? 1,
+                    ...q,
+                    id: questionId,
+                    type: "sort",
+                    question: questionText,
+                    options,
+                    initialSortOrder: processed.map(i => i.idx),
+                    correct: options.map((_, i) => i),
+                    score: q.score ?? 1,
                 };
               }
 
@@ -216,7 +210,10 @@ export default function TracNghiem() {
                   ? q.options
                   : ["", "", "", ""];
 
+                // Tạo indexed cho shuffle
                 const indexed = options.map((opt, idx) => ({ opt, idx }));
+
+                // Ưu tiên sortType === "shuffle" nếu có, nếu không dùng q.shuffleOptions
                 const shouldShuffle = q.sortType === "shuffle" || q.shuffleOptions === true;
                 const shuffled = shouldShuffle ? shuffleArray(indexed) : indexed;
 
@@ -226,32 +223,14 @@ export default function TracNghiem() {
                   type,
                   question: questionText,
                   options,
+                  // Thứ tự hiển thị theo index gốc
                   displayOrder: shuffled.map(i => i.idx),
+                  // Đáp án đúng: luôn là mảng index gốc
                   correct: Array.isArray(q.correct)
                     ? q.correct.map(Number)
                     : typeof q.correct === "number"
                     ? [q.correct]
                     : [],
-                  score: q.score ?? 1,
-                };
-              }
-
-              // --- Câu đúng/sai ---
-              else if (type === "truefalse") {
-                const options = Array.isArray(q.options) && q.options.length >= 2
-                  ? q.options
-                  : ["Đúng", "Sai"];
-                const correct = Array.isArray(q.correct) && q.correct.length === options.length
-                  ? q.correct
-                  : options.map(() => ""); // mặc định rỗng nếu thiếu
-
-                return {
-                  ...q,
-                  id: questionId,
-                  type: "truefalse",
-                  question: questionText,
-                  options,
-                  correct,
                   score: q.score ?? 1,
                 };
               }
@@ -268,8 +247,6 @@ export default function TracNghiem() {
               return q.question.trim() !== "" && q.options.length > 0;
             } else if (q.type === "single" || q.type === "multiple") {
               return q.question.trim() !== "" && q.options.length > 0 && Array.isArray(q.correct);
-            } else if (q.type === "truefalse") {
-              return q.question.trim() !== "" && q.options.length >= 2 && Array.isArray(q.correct);
             }
             return false;
           });
@@ -287,7 +264,6 @@ export default function TracNghiem() {
 
     fetchQuestions();
   }, []);
-
 
   const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";
@@ -309,12 +285,12 @@ export default function TracNghiem() {
       return;
     }
 
-    // 🔍 Kiểm tra câu chưa trả lời
+    // Kiểm tra câu chưa trả lời: chỉ single/multiple
     const unanswered = questions.filter(q => {
       const userAnswer = answers[q.id];
 
-      // SINGLE
       if (q.type === "single") {
+        // Hỗ trợ userAnswer có thể là number, string hoặc mảng [index]
         const ua =
           Array.isArray(userAnswer) ? userAnswer[0] :
           userAnswer === "" || userAnswer === null || userAnswer === undefined ? undefined :
@@ -323,14 +299,8 @@ export default function TracNghiem() {
         return ua === undefined || Number.isNaN(ua);
       }
 
-      // MULTIPLE
       if (q.type === "multiple") {
         return !Array.isArray(userAnswer) || userAnswer.length === 0;
-      }
-
-      // TRUE/FALSE
-      if (q.type === "truefalse") {
-        return !Array.isArray(userAnswer) || userAnswer.length !== q.options.length;
       }
 
       return false;
@@ -346,113 +316,6 @@ export default function TracNghiem() {
       setOpenAlertDialog(true);
       return;
     }
-
-    try {
-      setSaving(true);
-
-      // ⭐ Tính điểm
-      let total = 0;
-      const maxScore = questions.reduce((sum, q) => sum + (q.score ?? 1), 0);
-
-      questions.forEach(q => {
-        const rawAnswer = answers[q.id];
-
-        // 🔹 SINGLE
-        if (q.type === "single") {
-          const ua = answers[q.id];
-          if (typeof ua === "number" && (Array.isArray(q.correct) ? q.correct.includes(ua) : ua === q.correct)) {
-            total += q.score ?? 1;
-          }
-        }
-
-        // 🔹 MULTIPLE
-        else if (q.type === "multiple") {
-          const userArray = Array.isArray(answers[q.id]) ? answers[q.id] : [];
-          const correctArray = Array.isArray(q.correct) ? q.correct : [q.correct];
-          const correctSet = new Set(correctArray);
-          const userSet = new Set(userArray);
-
-          const isCorrect =
-            userSet.size === correctSet.size &&
-            [...correctSet].every(x => userSet.has(x));
-
-          if (isCorrect) total += q.score ?? 1;
-        }
-
-        // 🔹 SORT
-        else if (q.type === "sort") {
-          const userAnswer = Array.isArray(rawAnswer) ? rawAnswer : [];
-          if (userAnswer.length > 0) {
-            const isCorrect = userAnswer.every((val, i) => val === q.correct[i]);
-            if (isCorrect) total += q.score ?? 1;
-          }
-        }
-
-        // 🔹 MATCH
-        else if (q.type === "match" || q.type === "matching") {
-          const userAnswer = Array.isArray(rawAnswer) ? rawAnswer : [];
-          if (userAnswer.length > 0) {
-            const isCorrect = userAnswer.every((val, i) => val === q.correct[i]);
-            if (isCorrect) total += q.score ?? 1;
-          }
-        }
-
-        // 🔹 TRUE/FALSE — ⭐ THÊM MỚI
-        else if (q.type === "truefalse") {
-          const userAnswer = Array.isArray(rawAnswer) ? rawAnswer : [];
-
-          // userAnswer = ["Đ", "S", "Đ", "S"]
-          // correct    = ["Đ", "S", "Đ", "S"]
-
-          if (userAnswer.length === q.correct.length) {
-            const isCorrect = userAnswer.every((val, i) => val === q.correct[i]);
-            if (isCorrect) total += q.score ?? 1;
-          }
-        }
-      });
-
-      const percent = maxScore > 0 ? Math.round((total / maxScore) * 100) : 0;
-      setScore(total);
-      setSubmitted(true);
-
-      let resultText = "";
-      if (percent >= 75) resultText = "Hoàn thành tốt";
-      else if (percent >= 50) resultText = "Hoàn thành";
-      else resultText = "Chưa hoàn thành";
-
-      // 🔥 Lưu Firestore
-      const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
-      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
-
-      await updateDoc(tuanRef, {
-        [`${studentId}.hoVaTen`]: studentName,
-        [`${studentId}.diemTracNghiem`]: resultText,
-        [`${studentId}.diemTN`]: percent,
-      }).catch(async err => {
-        if (err.code === "not-found") {
-          await setDoc(tuanRef, {
-            [studentId]: {
-              hoVaTen: studentName,
-              status: "",
-              diemTracNghiem: resultText,
-              diemTN: percent,
-            },
-          });
-        } else {
-          throw err;
-        }
-      });
-
-      console.log(`✅ Đã lưu điểm: ${resultText}, diemTN: ${percent}`);
-    } catch (err) {
-      console.error("❌ Lỗi khi lưu điểm:", err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const autoSubmit = async () => {
-    if (!studentId || !studentClass || !selectedWeek) return;
 
     try {
       setSaving(true);
@@ -501,12 +364,106 @@ export default function TracNghiem() {
             if (isCorrect) total += q.score ?? 1;
           }
         }
+      });
 
-        // TRUE/FALSE — Thêm chính xác
-        else if (q.type === "truefalse") {
+      const percent = maxScore > 0 ? Math.round((total / maxScore) * 100) : 0;
+      setScore(total);
+      setSubmitted(true);
+
+      // Chuỗi kết quả
+      let resultText = "";
+      if (percent >= 75) resultText = "Hoàn thành tốt";
+      else if (percent >= 50) resultText = "Hoàn thành";
+      else resultText = "Chưa hoàn thành";
+
+      // Lưu vào Firestore
+      const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
+      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+
+      await updateDoc(tuanRef, {
+        [`${studentId}.hoVaTen`]: studentName,
+        [`${studentId}.diemTracNghiem`]: resultText,
+        [`${studentId}.diemTN`]: percent,
+      }).catch(async err => {
+        if (err.code === "not-found") {
+          await setDoc(tuanRef, {
+            [studentId]: {
+              hoVaTen: studentName,
+              status: "",
+              diemTracNghiem: resultText,
+              diemTN: percent,
+            },
+          });
+        } else {
+          throw err;
+        }
+      });
+
+      console.log(`✅ Đã lưu: ${resultText} và diemTN: ${percent} cho học sinh ${studentId}`);
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu điểm:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
+  const autoSubmit = async () => {
+    if (!studentId || !studentClass || !selectedWeek) return;
+
+    try {
+      setSaving(true);
+
+      // Tính điểm
+      let total = 0;
+      const maxScore = questions.reduce((sum, q) => sum + (q.score ?? 1), 0);
+
+      questions.forEach(q => {
+        const rawAnswer = answers[q.id];
+
+        // SINGLE
+        if (q.type === "single") {
+          const ua = Array.isArray(rawAnswer)
+            ? Number(rawAnswer[0])
+            : rawAnswer === undefined || rawAnswer === null || rawAnswer === ""
+            ? undefined
+            : Number(rawAnswer);
+
+          if (typeof ua === "number" && !Number.isNaN(ua)) {
+            const correctArray = Array.isArray(q.correct) ? q.correct : [q.correct];
+            if (correctArray.includes(ua)) {
+              total += q.score ?? 1;
+            }
+          }
+        }
+
+        // MULTIPLE
+        else if (q.type === "multiple") {
+          const userArray = Array.isArray(rawAnswer) ? rawAnswer.map(Number) : [];
+          const correctArray = Array.isArray(q.correct) ? q.correct : [q.correct];
+          const correctSet = new Set(correctArray);
+          const userSet = new Set(userArray);
+
+          const isCorrect =
+            userSet.size === correctSet.size &&
+            [...correctSet].every(x => userSet.has(x));
+
+          if (isCorrect) total += q.score ?? 1;
+        }
+
+        // SORT
+        else if (q.type === "sort") {
           const userAnswer = Array.isArray(rawAnswer) ? rawAnswer : [];
+          if (userAnswer.length > 0) {
+            const isCorrect = userAnswer.every((val, i) => val === q.correct[i]);
+            if (isCorrect) total += q.score ?? 1;
+          }
+        }
 
-          if (userAnswer.length === q.correct.length) {
+        // MATCH hoặc MATCHING
+        else if (q.type === "match" || q.type === "matching") {
+          const userAnswer = Array.isArray(rawAnswer) ? rawAnswer : [];
+          if (userAnswer.length > 0) {
             const isCorrect = userAnswer.every((val, i) => val === q.correct[i]);
             if (isCorrect) total += q.score ?? 1;
           }
@@ -517,6 +474,7 @@ export default function TracNghiem() {
       setScore(total);
       setSubmitted(true);
 
+      // Chuỗi kết quả
       const resultText =
         percent >= 75 ? "Hoàn thành tốt" :
         percent >= 50 ? "Hoàn thành" :
@@ -769,7 +727,7 @@ return (
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
                               sx={{
-                                p: 1.4,
+                                p: 1.5,
                                 borderRadius: 1,
                                 bgcolor: submitted
                                   ? isCorrect
@@ -780,7 +738,7 @@ return (
                                   : "#fafafa",
                                 border: "1px solid #90caf9",
                                 cursor: submitted || !started ? "default" : "grab",
-                                boxShadow: snapshot.isDragging ? 2 : 1,
+                                boxShadow: snapshot.isDragging ? 2 : 0,
                               }}
                             >
                               <Typography variant="body1" fontWeight="400">
@@ -912,7 +870,6 @@ return (
                         : "#fafafa",
                       border: "1px solid #90caf9",
                       minHeight: 30,
-                      p: 0.3,
                     }}
                   >
                     <Radio
@@ -959,7 +916,6 @@ return (
                         : "#fafafa",
                       border: "1px solid #90caf9",
                       minHeight: 30,
-                      p: 0.3,
                     }}
                   >
                     <Checkbox
@@ -980,78 +936,6 @@ return (
             </Stack>
           )}
 
-          {/* TRUE / FALSE */}
-          {currentQuestion.type === "truefalse" && (
-          <Stack spacing={2}>
-            {currentQuestion.options.map((opt, i) => {
-
-              const userAns = answers[currentQuestion.id] || [];
-              const selected = userAns[i] ?? "";
-
-              const correctArray = Array.isArray(currentQuestion.correct)
-                ? currentQuestion.correct
-                : [];
-
-              const correctVal = correctArray[i] ?? "";
-
-              const isCorrect = submitted && selected !== "" && selected === correctVal;
-              const isWrong   = submitted && selected !== "" && selected !== correctVal;
-
-              return (
-                <Paper
-                  key={i}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    borderRadius: 1,
-                    p: "3px 0", // padding top/bottom 3px
-                    bgcolor: submitted
-                      ? isCorrect
-                        ? "#c8e6c9"
-                        : isWrong
-                        ? "#ffcdd2"
-                        : "#fafafa"
-                      : "#fafafa",
-                    border: "1px solid #90caf9",
-                  }}
-                >
-                  {/* Text cách trái 10px */}
-                  <Typography
-                    variant="body1"
-                    sx={{ pl: "10px" }}
-                  >
-                    {opt}
-                  </Typography>
-
-                  {/* Gap giữa text và Select */}
-                  <FormControl size="small" sx={{ width: 90, mr: "3px" }}>
-                    <Select
-                      value={selected}
-                      onChange={(e) => {
-                        if (submitted || !started) return;
-
-                        const val = e.target.value; // "Đ" | "S"
-
-                        setAnswers((prev) => {
-                          const arr = Array.isArray(prev[currentQuestion.id])
-                            ? [...prev[currentQuestion.id]]
-                            : Array(currentQuestion.options.length).fill("");
-
-                          arr[i] = val;
-                          return { ...prev, [currentQuestion.id]: arr };
-                        });
-                      }}
-                    >
-                      <MenuItem value="Đ">Đúng</MenuItem>
-                      <MenuItem value="S">Sai</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Paper>
-              );
-            })}
-          </Stack>
-        )}
         </>
       )}
 

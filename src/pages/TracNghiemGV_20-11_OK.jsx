@@ -133,48 +133,42 @@ export default function TracNghiemGV() {
   // Load dữ liệu khi mount
   // -----------------------
   useEffect(() => {
-  try {
-    const cfg = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
-    if (cfg?.selectedClass) setSelectedClass(cfg.selectedClass);
-    if (cfg?.selectedSubject) setSelectedSubject(cfg.selectedSubject);
+    try {
+      const cfg = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
+      if (cfg?.selectedClass) setSelectedClass(cfg.selectedClass);
+      if (cfg?.selectedSubject) setSelectedSubject(cfg.selectedSubject);
 
-    const saved = JSON.parse(localStorage.getItem("teacherQuiz") || "[]");
+      const saved = JSON.parse(localStorage.getItem("teacherQuiz") || "[]");
 
-    if (Array.isArray(saved) && saved.length) {
-      const fixed = saved.map(q => {
-        if (q.type === "sort" || q.type === "matching" || q.type === "truefalse") {
-          // Đảm bảo correct luôn match length của options
-          if (q.type === "truefalse") {
-            const opts = q.options || [];
-            const correct = q.correct || opts.map(() => ""); // nếu thiếu, thêm ""
-            return { ...q, options: opts, correct };
+      if (Array.isArray(saved) && saved.length) {
+        const fixed = saved.map(q => {
+          // Nếu q.type đã hợp lệ thì giữ nguyên
+          if (["single", "multiple", "sort", "matching"].includes(q.type)) {
+            return { ...q };
           }
-          return { ...q };
-        }
 
-        // Loại bỏ các type khác → fallback về sort
-        return {
-          ...q,
-          type: "sort",
-          options: q.options || ["", "", "", ""],
-          correct: q.options ? q.options.map((_, i) => i) : [],
-          pairs: [],
-        };
-      });
+          // Dữ liệu cũ không có type hoặc type lạ → fallback về sort
+          return {
+            ...q,
+            type: "sort",
+            options: q.options || ["", "", "", ""],
+            correct: q.options ? q.options.map((_, i) => i) : [],
+            pairs: [],
+          };
+        });
 
-      setQuestions(fixed);
-    } else {
-      // 🔹 Nếu không có dữ liệu → tạo 1 câu hỏi trống
+        setQuestions(fixed);
+      } else {
+        // 🔹 Nếu không có dữ liệu → tạo 1 câu hỏi trống
+        setQuestions([createEmptyQuestion()]);
+      }
+
+    } catch (err) {
+      console.error("❌ Không thể load dữ liệu:", err);
+      // 🔹 Nếu lỗi → vẫn tạo 1 câu hỏi trống
       setQuestions([createEmptyQuestion()]);
     }
-
-  } catch (err) {
-    console.error("❌ Không thể load dữ liệu:", err);
-    // 🔹 Nếu lỗi → vẫn tạo 1 câu hỏi trống
-    setQuestions([createEmptyQuestion()]);
-  }
-}, []);
-
+  }, []);
 
 
   // 🔹 Lưu config vào localStorage khi thay đổi
@@ -267,16 +261,8 @@ export default function TracNghiemGV() {
       return q.options.some((o) => o.trim()) && q.correct?.length > 0;
     }
 
-    if (q.type === "truefalse") {
-      const opts = q.options || [];
-      const correct = q.correct || [];
-      // ít nhất 1 option có nội dung và dropdown chọn đúng/sai (không để tất cả rỗng)
-      return opts.length > 0 && opts.some(o => o?.trim()) && correct.length === opts.length;
-    }
-
     return false;
   };
-
 
   function extractMatchingCorrect(pairs) {
     const correct = {};
@@ -301,42 +287,22 @@ export default function TracNghiemGV() {
     }
 
     try {
-      // 🔹 Map lại questions để đảm bảo correct hợp lệ theo từng loại
+      // 🔹 Map lại questions để đảm bảo sort/matching có correct
       const questionsToSave = questions.map(q => {
         if (q.type === "matching") {
-          return { 
-            ...q, 
-            correct: q.pairs.map((_, i) => i) // chỉ số mặc định
-          };
+          return { ...q, correct: q.pairs.map((_, i) => i) };
         }
 
         if (q.type === "sort") {
-          return { 
-            ...q, 
-            correct: q.options.map((_, i) => i) 
-          };
+          return { ...q, correct: q.options.map((_, i) => i) };
         }
 
         if (q.type === "single") {
-          return { 
-            ...q, 
-            correct: q.correct?.length ? q.correct : [0] 
-          };
+          return { ...q, correct: q.correct?.length ? q.correct : [0] };
         }
 
         if (q.type === "multiple") {
-          return { 
-            ...q, 
-            correct: q.correct || [] 
-          };
-        }
-
-        if (q.type === "truefalse") {
-          // mỗi option có dropdown "", "Đ", "S"
-          return { 
-            ...q, 
-            correct: q.correct?.length === q.options?.length ? q.correct : q.options.map(() => "") 
-          };
+          return { ...q, correct: q.correct || [] };
         }
 
         return q;
@@ -376,7 +342,6 @@ export default function TracNghiemGV() {
         severity: "success",
       });
       setIsEditingNewDoc(false);
-
     } catch (err) {
       console.error(err);
       setSnackbar({
@@ -386,7 +351,6 @@ export default function TracNghiemGV() {
       });
     }
   };
-
 
   // --- Hàm mở dialog và fetch danh sách document ---
   const handleOpenDialog = () => {
@@ -714,7 +678,6 @@ export default function TracNghiemGV() {
                     <MenuItem value="multiple">Nhiều lựa chọn</MenuItem>
                     <MenuItem value="sort">Sắp xếp</MenuItem>
                     <MenuItem value="matching">Ghép đôi</MenuItem>
-                    <MenuItem value="truefalse">Đúng – Sai</MenuItem>
                   </Select>
 
 
@@ -859,70 +822,8 @@ export default function TracNghiemGV() {
                   </Stack>
                 )}
 
-                {/* ✅ Chèn “Đúng/Sai” ở đây */}
-                {q.type === "truefalse" && (
-                  <Stack spacing={1}>
-                    {q.options?.map((opt, oi) => (
-                      <Stack key={oi} direction="row" spacing={1} alignItems="center">
-                        {/* TextField cho option */}
-                        <TextField
-                          value={opt}
-                          size="small"
-                          multiline
-                          fullWidth
-                          onChange={(e) => {
-                            const newOptions = [...q.options];
-                            newOptions[oi] = e.target.value;
-                            updateQuestionAt(qi, { options: newOptions });
-                          }}
-                        />
 
-                        {/* Dropdown Đúng / Sai, mặc định rỗng, không nhãn */}
-                        <FormControl size="small" sx={{ width: 120 }}>
-                          <Select
-                            value={q.correct?.[oi] || ""}
-                            onChange={(e) => {
-                              const newCorrect = [...(q.correct || [])];
-                              newCorrect[oi] = e.target.value;
-                              updateQuestionAt(qi, { correct: newCorrect });
-                            }}
-                          >
-                            <MenuItem value="">Chọn</MenuItem> {/* Mặc định rỗng */}
-                            <MenuItem value="Đ">Đúng</MenuItem>
-                            <MenuItem value="S">Sai</MenuItem>
-                          </Select>
-                        </FormControl>
 
-                        {/* Xóa option */}
-                        <IconButton
-                          onClick={() => {
-                            const newOptions = [...q.options];
-                            newOptions.splice(oi, 1);
-
-                            const newCorrect = [...(q.correct || [])];
-                            newCorrect.splice(oi, 1);
-
-                            updateQuestionAt(qi, { options: newOptions, correct: newCorrect });
-                          }}
-                        >
-                          <RemoveCircleOutlineIcon sx={{ color: "error.main" }} />
-                        </IconButton>
-                      </Stack>
-                    ))}
-
-                    <Button
-                      variant="outlined"
-                      onClick={() =>
-                        updateQuestionAt(qi, {
-                          options: [...q.options, ""],
-                          correct: [...(q.correct || []), ""], // Thêm dropdown rỗng
-                        })
-                      }
-                    >
-                      Thêm mục
-                    </Button>
-                  </Stack>
-                )}
               </Stack>
 
               {/* Hàng cuối: Kiểu sắp xếp + Hợp lệ + Xóa câu hỏi */}
