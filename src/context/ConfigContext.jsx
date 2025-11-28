@@ -11,9 +11,12 @@ export const ConfigProvider = ({ children }) => {
     login: false,
     hocKy: "Giữa kỳ I",
     lop: "",
-    tracNghiem: false,
-    deTracNghiem: "",
-    timeLimit: 1, // ✅ Thêm thời gian mặc định 15 phút
+    kiemTraDinhKi: false,
+    baiTapTuan: "",
+    timeLimit: 1, 
+    choXemDiem: false, 
+    choXemDapAn: false,      
+    xuatFileBaiLam: false,  
   };
 
   const storedConfig = JSON.parse(localStorage.getItem("appConfig") || "{}");

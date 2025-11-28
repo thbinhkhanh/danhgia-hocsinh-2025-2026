@@ -15,28 +15,21 @@ import { db } from "./firebase";
 import HocSinh from "./pages/HocSinh";
 import Login from "./pages/Login";
 import QuanTri from "./pages/QuanTri";
-import QuanTri_KTDK from "./pages/QuanTri_KTDK";
-
 import GiaoVien from "./pages/GiaoVien";
 import TongHopDanhGia from "./pages/TongHopDanhGia";
 import NhapdiemKTDK from "./pages/NhapdiemKTDK";
 import XuatDanhGia from "./pages/XuatDanhGia";
-import TongHopKQ from "./pages/TongHopKQ";
 import ThongKe from "./pages/ThongKe";
 import DanhSachHS from "./pages/DanhSachHS";
 import TracNghiem from "./pages/TracNghiem";
 import TracNghiemGV from "./pages/TracNghiemGV";
-//import TracNghiemGV_TN from "./pages/TracNghiemGV_TN";
-import DeThi from "./pages/DeThi";
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
 import { ConfigProvider, ConfigContext } from "./context/ConfigContext";
-import { LamVanBenConfigProvider } from "./context/LamVanBenConfigContext"; // 👈 thêm
 import { TracNghiemProvider } from "./context/TracNghiemContext";
 import { StudentDataProvider } from "./context/StudentDataContext";
 import { StudentKTDKProvider } from "./context/StudentKTDKContext";
-import { AdminProvider, AdminContext } from "./context/AdminContext";
 
 // 🔹 Import icon
 import MenuBookIcon from "@mui/icons-material/MenuBook";
@@ -52,7 +45,6 @@ function AppContent() {
   const navigate = useNavigate();
   const { config, setConfig } = useContext(ConfigContext);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const account = localStorage.getItem("account"); // thêm dòng này trước <Routes>
 
   // ✅ Lấy trạng thái login ban đầu
   useEffect(() => {
@@ -108,12 +100,10 @@ function AppContent() {
           { path: "/tonghopdanhgia", label: "ĐGTX", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/nhapdiemktdk", label: "KTĐK", icon: <SummarizeIcon fontSize="small" /> },
           { path: "/xuatdanhgia", label: "Xuất đánh giá", icon: <SummarizeIcon fontSize="small" /> },
-          { path: "/ketqua", label: "Kết quả", icon: <BarChartIcon fontSize="small" /> },
           { path: "/thongke", label: "Thống kê", icon: <BarChartIcon fontSize="small" /> },
           { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
           { path: "/tracnghiem", label: "Trắc nghiệm", icon: <SchoolIcon fontSize="small" /> },  
           { path: "/tracnghiem-gv", label: "Soạn đề", icon: <MenuBookIcon fontSize="small" /> },
-          { path: "/de-thi", label: "Đề thi", icon: <MenuBookIcon fontSize="small" /> },
           { path: "/quan-tri", label: "Hệ thống", icon: <SettingsIcon fontSize="small" /> },
           { label: "Đăng xuất", onClick: handleLogout, icon: <LogoutIcon fontSize="small" /> },
         ]
@@ -128,12 +118,10 @@ function AppContent() {
           { path: "/tonghopdanhgia", label: "ĐGTX" },
           { path: "/nhapdiemktdk", label: "KTĐK" },
           { path: "/xuatdanhgia", label: "Xuất đánh giá" },
-          { path: "/ketqua", label: "Kết quả" },
           { path: "/thongke", label: "Thống kê" },
           { path: "/danhsach", label: "Danh sách" },
           { path: "/tracnghiem", label: "Trắc nghiệm" },
           { path: "/tracnghiem-gv", label: "Soạn đề" },
-          { path: "/de-thi", label: "Đề thi" },
           { path: "/quan-tri", label: "Hệ thống" },
           { label: "Đăng xuất", onClick: handleLogout }
         ]
@@ -271,45 +259,17 @@ function AppContent() {
             element={isLoggedIn ? <TongHopDanhGia /> : <Navigate to="/login" replace />}
           />
           <Route
-            path="/ketqua"
-            element={isLoggedIn ? <TongHopKQ /> : <Navigate to="/login" replace />}
-          />
-
-          <Route
             path="/thongke"
             element={isLoggedIn ? <ThongKe /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/tracnghiem-gv"
-            element={
-              isLoggedIn ? (
-                //account === "Admin" ? <TracNghiemGV /> : <TracNghiemGV_TN />
-                account === "Admin" ? <TracNghiemGV /> : <TracNghiemGV />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
+            element={isLoggedIn ? <TracNghiemGV /> : <Navigate to="/login" replace />}
           />
-          <Route
-            path="/de-thi"
-            element={isLoggedIn ? <DeThi /> : <Navigate to="/login" replace />}
-          />
-
           <Route
             path="/quan-tri"
-            element={
-              isLoggedIn ? (
-                localStorage.getItem("account") === "Admin" ? (
-                  <QuanTri />
-                ) : (
-                  <QuanTri_KTDK />
-                )
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
+            element={isLoggedIn ? <QuanTri /> : <Navigate to="/login" replace />}
           />
-
         </Routes>
       </Box>
     </>
@@ -319,19 +279,15 @@ function AppContent() {
 export default function App() {
   return (
     <ConfigProvider>
-      <AdminProvider>
-        <LamVanBenConfigProvider>
-          <TracNghiemProvider>
-            <StudentProvider>
-              <StudentDataProvider>
-                <StudentKTDKProvider>
-                  <AppContent />
-                </StudentKTDKProvider>
-              </StudentDataProvider>
-            </StudentProvider>
-          </TracNghiemProvider>
-        </LamVanBenConfigProvider>
-      </AdminProvider>
+      <TracNghiemProvider>
+        <StudentProvider>
+          <StudentDataProvider>
+            <StudentKTDKProvider>
+              <AppContent />
+            </StudentKTDKProvider>
+          </StudentDataProvider>
+        </StudentProvider>
+      </TracNghiemProvider>
     </ConfigProvider>
   );
 }

@@ -17,6 +17,7 @@ import {
   Tooltip,
   Radio, 
   Checkbox,
+  Grid,
 } from "@mui/material";
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
@@ -30,20 +31,17 @@ import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import SaveIcon from "@mui/icons-material/Save";
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from "@mui/icons-material/Close";
 
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 
-/**
- * Phiên bản sửa:
- * - Giữ nguyên giao diện như cũ
- * - Loại bỏ hoàn toàn loại câu hỏi "single" (1 đáp án) và "multiple" (nhiều đáp án)
- * - Chỉ còn 2 loại: "sort" (sắp xếp) và "matching" (ghép đôi)
- */
-
 export default function TracNghiemGV() {
+  const { config, setConfig } = useConfig(); // 🔹 thêm dòng này
+  const { config: quizConfig, updateConfig: updateQuizConfig } = useTracNghiem();
+
   // ⚙️ State cho dialog mở đề
   const [openDialog, setOpenDialog] = useState(false);
   const [docList, setDocList] = useState([]);
@@ -51,29 +49,76 @@ export default function TracNghiemGV() {
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isEditingNewDoc, setIsEditingNewDoc] = useState(true);
 
-  const { config: quizConfig, updateConfig: updateQuizConfig } = useTracNghiem();
+  // ⚙️ Bộ lọc lớp
   const [filterClass, setFilterClass] = useState("Tất cả");
 
+  // ⚙️ CẤU HÌNH ĐỀ THI – ĐÚNG CHUẨN FIRESTORE
+  const savedConfig = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
+
+const [selectedClass, setSelectedClass] = useState(savedConfig.selectedClass || "");
+const [selectedSubject, setSelectedSubject] = useState(savedConfig.selectedSubject || "");
+const [semester, setSemester] = useState(savedConfig.semester || "");
+const [schoolYear, setSchoolYear] = useState(savedConfig.schoolYear || "2025-2026");
+const [examLetter, setExamLetter] = useState(savedConfig.examLetter || "");
+const [examType, setExamType] = useState("bt");
+const [dialogExamType, setDialogExamType] = useState("bt");
+
+//const [semester, setSemester] = useState(config.hocKy || "");
+const [week, setWeek] = useState(config.tuan || 1);
+useEffect(() => {
+  if (config.hocKy) setSemester(config.hocKy);
+  if (config.tuan) setWeek(config.tuan);
+}, [config.hocKy, config.tuan]);
+
+const hocKyMap = {
+  "Giữa kỳ I": { from: 1, to: 9 },
+  "Cuối kỳ I": { from: 10, to: 18 },
+  "Giữa kỳ II": { from: 19, to: 27 },
+  "Cả năm": { from: 28, to: 35 },
+};
+
+
+  // ⚙️ Dropdown cố định
+  const semesters = ["Giữa kỳ I", "Cuối kỳ I", "Giữa kỳ II", "Cả năm"];
+  const classes = ["Lớp 1", "Lớp 2", "Lớp 3", "Lớp 4", "Lớp 5"];
+  const subjects = ["Tin học", "Công nghệ"];
+  const years = ["2025-2026", "2026-2027", "2027-2028", "2028-2029", "2029-2030"];
+
+
+  // ⚙️ Danh sách câu hỏi
   const [questions, setQuestions] = useState([]);
+
+  // ⚙️ Snackbar
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
 
-  const { config } = useConfig();
-  const deTracNghiem = config.deTracNghiem; // ✅ truy xuất đúng cách
+  // Hàm upload lên Cloudinary
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "tracnghiem_upload"); // preset unsigned
+    formData.append("folder", "questions"); // 🔹 folder muốn lưu
 
-  const hocKyMap = {
-    "Giữa kỳ I": { from: 1, to: 9 },
-    "Cuối kỳ I": { from: 10, to: 18 },
-    "Giữa kỳ II": { from: 19, to: 27 },
-    "Cả năm": { from: 28, to: 35 },
+    const response = await fetch(
+      "https://api.cloudinary.com/v1_1/dxzpfljv4/image/upload",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || "Upload hình thất bại");
+    }
+
+    const data = await response.json();
+    return data.secure_url; // URL hình đã upload
   };
 
-  // State cho học kỳ và tuần
-  const [semester, setSemester] = useState(config.hocKy || "");
-  const [week, setWeek] = useState(config.tuan || 1);
 
   useEffect(() => {
     const savedId = localStorage.getItem("deTracNghiemId");
@@ -83,98 +128,142 @@ export default function TracNghiemGV() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Đồng bộ khi config thay đổi
   useEffect(() => {
-    if (config.hocKy) setSemester(config.hocKy);
-    if (config.tuan) setWeek(config.tuan);
-  }, [config.hocKy, config.tuan]);
+  const fetchInitialQuiz = async () => {
+    try {
+      const schoolFromState = location?.state?.school;
+      const schoolToUse = schoolFromState || localStorage.getItem("school") || "";
 
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
+      let docId = null;
+      let collectionName = "";
 
-  const classes = ["Lớp 4", "Lớp 5"];
-  const subjects = ["Tin học", "Công nghệ"];
-
-  useEffect(() => {
-    const cfg = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
-    const savedQuiz = JSON.parse(localStorage.getItem("teacherQuiz") || "[]");
-
-    const isEditingNew = !quizConfig.deTracNghiem; // đang soạn đề mới
-
-    if (!cfg.selectedClass && !cfg.selectedSubject && !savedQuiz.length && !isEditingNew) {
-      const fetchInitialQuiz = async () => {
-        try {
-          const colRef = collection(db, "TRACNGHIEM");
-          const snap = await getDocs(colRef);
-          const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-          const initialQuiz = docs.find(d => d.id === quizConfig.deTracNghiem) || docs[0];
-
-          if (initialQuiz) {
-            updateQuizConfig({ deTracNghiem: initialQuiz.id });
-
-            setQuestions(initialQuiz.questions || []);
-            setSelectedClass(initialQuiz.class || "");
-            setSelectedSubject(initialQuiz.subject || "");
-            setSemester(initialQuiz.semester || "");
-            setWeek(initialQuiz.week || 1);
-          }
-        } catch (err) {
-          console.error("❌ Lỗi khi fetch danh sách đề:", err);
+      // Chọn config theo trường
+      if (schoolToUse === "TH Lâm Văn Bền") {
+        const cfgRef = doc(db, "LAMVANBEN", "config");
+        const cfgSnap = await getDoc(cfgRef);
+        if (!cfgSnap.exists()) {
+          console.warn("Không tìm thấy config LAMVANBEN");
+          setQuestions([]);
+          return;
         }
-      };
+        docId = cfgSnap.data()?.deTracNghiem || null;
+        collectionName = "TRACNGHIEM_LVB";
+      } else {
+        const cfgRef = doc(db, "CONFIG", "config");
+        const cfgSnap = await getDoc(cfgRef);
+        if (!cfgSnap.exists()) {
+          console.warn("Không tìm thấy CONFIG/config");
+          setQuestions([]);
+          return;
+        }
+        docId = cfgSnap.data()?.deTracNghiem || null;
+        collectionName = "TRACNGHIEM_BK";
+      }
 
-      fetchInitialQuiz();
+      if (!docId) {
+        console.warn("Không có deTracNghiem trong config");
+        setQuestions([]);
+        return;
+      }
+
+      // Lấy document đề
+      const quizRef = doc(db, collectionName, docId);
+      const quizSnap = await getDoc(quizRef);
+
+      if (!quizSnap.exists()) {
+        console.warn("Không tìm thấy đề:", collectionName, docId);
+        setQuestions([]);
+        return;
+      }
+
+      const data = quizSnap.data();
+      const list = Array.isArray(data.questions) ? data.questions : [];
+
+      // Đồng bộ trực tiếp state từ document
+      setQuestions(list);
+      setSelectedClass(data.class || "");
+      setSelectedSubject(data.subject || "");
+      setSemester(data.semester || "");
+      setSchoolYear(data.schoolYear || "");
+      setExamLetter(data.examLetter || "");
+
+      // Cập nhật localStorage
+      localStorage.setItem("teacherQuiz", JSON.stringify(list));
+      localStorage.setItem("teacherConfig", JSON.stringify({
+        selectedClass: data.class || "",
+        selectedSubject: data.subject || "",
+        semester: data.semester || "",
+        schoolYear: data.schoolYear || "",
+        examLetter: data.examLetter || "",
+      }));
+
+    } catch (err) {
+      console.error("❌ Lỗi load đề:", err);
+      setQuestions([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
 
-  // -----------------------
-  // Load dữ liệu khi mount
-  // -----------------------
-  useEffect(() => {
+  fetchInitialQuiz();
+}, [location?.state?.school]);
+
+
+// -----------------------
+// Load dữ liệu khi mount
+// -----------------------
+useEffect(() => {
   try {
+    // Load config
     const cfg = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
+
     if (cfg?.selectedClass) setSelectedClass(cfg.selectedClass);
     if (cfg?.selectedSubject) setSelectedSubject(cfg.selectedSubject);
 
+    // ⭐ Thêm 3 dòng cần thiết
+    if (cfg?.semester) setSemester(cfg.semester);
+    if (cfg?.schoolYear) setSchoolYear(cfg.schoolYear);
+    if (cfg?.examLetter) setExamLetter(cfg.examLetter);
+
+    // Load quiz
     const saved = JSON.parse(localStorage.getItem("teacherQuiz") || "[]");
 
     if (Array.isArray(saved) && saved.length) {
       const fixed = saved.map(q => {
-        if (q.type === "sort" || q.type === "matching" || q.type === "truefalse") {
-          // Đảm bảo correct luôn match length của options
-          if (q.type === "truefalse") {
-            const opts = q.options || [];
-            const correct = q.correct || opts.map(() => ""); // nếu thiếu, thêm ""
-            return { ...q, options: opts, correct };
-          }
-          return { ...q };
+        switch (q.type) {
+          case "image":
+            return {
+              ...q,
+              options: Array.from({ length: 4 }, (_, i) => q.options?.[i] || ""),
+              correct: Array.isArray(q.correct) ? q.correct : [],
+            };
+          case "truefalse":
+            return {
+              ...q,
+              options: q.options || ["Đúng", "Sai"],
+              correct: q.correct || ["Đúng"],
+            };
+          case "sort":
+          case "matching":
+            return { ...q };
+          default:
+            return {
+              ...q,
+              type: "sort",
+              options: q.options || ["", "", "", ""],
+              correct: q.options ? q.options.map((_, i) => i) : [],
+              pairs: [],
+            };
         }
-
-        // Loại bỏ các type khác → fallback về sort
-        return {
-          ...q,
-          type: "sort",
-          options: q.options || ["", "", "", ""],
-          correct: q.options ? q.options.map((_, i) => i) : [],
-          pairs: [],
-        };
       });
 
       setQuestions(fixed);
     } else {
-      // 🔹 Nếu không có dữ liệu → tạo 1 câu hỏi trống
       setQuestions([createEmptyQuestion()]);
     }
-
   } catch (err) {
     console.error("❌ Không thể load dữ liệu:", err);
-    // 🔹 Nếu lỗi → vẫn tạo 1 câu hỏi trống
     setQuestions([createEmptyQuestion()]);
   }
 }, []);
-
 
 
   // 🔹 Lưu config vào localStorage khi thay đổi
@@ -183,25 +272,27 @@ export default function TracNghiemGV() {
       selectedClass,
       selectedSubject,
       semester,
-      week,
+      schoolYear,
+      examLetter,
     };
     localStorage.setItem("teacherConfig", JSON.stringify(cfg));
-  }, [selectedClass, selectedSubject, semester, week]);
+  }, [selectedClass, selectedSubject, semester, schoolYear, examLetter]);
+
 
   // -----------------------
   // Xử lý câu hỏi
   // -----------------------
   const createEmptyQuestion = () => ({
     id: `q_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    title: "",
     question: "",
-    type: "single",        // mặc định là 1 lựa chọn
-    options: ["", "", "", ""],
+    type: "single",                // 🟢 mặc định: 1 lựa chọn
+    options: ["", "", "", ""],     // 🟢 AUTO 4 lựa chọn
     score: 1,
-    correct: [],           // chưa có đáp án đúng nào
+    correct: [],                   // 🟢 chưa chọn đáp án
     sortType: "fixed",
-    pairs: [],             // chỉ dùng khi matching
+    pairs: [],
   });
-
 
   // Hàm dùng để reorder khi kéo thả (nếu dùng sau)
   function reorder(list, startIndex, endIndex) {
@@ -212,22 +303,31 @@ export default function TracNghiemGV() {
   }
 
   const handleCreateNewQuiz = () => {
+    // Xóa đề đang chọn
     setSelectedDoc(null);
-    setQuestions([createEmptyQuestion()]);
-    updateQuizConfig({ deTracNghiem: null });
+
+    // Reset câu hỏi về 1 câu trống
+    const emptyQ = createEmptyQuestion();
+    setQuestions([emptyQ]);
+
+    // Đặt trạng thái là đề mới
     setIsEditingNewDoc(true);
 
+    // 🔹 Reset tất cả dropdown về null / empty string
     setSelectedClass("");
     setSelectedSubject("");
+    setSemester("");
+    setSchoolYear("");
+    setExamLetter("");
 
-    localStorage.setItem("teacherQuiz", JSON.stringify([createEmptyQuestion()]));
-    localStorage.setItem("teacherConfig", JSON.stringify({
-      selectedClass: "",
-      selectedSubject: "",
-      semester: "",
-      week: 1
-    }));
+    // 🔹 KHÔNG update context hay localStorage ở đây
+    // updateQuizConfig({ deTracNghiem: null });
+    // localStorage.setItem(...) → bỏ
+
+    // Khi người dùng bấm "Lưu" mới update context/localStorage
   };
+
+
 
   const handleAddQuestion = () => setQuestions((prev) => [...prev, createEmptyQuestion()]);
 
@@ -246,7 +346,7 @@ export default function TracNghiemGV() {
   };
 
   const isQuestionValid = (q) => {
-    if (!q.question?.trim()) return false;
+    if (!q.question?.trim()) return false;  // câu trả lời hoặc nội dung
     if (q.score <= 0) return false;
 
     if (q.type === "sort") {
@@ -260,22 +360,35 @@ export default function TracNghiemGV() {
     }
 
     if (q.type === "single") {
-      return q.options.some((o) => o.trim()) && q.correct?.length === 1;
+      return q.options?.some((o) => o.trim()) && q.correct?.length === 1;
     }
 
     if (q.type === "multiple") {
-      return q.options.some((o) => o.trim()) && q.correct?.length > 0;
+      return q.options?.some((o) => o.trim()) && q.correct?.length > 0;
     }
 
     if (q.type === "truefalse") {
       const opts = q.options || [];
       const correct = q.correct || [];
-      // ít nhất 1 option có nội dung và dropdown chọn đúng/sai (không để tất cả rỗng)
       return opts.length > 0 && opts.some(o => o?.trim()) && correct.length === opts.length;
     }
 
-    return false;
+    if (q.type === "image") {
+      const hasImage = q.options?.some(o => o); 
+      const hasAnswer = q.correct?.length > 0;
+      return hasImage && hasAnswer;
+    }
+
+    if (q.type === "fillblank") {
+      // ít nhất 1 từ để điền (options) và câu hỏi có ít nhất 1 chỗ trống [...]
+      const hasOptions = q.options?.some(o => o?.trim());
+      const hasBlanks = q.option?.includes("[...]"); // lưu ý dùng q.option thay vì q.question
+      return hasOptions && hasBlanks;
+    }
+
+    return false; // fallback cho các type chưa xử lý
   };
+
 
 
   function extractMatchingCorrect(pairs) {
@@ -301,70 +414,125 @@ export default function TracNghiemGV() {
     }
 
     try {
-      // 🔹 Map lại questions để đảm bảo correct hợp lệ theo từng loại
-      const questionsToSave = questions.map(q => {
-        if (q.type === "matching") {
-          return { 
-            ...q, 
-            correct: q.pairs.map((_, i) => i) // chỉ số mặc định
-          };
+      const uploadImage = async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", "tracnghiem_upload");
+
+        const response = await fetch(
+          "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload",
+          { method: "POST", body: formData }
+        );
+
+        if (!response.ok) throw new Error("Upload hình thất bại");
+        const data = await response.json();
+        return data.secure_url;
+      };
+
+      const questionsToSave = [];
+
+      for (let q of questions) {
+        let updatedQ = { ...q };
+
+        if (q.type === "image") {
+          const uploadedOptions = await Promise.all(
+            (q.options || []).map(async (opt) => {
+              if (opt instanceof File) return await uploadImage(opt);
+              return opt;
+            })
+          );
+          updatedQ.options = uploadedOptions;
+          updatedQ.correct = updatedQ.correct || [];
         }
 
-        if (q.type === "sort") {
-          return { 
-            ...q, 
-            correct: q.options.map((_, i) => i) 
-          };
-        }
+        if (q.type === "matching") updatedQ.correct = q.pairs.map((_, i) => i);
+        if (q.type === "sort") updatedQ.correct = q.options.map((_, i) => i);
+        if (q.type === "single") updatedQ.correct = q.correct?.length ? q.correct : [0];
+        if (q.type === "multiple") updatedQ.correct = q.correct || [];
+        if (q.type === "truefalse")
+          updatedQ.correct =
+            q.correct?.length === q.options?.length ? q.correct : q.options.map(() => "");
 
-        if (q.type === "single") {
-          return { 
-            ...q, 
-            correct: q.correct?.length ? q.correct : [0] 
-          };
-        }
-
-        if (q.type === "multiple") {
-          return { 
-            ...q, 
-            correct: q.correct || [] 
-          };
-        }
-
-        if (q.type === "truefalse") {
-          // mỗi option có dropdown "", "Đ", "S"
-          return { 
-            ...q, 
-            correct: q.correct?.length === q.options?.length ? q.correct : q.options.map(() => "") 
-          };
-        }
-
-        return q;
-      });
-
-      // 🔹 Lưu vào localStorage
-      localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
-      const cfg = { selectedClass, selectedSubject, semester, week };
-      localStorage.setItem("teacherConfig", JSON.stringify(cfg));
-
-      if (!selectedClass || !selectedSubject || !week) {
-        throw new Error("Vui lòng chọn lớp, môn và tuần trước khi lưu");
+        questionsToSave.push(updatedQ);
       }
 
-      const docId = `quiz_${selectedClass}_${selectedSubject}_${week}`;
-      const quizRef = doc(db, "TRACNGHIEM", docId);
+      localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
+      const cfg = { selectedClass, selectedSubject, semester };
+      localStorage.setItem("teacherConfig", JSON.stringify(cfg));
+
+      if (!selectedClass || !selectedSubject) {
+        throw new Error("Vui lòng chọn lớp và môn trước khi lưu");
+      }
+
+      // ================================
+      // 🔥 LOGIC MỚI: CHỌN COLLECTION & TÊN FILE
+      // ================================
+      let collectionName;
+      let docId;
+
+      if (examType === "ktdk") {
+        // Lưu đề KTĐK vào TRACNGHIEM_BK
+        collectionName = "TRACNGHIEM_BK";
+
+        const semesterMap = {
+          "Giữa kỳ I": "GKI",
+          "Cuối kỳ I": "CKI",
+          "Giữa kỳ II": "GKII",
+          "Cả năm": "CN",
+        };
+
+        const shortSchoolYear = (year) => {
+          const parts = year.split("-");
+          return parts.length === 2
+            ? parts[0].slice(2) + "-" + parts[1].slice(2)
+            : year;
+        };
+
+        docId = `quiz_${selectedClass}_${selectedSubject}_${
+          semesterMap[semester]
+        }_${shortSchoolYear(schoolYear)} (${examLetter})`;
+      } else {
+        // Bài tập → Lưu vào BAITAP_TUAN
+        collectionName = "BAITAP_TUAN";
+        docId = `quiz_${selectedClass}_${selectedSubject}_${week}`;
+      }
+
+      console.log("📁 Document path:", `${collectionName} / ${docId}`);
+
+      const quizRef = doc(db, collectionName, docId);
+
+      // ================================
+      // 🔥 LƯU LÊN FIRESTORE
+      // ================================
+
+      const examTypeToSave = examType === "bt" ? "Bài tập tuần" : "KTĐK";
 
       await setDoc(quizRef, {
         class: selectedClass,
         subject: selectedSubject,
-        week,
         semester,
-        questions: questionsToSave, // 🔹 lưu đúng questions đã chỉnh
+        schoolYear,
+        examLetter,
+        week,
+        examType: examTypeToSave,
+        questions: questionsToSave,
       });
 
-      // 🔄 Cập nhật context nếu là đề mới
-      const newDoc = { id: docId, class: selectedClass, subject: selectedSubject, week, semester, questions: questionsToSave };
+      // ================================
+      // 🔄 CẬP NHẬT CONTEXT (rất quan trọng)
+      // ================================
+      const newDoc = {
+        id: docId,
+        class: selectedClass,
+        subject: selectedSubject,
+        semester,
+        week,
+        examType: examTypeToSave,
+        questions: questionsToSave,
+      };
+
       const existed = quizConfig.quizList?.some((d) => d.id === docId);
+
       if (!existed) {
         const updatedList = [...(quizConfig.quizList || []), newDoc];
         updateQuizConfig({ quizList: updatedList });
@@ -375,6 +543,7 @@ export default function TracNghiemGV() {
         message: "✅ Đã lưu thành công!",
         severity: "success",
       });
+
       setIsEditingNewDoc(false);
 
     } catch (err) {
@@ -388,41 +557,183 @@ export default function TracNghiemGV() {
   };
 
 
+  const handleSaveAll_OK = async () => {
+    const invalid = questions
+      .map((q, i) => (!isQuestionValid(q) ? `Câu ${i + 1}` : null))
+      .filter(Boolean);
+
+    if (invalid.length > 0) {
+      setSnackbar({
+        open: true,
+        message: `❌ Các câu hỏi chưa hợp lệ: ${invalid.join(", ")}`,
+        severity: "error",
+      });
+      return;
+    }
+
+    try {
+      const uploadImage = async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", "tracnghiem_upload");
+
+        const response = await fetch(
+          "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload",
+          { method: "POST", body: formData }
+        );
+
+        if (!response.ok) throw new Error("Upload hình thất bại");
+        const data = await response.json();
+        return data.secure_url;
+      };
+
+      const questionsToSave = [];
+
+      for (let q of questions) {
+        let updatedQ = { ...q };
+
+        if (q.type === "image") {
+          const uploadedOptions = await Promise.all(
+            (q.options || []).map(async (opt) => {
+              if (opt instanceof File) return await uploadImage(opt);
+              return opt;
+            })
+          );
+          updatedQ.options = uploadedOptions;
+          updatedQ.correct = updatedQ.correct || [];
+        }
+
+        if (q.type === "matching") updatedQ.correct = q.pairs.map((_, i) => i);
+        if (q.type === "sort") updatedQ.correct = q.options.map((_, i) => i);
+        if (q.type === "single") updatedQ.correct = q.correct?.length ? q.correct : [0];
+        if (q.type === "multiple") updatedQ.correct = q.correct || [];
+        if (q.type === "truefalse")
+          updatedQ.correct =
+            q.correct?.length === q.options?.length ? q.correct : q.options.map(() => "");
+
+        questionsToSave.push(updatedQ);
+      }
+
+      localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
+      const cfg = { selectedClass, selectedSubject, semester };
+      localStorage.setItem("teacherConfig", JSON.stringify(cfg));
+
+      if (!selectedClass || !selectedSubject) {
+        throw new Error("Vui lòng chọn lớp và môn trước khi lưu");
+      }
+
+      // 🔹 Lấy school từ localStorage
+      const school = localStorage.getItem("school") || "";
+      console.log("🏫 School:", school);
+
+      // 🔹 Chọn collection dựa trên school
+      let collectionName;
+      if (school === "TH Lâm Văn Bền") {
+        collectionName = "TRACNGHIEM_LVB";
+      } else {
+        collectionName = "TRACNGHIEM_BK";
+      }
+
+      // 🔹 Document ID 
+
+      // Map rút gọn học kỳ
+      const semesterMap = {
+        "Giữa kỳ I": "GKI",
+        "Cuối kỳ I": "CKI",
+        "Giữa kỳ II": "GKII",
+        "Cả năm": "CN",
+      };
+
+      // Hàm rút gọn năm học
+      const shortSchoolYear = (year) => {
+        // ví dụ year = "2026-2027" -> "26-27"
+        const parts = year.split("-");
+        if (parts.length === 2) {
+          return parts[0].slice(2) + "-" + parts[1].slice(2);
+        }
+        return year;
+      };
+
+      // Khi tạo docId
+      const docId = `quiz_${selectedClass}_${selectedSubject}_${semesterMap[semester]}_${shortSchoolYear(schoolYear)} (${examLetter})`;
+
+
+      console.log("📁 Document path:", `${collectionName} / ${docId}`);
+
+      const quizRef = doc(db, collectionName, docId);
+
+      await setDoc(quizRef, {
+        class: selectedClass,
+        subject: selectedSubject,
+        semester,               // ví dụ: "GKI", "CKI", ...
+        schoolYear,             // ví dụ: "25-26"
+        examLetter,             // ví dụ: "A", "B", ...
+        questions: questionsToSave,
+      });
+
+
+      // 🔄 Cập nhật context nếu là đề mới
+      const newDoc = { id: docId, class: selectedClass, subject: selectedSubject, semester, questions: questionsToSave };
+      const existed = quizConfig.quizList?.some((d) => d.id === docId);
+      if (!existed) {
+        const updatedList = [...(quizConfig.quizList || []), newDoc];
+        updateQuizConfig({ quizList: updatedList });
+      }
+
+      setSnackbar({
+        open: true,
+        message: "✅ Đã lưu thành công!",
+        severity: "success",
+      });
+      setIsEditingNewDoc(false);
+    } catch (err) {
+      console.error(err);
+      setSnackbar({
+        open: true,
+        message: `❌ Lỗi khi lưu đề: ${err.message}`,
+        severity: "error",
+      });
+    }
+  };
+
   // --- Hàm mở dialog và fetch danh sách document ---
+ // Mở dialog với mặc định loại đề "Bài tập tuần"
   const handleOpenDialog = () => {
     setSelectedDoc(null);
     setFilterClass("Tất cả"); // reset về "Tất cả"
-    setOpenDialog(true);
+    
+    const defaultType = "bt";       // mặc định Bài tập tuần
+    fetchQuizList(defaultType);      // load danh sách đề
   };
 
+
   // 🔹 Hàm lấy danh sách đề trong Firestore
-  const fetchQuizList = async () => {
+  const fetchQuizList = async (type) => {
     setLoadingList(true);
-    setFilterClass("Tất cả"); // ← reset mỗi khi mở dialog
+    setFilterClass("Tất cả");
+    setDialogExamType(type); // cập nhật loại đề hiện tại trong dialog
 
     try {
-      // Nếu context đã có danh sách đề, dùng luôn
-      if (quizConfig.quizList && quizConfig.quizList.length > 0) {
-        setDocList(quizConfig.quizList);
-        // Nếu context có deTracNghiem, đánh dấu là selected
-        if (quizConfig.deTracNghiem) setSelectedDoc(quizConfig.deTracNghiem);
-      } else {
-        // Nếu context chưa có → fetch từ Firestore
-        const colRef = collection(db, "TRACNGHIEM");
-        const snap = await getDocs(colRef);
-        const docs = snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+      // Chọn collection theo loại đề
+      const colName = type === "bt" ? "BAITAP_TUAN" : "TRACNGHIEM_BK";
 
-        setDocList(docs);
+      // Lấy tất cả document trong collection
+      const colRef = collection(db, colName);
+      const snap = await getDocs(colRef);
 
-        // Lưu danh sách đề vào context
-        updateQuizConfig({ quizList: docs });
+      // Lấy dữ liệu và gắn luôn tên collection để filter sau
+      const docs = snap.docs.map((d) => ({
+        id: d.id,
+        name: d.id,
+        collection: colName,
+        ...d.data(),
+      }));
 
-        // Nếu context có deTracNghiem → đánh dấu selected
-        if (quizConfig.deTracNghiem) setSelectedDoc(quizConfig.deTracNghiem);
-      }
+      setDocList(docs);
+
+      // Tự động chọn đề đầu tiên nếu có
+      if (docs.length > 0) setSelectedDoc(docs[0].id);
+
     } catch (err) {
       console.error("❌ Lỗi khi lấy danh sách đề:", err);
       setSnackbar({
@@ -438,74 +749,96 @@ export default function TracNghiemGV() {
 
   // 🔹 Hàm mở đề được chọn
   const handleOpenSelectedDoc = async () => {
-    if (!selectedDoc) {
+  if (!selectedDoc) {
+    setSnackbar({
+      open: true,
+      message: "Vui lòng chọn một đề trước khi mở.",
+      severity: "warning",
+    });
+    return;
+  }
+
+  try {
+    // 🔹 Xác định loại đề hiện tại
+    const collectionName = dialogExamType === "ktdk" ? "TRACNGHIEM_BK" : "BAITAP_TUAN";
+
+    const docRef = doc(db, collectionName, selectedDoc);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
       setSnackbar({
         open: true,
-        message: "Vui lòng chọn một đề trước khi mở.",
-        severity: "warning",
+        message: "❌ Không tìm thấy đề này!",
+        severity: "error",
       });
       return;
     }
 
-    try {
-      const docRef = doc(db, "TRACNGHIEM", selectedDoc);
-      const docSnap = await getDoc(docRef);
+    const data = docSnap.data();
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+    // 🔹 Cập nhật dialogExamType dựa vào collection
+    const examTypeFromCollection = collectionName === "TRACNGHIEM_BK" ? "ktdk" : "bt";
+    setDialogExamType(examTypeFromCollection);
 
-        // 🔹 Cập nhật dữ liệu lên UI
-        setQuestions(data.questions || []);
-        setSelectedClass(data.class || "");
-        setSelectedSubject(data.subject || "");
-        setSemester(data.semester || "");
-        setWeek(data.week || 1);
-
-        // 🔹 Cập nhật context
-        updateQuizConfig({ deTracNghiem: data });
-
-        // 🔹 Ghi vào localStorage để khôi phục sau này
-        localStorage.setItem("teacherConfig", JSON.stringify({
-          selectedClass: data.class,
-          selectedSubject: data.subject,
-          semester: data.semester,
-          week: data.week,
-        }));
-        localStorage.setItem("teacherQuiz", JSON.stringify(data.questions));
-
-        // 🔹 Đóng dialog
-        setOpenDialog(false);
-
-        // 🔹 Ghi lại tên đề vào CONFIG/config/deTracNghiem
-        try {
-          const configRef = doc(db, "CONFIG", "config");
-          await setDoc(
-            configRef,
-            { deTracNghiem: selectedDoc },
-            { merge: true }
-          );
-          console.log(`✅ Đã ghi deTracNghiem = "${selectedDoc}" vào CONFIG/config`);
-          setIsEditingNewDoc(false);
-        } catch (err) {
-          console.error("❌ Lỗi khi ghi CONFIG/config/deTracNghiem:", err);
-        }
-
-      } else {
-        setSnackbar({
-          open: true,
-          message: "❌ Không tìm thấy đề này!",
-          severity: "error",
-        });
+    // 🔹 Chuẩn hóa câu hỏi
+    const fixedQuestions = (data.questions || []).map((q) => {
+      if (q.type === "image") {
+        return {
+          ...q,
+          options: Array.from({ length: 4 }, (_, i) => q.options?.[i] || ""),
+          correct: Array.isArray(q.correct) ? q.correct : [],
+        };
       }
+      return q;
+    });
+
+    // 🔹 Cập nhật state
+    setQuestions(fixedQuestions);
+    setSelectedClass(data.class || "");
+    setSelectedSubject(data.subject || "");
+    setSemester(data.semester || "");
+    setSchoolYear(data.schoolYear || "");
+    setExamLetter(data.examLetter || "");
+
+    // 🔹 Lưu context và localStorage
+    updateQuizConfig({ deTracNghiem: selectedDoc });
+    localStorage.setItem("deTracNghiemId", selectedDoc);
+
+    localStorage.setItem(
+      "teacherConfig",
+      JSON.stringify({
+        selectedClass: data.class,
+        selectedSubject: data.subject,
+        semester: data.semester,
+        schoolYear: data.schoolYear,
+        examLetter: data.examLetter,
+      })
+    );
+
+    localStorage.setItem("teacherQuiz", JSON.stringify(fixedQuestions));
+
+    setOpenDialog(false);
+
+    // 🔹 Ghi vào CONFIG/config chung
+    try {
+      const configRef = doc(db, "CONFIG", "config");
+      //await setDoc(configRef, { deTracNghiem: selectedDoc }, { merge: true });
+      //console.log(`✅ Đã ghi deTracNghiem = "${selectedDoc}" vào CONFIG/config`);
+      setIsEditingNewDoc(false);
     } catch (err) {
-      console.error(err);
-      setSnackbar({
-        open: true,
-        message: `❌ Lỗi khi mở đề: ${err.message}`,
-        severity: "error",
-      });
+      console.error("❌ Lỗi khi ghi CONFIG:", err);
     }
-  };
+  } catch (err) {
+    console.error(err);
+    setSnackbar({
+      open: true,
+      message: `❌ Lỗi khi mở đề: ${err.message}`,
+      severity: "error",
+    });
+  }
+};
+
+
 
   const addQuestion = () => {
     setQuestions((prev) => [
@@ -526,18 +859,23 @@ export default function TracNghiemGV() {
 
     const docToDelete = docList.find(d => d.id === selectedDoc);
     const confirm = window.confirm(
-      `❗ Bạn có chắc muốn xóa đề: ${docToDelete?.class || "?"} - ${docToDelete?.subject || "?"} - Tuần ${docToDelete?.week || "?"}?`
+      `❗ Bạn có chắc muốn xóa đề: ${docToDelete?.id || "?"}?`
     );
 
-    // Đóng dialog ngay sau khi xác nhận
     setOpenDialog(false);
 
     if (!confirm) return;
 
     try {
-      await deleteDoc(doc(db, "TRACNGHIEM", selectedDoc));
+      // 🔹 Lấy trường học đăng nhập
+      const school = localStorage.getItem("school") || "";
 
-      const updatedList = docList.filter((d) => d.id !== selectedDoc);
+      // 🔹 Chọn collection theo trường
+      const collectionName = school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
+
+      await deleteDoc(doc(db, collectionName, selectedDoc));
+
+      const updatedList = docList.filter(d => d.id !== selectedDoc);
       setDocList(updatedList);
       updateQuizConfig({ quizList: updatedList });
       setSelectedDoc(null);
@@ -546,12 +884,15 @@ export default function TracNghiemGV() {
       const isCurrentQuizDeleted =
         selectedClass === docToDelete?.class &&
         selectedSubject === docToDelete?.subject &&
-        week === docToDelete?.week;
+        semester === docToDelete?.semester &&
+        schoolYear === docToDelete?.schoolYear &&
+        examLetter === docToDelete?.examLetter;
 
       if (isCurrentQuizDeleted) {
         setQuestions([createEmptyQuestion()]);
         updateQuizConfig({ deTracNghiem: null });
       }
+
 
       setSnackbar({
         open: true,
@@ -568,13 +909,58 @@ export default function TracNghiemGV() {
     }
   };
 
+
   useEffect(() => {
-    if (deTracNghiem) {
-      setIsEditingNewDoc(false);
+    // Ưu tiên lấy từ context nếu có
+    const contextDocId = quizConfig?.deTracNghiem;
+
+    // Nếu không có trong context, thử lấy từ localStorage
+    const storedDocId = localStorage.getItem("deTracNghiemId");
+
+    const docId = contextDocId || storedDocId || null;
+
+    if (docId) {
+      setSelectedDoc(docId);
+      setIsEditingNewDoc(false); // có đề → không phải đề mới
     } else {
-      setIsEditingNewDoc(true);
+      setIsEditingNewDoc(true); // không có đề → là đề mới
     }
-  }, [deTracNghiem]);
+  }, []);
+
+
+  const handleImageChange = async (qi, oi, file) => {
+    try {
+      // Tạo formData
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "tracnghiem_upload"); // preset unsigned
+      formData.append("folder", "questions"); // folder trong Cloudinary
+
+      // Upload
+      const response = await fetch("https://api.cloudinary.com/v1_1/dxzpfljv4/image/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload hình thất bại");
+
+      const data = await response.json();
+      const imageUrl = data.secure_url;
+
+      // Cập nhật question.options với URL
+      const newOptions = [...questions[qi].options];
+      newOptions[oi] = imageUrl;
+      updateQuestionAt(qi, { options: newOptions });
+
+    } catch (err) {
+      console.error("❌ Lỗi upload hình:", err);
+      setSnackbar({
+        open: true,
+        message: `❌ Upload hình thất bại: ${err.message}`,
+        severity: "error",
+      });
+    }
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", p: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
@@ -582,19 +968,25 @@ export default function TracNghiemGV() {
         {/* Nút New, Mở đề và Lưu đề */}
         <Stack direction="row" spacing={1} sx={{ position: "absolute", top: 8, left: 8 }}>
           {/* Icon New: soạn đề mới */}
-          <IconButton onClick={handleCreateNewQuiz} sx={{ color: "#1976d2" }}>
-            <AddIcon />
-          </IconButton>
+          <Tooltip title="Soạn đề mới">
+            <IconButton onClick={handleCreateNewQuiz} sx={{ color: "#1976d2" }}>
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
 
           {/* Icon mở đề */}
-          <IconButton onClick={fetchQuizList} sx={{ color: "#1976d2" }}>
-            <FolderOpenIcon />
-          </IconButton>
+          <Tooltip title="Mở đề">
+            <IconButton onClick={fetchQuizList} sx={{ color: "#1976d2" }}>
+              <FolderOpenIcon />
+            </IconButton>
+          </Tooltip>
 
           {/* Icon lưu đề */}
-          <IconButton onClick={handleSaveAll} sx={{ color: "#1976d2" }}>
-            <SaveIcon />
-          </IconButton>
+          <Tooltip title="Lưu đề">
+            <IconButton onClick={handleSaveAll} sx={{ color: "#1976d2" }}>
+              <SaveIcon />
+            </IconButton>
+          </Tooltip>
         </Stack>
 
         {/* Tiêu đề */}
@@ -603,7 +995,7 @@ export default function TracNghiemGV() {
           fontWeight="bold"
           textAlign="center"
           gutterBottom
-          sx={{ textTransform: "uppercase", color: "#1976d2", mb: 1 }}
+          sx={{ textTransform: "uppercase", color: "#1976d2", mt: 3, mb: 1 }}
         >
           Tạo đề kiểm tra
         </Typography>
@@ -614,49 +1006,123 @@ export default function TracNghiemGV() {
           fontWeight="bold"
           sx={{ color: "text.secondary", mb: 3 }}
         >
-          {isEditingNewDoc || !selectedClass || !selectedSubject
-            ? "🆕 Đang soạn đề mới"
-            : `📝 Đề: ${selectedClass} - ${selectedSubject} - Tuần ${week}`}
+          {quizConfig.deTracNghiem || localStorage.getItem("deTracNghiemId")
+            ? `📝 Đề: ${selectedSubject || ""} - ${selectedClass || ""}`
+            : "🆕 Đang soạn đề mới"}
         </Typography>
 
-        {/* FORM LỚP / MÔN / HỌC KỲ / TUẦN */}
+        {/* FORM LỚP / MÔN / HỌC KỲ / NĂM HỌC / ĐỀ */}
         <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-          <Stack spacing={2}>
-            <Stack direction={{ xs: "row", sm: "row" }} spacing={2}>
-              <FormControl size="small" sx={{ flex: 1 }}>
-                <InputLabel>Lớp</InputLabel>
-                <Select value={selectedClass || ""} onChange={(e) => setSelectedClass(e.target.value)} label="Lớp">
-                  {classes?.map((lop) => <MenuItem key={lop} value={lop}>{lop}</MenuItem>)}
-                </Select>
-              </FormControl>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} flexWrap="wrap">
+            
+            {/* Loại đề */}
+            <FormControl size="small" sx={{ flex: 1, minWidth: 150 }}>
+              <InputLabel>Loại đề</InputLabel>
+              <Select
+                value={examType || "bt"} // mặc định BT tuần
+                onChange={(e) => setExamType(e.target.value)}
+                label="Loại đề"
+              >
+                <MenuItem value="bt">Bài tập tuần</MenuItem>
+                <MenuItem value="ktdk">KTĐK</MenuItem>
+              </Select>
+            </FormControl>
 
-              <FormControl size="small" sx={{ flex: 1 }}>
-                <InputLabel>Môn học</InputLabel>
-                <Select value={selectedSubject || ""} onChange={(e) => setSelectedSubject(e.target.value)} label="Môn học">
-                  {subjects?.map((mon) => <MenuItem key={mon} value={mon}>{mon}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Stack>
+            {/* Lớp */}
+            <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+              <InputLabel>Lớp</InputLabel>
+              <Select
+                value={selectedClass || ""}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                label="Lớp"
+              >
+                {classes.map((lop) => (
+                  <MenuItem key={lop} value={lop}>{lop}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-            <Stack direction={{ xs: "row", sm: "row" }} spacing={2}>
-              <FormControl size="small" sx={{ flex: 1 }}>
-                <InputLabel>Học kỳ</InputLabel>
-                <Select value={semester || ""} onChange={(e) => setSemester(e.target.value)} label="Học kỳ">
-                  {Object.keys(hocKyMap || {}).map((hk) => <MenuItem key={hk} value={hk}>{hk}</MenuItem>)}
-                </Select>
-              </FormControl>
+            {/* Môn học */}
+            <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+              <InputLabel>Môn học</InputLabel>
+              <Select
+                value={selectedSubject || ""}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                label="Môn học"
+              >
+                {subjects?.map((mon) => (
+                  <MenuItem key={mon} value={mon}>{mon}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-              <FormControl size="small" sx={{ flex: 1 }}>
+            {/* Nếu là BT tuần */}
+            {examType === "bt" && (
+              <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
                 <InputLabel>Tuần</InputLabel>
-                <Select value={week || ""} onChange={(e) => setWeek(Number(e.target.value))} label="Tuần">
+                <Select
+                  value={week || ""}
+                  onChange={(e) => setWeek(Number(e.target.value))}
+                  label="Tuần"
+                >
                   {semester &&
-                    Array.from({ length: hocKyMap[semester].to - hocKyMap[semester].from + 1 }, (_, i) => i + hocKyMap[semester].from)
-                      .map((t) => <MenuItem key={t} value={t}>Tuần {t}</MenuItem>)}
+                    Array.from(
+                      { length: hocKyMap[semester].to - hocKyMap[semester].from + 1 },
+                      (_, i) => i + hocKyMap[semester].from
+                    ).map((t) => (
+                      <MenuItem key={t} value={t}>Tuần {t}</MenuItem>
+                    ))}
                 </Select>
               </FormControl>
-            </Stack>
+            )}
+
+            {/* Nếu là KTĐK */}
+            {examType === "ktdk" && (
+              <>
+                <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+                  <InputLabel>Học kỳ</InputLabel>
+                  <Select
+                    value={semester || ""}
+                    onChange={(e) => setSemester(e.target.value)}
+                    label="Học kỳ"
+                  >
+                    {semesters.map((hk) => (
+                      <MenuItem key={hk} value={hk}>{hk}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+                  <InputLabel>Năm học</InputLabel>
+                  <Select
+                    value={schoolYear || ""}
+                    onChange={(e) => setSchoolYear(e.target.value)}
+                    label="Năm học"
+                  >
+                    {years.map((y) => (
+                      <MenuItem key={y} value={y}>{y}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+                  <InputLabel>Đề</InputLabel>
+                  <Select
+                    value={examLetter || ""}
+                    onChange={(e) => setExamLetter(e.target.value)}
+                    label="Đề"
+                  >
+                    {["A", "B", "C", "D"].map((d) => (
+                      <MenuItem key={d} value={d}>{d}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </>
+            )}
           </Stack>
         </Paper>
+
+
 
         {/* DANH SÁCH CÂU HỎI */}
         <Stack spacing={3}>
@@ -675,6 +1141,55 @@ export default function TracNghiemGV() {
                 sx={{ mb: 2 }}
               />
 
+              {/* ⭐ Hình minh họa bên dưới nội dung câu hỏi */}
+              <Box sx={{ mt: -1, mb: 2 }}>
+                {q.questionImage ? (
+                  <Box sx={{ position: "relative", display: "inline-block" }}>
+                    <img
+                      src={q.questionImage}
+                      alt="question"
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: 260,
+                        objectFit: "contain",
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        marginTop: 8
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      sx={{
+                        position: "absolute",
+                        top: 4,
+                        right: 4,
+                        backgroundColor: "#fff"
+                      }}
+                      onClick={() => updateQuestionAt(qi, { questionImage: "" })}
+                    >
+                      ✕
+                    </IconButton>
+                  </Box>
+                ) : (
+                  <Button variant="outlined" component="label">
+                    📷 Thêm hình minh họa
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        const reader = new FileReader();
+                        reader.onload = () => updateQuestionAt(qi, { questionImage: reader.result });
+                        reader.readAsDataURL(f);
+                      }}
+                    />
+                  </Button>
+                )}
+              </Box>
+
+
               <Stack direction={{ xs: "row", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
                 <FormControl size="small" sx={{ width: 180 }}>
                   <InputLabel>Loại câu hỏi</InputLabel>
@@ -682,7 +1197,6 @@ export default function TracNghiemGV() {
                     value={q.type}
                     onChange={(e) => {
                       const newType = e.target.value;
-
                       let patch = { type: newType };
 
                       if (newType === "sort") {
@@ -706,18 +1220,32 @@ export default function TracNghiemGV() {
                         patch.pairs = [];
                       }
 
+                      if (newType === "image") {
+                        patch.options = q.options?.length === 4 ? q.options : ["", "", "", ""];
+                        patch.pairs = [];
+                        patch.correct = [];
+                      }
+
+                      // 🔹 Thêm loại câu hỏi điền khuyết
+                      if (newType === "fillblank") {
+                        patch.options = []; // danh sách từ để kéo thả
+                        patch.answers = []; // học sinh điền vào ô trống
+                      }
+
                       updateQuestionAt(qi, patch);
                     }}
                     label="Loại câu hỏi"
                   >
-                    <MenuItem value="single">Một lựa chọn</MenuItem>
-                    <MenuItem value="multiple">Nhiều lựa chọn</MenuItem>
-                    <MenuItem value="sort">Sắp xếp</MenuItem>
-                    <MenuItem value="matching">Ghép đôi</MenuItem>
                     <MenuItem value="truefalse">Đúng – Sai</MenuItem>
+                    <MenuItem value="single">Một lựa chọn</MenuItem>
+                    <MenuItem value="multiple">Nhiều lựa chọn</MenuItem>                    
+                    <MenuItem value="matching">Ghép đôi</MenuItem>                    
+                    <MenuItem value="image">Hình ảnh</MenuItem>
+                    <MenuItem value="sort">Sắp xếp</MenuItem>
+
+                    {/* 🔹 MenuItem mới cho điền khuyết */}
+                    <MenuItem value="fillblank">Điền khuyết</MenuItem>
                   </Select>
-
-
                 </FormControl>
 
                 <TextField
@@ -923,7 +1451,211 @@ export default function TracNghiemGV() {
                     </Button>
                   </Stack>
                 )}
+
+                {q.type === "image" && (
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}   // ⭐ đổi direction theo màn hình
+                    spacing={2}
+                    alignItems="center"
+                  >
+                    {Array.from({ length: 4 }).map((_, oi) => {
+                      const img = q.options?.[oi] || "";
+                      const isChecked = q.correct?.includes(oi) || false;
+
+                      return (
+                        <Box key={oi} sx={{ position: "relative" }}>
+                          <Paper
+                            sx={{
+                              width: { xs: "80%", sm: 120 },   // ⭐ mobile: full width
+                              height: { xs: 80,sm: 120},
+                              border: "2px dashed #90caf9",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              position: "relative",
+                            }}
+                          >
+                            {img ? (
+                              <>
+                                <img
+                                  src={img}
+                                  alt={`option-${oi}`}
+                                  style={{
+                                    maxWidth: "100%",
+                                    maxHeight: "100%",
+                                    objectFit: "contain",
+                                  }}
+                                />
+                                <IconButton
+                                  size="small"
+                                  sx={{ position: "absolute", top: 2, right: 2 }}
+                                  onClick={() => {
+                                    const newOptions = [...q.options];
+                                    newOptions[oi] = "";
+                                    updateQuestionAt(qi, { options: newOptions });
+
+                                    const newCorrect = (q.correct || []).filter(c => c !== oi);
+                                    updateQuestionAt(qi, { correct: newCorrect });
+                                  }}
+                                >
+                                  ✕
+                                </IconButton>
+                              </>
+                            ) : (
+                              <label
+                                style={{
+                                  cursor: "pointer",
+                                  width: "100%",
+                                  height: "100%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <Typography variant="body2" sx={{ textAlign: "center" }}>
+                                  Tải hình lên
+                                </Typography>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  style={{ display: "none" }}
+                                  onChange={(e) =>
+                                    e.target.files?.[0] &&
+                                    handleImageChange(qi, oi, e.target.files[0])
+                                  }
+                                />
+                              </label>
+                            )}
+                          </Paper>
+
+                          {img && (
+                            <Checkbox
+                              checked={isChecked}
+                              onChange={(e) => {
+                                let newCorrect = [...(q.correct || [])];
+                                if (e.target.checked) newCorrect.push(oi);
+                                else newCorrect = newCorrect.filter((c) => c !== oi);
+
+                                updateQuestionAt(qi, { correct: newCorrect });
+                              }}
+                              sx={{
+                                position: "absolute",
+                                top: -10,
+                                left: -10,
+                                bgcolor: "background.paper",
+                                borderRadius: "50%",
+                              }}
+                            />
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                )}
               </Stack>
+
+              {q.type === "fillblank" && (
+                <Stack spacing={2}>
+                  {/* Ô nhập câu hỏi với [...] */}
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    label="Nhập câu hỏi với [...] cho chỗ trống"
+                    value={q.option || ""}
+                    onChange={(e) => updateQuestionAt(qi, { option: e.target.value })}
+                  />
+
+                  {/* Danh sách từ cần điền */}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 1 }}>
+                    Từ cần điền
+                  </Typography>
+
+                  <Grid container spacing={1}>
+                    {q.options?.map((opt, oi) => (
+                      <Grid item xs={12} sm={6} key={oi}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <TextField
+                            value={opt}
+                            size="small"
+                            fullWidth
+                            onChange={(e) => {
+                              const newOptions = [...q.options];
+                              newOptions[oi] = e.target.value;
+                              updateQuestionAt(qi, { options: newOptions });
+                            }}
+                          />
+                          <IconButton
+                            onClick={() => {
+                              const newOptions = [...q.options];
+                              newOptions.splice(oi, 1);
+                              updateQuestionAt(qi, { options: newOptions });
+                            }}
+                          >
+                            <RemoveCircleOutlineIcon sx={{ color: "error.main" }} />
+                          </IconButton>
+                        </Stack>
+                      </Grid>
+                    ))}
+
+                    {/* Nút thêm từ */}
+                    <Grid item xs={12}>
+                      <Button
+                        variant="contained"
+                        sx={{
+                          backgroundColor: "#1976d2",
+                          color: "#fff",
+                          "&:hover": {
+                            backgroundColor: "#115293"
+                          }
+                        }}
+                        onClick={() =>
+                          updateQuestionAt(qi, { options: [...(q.options || []), ""] })
+                        }
+                      >
+                        Thêm từ
+                      </Button>
+                    </Grid>
+                  </Grid>
+
+                  {/* 🏷️ Label Preview */}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#1976d2" }}>
+                    Xem trước câu hỏi
+                  </Typography>
+
+                  {/* Preview đồng bộ font với Option */}
+                  <Box
+                    sx={{
+                      p: 1,
+                      border: "1px dashed #90caf9",
+                      borderRadius: 1,
+                      minHeight: 50,
+                      fontFamily: "Roboto, Arial, sans-serif", // giống font MUI TextField
+                      fontSize: "0.875rem", // size giống TextField size="small"
+                      lineHeight: 1.5
+                    }}
+                  >
+                    {q.option
+                      ? q.option.split("[...]").map((part, i, arr) => (
+                          <React.Fragment key={i}>
+                            <span>{part}</span>
+                            {i < arr.length - 1 && (
+                              <Box
+                                component="span"
+                                sx={{
+                                  display: "inline-block",
+                                  minWidth: 60,
+                                  borderBottom: "2px solid #000",
+                                  mx: 0.5
+                                }}
+                              />
+                            )}
+                          </React.Fragment>
+                        ))
+                      : "Câu hỏi chưa có nội dung"}
+                  </Box>
+                </Stack>
+              )}
 
               {/* Hàng cuối: Kiểu sắp xếp + Hợp lệ + Xóa câu hỏi */}
               <Stack direction={{ xs: "row", sm: "row" }} spacing={2} alignItems="center" justifyContent="space-between">
@@ -964,7 +1696,7 @@ export default function TracNghiemGV() {
         </Stack>
 
         {/* DIALOG MỞ ĐỀ */}
-        <Dialog
+                <Dialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
           maxWidth="sm"
@@ -974,134 +1706,128 @@ export default function TracNghiemGV() {
               borderRadius: 3,
               boxShadow: 6,
               bgcolor: "#f9f9f9",
+              overflow: "hidden",
             },
           }}
         >
-          <DialogTitle
+          {/* Thanh tiêu đề */}
+          <Box
             sx={{
-              textAlign: "center",
-              py: 1.2,
-              fontWeight: "bold",
-              fontSize: "1.1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
               background: "linear-gradient(to right, #1976d2, #42a5f5)",
               color: "#fff",
+              px: 2,
+              py: 1.2,
               borderTopLeftRadius: 12,
               borderTopRightRadius: 12,
             }}
           >
-            📂 Chọn đề để mở
-          </DialogTitle>
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: "bold", fontSize: "1.1rem", letterSpacing: 0.5 }}
+            >
+              📂 Danh sách đề
+            </Typography>
+            <IconButton onClick={() => setOpenDialog(false)} sx={{ color: "#fff", p: 0.6 }}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
 
-          <DialogContent
-            dividers
-            sx={{
-              maxHeight: 320,
-              overflowY: "auto",
-              px: 2,
-              py: 2,
-              bgcolor: "#fff",
-            }}
-          >
-            {/* Bộ lọc lớp */}
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ alignSelf: "center" }}>
-                Lọc theo lớp:
-              </Typography>
+          {/* Nội dung Dialog */}
+          <DialogContent dividers sx={{ maxHeight: 350, overflowY: "auto", px: 2, py: 2, bgcolor: "#fff" }}>
+            
+            {/* Loại đề + Lọc lớp cùng hàng */}
+            <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: "wrap" }}>
+              {/* Chọn loại đề */}
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Loại đề</InputLabel>
+                <Select
+                  value={dialogExamType || "bt"}
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    setDialogExamType(type);
+                    fetchQuizList(type);
+                  }}
+                  label="Loại đề"
+                >
+                  <MenuItem value="bt">Bài tập tuần</MenuItem>
+                  <MenuItem value="ktdk">KTĐK</MenuItem>
+                </Select>
+              </FormControl>
 
+              {/* Bộ lọc lớp */}
               <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Lọc lớp</InputLabel>
                 <Select
                   value={filterClass}
                   onChange={(e) => setFilterClass(e.target.value)}
-                  displayEmpty // để hiển thị giá trị mặc định
+                  label="Lọc lớp"
                 >
                   <MenuItem value="Tất cả">Tất cả</MenuItem>
-                  <MenuItem value="Lớp 4">Lớp 4</MenuItem>
-                  <MenuItem value="Lớp 5">Lớp 5</MenuItem>
+                  {classes.map((lop) => (
+                    <MenuItem key={lop} value={lop}>{lop}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Stack>
 
-            {loadingList ? (
-              <Typography align="center" sx={{ py: 4, color: "text.secondary" }}>
-                ⏳ Đang tải danh sách đề...
-              </Typography>
-            ) : docList.length === 0 ? (
-              <Typography align="center" sx={{ py: 4, color: "text.secondary" }}>
-                Không có đề nào.
-              </Typography>
-            ) : (
-              <Stack spacing={1}>
-                {docList
-                  .filter((doc) =>
-                    filterClass === "Tất cả" ? true : doc.class === filterClass
-                  )
-                  .map((doc) => {
-                    const isSelected = selectedDoc === doc.id;
-                    return (
-                      <Paper
-                        key={doc.id}
-                        elevation={isSelected ? 4 : 1}
-                        onClick={() => setSelectedDoc(doc.id)}
-                        onDoubleClick={() => {
-                          setSelectedDoc(doc.id);
-                          handleOpenSelectedDoc(doc.id);
-                        }}
-                        sx={{
-                          px: 2,
-                          py: 1.1,
-                          borderRadius: 2,
-                          cursor: "pointer",
-                          userSelect: "none",
-                          transition: "all 0.2s ease",
-                          border: isSelected
-                            ? "2px solid #1976d2"
-                            : "1px solid #e0e0e0",
-                          bgcolor: isSelected ? "#e3f2fd" : "#fff",
-                          "&:hover": {
-                            boxShadow: 3,
-                            bgcolor: isSelected ? "#e3f2fd" : "#f5f5f5",
-                          },
-                        }}
-                      >
-                        <Typography variant="body1" fontWeight="600" color="#1976d2">
-                          {doc.class} - {doc.subject} - Tuần {doc.week}
-                        </Typography>
-                      </Paper>
-                    );
-                  })}
-              </Stack>
-            )}
+
+            {/* Bảng danh sách đề */}
+            <Box sx={{ maxHeight: 260, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2, mb: 1 }}>
+              {loadingList ? (
+                <Typography align="center" sx={{ p: 2, color: "gray" }}>
+                  ⏳ Đang tải danh sách đề...
+                </Typography>
+              ) : docList.length === 0 ? (
+                <Typography align="center" sx={{ p: 2, color: "gray" }}>
+                  Không có đề nào.
+                </Typography>
+              ) : (
+                docList
+                  .filter((doc) => filterClass === "Tất cả" ? true : doc.class === filterClass)
+                  .filter((doc) => {
+                    // 🔹 Lọc theo loại đề
+                    if (dialogExamType === "bt") return doc.collection === "BAITAP_TUAN";
+                    else return doc.collection === "TRACNGHIEM_BK"; // KTĐK
+                  })
+                  .map((doc) => (
+                    <Stack
+                      key={doc.id}
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{
+                        px: 2,
+                        py: 1,
+                        height: 36,
+                        cursor: "pointer",
+                        borderRadius: 1,
+                        backgroundColor: selectedDoc === doc.id ? "#E3F2FD" : "transparent",
+                        "&:hover": { backgroundColor: "#f5f5f5" },
+                      }}
+                      onClick={() => setSelectedDoc(doc.id)}
+                      onDoubleClick={() => handleOpenSelectedDoc(doc.id)}
+                    >
+                      <Typography variant="subtitle1">{doc.id}</Typography>
+                    </Stack>
+                  ))
+              )}
+            </Box>
           </DialogContent>
 
-          <DialogActions
-            sx={{
-              px: 3,
-              pb: 2,
-              justifyContent: "center",
-              gap: 1.5,
-            }}
-          >
-            <Button
-              onClick={() => handleOpenSelectedDoc(selectedDoc)}
-              variant="contained"
-            >
+          {/* Nút hành động */}
+          <DialogActions sx={{ px: 3, pb: 2, justifyContent: "center", gap: 1.5 }}>
+            <Button onClick={() => handleOpenSelectedDoc(selectedDoc)} variant="contained" disabled={!selectedDoc}>
               Mở đề
             </Button>
-            <Button
-              onClick={handleDeleteSelectedDoc}
-              variant="outlined"
-              color="error"
-            >
+            <Button onClick={handleDeleteSelectedDoc} variant="outlined" color="error" disabled={!selectedDoc}>
               Xóa đề
-            </Button>
-            <Button
-              onClick={() => setOpenDialog(false)}
-              variant="outlined"
-            >
-              Đóng
             </Button>
           </DialogActions>
         </Dialog>
+
 
         {/* SNACKBAR */}
         <Snackbar

@@ -424,25 +424,32 @@ export default function HocSinh() {
                       },
                     }}
                     onClick={async () => {
-                      const isBaiTapTuan = Boolean(config?.baiTapTuan);
-                      const isKiemTraDinhKi = Boolean(config?.kiemTraDinhKi);
+                      const isBaiTapTuan = config?.baiTapTuan === true;
+                      const isKiemTraDinhKi = config?.kiemTraDinhKi === true;
 
-                      try {
-                        if (isBaiTapTuan) {
-                          // 🔹 Bài tập tuần
+                      // Nếu là bài tập tuần hoặc kiểm tra định kì → mở trang Trắc nghiệm
+                      if (isBaiTapTuan || isKiemTraDinhKi) {
+                        try {
                           const hsData = weekData?.[student.maDinhDanh];
                           const daLamBai = hsData?.diemTracNghiem !== undefined && hsData?.diemTracNghiem !== null;
 
                           if (daLamBai) {
                             setDoneStudent({
                               hoVaTen: student.hoVaTen,
-                              diemTN: hsData?.diemTN ?? hsData?.diemTracNghiem,
+                              diemTN: hsData.diemTN,
                             });
                             setOpenDoneDialog(true);
                             return;
                           }
 
-                          // Chưa làm → mở trang Trắc nghiệm
+                          console.log("➡️ Chuyển sang Trắc Nghiệm với:", {
+                            studentId: student.maDinhDanh,
+                            fullname: student.hoVaTen,
+                            lop: selectedClass,
+                            selectedWeek,
+                            mon: config.mon,
+                          });
+
                           navigate("/tracnghiem", {
                             state: {
                               studentId: student.maDinhDanh,
@@ -453,66 +460,19 @@ export default function HocSinh() {
                             },
                           });
 
-                        } else if (isKiemTraDinhKi) {
-                          // 🔹 Kiểm tra định kỳ
-                          const hocKyMap = {
-                            "Giữa kỳ I": "GKI",
-                            "Cuối kỳ I": "CKI",
-                            "Giữa kỳ II": "GKII",
-                            "Cả năm": "CN",
-                          };
-                          const hocKyFirestore = hocKyMap[config.hocKy];
-
-                          if (!hocKyFirestore) {
-                            setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
-                            setOpenDoneDialog(true);
-                            return;
-                          }
-
-                          // Truy cập document cấp cao nhất (ví dụ: CKI)
-                          const docRef = doc(db, "KTDK", hocKyFirestore);
-                          const docSnap = await getDoc(docRef);
-                          const fullData = docSnap.exists() ? docSnap.data() : null;
-
-                          console.log("📦 Firestore fullData:", fullData);
-
-                          // Truy cập map lớp → map học sinh
-                          const hsData = fullData?.[selectedClass]?.[student.maDinhDanh];
-
-                          console.log("🎯 hsData:", hsData);
-
-                          const lyThuyet = hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
-
-                          if (lyThuyet != null) {
-                            setDoneStudent({
-                              hoVaTen: hsData?.hoVaTen ?? student.hoVaTen,
-                              diemTN: lyThuyet,
-                            });
-                            setOpenDoneDialog(true);
-                            return;
-                          }
-
-                          // Chưa làm → mở trang Trắc nghiệm
-                          navigate("/tracnghiem", {
-                            state: {
-                              studentId: student.maDinhDanh,
-                              fullname: student.hoVaTen,
-                              lop: selectedClass,
-                              selectedWeek,
-                              mon: config.mon,
-                            },
-                          });
-
-                        } else {
-                          // 🔹 Mặc định → đánh giá định kỳ
-                          setExpandedStudent(student);
+                        } catch (err) {
+                          console.error("❌ Lỗi khi kiểm tra diemTracNghiem:", err);
+                          setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài trắc nghiệm. Vui lòng thử lại!");
+                          setOpenDoneDialog(true);
                         }
-                      } catch (err) {
-                        console.error("❌ Lỗi khi kiểm tra trạng thái học sinh:", err);
-                        setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài. Vui lòng thử lại!");
-                        setOpenDoneDialog(true);
+                      } else {
+                        // Ngược lại → mở dialog đánh giá
+                        setExpandedStudent(student);
                       }
                     }}
+
+
+
                   >
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <Typography variant="subtitle2" fontWeight="medium">
@@ -707,13 +667,10 @@ export default function HocSinh() {
           Đã làm xong bài trắc nghiệm.
         </Typography>
         <Typography sx={{ fontSize: 16, color: "#0d47a1", fontWeight: 500 }}>
-          {config?.baiTapTuan
-            ? `Điểm của bạn: ${convertPercentToScore(doneStudent?.diemTN)}`
-            : config?.kiemTraDinhKi
-              ? `Điểm của bạn: ${doneStudent?.diemTN ?? "Chưa có điểm"}`
-              : ""}
+          Điểm của bạn: {convertPercentToScore(doneStudent?.diemTN)}
         </Typography>
       </DialogContent>
+
 
       <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
         <Button

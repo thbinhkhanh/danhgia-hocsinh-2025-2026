@@ -14,6 +14,9 @@ import {
   Divider,
   Checkbox, 
   FormControlLabel,
+  Snackbar,
+  Dialog,
+  DialogContent,
 } from "@mui/material";
 import TextField from "@mui/material/TextField";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
@@ -21,7 +24,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import BackupIcon from "@mui/icons-material/Backup";
 import RestoreIcon from "@mui/icons-material/Restore";
 import * as XLSX from "xlsx";
-import { doc, getDoc, getDocs, collection, setDoc } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { ConfigContext } from "../context/ConfigContext";
@@ -30,6 +33,11 @@ import { fetchAllBackup, exportBackupToJson } from "../utils/backupFirestore";
 import { restoreAllFromJson } from "../utils/restoreFirestore";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import LockResetIcon from "@mui/icons-material/LockReset";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
+
+
 
 export default function QuanTri() {
   // 🔹 File, thông báo, progress chung
@@ -69,62 +77,127 @@ const [classes, setClasses] = useState([]);
 const [selectedClass, setSelectedClass] = useState("");
 const [subject, setSubject] = useState("Tin học");
 
-//const [isTracNghiem, setIsTracNghiem] = useState(false);
+const [openChangePw, setOpenChangePw] = useState(false);
+const [newPw, setNewPw] = useState("");
+const [confirmPw, setConfirmPw] = useState("");
+const [pwError, setPwError] = useState("");
+
+const [snackbar, setSnackbar] = useState({
+  open: false,
+  message: "",
+  severity: "success", // hoặc "error"
+});
+
+const handleChangePassword = () => {
+  // Kiểm tra mật khẩu có trống hay khớp không
+  if (!newPw || !confirmPw) {
+    setPwError("Vui lòng nhập đầy đủ mật khẩu");
+    return;
+  }
+  if (newPw !== confirmPw) {
+    setPwError("Mật khẩu không khớp");
+    return;
+  }
+
+  // Hiển thị thông báo trước
+  setSnackbar({
+    open: true,
+    message: "Đổi mật khẩu thành công ✅",
+    severity: "success",
+  });
+
+  setPwError("");
+  setOpenChangePw(false); // đóng dialog
+
+  // Reset input mật khẩu
+  const passwordToSave = newPw;
+  setNewPw("");
+  setConfirmPw("");
+
+  // Cập nhật Firestore bất đồng bộ, không chặn UI
+  (async () => {
+    try {
+      const updatedConfig = { ...config, pass: passwordToSave };
+      await setDoc(doc(db, "CONFIG", "config"), updatedConfig, { merge: true });
+      setConfig(updatedConfig);
+    } catch (error) {
+      console.error("Lỗi khi lưu mật khẩu vào Firestore:", error);
+      // Có thể hiển thị Snackbar lỗi sau nếu muốn
+      setSnackbar({
+        open: true,
+        message: "❌ Lỗi lưu mật khẩu, thử lại!",
+        severity: "error",
+      });
+    }
+  })();
+};
+
 
 
   // 🔹 Khởi tạo config + danh sách lớp
-  useEffect(() => {
-    const initConfig = async () => {
-      try {
-        const docRef = doc(db, "CONFIG", "config");
-        const docSnap = await getDoc(docRef);
-        const data = docSnap.exists() ? docSnap.data() : {};
-
-        setConfig({
-          tuan: data.tuan || 1,
-          hocKy: data.hocKy || "Giữa kỳ I",
-          mon: data.mon || "Tin học",
-          lop: data.lop || "",
-        });
-
-        setSelectedWeek(data.tuan || 1);
-        setSelectedSemester(data.hocKy || "Giữa kỳ I");
-        setSubject(data.mon || "Tin học");
-
-        let classList = [];
-        if (classData && classData.length > 0) {
-          classList = classData;
-        } else {
-          const snapshot = await getDocs(collection(db, "DANHSACH"));
-          classList = snapshot.docs.map((doc) => doc.id);
-          setClassData(classList);
-        }
-        setClasses(classList);
-
-        if (data.lop && classList.includes(data.lop)) {
-          setSelectedClass(data.lop);
-        } else if (classList.length > 0) {
-          setSelectedClass(classList[0]);
-          setConfig((prev) => ({ ...prev, lop: classList[0] }));
-        }
-      } catch (err) {
-        console.error("❌ Lỗi khi khởi tạo cấu hình:", err);
-      }
-    };
-    initConfig();
-  }, [classData, setClassData]);
-
-  // 🔹 Cập nhật Firestore + Context
-  const updateFirestoreAndContext = async (field, value) => {
+  // 🔹 Khởi tạo config + danh sách lớp
+useEffect(() => {
+  const initConfig = async () => {
     try {
-      const newConfig = { ...config, [field]: value };
       const docRef = doc(db, "CONFIG", "config");
-      await setDoc(docRef, newConfig, { merge: true });
-      setConfig(newConfig);
+      const docSnap = await getDoc(docRef);
+      const data = docSnap.exists() ? docSnap.data() : {};
+
+      // ⚡ Khởi tạo đầy đủ các field từ defaultConfig
+      setConfig({
+        hocKy: data.hocKy || "Giữa kỳ I",
+        mon: data.mon || "Tin học",
+        lop: data.lop || "",
+        tuan: data.tuan || 1,
+        baiTapTuan: data.baiTapTuan || false,
+        kiemTraDinhKi: data.kiemTraDinhKi || false,
+        choXemDiem: data.choXemDiem || false,
+        choXemDapAn: data.choXemDapAn || false,
+        xuatFileBaiLam: data.xuatFileBaiLam || false,
+        timeLimit: data.timeLimit || 1,
+        pass: data.pass || "",
+      });
+
+      // Đồng bộ các select input
+      setSelectedWeek(data.tuan || 1);
+      setSelectedSemester(data.hocKy || "Giữa kỳ I");
+      setSubject(data.mon || "Tin học");
+
+      // Danh sách lớp
+      let classList = [];
+      if (classData && classData.length > 0) {
+        classList = classData;
+      } else {
+        const snapshot = await getDocs(collection(db, "DANHSACH"));
+        classList = snapshot.docs.map((doc) => doc.id);
+        setClassData(classList);
+      }
+      setClasses(classList);
+
+      if (data.lop && classList.includes(data.lop)) {
+        setSelectedClass(data.lop);
+      } else if (classList.length > 0) {
+        setSelectedClass(classList[0]);
+        setConfig((prev) => ({ ...prev, lop: classList[0] }));
+      }
     } catch (err) {
-      console.error("❌ Lỗi khi cập nhật Firestore:", err);
+      console.error("❌ Lỗi khi khởi tạo cấu hình:", err);
     }
   };
+  initConfig();
+}, [classData, setClassData]);
+
+// 🔹 Cập nhật Firestore + Context
+const updateFirestoreAndContext = async (field, value) => {
+  try {
+    const newConfig = { ...config, [field]: value };
+    await setDoc(doc(db, "CONFIG", "config"), newConfig, { merge: true });
+    setConfig(newConfig);
+  } catch (err) {
+    console.error("❌ Lỗi khi cập nhật Firestore:", err);
+  }
+};
+
 
   // 🔹 Các hàm thay đổi select
   const handleSemesterChange = (e) => {
@@ -305,194 +378,354 @@ const [subject, setSubject] = useState("Tin học");
   }, [config.timeLimit]);
 
 
-  // 🔹 UI
+
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
-      <Card
-        elevation={6}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          maxWidth: 320,
-          mx: "auto",
-          mt: 3,
-          position: "relative",
-        }}
+  <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
+    <Card
+      elevation={6}
+      sx={{
+        p: 4,
+        borderRadius: 3,
+        maxWidth: 800,
+        mx: "auto",
+        mt: 3,
+      }}
+    >
+      {/* Tiêu đề HỆ THỐNG bao phủ cả 2 cột */}
+      <Typography
+        variant="h5"
+        color="primary"
+        fontWeight="bold"
+        align="center"
+        gutterBottom
       >
-        <Typography
-          variant="h5"
-          color="primary"
-          fontWeight="bold"
-          align="center"
-          gutterBottom
-        >
-          ⚙️ QUẢN TRỊ HỆ THỐNG
-        </Typography>
+        HỆ THỐNG
+      </Typography>
 
-        <Divider sx={{ mb: 3 }} />
+      <Divider sx={{ mb: 3 }} />
 
-        {/* 📤 DANH SÁCH HỌC SINH */}
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-          📤 Danh sách học sinh
-        </Typography>
+      {/* Container 2 cột */}
+      <Box sx={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {/* Cột bên trái: Cấu hình hệ thống */}
+        <Box sx={{ flex: 1, minWidth: 250 }}>
+          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+            Cấu hình hệ thống
+          </Typography>
 
-        <Stack spacing={2} sx={{ mb: 4 }}>
-          <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
-            Chọn file Excel
-            <input type="file" hidden accept=".xlsx" onChange={handleFileChange} />
-          </Button>
-
-          {selectedFile && (
-            <Typography variant="body2">📄 {selectedFile.name}</Typography>
-          )}
-
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<CloudUploadIcon />}
-            onClick={handleUpload}
-            disabled={loading}
-          >
-            {loading ? `🔄 Đang tải... (${progress}%)` : "Tải danh sách"}
-          </Button>
-        </Stack>
-
-        {/* ⚙️ CÀI ĐẶT HỆ THỐNG */}
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-          ⚙️ Cài đặt hệ thống
-        </Typography>
-
-        <Stack spacing={2} sx={{ mb: 4 }}>
-          <FormControl size="small">
-            <Select value={selectedSemester} onChange={handleSemesterChange}>
-              <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
-              <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
-              <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-              <MenuItem value="Cả năm">Cả năm</MenuItem>
-            </Select>
-          </FormControl>
-
-          <FormControl size="small">
-            <Select value={subject} onChange={handleSubjectChange}>
-              <MenuItem value="Tin học">Tin học</MenuItem>
-              <MenuItem value="Công nghệ">Công nghệ</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <FormControl size="small" sx={{ flex: 1 }}>
-              <Select value={selectedClass} onChange={handleClassChange}>
-                {classes.map((cls) => (
-                  <MenuItem key={cls} value={cls}>
-                    {cls}
-                  </MenuItem>
-                ))}
+          <Stack spacing={2} sx={{ mb: 4 }}>
+            {/* Học kỳ */}
+            <FormControl size="small">
+              <Select value={selectedSemester} onChange={handleSemesterChange}>
+                <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
+                <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
+                <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
+                <MenuItem value="Cả năm">Cả năm</MenuItem>
               </Select>
             </FormControl>
 
-            <FormControl size="small" sx={{ flex: 1 }}>
-              <Select value={selectedWeek} onChange={handleWeekChange}>
-                {[...Array(35)].map((_, i) => (
-                  <MenuItem key={i + 1} value={i + 1}>
-                    Tuần {i + 1}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>            
-          </Box>
-          
-          <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={config.tracNghiem || false}
-                  onChange={(e) =>
-                    updateFirestoreAndContext("tracNghiem", e.target.checked)
-                  }
-                  color="primary"
-                />
-              }
-              label="Làm trắc nghiệm"
-            />
+            {/* Môn / Lớp cùng 1 hàng */}
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <FormControl size="small" sx={{ flex: 1 }}>
+                <Select value={subject} onChange={handleSubjectChange}>
+                  <MenuItem value="Tin học">Tin học</MenuItem>
+                  <MenuItem value="Công nghệ">Công nghệ</MenuItem>
+                </Select>
+              </FormControl>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <FormControl size="small" sx={{ flex: 1 }}>
+                <Select value={selectedClass} onChange={handleClassChange}>
+                  {classes.map((cls) => (
+                    <MenuItem key={cls} value={cls}>
+                      {cls}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Tuần / Thời gian cùng 1 hàng, chiều rộng giống Môn / Lớp */}
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <FormControl size="small" sx={{ flex: 1 }}>
+                <Select value={selectedWeek} onChange={handleWeekChange}>
+                  {[...Array(35)].map((_, i) => (
+                    <MenuItem key={i + 1} value={i + 1}>
+                      Tuần {i + 1}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
               <TextField
                 label="Thời gian (phút)"
                 type="number"
                 size="small"
-                disabled={!config.tracNghiem}
+                disabled={!config.baiTapTuan}
                 value={timeInput}
                 onChange={(e) => handleTimeLimitChange(e.target.value)}
-                inputProps={{ min: 1, style: { textAlign: "center", width: 100 } }}
+                sx={{ flex: 1 }} // bằng chiều rộng Lớp
+                inputProps={{ min: 1, style: { textAlign: "center" } }}
               />
             </Box>
 
-          </Box>
-        </Stack>
+            {/* Các checkbox */}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.baiTapTuan || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext("baiTapTuan", e.target.checked)
+                    }
+                    color="primary"
+                  />
+                }
+                label="Bài tập tuần"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.kiemTraDinhKi || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext("kiemTraDinhKi", e.target.checked)
+                    }
+                    color="primary"
+                  />
+                }
+                label="Kiểm tra định kì"
+              />
 
-        {/* 💾 SAO LƯU / PHỤC HỒI */}
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-          💾 Sao lưu & phục hồi
-        </Typography>
+               <Divider sx={{ mt: 1, mb: 1 }} />
 
-        <Stack spacing={2}>
-          {/* Nút sao lưu: hiển thị khi không phục hồi */}
-          {!isRestoring && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.choXemDiem || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext("choXemDiem", e.target.checked)
+                    }
+                    color="primary"
+                  />
+                }
+                label="Cho xem điểm"
+              />
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.choXemDapAn || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext("choXemDapAn", e.target.checked)
+                    }
+                    color="primary"
+                  />
+                }
+                label="Cho xem đáp án"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.xuatFileBaiLam || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext("xuatFileBaiLam", e.target.checked)
+                    }
+                    color="primary"
+                  />
+                }
+                label="Xuất file bài làm"
+              />
+            </Box>
+          </Stack>
+
+        </Box>
+
+        {/* Cột bên phải: Quản trị dữ liệu */}
+        <Box sx={{ flex: 1, minWidth: 300 }}>
+          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+            Quản trị dữ liệu
+          </Typography>
+
+          {/* 📤 DANH SÁCH HỌC SINH */}
+          <Stack spacing={2} sx={{ mb: 4 }}>
+            <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
+              Chọn file Excel
+              <input type="file" hidden accept=".xlsx" onChange={handleFileChange} />
+            </Button>
+
+            {selectedFile && (
+              <Typography variant="body2">📄 {selectedFile.name}</Typography>
+            )}
+
             <Button
               variant="contained"
-              color="primary"
-              startIcon={<BackupIcon />}
-              onClick={handleBackup}
-              disabled={backupLoading} // disable khi đang backup
+              color="success"
+              startIcon={<CloudUploadIcon />}
+              onClick={handleUpload}
+              disabled={loading}
             >
-              Sao lưu dữ liệu
+              {loading ? `🔄 Đang tải... (${progress}%)` : "Tải danh sách"}
             </Button>
-          )}
+          </Stack>
 
-          {/* Nút phục hồi: hiển thị khi không sao lưu */}
-          {!backupLoading && (
+          {/* 💾 SAO LƯU / PHỤC HỒI */}
+          <Stack spacing={2}>
+            {!isRestoring && (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<BackupIcon />}
+                onClick={handleBackup}
+                disabled={backupLoading}
+              >
+                Sao lưu dữ liệu
+              </Button>
+            )}
+
+            {!backupLoading && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<RestoreIcon />}
+                onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                disabled={isRestoring}
+              >
+                Phục hồi dữ liệu
+              </Button>
+            )}
+
+            {(backupLoading || isRestoring) && (
+              <>
+                <LinearProgress variant="determinate" value={backupProgress} />
+                <Typography variant="body2" color="text.secondary" align="center">
+                  {isRestoring
+                    ? `Đang phục hồi... ${backupProgress}%`
+                    : `Đang sao lưu... ${backupProgress}%`}
+                </Typography>
+              </>
+            )}
+
+            <input
+              type="file"
+              hidden
+              accept=".json"
+              ref={fileInputRef}
+              onChange={(e) => {
+                handleRestore(e);
+                e.target.value = "";
+              }}
+            />
+
+            {/* Nút Đổi mật khẩu */}
             <Button
               variant="outlined"
-              color="secondary"
-              startIcon={<RestoreIcon />}
-              onClick={() => fileInputRef.current && fileInputRef.current.click()}
-              disabled={isRestoring} // disable khi đang restore
+              color="warning"
+              startIcon={<LockResetIcon />}
+              onClick={() => setOpenChangePw(true)}
             >
-              Phục hồi dữ liệu
+              Đổi mật khẩu
             </Button>
-          )}
 
-          {/* Thanh tiến trình */}
-          {(backupLoading || isRestoring) && (
-            <>
-              <LinearProgress variant="determinate" value={backupProgress} />
-              <Typography variant="body2" color="text.secondary" align="center">
-                {isRestoring
-                  ? `Đang phục hồi... ${backupProgress}%`
-                  : `Đang sao lưu... ${backupProgress}%`}
+            {message && (
+              <Alert sx={{ mt: 3 }} severity={success ? "success" : "error"}>
+                {message}
+              </Alert>
+            )}
+          </Stack>
+        </Box>
+      </Box>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity={snackbar.severity} variant="filled">
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Dialog Đổi mật khẩu */}
+      <Dialog
+        open={openChangePw}
+        onClose={(event, reason) => {
+          if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+          setOpenChangePw(false);
+        }}
+        disableEscapeKeyDown
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            overflow: "hidden",
+            bgcolor: "#fff",
+            boxShadow: 6,
+          },
+        }}
+      >
+        {/* Thanh tiêu đề */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            bgcolor: "#1976d2",
+            color: "#fff",
+            px: 2,
+            py: 1.2,
+          }}
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: "bold", fontSize: "1.1rem", letterSpacing: 0.5 }}
+          >
+            ĐỔI MẬT KHẨU
+          </Typography>
+          <IconButton
+            onClick={() => setOpenChangePw(false)}
+            sx={{ color: "#fff", p: 0.6 }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+
+        {/* Nội dung */}
+        <DialogContent sx={{ mt: 1, bgcolor: "#fff" }}>
+          <Stack spacing={2} sx={{ pl: 2.5, pr: 2.5 }}>
+            <TextField
+              label="Mật khẩu mới"
+              type="password"
+              fullWidth
+              size="small"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+            />
+            <TextField
+              label="Nhập lại mật khẩu"
+              type="password"
+              fullWidth
+              size="small"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+            />
+
+            {pwError && (
+              <Typography color="error" sx={{ fontWeight: 600 }}>
+                {pwError}
               </Typography>
-            </>
-          )}
+            )}
 
-          {/* Input file cho phục hồi (ẩn) */}
-          <input
-            type="file"
-            hidden
-            accept=".json"
-            ref={fileInputRef}
-            onChange={(e) => {
-              handleRestore(e);
-              e.target.value = ""; // reset để có thể chọn lại cùng file
-            }}
-          />
-        </Stack>
+            <Stack direction="row" justifyContent="flex-end" spacing={1} mt={1}>
+              <Button onClick={() => setOpenChangePw(false)}>Hủy</Button>
+              <Button variant="contained" onClick={handleChangePassword}>
+                Lưu
+              </Button>
+            </Stack>
+          </Stack>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  </Box>
+);
 
-        {message && (
-          <Alert sx={{ mt: 3 }} severity={success ? "success" : "error"}>
-            {message}
-          </Alert>
-        )}
-      </Card>
-    </Box>
-  );
 }
