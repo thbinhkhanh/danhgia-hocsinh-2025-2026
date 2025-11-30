@@ -18,10 +18,10 @@ export const restoreAllFromJson = async (file, onProgress) => {
       const colName = collections[colIndex];
 
       // --------------------------------------------
-      // ✅ 1. PHỤC HỒI các collection dạng quiz (TRACNGHIEM, BAITAP_TUAN, TRACNGHIEM_BK, DETHI_BK)
+      // ✅ 1. PHỤC HỒI TRACNGHIEM
       // --------------------------------------------
-      if (["TRACNGHIEM", "BAITAP_TUAN", "TRACNGHIEM_BK", "DETHI_BK"].includes(colName)) {
-        const quizDocs = data[colName] || {};
+      if (colName === "TRACNGHIEM") {
+        const quizDocs = data.TRACNGHIEM || {};
         const quizIds = Object.keys(quizDocs);
         const totalQuiz = quizIds.length;
 
@@ -29,11 +29,11 @@ export const restoreAllFromJson = async (file, onProgress) => {
           const quizId = quizIds[i];
           const quizData = quizDocs[quizId];
 
-          await setDoc(doc(db, colName, quizId), quizData, { merge: true });
+          await setDoc(doc(db, "TRACNGHIEM", quizId), quizData, { merge: true });
 
           if (onProgress) {
-            const progressStep = ((i + 1) / totalQuiz) * 10; // mỗi collection quiz chiếm ~10%
-            onProgress(Math.min(Math.round(progressCount + progressStep), 99));
+            const tnProgress = ((i + 1) / totalQuiz) * 10; // TRACNGHIEM chiếm ~10%
+            onProgress(Math.min(Math.round(progressCount + tnProgress), 99));
           }
         }
 
@@ -74,31 +74,7 @@ export const restoreAllFromJson = async (file, onProgress) => {
       }
 
       // --------------------------------------------
-      // ✅ 3. PHỤC HỒI KTDK (cấu trúc đặc biệt)
-      // --------------------------------------------
-      if (colName === "KTDK") {
-        const hocKyDocs = data.KTDK || {};
-        const hocKyIds = Object.keys(hocKyDocs);
-        const totalHocKy = hocKyIds.length;
-
-        for (let i = 0; i < totalHocKy; i++) {
-          const hocKyId = hocKyIds[i];
-          const hocKyData = hocKyDocs[hocKyId];
-
-          await setDoc(doc(db, "KTDK", hocKyId), hocKyData, { merge: true });
-
-          if (onProgress) {
-            const ktProgress = ((i + 1) / totalHocKy) * 10;
-            onProgress(Math.min(Math.round(progressCount + ktProgress), 99));
-          }
-        }
-
-        progressCount += 10;
-        continue;
-      }
-
-      // --------------------------------------------
-      // ✅ 4. PHỤC HỒI các collection đơn giản: DANHSACH, CONFIG
+      // ✅ 3. PHỤC HỒI các collection đơn giản: DANHSACH, CONFIG, KTDK
       // --------------------------------------------
       const docs = data[colName] || {};
       const docIds = Object.keys(docs);

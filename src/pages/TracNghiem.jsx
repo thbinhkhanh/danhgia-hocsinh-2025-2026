@@ -523,6 +523,29 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
     }
   }
 
+  const getQuestionMax = (q) => {
+    // Nếu có scoreTotal thì dùng (tổng sẵn của câu)
+    if (typeof q.scoreTotal === "number") return q.scoreTotal;
+
+    // Nếu có per-item score và có danh sách tiểu mục
+    if (typeof q.perItemScore === "number") {
+      // xác định số tiểu mục theo loại
+      const subCount =
+        q.type === "truefalse" ? (Array.isArray(q.correct) ? q.correct.length : 0) :
+        q.type === "fillblank" ? (Array.isArray(q.options) ? q.options.length : 0) :
+        q.type === "matching" ? (Array.isArray(q.correct) ? q.correct.length : 0) :
+        q.type === "sort" ? (Array.isArray(q.correctTexts) ? q.correctTexts.length : 0) :
+        1;
+      return q.perItemScore * subCount;
+    }
+
+    // Mặc định: dùng score nếu có, nếu không thì 1
+    return typeof q.score === "number" ? q.score : 1;
+  };
+
+  const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
+  console.log("🔎 Tổng điểm đề (maxScore):", maxScore);
+
   const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";
 
@@ -531,466 +554,530 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
 
   const handleSubmit = async () => {
     // Nếu tên là "Test", hiện snackbar và dừng nộp bài
-  if (studentName === "Test") {
-    setSnackbar({ open: true, message: "Đây là trang test", severity: "info" });
-    return;
-  }
-    const kiemTraDinhKi = config?.kiemTraDinhKi === true;
-    const hocKiConfig = configData.hocKy || "UNKNOWN"; // fallback nếu chưa có
-    const hocKiKey = mapHocKyToDocKey(hocKiConfig);
-    
-    if (!studentClass || !studentName) {
-      setSnackbar({ open: true, message: "Thiếu thông tin học sinh", severity: "info" });
+    if (studentName === "Test") {
+      setSnackbar({ open: true, message: "Đây là trang test", severity: "info" });
       return;
     }
-
-    // Kiểm tra câu chưa trả lời
-    const unanswered = questions.filter(q => {
-      const userAnswer = answers[q.id];
-      if (q.type === "single") {
-        return userAnswer === undefined || userAnswer === null || userAnswer === "";
-      }
-      if (q.type === "multiple" || q.type === "image") {
-        return !Array.isArray(userAnswer) || userAnswer.length === 0;
-      }
-      if (q.type === "truefalse") {
-        return !Array.isArray(userAnswer) || userAnswer.length !== q.options.length;
-      }
-      return false;
-    });
-
-    if (unanswered.length > 0) {
-      setUnansweredQuestions(unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1));
-      setOpenAlertDialog(true);
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      // Tính điểm thô
-      let total = 0;
-      questions.forEach(q => {
-        const rawAnswer = answers[q.id];
-
-        if (q.type === "single") {
-          const ua = Number(rawAnswer);
-          if (Array.isArray(q.correct) ? q.correct.includes(ua) : q.correct === ua) total += q.score ?? 1;
-
-        } else if (q.type === "multiple" || q.type === "image") {
-          const userSet = new Set(Array.isArray(rawAnswer) ? rawAnswer : []);
-          const correctSet = new Set(Array.isArray(q.correct) ? q.correct : [q.correct]);
-          if (userSet.size === correctSet.size && [...correctSet].every(x => userSet.has(x))) total += q.score ?? 1;
-
-        } else if (q.type === "sort") {
-          const userOrder = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const userTexts = userOrder.map(idx => q.options[idx]);
-          const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
-
-          const isCorrect =
-            userTexts.length === correctTexts.length &&
-            userTexts.every((t, i) => t === correctTexts[i]);
-
-          if (isCorrect) {
-            total += q.score ?? 1;
-          }
-        } else if (q.type === "matching") {
-          const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctArray = Array.isArray(q.correct) ? q.correct : [];
-
-          const isCorrect =
-            userArray.length === correctArray.length &&
-            userArray.every((val, i) => val === correctArray[i]);
-
-          if (isCorrect) {
-            total += q.score ?? 1;
-          }
-        } else if (q.type === "truefalse") {
-          const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctArray = Array.isArray(q.correct) ? q.correct : [];
-
-          if (userArray.length === correctArray.length) {
-            const isAllCorrect = userArray.every((val, i) => {
-              const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
-              return val === correctArray[originalIdx];
-            });
-
-            if (isAllCorrect) {
-              total += q.score ?? 1;
-            }
-          }
-        } else if (q.type === "fillblank") {
-          const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctAnswers = Array.isArray(q.options) ? q.options : [];
-
-          if (correctAnswers.length > 0 && userAnswers.length === correctAnswers.length) {
-            const isAllCorrect = correctAnswers.every((correct, i) =>
-              userAnswers[i] && userAnswers[i].trim() === correct.trim()
-            );
-
-            if (isAllCorrect) {
-              total += q.score ?? 1;
-            }
-          }
-        }
-
-      });
-
-      setScore(total);
-      setSubmitted(true);
+      const kiemTraDinhKi = config?.kiemTraDinhKi === true;
+      const hocKiConfig = configData.hocKy || "UNKNOWN"; // fallback nếu chưa có
+      const hocKiKey = mapHocKyToDocKey(hocKiConfig);
       
-      // ⏱ Tính thời gian làm bài
-      const durationSec = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-      const durationStr = formatTime(durationSec);
-
-      // Tạo biến chứa tiêu đề hiển thị
-      const hocKi = window.currentHocKi || "GKI";
-      const monHoc = window.currentMonHoc || "Không rõ";
-
-      // Tạo tiêu đề PDF
-      const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
-
-      // Gọi export PDF      
-      exportQuizPDF(studentInfo, studentInfo.className, questions, answers, total, durationStr, quizTitle);
-
-      // Ngày theo định dạng Việt Nam
-      const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
-
-      const normalizeName = (name) =>
-        name.normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/đ/g, "d").replace(/Đ/g, "D")
-            .toLowerCase().trim()
-            .replace(/\s+/g, "_")
-            .replace(/[^a-z0-9_]/g, "");
-
-      setStudentResult({
-        hoVaTen: capitalizeName(studentName),
-        lop: studentClass,
-        diem: total,
-      });
-      setOpenResultDialog(true);
-
-       // --- LƯU FIRESTORE ---
-      // Lấy key học kỳ từ loại kiểm tra
-      if (!configData) return;
-      const hocKiKey = mapHocKyToDocKey(configData.hocKy || "UNKNOWN");
-      const lop = studentClass;
-      const docId = studentInfo.id; // giữ đúng studentId làm key trong KTDK
-
-      if (kiemTraDinhKi) {
-        // --- Lưu kết quả cá nhân vào BINHKHANH ---
-        const collectionRoot = "BINHKHANH";
-        // Dùng tên học sinh chuẩn hóa làm document ID
-        const studentDocId = normalizeName(studentName); 
-        const docRef = doc(db, `${collectionRoot}/${configData.hocKy}/${lop}/${studentDocId}`);
-        await setDoc(docRef, {
-          hoVaTen: capitalizeName(studentName),
-          lop,
-          mon: monHoc,
-          diem: total,
-          ngayKiemTra,
-          thoiGianLamBai: durationStr,
-        }, { merge: true });
-
-
-        // --- Chỉ lưu điểm vào lyThuyet trong KTDK ---
-        const ktRef = doc(db, `KTDK/${hocKiKey}`);
-
-        // Kiểm tra nếu document chưa có thì tạo rỗng
-        const ktSnap = await getDoc(ktRef);
-        if (!ktSnap.exists()) {
-          await setDoc(ktRef, {});
-        }
-
-        // Lấy dữ liệu hiện tại của lớp nếu có
-        const ktData = ktSnap.exists() ? ktSnap.data() : {};
-        const lopData = ktData[studentClass] || {};
-        const studentData = lopData[docId] || { 
-          hoVaTen: capitalizeName(studentInfo.name),
-          dgtx: "T",
-          dgtx_gv: "",
-          mucDat: "",
-          nhanXet: "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
-          thucHanh: null,
-          tongCong: null,
-          lyThuyet: null,
-          lyThuyetPhanTram: null,
-        };
-
-        // Cập nhật lyThuyet
-        studentData.lyThuyet = total;
-
-        // Ghi lại vào Firestore đúng cấu trúc: lớp -> studentId -> fields
-        await setDoc(
-          ktRef,
-          { 
-            [studentClass]: { 
-              ...lopData, 
-              [docId]: studentData 
-            } 
-          },
-          { merge: true }
-        );
+      if (!studentClass || !studentName) {
+        setSnackbar({ open: true, message: "Thiếu thông tin học sinh", severity: "info" });
+        return;
       }
 
-      else {
-        // --- Lưu vào DGTX (bài tập tuần) ---
-        const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
-        const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+      // Kiểm tra câu chưa trả lời
+      const unanswered = questions.filter(q => {
+        const userAnswer = answers[q.id];
+        if (q.type === "single") {
+          return userAnswer === undefined || userAnswer === null || userAnswer === "";
+        }
+        if (q.type === "multiple" || q.type === "image") {
+          return !Array.isArray(userAnswer) || userAnswer.length === 0;
+        }
+        if (q.type === "truefalse") {
+          return !Array.isArray(userAnswer) || userAnswer.length !== q.options.length;
+        }
+        return false;
+      });
 
-        const percent = Math.round((total / questions.reduce((sum, q) => sum + (q.score ?? 1), 0)) * 100);
-        const resultText = percent >= 75 ? "Hoàn thành tốt" : percent >= 50 ? "Hoàn thành" : "Chưa hoàn thành";
+      if (unanswered.length > 0) {
+        setUnansweredQuestions(unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1));
+        setOpenAlertDialog(true);
+        return;
+      }
 
-        await updateDoc(tuanRef, {
-          [`${studentId}.hoVaTen`]: studentName,
-          [`${studentId}.diemTracNghiem`]: resultText,
-          [`${studentId}.diemTN`]: percent,
-        }).catch(async err => {
-          if (err.code === "not-found") {
-            await setDoc(tuanRef, {
-              [studentId]: {
-                hoVaTen: studentName,
-                status: "",
-                diemTracNghiem: resultText,
-                diemTN: percent,
-              },
-            });
-          } else {
-            throw err;
+      try {
+        setSaving(true);
+
+        // Tính điểm thô
+        let total = 0;
+        questions.forEach(q => {
+          const rawAnswer = answers[q.id];
+
+          if (q.type === "single") {
+            const ua = Number(rawAnswer);
+            if (Array.isArray(q.correct) ? q.correct.includes(ua) : q.correct === ua) total += q.score ?? 1;
+
+          } else if (q.type === "multiple" || q.type === "image") {
+            const userSet = new Set(Array.isArray(rawAnswer) ? rawAnswer : []);
+            const correctSet = new Set(Array.isArray(q.correct) ? q.correct : [q.correct]);
+            if (userSet.size === correctSet.size && [...correctSet].every(x => userSet.has(x))) total += q.score ?? 1;
+
+          } else if (q.type === "sort") {
+            const userOrder = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const userTexts = userOrder.map(idx => q.options[idx]);
+            const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
+
+            const isCorrect =
+              userTexts.length === correctTexts.length &&
+              userTexts.every((t, i) => t === correctTexts[i]);
+
+            if (isCorrect) {
+              total += q.score ?? 1;
+            }
+          } else if (q.type === "matching") {
+            const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
+            const isCorrect =
+              userArray.length === correctArray.length &&
+              userArray.every((val, i) => val === correctArray[i]);
+
+            if (isCorrect) {
+              total += q.score ?? 1;
+            }
+          } else if (q.type === "truefalse") {
+            const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
+            if (userArray.length === correctArray.length) {
+              const isAllCorrect = userArray.every((val, i) => {
+                const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
+                return val === correctArray[originalIdx];
+              });
+
+              if (isAllCorrect) {
+                total += q.score ?? 1;
+              }
+            }
+          } else if (q.type === "fillblank") {
+            const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const correctAnswers = Array.isArray(q.options) ? q.options : [];
+
+            if (correctAnswers.length > 0 && userAnswers.length === correctAnswers.length) {
+              const isAllCorrect = correctAnswers.every((correct, i) =>
+                userAnswers[i] && userAnswers[i].trim() === correct.trim()
+              );
+
+              if (isAllCorrect) {
+                total += q.score ?? 1;
+              }
+            }
           }
+
         });
 
-        //console.log(`✅ Đã lưu vào DGTX: ${resultText} và diemTN: ${percent} cho học sinh ${studentId}`);
-      }
+        setScore(total);
+        setSubmitted(true);
+        
+        // ⏱ Tính thời gian làm bài
+        const durationSec = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+        const durationStr = formatTime(durationSec);
 
-    } catch (err) {
-      console.error("❌ Lỗi khi lưu điểm:", err);
-    } finally {
-      setSaving(false);
-    }
-  };
+        // Tạo biến chứa tiêu đề hiển thị
+        const hocKi = window.currentHocKi || "GKI";
+        const monHoc = window.currentMonHoc || "Không rõ";
+
+        if (configData?.kiemTraDinhKi === true) {
+          // Tạo tiêu đề PDF
+          const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
+          // Gọi export PDF      
+          exportQuizPDF(studentInfo, studentInfo.className, questions, answers, total, durationStr, quizTitle);
+        }
+
+        // Ngày theo định dạng Việt Nam
+        const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
+        // ✅ Tính phần trăm
+          const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
+          const phanTram = Math.round((total / maxScore) * 100);
+
+        const normalizeName = (name) =>
+          name.normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/đ/g, "d").replace(/Đ/g, "D")
+              .toLowerCase().trim()
+              .replace(/\s+/g, "_")
+              .replace(/[^a-z0-9_]/g, "");
+
+        setStudentResult({
+          hoVaTen: capitalizeName(studentName),
+          lop: studentClass,
+          diem: total,
+          diemTN: phanTram,
+        });
+        setOpenResultDialog(true);
+
+        // --- LƯU FIRESTORE ---
+        // Lấy key học kỳ từ loại kiểm tra
+        if (!configData) return;
+        const hocKiKey = mapHocKyToDocKey(configData.hocKy || "UNKNOWN");
+        const lop = studentClass;
+        const docId = studentInfo.id; // giữ đúng studentId làm key trong KTDK
+
+        if (kiemTraDinhKi) {
+          // --- Lưu kết quả cá nhân vào BINHKHANH ---
+          const collectionRoot = "BINHKHANH";
+          // Dùng tên học sinh chuẩn hóa làm document ID
+          const studentDocId = normalizeName(studentName); 
+          const docRef = doc(db, `${collectionRoot}/${configData.hocKy}/${lop}/${studentDocId}`);
+          await setDoc(docRef, {
+            hoVaTen: capitalizeName(studentName),
+            lop,
+            mon: monHoc,
+            diem: total,
+            ngayKiemTra,
+            thoiGianLamBai: durationStr,
+          }, { merge: true });
+
+
+          // --- Chỉ lưu điểm vào lyThuyet trong KTDK ---
+          const ktRef = doc(db, `KTDK/${hocKiKey}`);
+
+          // Kiểm tra nếu document chưa có thì tạo rỗng
+          const ktSnap = await getDoc(ktRef);
+          if (!ktSnap.exists()) {
+            await setDoc(ktRef, {});
+          }
+
+          // Lấy dữ liệu hiện tại của lớp nếu có
+          const ktData = ktSnap.exists() ? ktSnap.data() : {};
+          const lopData = ktData[studentClass] || {};
+          const studentData = lopData[docId] || { 
+            hoVaTen: capitalizeName(studentInfo.name),
+            dgtx: "T",
+            dgtx_gv: "",
+            mucDat: "",
+            nhanXet: "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
+            thucHanh: null,
+            tongCong: null,
+            lyThuyet: null,
+            lyThuyetPhanTram: null,
+          };
+
+          // Cập nhật lyThuyet
+          studentData.lyThuyet = total;
+          
+          // ✅ Ép kiểu và kiểm tra
+          const safeMax = Number(maxScore);
+          if (Number.isFinite(safeMax) && safeMax > 0) {
+            const phanTram = Math.round((total / safeMax) * 100);
+            studentData.lyThuyetPhanTram = phanTram;
+
+            // 🔎 Log để kiểm tra
+            console.log("🔎 Tổng điểm đề:", safeMax);
+            console.log("🔎 Điểm HS:", total);
+            console.log("🔎 Phần trăm:", phanTram, "%");
+          } else {
+            studentData.lyThuyetPhanTram = null;
+            console.warn("⚠️ maxScore không hợp lệ:", maxScore);
+          }
+
+
+
+          // Ghi lại vào Firestore đúng cấu trúc: lớp -> studentId -> fields
+          await setDoc(
+            ktRef,
+            { 
+              [studentClass]: { 
+                ...lopData, 
+                [docId]: studentData 
+              } 
+            },
+            { merge: true }
+          );
+        }
+
+        else {
+          // --- Lưu vào DGTX (bài tập tuần) ---
+          const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
+          const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+
+          const percent = Math.round((total / questions.reduce((sum, q) => sum + (q.score ?? 1), 0)) * 100);
+          const resultText = percent >= 75 ? "Hoàn thành tốt" : percent >= 50 ? "Hoàn thành" : "Chưa hoàn thành";
+
+          await updateDoc(tuanRef, {
+            [`${studentId}.hoVaTen`]: studentName,
+            [`${studentId}.diemTracNghiem`]: resultText,
+            [`${studentId}.diemTN`]: percent,
+          }).catch(async err => {
+            if (err.code === "not-found") {
+              await setDoc(tuanRef, {
+                [studentId]: {
+                  hoVaTen: studentName,
+                  status: "",
+                  diemTracNghiem: resultText,
+                  diemTN: percent,
+                },
+              });
+            } else {
+              throw err;
+            }
+          });
+
+          //console.log(`✅ Đã lưu vào DGTX: ${resultText} và diemTN: ${percent} cho học sinh ${studentId}`);
+        }
+
+      } catch (err) {
+        console.error("❌ Lỗi khi lưu điểm:", err);
+      } finally {
+        setSaving(false);
+      }
+    };
 
   const autoSubmit = async () => {
-    // Nếu tên là "Test", hiện snackbar và dừng nộp bài
-  if (studentName === "Test") {
-    setSnackbar({ open: true, message: "Đây là trang test", severity: "info" });
-    return;
-  }
-    const kiemTraDinhKi = config?.kiemTraDinhKi === true;
-    const hocKiConfig = configData.hocKy || "UNKNOWN"; // fallback nếu chưa có
-    const hocKiKey = mapHocKyToDocKey(hocKiConfig);
-    
-    if (!studentClass || !studentName) {
-      setSnackbar({ open: true, message: "Thiếu thông tin học sinh", severity: "info" });
+    if (studentName === "Test") {
+      setSnackbar({ open: true, message: "Đây là trang test", severity: "info" });
       return;
     }
-
-    try {
-      setSaving(true);
-
-      // Tính điểm thô
-      let total = 0;
-      questions.forEach(q => {
-        const rawAnswer = answers[q.id];
-
-        if (q.type === "single") {
-          const ua = Number(rawAnswer);
-          if (Array.isArray(q.correct) ? q.correct.includes(ua) : q.correct === ua) total += q.score ?? 1;
-
-        } else if (q.type === "multiple" || q.type === "image") {
-          const userSet = new Set(Array.isArray(rawAnswer) ? rawAnswer : []);
-          const correctSet = new Set(Array.isArray(q.correct) ? q.correct : [q.correct]);
-          if (userSet.size === correctSet.size && [...correctSet].every(x => userSet.has(x))) total += q.score ?? 1;
-
-        } else if (q.type === "sort") {
-          const userOrder = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const userTexts = userOrder.map(idx => q.options[idx]);
-          const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
-
-          const isCorrect =
-            userTexts.length === correctTexts.length &&
-            userTexts.every((t, i) => t === correctTexts[i]);
-
-          if (isCorrect) {
-            total += q.score ?? 1;
-          }
-        } else if (q.type === "matching") {
-          const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctArray = Array.isArray(q.correct) ? q.correct : [];
-
-          const isCorrect =
-            userArray.length === correctArray.length &&
-            userArray.every((val, i) => val === correctArray[i]);
-
-          if (isCorrect) {
-            total += q.score ?? 1;
-          }
-        } else if (q.type === "truefalse") {
-          const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctArray = Array.isArray(q.correct) ? q.correct : [];
-
-          if (userArray.length === correctArray.length) {
-            const isAllCorrect = userArray.every((val, i) => {
-              const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
-              return val === correctArray[originalIdx];
-            });
-
-            if (isAllCorrect) {
-              total += q.score ?? 1;
-            }
-          }
-        } else if (q.type === "fillblank") {
-          const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctAnswers = Array.isArray(q.options) ? q.options : [];
-
-          if (correctAnswers.length > 0 && userAnswers.length === correctAnswers.length) {
-            const isAllCorrect = correctAnswers.every((correct, i) =>
-              userAnswers[i] && userAnswers[i].trim() === correct.trim()
-            );
-
-            if (isAllCorrect) {
-              total += q.score ?? 1;
-            }
-          }
-        }
-
-      });
-
-      setScore(total);
-      setSubmitted(true);
+      const kiemTraDinhKi = config?.kiemTraDinhKi === true;
+      const hocKiConfig = configData.hocKy || "UNKNOWN"; // fallback nếu chưa có
+      const hocKiKey = mapHocKyToDocKey(hocKiConfig);
       
-      // ⏱ Tính thời gian làm bài
-      const durationSec = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-      const durationStr = formatTime(durationSec);
-
-      // Tạo biến chứa tiêu đề hiển thị
-      const hocKi = window.currentHocKi || "GKI";
-      const monHoc = window.currentMonHoc || "Không rõ";
-
-      // Tạo tiêu đề PDF
-      const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
-
-      // Gọi export PDF      
-      exportQuizPDF(studentInfo, studentInfo.className, questions, answers, total, durationStr, quizTitle);
-
-      // Ngày theo định dạng Việt Nam
-      const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
-
-      const normalizeName = (name) =>
-        name.normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/đ/g, "d").replace(/Đ/g, "D")
-            .toLowerCase().trim()
-            .replace(/\s+/g, "_")
-            .replace(/[^a-z0-9_]/g, "");
-
-      setStudentResult({
-        hoVaTen: capitalizeName(studentName),
-        lop: studentClass,
-        diem: total,
-      });
-      setOpenResultDialog(true);
-
-       // --- LƯU FIRESTORE ---
-      // Lấy key học kỳ từ loại kiểm tra
-      if (!configData) return;
-      const hocKiKey = mapHocKyToDocKey(configData.hocKy || "UNKNOWN");
-      const lop = studentClass;
-      const docId = studentInfo.id; // giữ đúng studentId làm key trong KTDK
-
-      if (kiemTraDinhKi) {
-        // --- Lưu kết quả cá nhân vào BINHKHANH ---
-        const collectionRoot = "BINHKHANH";
-        // Dùng tên học sinh chuẩn hóa làm document ID
-        const studentDocId = normalizeName(studentName); 
-        const docRef = doc(db, `${collectionRoot}/${configData.hocKy}/${lop}/${studentDocId}`);
-        await setDoc(docRef, {
-          hoVaTen: capitalizeName(studentName),
-          lop,
-          mon: monHoc,
-          diem: total,
-          ngayKiemTra,
-          thoiGianLamBai: durationStr,
-        }, { merge: true });
-
-
-        // --- Chỉ lưu điểm vào lyThuyet trong KTDK ---
-        const ktRef = doc(db, `KTDK/${hocKiKey}`);
-
-        // Kiểm tra nếu document chưa có thì tạo rỗng
-        const ktSnap = await getDoc(ktRef);
-        if (!ktSnap.exists()) {
-          await setDoc(ktRef, {});
-        }
-
-        // Lấy dữ liệu hiện tại của lớp nếu có
-        const ktData = ktSnap.exists() ? ktSnap.data() : {};
-        const lopData = ktData[studentClass] || {};
-        const studentData = lopData[docId] || { 
-          hoVaTen: capitalizeName(studentInfo.name),
-          dgtx: "T",
-          dgtx_gv: "",
-          mucDat: "",
-          nhanXet: "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
-          thucHanh: null,
-          tongCong: null,
-          lyThuyet: null,
-          lyThuyetPhanTram: null,
-        };
-
-        // Cập nhật lyThuyet
-        studentData.lyThuyet = total;
-
-        // Ghi lại vào Firestore đúng cấu trúc: lớp -> studentId -> fields
-        await setDoc(
-          ktRef,
-          { 
-            [studentClass]: { 
-              ...lopData, 
-              [docId]: studentData 
-            } 
-          },
-          { merge: true }
-        );
+      if (!studentClass || !studentName) {
+        setSnackbar({ open: true, message: "Thiếu thông tin học sinh", severity: "info" });
+        return;
       }
 
-      else {
-        // --- Lưu vào DGTX (bài tập tuần) ---
-        const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
-        const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+      // Kiểm tra câu chưa trả lời
+      const unanswered = questions.filter(q => {
+        const userAnswer = answers[q.id];
+        if (q.type === "single") {
+          return userAnswer === undefined || userAnswer === null || userAnswer === "";
+        }
+        if (q.type === "multiple" || q.type === "image") {
+          return !Array.isArray(userAnswer) || userAnswer.length === 0;
+        }
+        if (q.type === "truefalse") {
+          return !Array.isArray(userAnswer) || userAnswer.length !== q.options.length;
+        }
+        return false;
+      });
 
-        const percent = Math.round((total / questions.reduce((sum, q) => sum + (q.score ?? 1), 0)) * 100);
-        const resultText = percent >= 75 ? "Hoàn thành tốt" : percent >= 50 ? "Hoàn thành" : "Chưa hoàn thành";
+      if (unanswered.length > 0) {
+        setUnansweredQuestions(unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1));
+        setOpenAlertDialog(true);
+        return;
+      }
 
-        await updateDoc(tuanRef, {
-          [`${studentId}.hoVaTen`]: studentName,
-          [`${studentId}.diemTracNghiem`]: resultText,
-          [`${studentId}.diemTN`]: percent,
-        }).catch(async err => {
-          if (err.code === "not-found") {
-            await setDoc(tuanRef, {
-              [studentId]: {
-                hoVaTen: studentName,
-                status: "",
-                diemTracNghiem: resultText,
-                diemTN: percent,
-              },
-            });
-          } else {
-            throw err;
+      try {
+        setSaving(true);
+
+        // Tính điểm thô
+        let total = 0;
+        questions.forEach(q => {
+          const rawAnswer = answers[q.id];
+
+          if (q.type === "single") {
+            const ua = Number(rawAnswer);
+            if (Array.isArray(q.correct) ? q.correct.includes(ua) : q.correct === ua) total += q.score ?? 1;
+
+          } else if (q.type === "multiple" || q.type === "image") {
+            const userSet = new Set(Array.isArray(rawAnswer) ? rawAnswer : []);
+            const correctSet = new Set(Array.isArray(q.correct) ? q.correct : [q.correct]);
+            if (userSet.size === correctSet.size && [...correctSet].every(x => userSet.has(x))) total += q.score ?? 1;
+
+          } else if (q.type === "sort") {
+            const userOrder = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const userTexts = userOrder.map(idx => q.options[idx]);
+            const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
+
+            const isCorrect =
+              userTexts.length === correctTexts.length &&
+              userTexts.every((t, i) => t === correctTexts[i]);
+
+            if (isCorrect) {
+              total += q.score ?? 1;
+            }
+          } else if (q.type === "matching") {
+            const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
+            const isCorrect =
+              userArray.length === correctArray.length &&
+              userArray.every((val, i) => val === correctArray[i]);
+
+            if (isCorrect) {
+              total += q.score ?? 1;
+            }
+          } else if (q.type === "truefalse") {
+            const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
+            if (userArray.length === correctArray.length) {
+              const isAllCorrect = userArray.every((val, i) => {
+                const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
+                return val === correctArray[originalIdx];
+              });
+
+              if (isAllCorrect) {
+                total += q.score ?? 1;
+              }
+            }
+          } else if (q.type === "fillblank") {
+            const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const correctAnswers = Array.isArray(q.options) ? q.options : [];
+
+            if (correctAnswers.length > 0 && userAnswers.length === correctAnswers.length) {
+              const isAllCorrect = correctAnswers.every((correct, i) =>
+                userAnswers[i] && userAnswers[i].trim() === correct.trim()
+              );
+
+              if (isAllCorrect) {
+                total += q.score ?? 1;
+              }
+            }
           }
+
         });
 
-        //console.log(`✅ Đã lưu vào DGTX: ${resultText} và diemTN: ${percent} cho học sinh ${studentId}`);
-      }
+        setScore(total);
+        setSubmitted(true);
+        
+        // ⏱ Tính thời gian làm bài
+        const durationSec = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+        const durationStr = formatTime(durationSec);
 
-    } catch (err) {
-      console.error("❌ Lỗi khi lưu điểm:", err);
-    } finally {
-      setSaving(false);
-    }
-  };
+        // Tạo biến chứa tiêu đề hiển thị
+        const hocKi = window.currentHocKi || "GKI";
+        const monHoc = window.currentMonHoc || "Không rõ";
+
+        if (configData?.kiemTraDinhKi === true) {
+          // Tạo tiêu đề PDF
+          const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
+          // Gọi export PDF      
+          exportQuizPDF(studentInfo, studentInfo.className, questions, answers, total, durationStr, quizTitle);
+        }
+
+        // Ngày theo định dạng Việt Nam
+        const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
+        // ✅ Tính phần trăm
+          const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
+          const phanTram = Math.round((total / maxScore) * 100);
+
+        const normalizeName = (name) =>
+          name.normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/đ/g, "d").replace(/Đ/g, "D")
+              .toLowerCase().trim()
+              .replace(/\s+/g, "_")
+              .replace(/[^a-z0-9_]/g, "");
+
+        setStudentResult({
+          hoVaTen: capitalizeName(studentName),
+          lop: studentClass,
+          diem: total,
+          diemTN: phanTram,
+        });
+        setOpenResultDialog(true);
+
+        // --- LƯU FIRESTORE ---
+        // Lấy key học kỳ từ loại kiểm tra
+        if (!configData) return;
+        const hocKiKey = mapHocKyToDocKey(configData.hocKy || "UNKNOWN");
+        const lop = studentClass;
+        const docId = studentInfo.id; // giữ đúng studentId làm key trong KTDK
+
+        if (kiemTraDinhKi) {
+          // --- Lưu kết quả cá nhân vào BINHKHANH ---
+          const collectionRoot = "BINHKHANH";
+          // Dùng tên học sinh chuẩn hóa làm document ID
+          const studentDocId = normalizeName(studentName); 
+          const docRef = doc(db, `${collectionRoot}/${configData.hocKy}/${lop}/${studentDocId}`);
+          await setDoc(docRef, {
+            hoVaTen: capitalizeName(studentName),
+            lop,
+            mon: monHoc,
+            diem: total,
+            ngayKiemTra,
+            thoiGianLamBai: durationStr,
+          }, { merge: true });
+
+
+          // --- Chỉ lưu điểm vào lyThuyet trong KTDK ---
+          const ktRef = doc(db, `KTDK/${hocKiKey}`);
+
+          // Kiểm tra nếu document chưa có thì tạo rỗng
+          const ktSnap = await getDoc(ktRef);
+          if (!ktSnap.exists()) {
+            await setDoc(ktRef, {});
+          }
+
+          // Lấy dữ liệu hiện tại của lớp nếu có
+          const ktData = ktSnap.exists() ? ktSnap.data() : {};
+          const lopData = ktData[studentClass] || {};
+          const studentData = lopData[docId] || { 
+            hoVaTen: capitalizeName(studentInfo.name),
+            dgtx: "T",
+            dgtx_gv: "",
+            mucDat: "",
+            nhanXet: "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
+            thucHanh: null,
+            tongCong: null,
+            lyThuyet: null,
+            lyThuyetPhanTram: null,
+          };
+
+          // Cập nhật lyThuyet
+          studentData.lyThuyet = total;
+          
+          // ✅ Ép kiểu và kiểm tra
+          const safeMax = Number(maxScore);
+          if (Number.isFinite(safeMax) && safeMax > 0) {
+            const phanTram = Math.round((total / safeMax) * 100);
+            studentData.lyThuyetPhanTram = phanTram;
+
+            // 🔎 Log để kiểm tra
+            console.log("🔎 Tổng điểm đề:", safeMax);
+            console.log("🔎 Điểm HS:", total);
+            console.log("🔎 Phần trăm:", phanTram, "%");
+          } else {
+            studentData.lyThuyetPhanTram = null;
+            console.warn("⚠️ maxScore không hợp lệ:", maxScore);
+          }
+
+
+
+          // Ghi lại vào Firestore đúng cấu trúc: lớp -> studentId -> fields
+          await setDoc(
+            ktRef,
+            { 
+              [studentClass]: { 
+                ...lopData, 
+                [docId]: studentData 
+              } 
+            },
+            { merge: true }
+          );
+        }
+
+        else {
+          // --- Lưu vào DGTX (bài tập tuần) ---
+          const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
+          const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
+
+          const percent = Math.round((total / questions.reduce((sum, q) => sum + (q.score ?? 1), 0)) * 100);
+          const resultText = percent >= 75 ? "Hoàn thành tốt" : percent >= 50 ? "Hoàn thành" : "Chưa hoàn thành";
+
+          await updateDoc(tuanRef, {
+            [`${studentId}.hoVaTen`]: studentName,
+            [`${studentId}.diemTracNghiem`]: resultText,
+            [`${studentId}.diemTN`]: percent,
+          }).catch(async err => {
+            if (err.code === "not-found") {
+              await setDoc(tuanRef, {
+                [studentId]: {
+                  hoVaTen: studentName,
+                  status: "",
+                  diemTracNghiem: resultText,
+                  diemTN: percent,
+                },
+              });
+            } else {
+              throw err;
+            }
+          });
+
+          //console.log(`✅ Đã lưu vào DGTX: ${resultText} và diemTN: ${percent} cho học sinh ${studentId}`);
+        }
+
+      } catch (err) {
+        console.error("❌ Lỗi khi lưu điểm:", err);
+      } finally {
+        setSaving(false);
+      }
+    };
 
   const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
   const handlePrev = () => currentIndex > 0 && setCurrentIndex(currentIndex - 1);
@@ -1167,7 +1254,11 @@ return (
         fontWeight="bold"
         sx={{ color: "#1976d2", mb: { xs: 1, sm: -1 }, textAlign: "center" }}
       >
-        {!loading && hocKiDisplay && monHocDisplay
+        {loading
+          ? "TRẮC NGHIỆM"
+          : config?.baiTapTuan
+          ? "TRẮC NGHIỆM"
+          : config?.kiemTraDinhKi && hocKiDisplay && monHocDisplay
           ? `KTĐK ${hocKiDisplay.toUpperCase()} - ${monHocDisplay.toUpperCase()}`
           : "TRẮC NGHIỆM"}
       </Typography>
@@ -2199,110 +2290,104 @@ return (
     </Dialog>
 
     <Dialog
-      open={openResultDialog}
-      onClose={(event, reason) => {
-        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
-        setOpenResultDialog(false);
-      }}
-      disableEscapeKeyDown
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          overflow: "hidden",
-          bgcolor: "#e3f2fd",
-          boxShadow: 6,
-        },
+  open={openResultDialog}
+  onClose={(event, reason) => {
+    if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+    setOpenResultDialog(false);
+  }}
+  disableEscapeKeyDown
+  maxWidth="xs"
+  fullWidth
+  PaperProps={{
+    sx: {
+      borderRadius: 3,
+      p: 3,
+      bgcolor: "#e3f2fd",
+      boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+    },
+  }}
+>
+  {/* Header: icon + tiêu đề */}
+  <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+    <Box
+      sx={{
+        bgcolor: "#42a5f5",
+        color: "#fff",
+        borderRadius: "50%",
+        width: 36,
+        height: 36,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        mr: 1.5,
+        fontWeight: "bold",
+        fontSize: 18,
       }}
     >
-      {/* Thanh tiêu đề */}
-      <Box
+      📊
+    </Box>
+    <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
+      KẾT QUẢ
+    </DialogTitle>
+    <IconButton
+      onClick={() => setOpenResultDialog(false)}
+      sx={{ ml: "auto", color: "#f44336", "&:hover": { bgcolor: "rgba(244,67,54,0.1)" } }}
+    >
+      <CloseIcon />
+    </IconButton>
+  </Box>
+
+  {/* Nội dung */}
+  <DialogContent sx={{ textAlign: "center" }}>
+    {dialogMode === "notFound" ? (
+      <Typography
         sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          bgcolor: "#1976d2",
-          color: "#fff",
-          px: 2,
-          py: 1.2,
+          fontSize: "1.15rem",
+          fontWeight: 700,
+          color: "red",
+          textAlign: "center",
         }}
       >
-        <Typography
-          variant="subtitle1"
-          sx={{ fontWeight: "bold", fontSize: "1.1rem", letterSpacing: 0.5 }}
-        >
-          KẾT QUẢ
+        {dialogMessage}
+      </Typography>
+    ) : (
+      <>
+        <Typography sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}>
+          {studentResult?.hoVaTen?.toUpperCase() || "HỌC SINH"}
         </Typography>
 
-        <IconButton
-          onClick={() => setOpenResultDialog(false)}
-          sx={{ color: "#fff", p: 0.6 }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Box>
+        <Typography sx={{ fontSize: 16, color: "#1565c0", mb: 1 }}>
+          Lớp: <span style={{ fontWeight: 600 }}>{studentResult?.lop}</span>
+        </Typography>
 
-      {/* Nội dung */}
-      <DialogContent sx={{ mt: 1 }}>
-        {dialogMode === "notFound" ? (
-          // ❌ Thông báo không tìm thấy đề
-          <Stack spacing={2} sx={{ pl: 2.5 }}>
-            <Typography
-              sx={{
-                fontSize: "1.15rem",
-                fontWeight: 700,
-                color: "red",
-                textAlign: "center",
-              }}
-            >
-              {dialogMessage}
-            </Typography>
-          </Stack>
+        {choXemDiem ? (
+          <Typography sx={{ fontSize: 16, color: "#0d47a1", mt: 2 }}>
+            Điểm:&nbsp;
+            <span style={{ fontWeight: 700, color: "red" }}>
+              {configData?.kiemTraDinhKi === true
+                ? studentResult?.diem
+                : configData?.baiTapTuan === true
+                  ? convertPercentToScore(studentResult?.diemTN)
+                  : ""}
+            </span>
+          </Typography>
         ) : (
-          // ✅ Hiển thị kết quả bài kiểm tra
-          <Stack spacing={2} sx={{ pl: 2.5 }}>
-            {/* Họ và tên */}
-            <Typography sx={{ fontSize: "1.15rem" }}>
-              Họ và tên:&nbsp;
-              <span style={{ fontWeight: 600 }}>
-                {studentResult?.hoVaTen?.toUpperCase()}
-              </span>
-            </Typography>
-
-            {/* Lớp */}
-            <Typography sx={{ fontSize: "1.15rem" }}>
-              Lớp:&nbsp;
-              <span style={{ fontWeight: 600 }}>
-                {studentResult?.lop}
-              </span>
-            </Typography>
-
-            {/* Nếu được xem điểm */}
-            {choXemDiem ? (
-              <Typography sx={{ fontSize: "1.15rem", mb: 1 }}>
-                Điểm:&nbsp;
-                <span style={{ fontWeight: 700, color: "red" }}>
-                  {studentResult?.diem}
-                </span>
-              </Typography>
-            ) : (
-              <Typography
-                sx={{
-                  fontSize: "1.15rem",
-                  mb: 2,
-                  textAlign: "center",
-                  fontWeight: 700,
-                  color: "red",
-                }}
-              >
-                ĐÃ HOÀN THÀNH BÀI KIỂM TRA
-              </Typography>
-            )}
-          </Stack>
+          <Typography
+            sx={{
+              fontSize: 16,
+              mt: 2,
+              textAlign: "center",
+              fontWeight: 700,
+              color: "red",
+            }}
+          >
+            ĐÃ HOÀN THÀNH BÀI KIỂM TRA
+          </Typography>
         )}
-      </DialogContent>
-    </Dialog>
+      </>
+    )}
+  </DialogContent>
+</Dialog>
 
 
     {/* Snackbar */}

@@ -2,7 +2,7 @@ import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
 /**
- * Lấy toàn bộ dữ liệu backup: DANHSACH, CONFIG, KTDK, DGTX, TRACNGHIEM
+ * Lấy toàn bộ dữ liệu backup: DANHSACH, CONFIG, KTDK, DGTX, TRACNGHIEM, BAITAP_TUAN, TRACNGHIEM_BK, DETHI_BK
  * @param {function} onProgress - callback nhận giá trị 0-100 để cập nhật thanh tiến trình
  * @returns {object} backupData - dữ liệu backup đầy đủ
  */
@@ -13,35 +13,43 @@ export const fetchAllBackup = async (onProgress) => {
       CONFIG: {},
       KTDK: {},
       DGTX: {},
-      TRACNGHIEM: {},   // ✅ thêm mới
+      TRACNGHIEM: {},
+      BAITAP_TUAN: {},   // ✅ thêm mới
+      TRACNGHIEM_BK: {}, // ✅ thêm mới
+      DETHI_BK: {},      // ✅ thêm mới
     };
 
-    const collections = ["DANHSACH", "CONFIG", "KTDK", "DGTX", "TRACNGHIEM"];
+    const collections = [
+      "DANHSACH",
+      "CONFIG",
+      "KTDK",
+      "DGTX",
+      "TRACNGHIEM",
+      "BAITAP_TUAN",
+      "TRACNGHIEM_BK",
+      "DETHI_BK"
+    ];
     let progressCount = 0;
 
     for (const colName of collections) {
       // ----------------------------------------
-      // ✅ 1. Xử lý TRACNGHIEM
+      // ✅ 1. Các collection dạng quiz (TRACNGHIEM, BAITAP_TUAN, TRACNGHIEM_BK, DETHI_BK)
       // ----------------------------------------
-      if (colName === "TRACNGHIEM") {
-        const quizSnap = await getDocs(collection(db, "TRACNGHIEM"));
+      if (["TRACNGHIEM", "BAITAP_TUAN", "TRACNGHIEM_BK", "DETHI_BK"].includes(colName)) {
+        const snap = await getDocs(collection(db, colName));
+        const ids = snap.docs.map(d => d.id);
+        const total = ids.length;
 
-        const quizIds = quizSnap.docs.map(d => d.id);
-        const totalQuiz = quizIds.length;
-
-        for (let i = 0; i < totalQuiz; i++) {
-          const quizId = quizIds[i];
-
-          // Mỗi quiz là 1 document chứa: câu hỏi, đáp án, metadata...
-          const quizDoc = await getDoc(doc(db, "TRACNGHIEM", quizId));
-          if (quizDoc.exists()) {
-            backupData.TRACNGHIEM[quizId] = quizDoc.data();
+        for (let i = 0; i < total; i++) {
+          const id = ids[i];
+          const docSnap = await getDoc(doc(db, colName, id));
+          if (docSnap.exists()) {
+            backupData[colName][id] = docSnap.data();
           }
 
-          // cập nhật tiến trình
           if (onProgress) {
-            const tnProgress = Math.round(((i + 1) / totalQuiz) * 10);
-            const overallProgress = Math.round(progressCount + tnProgress);
+            const progressStep = Math.round(((i + 1) / total) * 10);
+            const overallProgress = Math.round(progressCount + progressStep);
             onProgress(Math.min(overallProgress, 99));
           }
         }
@@ -90,7 +98,22 @@ export const fetchAllBackup = async (onProgress) => {
       }
 
       // ----------------------------------------
-      // ✅ 3. Các collection đơn giản
+      // ✅ 3. Xử lý KTDK (cấu trúc đặc biệt)
+      // ----------------------------------------
+      if (colName === "KTDK") {
+        const snap = await getDocs(collection(db, "KTDK"));
+        for (const docSnap of snap.docs) {
+          const hocKyId = docSnap.id;
+          const hocKyData = docSnap.data();
+          backupData.KTDK[hocKyId] = hocKyData;
+        }
+        progressCount += 10;
+        if (onProgress) onProgress(Math.min(progressCount, 99));
+        continue;
+      }
+
+      // ----------------------------------------
+      // ✅ 4. Các collection đơn giản (DANHSACH, CONFIG)
       // ----------------------------------------
       const snap = await getDocs(collection(db, colName));
       snap.forEach(docSnap => {

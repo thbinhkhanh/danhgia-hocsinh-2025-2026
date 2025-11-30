@@ -11,6 +11,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   Button,
   IconButton,
   Stack,
@@ -20,9 +21,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
-import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteField, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteField, onSnapshot, FieldPath } from "firebase/firestore";
+
 import Draggable from "react-draggable";
 import { useTheme, useMediaQuery } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 export default function GiaoVien() {
   const { studentData, setStudentData, setClassData } = useContext(StudentContext);
@@ -261,22 +264,139 @@ export default function GiaoVien() {
     const confirmDelete = window.confirm(`Bạn có chắc muốn xóa kết quả của ${hoVaTen}?`);
     if (!confirmDelete) return;
 
-    const { lop, tuan, mon } = config;
-    if (!lop || !tuan || !mon) return;
+    const { lop, tuan, mon, baiTapTuan, kiemTraDinhKi, hocKy } = config;
+    if (!lop || !mon) return;
 
-    const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
-    const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
+    // --- Nếu là bài tập tuần: xóa trong DGTX ---
+    if (baiTapTuan && tuan) {
+      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
+      const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
 
-    try {
-      await updateDoc(tuanRef, {
-        [`${studentId}.diemTN`]: deleteField(),
-        [`${studentId}.diemTracNghiem`]: deleteField(),
-      });
-    } catch (err) {
-      console.error("❌ Lỗi xóa điểm:", err);
+      try {
+        await updateDoc(tuanRef, {
+          [`${studentId}.diemTN`]: deleteField(),
+          [`${studentId}.diemTracNghiem`]: deleteField(),
+        });
+        console.log(`✅ Đã xóa điểm tuần ${tuan} của HS ${hoVaTen}`);
+      } catch (err) {
+        console.error("❌ Lỗi xóa điểm DGTX:", err);
+      }
+    }
+
+    // --- Nếu là kiểm tra định kỳ: reset điểm trong KTDK ---
+    if (kiemTraDinhKi && hocKy) {
+      const mapHocKy = (hk) => {
+        switch (hk) {
+          case "Giữa kỳ I": return "GKI";
+          case "Cuối kỳ I": return "CKI";
+          case "Giữa kỳ II": return "GKII";
+          case "Cuối năm": return "CN";
+          default: return "GKI";
+        }
+      };
+
+      const docHocKy = mapHocKy(hocKy);
+      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
+      const ktDocRef = doc(db, "KTDK", docHocKy);
+
+      try {
+        const snap = await getDoc(ktDocRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          const classData = data[classKey] || {};
+          const studentData = classData[studentId];
+
+          if (studentData) {
+            studentData.lyThuyet = null;
+            studentData.lyThuyetPhanTram = null;
+
+            await setDoc(
+              ktDocRef,
+              { [classKey]: { ...classData, [studentId]: studentData } },
+              { merge: true }
+            );
+
+            console.log(`✅ Đã reset điểm KTĐK của HS ${hoVaTen}`);
+          } else {
+            console.log(`⚠️ Không tìm thấy HS ${hoVaTen} trong lớp ${lop}`);
+          }
+        }
+      } catch (err) {
+        console.error("❌ Lỗi xóa điểm KTĐK:", err);
+      }
     }
   };
 
+  const deleteClassScores = async (config) => {
+    const { lop, tuan, mon, baiTapTuan, kiemTraDinhKi, hocKy } = config;
+    if (!lop || !mon) return;
+
+    // Xác nhận
+    const message =
+      baiTapTuan
+        ? `Bạn có chắc xóa điểm tuần ${tuan} của lớp ${lop}?`
+        : kiemTraDinhKi
+        ? `Bạn có chắc xóa điểm KTĐK của lớp ${lop}?`
+        : "";
+    const confirmed = window.confirm(message);
+    if (!confirmed) {
+      console.log("❎ Hủy thao tác xóa");
+      return;
+    }
+
+    // DGTX: đặt null điểm tuần
+    if (baiTapTuan) {
+      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
+      const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
+      const snap = await getDoc(tuanRef);
+
+      if (snap.exists()) {
+        const data = snap.data();
+        const updates = {};
+        Object.keys(data).forEach((studentId) => {
+          updates[`${studentId}.diemTN`] = null;
+          updates[`${studentId}.diemTracNghiem`] = null;
+        });
+        await updateDoc(tuanRef, updates);
+        console.log(`❌ Đã reset điểm tuần ${tuan} của lớp ${lop} về null`);
+      }
+    }
+
+    // KTDK: dùng FieldPath theo overload field–value pairs
+    if (kiemTraDinhKi) {
+      const mapHocKy = (hk) => {
+        switch (hk) {
+          case "Giữa kỳ I": return "GKI";
+          case "Cuối kỳ I": return "CKI";
+          case "Giữa kỳ II": return "GKII";
+          case "Cuối năm": return "CN";
+          default: return "GKI";
+        }
+      };
+
+      const docHocKy = mapHocKy(hocKy);
+      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop; // ví dụ "4.1"
+      const ktDocRef = doc(db, "KTDK", docHocKy);
+      const snap = await getDoc(ktDocRef);
+
+      if (snap.exists()) {
+        const data = snap.data();
+        const classData = data[classKey] || {};
+
+        // chỉnh sửa trực tiếp object học sinh
+        Object.keys(classData).forEach(studentId => {
+          classData[studentId].lyThuyet = null;
+          classData[studentId].lyThuyetPhanTram = null;
+        });
+
+        // ghi đè lại lớp 4.1, merge để giữ nguyên các lớp khác
+        await setDoc(ktDocRef, { [classKey]: classData }, { merge: true });
+
+        console.log(`❌ Đã reset điểm KTĐK của lớp ${lop} về null`);
+      }
+    }
+
+  };
 
   return (
   <Box
@@ -298,11 +418,36 @@ export default function GiaoVien() {
         width: "100%",
         maxWidth: 1420,
         bgcolor: "white",
+        position: "relative", // cần để đặt icon tuyệt đối
       }}
     >
+      {/* Icon Xóa ở góc trên/trái */}
+      <IconButton
+        size="small"
+        color="error"
+        onClick={() => deleteClassScores(config)} // gọi hàm xóa cả lớp
+        sx={{
+          position: "absolute",
+          top: 8,
+          left: 8,
+          bgcolor: "rgba(255,255,255,0.8)",
+          "&:hover": { bgcolor: "rgba(255,0,0,0.1)" },
+        }}
+      >
+        <DeleteIcon />
+      </IconButton>
+
       <Box sx={{ textAlign: "center", mb: 1 }}>
-        <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2", pb: 1 }}>
-          THEO DÕI - ĐÁNH GIÁ HỌC SINH
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          sx={{ color: "#1976d2", pb: 1 }}
+        >
+          {config?.baiTapTuan
+            ? `ĐÁNH GIÁ TUẦN ${config.tuan}` // ví dụ: ĐÁNH GIÁ TUẦN 12
+            : config?.kiemTraDinhKi
+            ? `KTĐK ${config.hocKy?.toUpperCase()}` // ví dụ: KTĐK GIỮA KỲ I
+            : "THEO DÕI - ĐÁNH GIÁ HỌC SINH"}
         </Typography>
       </Box>
 
@@ -346,104 +491,104 @@ export default function GiaoVien() {
 
       {/* Danh sách học sinh */}
       <Grid container spacing={2} justifyContent="center">
-  {columns.map((col, colIdx) => (
-    <Grid item key={colIdx}>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {col.map(student => {
-          return (
-            <Paper
-              key={student.maDinhDanh}
-              elevation={3}
-              onClick={() => {
-                config.tracNghiem
-                  ? setStudentForTracNghiem(student)
-                  : setStudentForDanhGia(student);
-              }}
-              sx={{
-                minWidth: 120,
-                width: { xs: "75vw", sm: "auto" },
-                p: 2,
-                borderRadius: 2,
-                cursor: "pointer",
-                textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                bgcolor: "#ffffff",
-                transition: "0.2s",
-                boxShadow: 1,
-                "&:hover": {
-                  transform: "scale(1.03)",
-                  boxShadow: 4,
-                  bgcolor: "#f5f5f5",
-                },
-              }}
-            >
-              <Typography variant="subtitle2" fontWeight="medium" noWrap>
-                {student.stt}. {student.hoVaTen}
-              </Typography>
+        {columns.map((col, colIdx) => (
+          <Grid item key={colIdx}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {col.map(student => {
+                return (
+                  <Paper
+                    key={student.maDinhDanh}
+                    elevation={3}
+                    onClick={() => {
+                      config.tracNghiem
+                        ? setStudentForTracNghiem(student)
+                        : setStudentForDanhGia(student);
+                    }}
+                    sx={{
+                      minWidth: 120,
+                      width: { xs: "75vw", sm: "auto" },
+                      p: 2,
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      bgcolor: "#ffffff",
+                      transition: "0.2s",
+                      boxShadow: 1,
+                      "&:hover": {
+                        transform: "scale(1.03)",
+                        boxShadow: 4,
+                        bgcolor: "#f5f5f5",
+                      },
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight="medium" noWrap>
+                      {student.stt}. {student.hoVaTen}
+                    </Typography>
 
-              {/* CHIP BTT hoặc KTDK cùng màu */}
-                {(() => {
-                  let chipProps = null;
+                    {/* CHIP BTT hoặc KTDK cùng màu */}
+                      {(() => {
+                        let chipProps = null;
 
-                  if (config.kiemTraDinhKi) {
-                    const lyThuyet = studentScores[student.maDinhDanh]?.lyThuyet;             // điểm gốc
-                    const lyThuyetPhanTram = studentScores[student.maDinhDanh]?.lyThuyetPhanTram; // phần trăm
+                        if (config.kiemTraDinhKi) {
+                          const lyThuyet = studentScores[student.maDinhDanh]?.lyThuyet;             // điểm gốc
+                          const lyThuyetPhanTram = studentScores[student.maDinhDanh]?.lyThuyetPhanTram; // phần trăm
 
-                    if (student.maDinhDanh === "7956673972") {
-                      console.log("🔎 Chip render HS:", student.maDinhDanh, "lyThuyet:", lyThuyet, "lyThuyetPhanTram:", lyThuyetPhanTram);
-                    }
+                          if (student.maDinhDanh === "7956673972") {
+                            console.log("🔎 Chip render HS:", student.maDinhDanh, "lyThuyet:", lyThuyet, "lyThuyetPhanTram:", lyThuyetPhanTram);
+                          }
 
-                    if (lyThuyet !== undefined && lyThuyet !== null &&
-                        lyThuyetPhanTram !== undefined && lyThuyetPhanTram !== null) {
-                      let color = "warning";
-                      if (lyThuyetPhanTram >= 85) color = "primary";      // xanh
-                      else if (lyThuyetPhanTram >= 50) color = "secondary"; // tím
-                      else color = "warning";                             // cam
+                          if (lyThuyet !== undefined && lyThuyet !== null &&
+                              lyThuyetPhanTram !== undefined && lyThuyetPhanTram !== null) {
+                            let color = "warning";
+                            if (lyThuyetPhanTram >= 85) color = "primary";      // xanh
+                            else if (lyThuyetPhanTram >= 50) color = "secondary"; // tím
+                            else color = "warning";                             // cam
 
-                      // label hiển thị điểm số, màu dựa vào phần trăm
-                      chipProps = { label: String(lyThuyet), color };
-                    }
-                  } else {
-                    const status = studentStatus[student.maDinhDanh];
-                    if (student.maDinhDanh === "7956673972") {
-                      console.log("🔎 DGTX - HS:", student.maDinhDanh, "Status:", status);
-                    }
-                    chipProps =
-                      {
-                        "Hoàn thành tốt": { label: "T", color: "primary" },
-                        "Hoàn thành": { label: "H", color: "secondary" },
-                        "Chưa hoàn thành": { label: "C", color: "warning" },
-                      }[status] || null;
-                  }
+                            // label hiển thị điểm số, màu dựa vào phần trăm
+                            chipProps = { label: String(lyThuyet), color };
+                          }
+                        } else {
+                          const status = studentStatus[student.maDinhDanh];
+                          if (student.maDinhDanh === "7956673972") {
+                            console.log("🔎 DGTX - HS:", student.maDinhDanh, "Status:", status);
+                          }
+                          chipProps =
+                            {
+                              "Hoàn thành tốt": { label: "T", color: "primary" },
+                              "Hoàn thành": { label: "H", color: "secondary" },
+                              "Chưa hoàn thành": { label: "C", color: "warning" },
+                            }[status] || null;
+                        }
 
-                  return chipProps && (
-                    <Chip
-                      label={chipProps.label}
-                      color={chipProps.color}
-                      size="small"
-                      sx={{
-                        fontWeight: "bold",
-                        borderRadius: "50%",
-                        width: 28,
-                        height: 28,
-                        minWidth: 0,
-                        p: 0,
-                        justifyContent: "center",
-                        fontSize: "0.8rem",
-                        boxShadow: "0 0 4px rgba(0,0,0,0.15)",
-                      }}
-                    />
-                  );
-                })()}
-            </Paper>
-          );
-        })}
-      </Box>
-    </Grid>
-  ))}
-</Grid>
+                        return chipProps && (
+                          <Chip
+                            label={chipProps.label}
+                            color={chipProps.color}
+                            size="small"
+                            sx={{
+                              fontWeight: "bold",
+                              borderRadius: "50%",
+                              width: 28,
+                              height: 28,
+                              minWidth: 0,
+                              p: 0,
+                              justifyContent: "center",
+                              fontSize: "0.8rem",
+                              boxShadow: "0 0 4px rgba(0,0,0,0.15)",
+                            }}
+                          />
+                        );
+                      })()}
+                  </Paper>
+                );
+              })}
+            </Box>
+          </Grid>
+        ))}
+      </Grid>
 
     </Paper>
 
@@ -529,71 +674,111 @@ export default function GiaoVien() {
 
     {/* Dialog điểm trắc nghiệm */}
     <Dialog
-      open={Boolean(studentForTracNghiem)}
+      open={!!studentForTracNghiem}
       onClose={() => setStudentForTracNghiem(null)}
       maxWidth="xs"
       fullWidth
-      PaperComponent={PaperComponent}
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 3,
+          bgcolor: "#e3f2fd",
+          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+        },
+      }}
     >
-      {studentForTracNghiem && (
-        <>
-          <DialogTitle
-            id="draggable-dialog-title"
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              bgcolor: "#1976d2",
-              py: 1.5,
-              cursor: "move",
-            }}
-          >
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ color: "#ffffff" }}>
-              {studentForTracNghiem.hoVaTen.toUpperCase()}
-            </Typography>
-            <IconButton
-              onClick={() => setStudentForTracNghiem(null)}
-              sx={{ color: "#f44336", "&:hover": { bgcolor: "rgba(244,67,54,0.1)" } }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
+      {/* Header với icon và tiêu đề Thông báo */}
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <Box
+          sx={{
+            bgcolor: "#42a5f5",
+            color: "#fff",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mr: 1.5,
+            fontWeight: "bold",
+            fontSize: 18,
+          }}
+        >
+          📝
+        </Box>
+        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
+          Thông báo
+        </DialogTitle>
+        <IconButton
+          onClick={() => setStudentForTracNghiem(null)}
+          sx={{ ml: "auto", color: "#f44336", "&:hover": { bgcolor: "rgba(244,67,54,0.1)" } }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </Box>
 
-          <DialogContent>
-            <Stack spacing={2} sx={{ mt: 2 }}>
-              {(() => {
-                const score = studentScores[studentForTracNghiem.maDinhDanh] || {};
-                                return (
-                  <>
-                    <Typography variant="body1">
-                      <strong>Điểm trắc nghiệm:</strong>{" "}
-                      {score.diemTN != null ? `${convertPercentToScore(score.diemTN)} điểm` : "Chưa có"}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Mức đạt:</strong> {score.diemTracNghiem || "Chưa có"}
-                    </Typography>
-                    <Box sx={{ textAlign: "center", mt: 2 }}>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        onClick={() => {
-                          deleteStudentScore(
-                            studentForTracNghiem.maDinhDanh,
-                            studentForTracNghiem.hoVaTen
-                          );
-                          setStudentForTracNghiem(null);
-                        }}
-                      >
-                        XÓA KẾT QUẢ
-                      </Button>
-                    </Box>
-                  </>
-                );
-              })()}
-            </Stack>
-          </DialogContent>
-        </>
-      )}
+      {/* Nội dung: tên HS đặt phía dưới */}
+      <DialogContent sx={{ textAlign: "center" }}>
+        <Typography
+          sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}
+        >
+          {studentForTracNghiem?.hoVaTen?.toUpperCase() || "HỌC SINH"}
+        </Typography>
+
+        {(() => {
+          const score = studentScores[studentForTracNghiem?.maDinhDanh] || {};
+
+          if (config?.baiTapTuan) {
+            // ✅ Bài tập tuần: hiển thị điểm + mức đạt
+            return (
+              <>
+                <Typography sx={{ fontSize: 16, color: "#0d47a1", mt: 2, mb: 0.5 }}>
+                  <strong>Điểm trắc nghiệm:</strong>{" "}
+                  {score.diemTN != null
+                    ? `${convertPercentToScore(score.diemTN)} điểm`
+                    : "Chưa có"}
+                </Typography>
+                <Typography sx={{ fontSize: 16, color: "#1565c0", mt: 2 }}>
+                  <strong>Mức đạt:</strong> {score.diemTracNghiem || "Chưa có"}
+                </Typography>
+              </>
+            );
+          }
+
+          if (config?.kiemTraDinhKi) {
+            // ✅ Kiểm tra định kỳ: chỉ hiển thị điểm lý thuyết, ẩn mức đạt
+            return (
+              <Typography sx={{ fontSize: 16, color: "#0d47a1", mt: 2, mb: 0.5 }}>
+                <strong>Điểm lý thuyết:</strong>{" "}
+                {score.lyThuyet != null ? `${score.lyThuyet} điểm` : "Chưa có"}
+              </Typography>
+            );
+          }
+
+          return null;
+        })()}
+      </DialogContent>
+
+      {/* Action */}
+      <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={() => {
+            deleteStudentScore(studentForTracNghiem.maDinhDanh, studentForTracNghiem.hoVaTen);
+            setStudentForTracNghiem(null);
+          }}
+          sx={{
+            borderRadius: 2,
+            px: 4,
+            bgcolor: "#f44336",
+            color: "#fff",
+            "&:hover": { bgcolor: "#d32f2f" },
+          }}
+        >
+          XÓA KẾT QUẢ
+        </Button>
+      </DialogActions>
     </Dialog>
   </Box>
 );
