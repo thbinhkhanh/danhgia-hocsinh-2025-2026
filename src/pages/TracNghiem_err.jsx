@@ -610,29 +610,30 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
           const correctArray = Array.isArray(q.correct) ? q.correct : [];
 
           if (userArray.length === correctArray.length) {
-            const isAllCorrect = userArray.every((val, i) => {
-              const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
-              return val === correctArray[originalIdx];
+            const perItemScore = (q.score ?? 1) / correctArray.length;
+            userArray.forEach((val, i) => {
+              const originalIdx = Array.isArray(q.initialOrder)
+                ? q.initialOrder[i]
+                : i;
+              if (val === correctArray[originalIdx]) {
+                total += perItemScore;
+              }
             });
-
-            if (isAllCorrect) {
-              total += q.score ?? 1;
-            }
           }
         } else if (q.type === "fillblank") {
-          const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctAnswers = Array.isArray(q.options) ? q.options : [];
-
-          if (correctAnswers.length > 0 && userAnswers.length === correctAnswers.length) {
-            const isAllCorrect = correctAnswers.every((correct, i) =>
-              userAnswers[i] && userAnswers[i].trim() === correct.trim()
-            );
-
-            if (isAllCorrect) {
-              total += q.score ?? 1;
+            const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const correctAnswers = Array.isArray(q.options) ? q.options : [];
+            if (correctAnswers.length > 0) {
+              const perBlankScore = (q.score ?? 1) / correctAnswers.length;
+              correctAnswers.forEach((correct, i) => {
+                if (userAnswers[i] && userAnswers[i].trim() === correct.trim()) {
+                  total += perBlankScore;
+                } else {
+                  //console.log(`Ô thứ ${i + 1} sai hoặc trống`);
+                }
+              });
             }
           }
-        }
 
       });
 
@@ -772,10 +773,10 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
 
   const autoSubmit = async () => {
     // Nếu tên là "Test", hiện snackbar và dừng nộp bài
-  if (studentName === "Test") {
-    setSnackbar({ open: true, message: "Đây là trang test", severity: "info" });
-    return;
-  }
+    if (studentName === "Test") {
+      setSnackbar({ open: true, message: "Đây là trang test", severity: "info" });
+      return;
+    }
     const kiemTraDinhKi = config?.kiemTraDinhKi === true;
     const hocKiConfig = configData.hocKy || "UNKNOWN"; // fallback nếu chưa có
     const hocKiKey = mapHocKyToDocKey(hocKiConfig);
@@ -784,7 +785,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
       setSnackbar({ open: true, message: "Thiếu thông tin học sinh", severity: "info" });
       return;
     }
-
+    
     try {
       setSaving(true);
 
@@ -803,58 +804,43 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
           if (userSet.size === correctSet.size && [...correctSet].every(x => userSet.has(x))) total += q.score ?? 1;
 
         } else if (q.type === "sort") {
-          const userOrder = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const userTexts = userOrder.map(idx => q.options[idx]);
-          const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
-
-          const isCorrect =
-            userTexts.length === correctTexts.length &&
-            userTexts.every((t, i) => t === correctTexts[i]);
-
-          if (isCorrect) {
+          const userArray = Array.isArray(rawAnswer) && rawAnswer.length > 0 ? rawAnswer : q.initialSortOrder;
+          if (userArray.length === q.correct.length && userArray.every((val, i) => val === q.correct[i])) {
             total += q.score ?? 1;
           }
+
         } else if (q.type === "matching") {
-          const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctArray = Array.isArray(q.correct) ? q.correct : [];
-
-          const isCorrect =
-            userArray.length === correctArray.length &&
-            userArray.every((val, i) => val === correctArray[i]);
-
-          if (isCorrect) {
+          const userArray = Array.isArray(rawAnswer) && rawAnswer.length > 0 ? rawAnswer : q.correct;
+          if (userArray.length === q.correct.length && userArray.every((val, i) => val === q.correct[i])) {
             total += q.score ?? 1;
           }
+
         } else if (q.type === "truefalse") {
           const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctArray = Array.isArray(q.correct) ? q.correct : [];
+          if (userArray.length === q.correct.length && userArray.every((val, i) => val === q.correct[i])) total += q.score ?? 1;
 
-          if (userArray.length === correctArray.length) {
-            const isAllCorrect = userArray.every((val, i) => {
-              const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
-              return val === correctArray[originalIdx];
-            });
-
-            if (isAllCorrect) {
-              total += q.score ?? 1;
-            }
-          }
         } else if (q.type === "fillblank") {
-          const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
-          const correctAnswers = Array.isArray(q.options) ? q.options : [];
+            const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
+            const correctAnswers = Array.isArray(q.options) ? q.options : [];
+            //console.log(`Câu điền khuyết: ${q.question}`);
+            //console.log(`Đáp án đúng:`, correctAnswers);
+            //console.log(`Đáp án học sinh:`, userAnswers);
 
-          if (correctAnswers.length > 0 && userAnswers.length === correctAnswers.length) {
-            const isAllCorrect = correctAnswers.every((correct, i) =>
-              userAnswers[i] && userAnswers[i].trim() === correct.trim()
-            );
-
-            if (isAllCorrect) {
-              total += q.score ?? 1;
+            if (correctAnswers.length > 0) {
+              const perBlankScore = (q.score ?? 1) / correctAnswers.length;
+              correctAnswers.forEach((correct, i) => {
+                if (userAnswers[i] && userAnswers[i].trim() === correct.trim()) {
+                  total += perBlankScore;
+                  //console.log(`Ô thứ ${i + 1} đúng, cộng ${perBlankScore} điểm, tổng: ${total}`);
+                } else {
+                  //console.log(`Ô thứ ${i + 1} sai hoặc trống`);
+                }
+              });
             }
           }
-        }
 
       });
+
 
       setScore(total);
       setSubmitted(true);
@@ -951,9 +937,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
           },
           { merge: true }
         );
-      }
-
-      else {
+      }else {
         // --- Lưu vào DGTX (bài tập tuần) ---
         const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
         const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);

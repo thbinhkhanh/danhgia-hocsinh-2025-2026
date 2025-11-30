@@ -178,31 +178,53 @@ const capitalizeName = (name) => {
         });
         break;
 
-      case "truefalse":
+      case "truefalse": {
+        const userArray = answers[q.id] || [];
+
         q.options.forEach((opt, i) => {
-          const selected = (answers[q.id] || [])[i] || "";
-          const isCorrect = selected === q.correct[i];
+          const selected = userArray[i] || "";
 
-          const optionLines = pdf.splitTextToSize(`[${selected}] ${opt}`, pageWidth - 2 * margin - 10);
+          // Lấy index gốc của option đang hiển thị tại vị trí i
+          const originalIdx = Array.isArray(q.initialOrder)
+            ? q.initialOrder[i]
+            : i;
+
+          const correctArray = Array.isArray(q.correct) ? q.correct : [];
+          const correctVal = correctArray[originalIdx] ?? "";
+
+          const isCorrect = selected === correctVal;
+          const isWrong   = selected !== "" && selected !== correctVal;
+
+          const optionLines = pdf.splitTextToSize(
+            `[${selected}] ${opt}`,
+            pageWidth - 2 * margin - 10
+          );
           const optionHeight = optionLines.length * lineHeight;
-          if (y + optionHeight > pageBottom) { pdf.addPage(); y = margin; }
 
+          if (y + optionHeight > pageBottom) {
+            pdf.addPage();
+            y = margin;
+          }
+
+          // Nội dung option
           pdf.text(optionLines, margin + 5, y);
 
+          // Đánh dấu đúng/sai
           if (selected) {
             if (isCorrect) {
-              pdf.setTextColor(0, 128, 0);
+              pdf.setTextColor(0, 128, 0); // xanh lá
               pdf.text("✓", margin + 150, y);
-            } else {
-              pdf.setTextColor(255, 0, 0);
+            } else if (isWrong) {
+              pdf.setTextColor(255, 0, 0); // đỏ
               pdf.text("✗", margin + 150, y);
             }
-            pdf.setTextColor(0, 0, 0);
+            pdf.setTextColor(0, 0, 0); // reset về đen
           }
 
           y += optionHeight;
         });
         break;
+      }
 
       case "matching":
         const ans = answers[q.id] || [];
@@ -232,30 +254,48 @@ const capitalizeName = (name) => {
         });
         break;
 
-      case "sort":
+      case "sort": {
         const userOrder = answers[q.id] || [];
-        userOrder.forEach((idx, i) => {
-          const isCorrect = idx === q.correct[i];
-          const line = pdf.splitTextToSize(`${i + 1}. ${q.options[idx]}`, pageWidth - 2 * margin - 10);
-          const optionHeight = line.length * lineHeight;
-          if (y + optionHeight > pageBottom) { pdf.addPage(); y = margin; }
 
+        // Quy đổi index -> text theo thứ tự người dùng sắp
+        const userTexts = userOrder.map((idx) => q.options[idx]);
+        const correctTexts = q.correctTexts || [];
+
+        userTexts.forEach((text, i) => {
+          const isCorrect =
+            correctTexts.length === userTexts.length &&
+            text === correctTexts[i];
+
+          const line = pdf.splitTextToSize(
+            `${i + 1}. ${text}`,
+            pageWidth - 2 * margin - 10
+          );
+          const optionHeight = line.length * lineHeight;
+
+          if (y + optionHeight > pageBottom) {
+            pdf.addPage();
+            y = margin;
+          }
+
+          // Nội dung option
           pdf.text(line, margin + 5, y);
 
+          // Đánh dấu đúng/sai
           if (userOrder.length > 0) {
             if (isCorrect) {
-              pdf.setTextColor(0, 128, 0);
+              pdf.setTextColor(0, 128, 0); // xanh lá
               pdf.text("✓", margin + 150, y);
             } else {
-              pdf.setTextColor(255, 0, 0);
+              pdf.setTextColor(255, 0, 0); // đỏ
               pdf.text("✗", margin + 150, y);
             }
-            pdf.setTextColor(0, 0, 0);
+            pdf.setTextColor(0, 0, 0); // reset về đen
           }
 
           y += optionHeight;
         });
         break;
+      }
 
       case "image":
         let x = margin + 5;

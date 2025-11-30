@@ -45,6 +45,9 @@ export default function HocSinh() {
   const [doneStudent, setDoneStudent] = useState(null);
   const [weekData, setWeekData] = useState({});
 
+  const choXemDiem = config?.choXemDiem; // lấy từ config
+
+
   useEffect(() => {
     const docRef = doc(db, "CONFIG", "config");
 
@@ -703,15 +706,33 @@ export default function HocSinh() {
         <Typography sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}>
           {doneStudent?.hoVaTen || "Học sinh"}
         </Typography>
-        <Typography sx={{ fontSize: 16, color: "#1565c0", mb: 0.5 }}>
-          Đã làm xong bài trắc nghiệm.
+
+        <Typography sx={{ fontSize: 16, color: "#1565c0", mt: 2, mb: 0.5 }}>
+          Đã hoàn thành bài kiểm tra.
         </Typography>
-        <Typography sx={{ fontSize: 16, color: "#0d47a1", fontWeight: 500 }}>
-          {config?.baiTapTuan
-            ? `Điểm của bạn: ${convertPercentToScore(doneStudent?.diemTN)}`
-            : config?.kiemTraDinhKi
-              ? `Điểm của bạn: ${doneStudent?.diemTN ?? "Chưa có điểm"}`
-              : ""}
+
+        <Typography sx={{ fontSize: 16, color: "#0d47a1", fontWeight: 500, mt: 2 }}>
+          {config?.baiTapTuan ? (
+            <>
+              Điểm của bạn:{" "}
+              <span style={{ color: "red", fontWeight: "bold" }}>
+                {convertPercentToScore(doneStudent?.diemTN)}
+              </span>
+            </>
+          ) : config?.kiemTraDinhKi ? (
+            choXemDiem ? (
+              <>
+                Điểm của bạn:{" "}
+                <span style={{ color: "red", fontWeight: "bold" }}>
+                  {doneStudent?.diemTN ?? "Chưa có điểm"}
+                </span>
+              </>
+            ) : (
+              ""
+            )
+          ) : (
+            ""
+          )}
         </Typography>
       </DialogContent>
 
