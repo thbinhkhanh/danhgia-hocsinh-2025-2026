@@ -241,14 +241,57 @@ export default function HocSinh() {
 
 
   useEffect(() => {
-    // 🛑 Nếu chưa đủ thông tin, thoát
-    if (!expandedStudent?.maDinhDanh || !selectedClass || !selectedWeek) return;
+  if (!expandedStudent?.maDinhDanh || !selectedClass) return;
+
+  // Nếu là kiểm tra định kỳ → ưu tiên loại này
+  if (config?.kiemTraDinhKi === true) {
+    const hocKy = config?.hocKy || "GKI";
 
     const classKey =
       config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-    const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
-    // 🟢 Lắng nghe realtime CHỈ học sinh đang được mở
+    const ktdkRef = doc(
+      db,
+      `KTDK/${hocKy}/${classKey}/${expandedStudent.maDinhDanh}`
+    );
+
+    const unsubscribe = onSnapshot(ktdkRef, (docSnap) => {
+      if (!docSnap.exists()) {
+        setStudentStatus((prev) => ({
+          ...prev,
+          [expandedStudent.maDinhDanh]: ""
+        }));
+        return;
+      }
+
+      const data = docSnap.data();
+      const lyThuyet = data?.lyThuyet ?? null;
+
+      const status = lyThuyet !== null ? "ĐÃ LÀM KIỂM TRA" : "";
+
+      setStudentStatus((prev) => ({
+        ...prev,
+        [expandedStudent.maDinhDanh]: status
+      }));
+    });
+
+    return () => unsubscribe();
+  }
+
+  // ========================
+  // 🟢 BÀI TẬP TUẦN – DGTX
+  // ========================
+  if (config?.baiTapTuan === true) {
+    if (!selectedWeek) return;
+
+    const classKey =
+      config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+
+    const tuanRef = doc(
+      db,
+      `DGTX/${classKey}/tuan/tuan_${selectedWeek}`
+    );
+
     const unsubscribe = onSnapshot(
       tuanRef,
       (docSnap) => {
@@ -258,7 +301,6 @@ export default function HocSinh() {
         const currentStatus = record?.status || "";
 
         setStudentStatus((prev) => {
-          // 🔸 Nếu trạng thái không đổi → không setState (tránh render lặp)
           if (prev[expandedStudent.maDinhDanh] === currentStatus) return prev;
           return {
             ...prev,
@@ -271,9 +313,18 @@ export default function HocSinh() {
       }
     );
 
-    // 🧹 Khi đóng dialog → hủy lắng nghe
     return () => unsubscribe();
-  }, [expandedStudent?.maDinhDanh, selectedClass, selectedWeek, config?.mon]);
+  }
+}, [
+  expandedStudent?.maDinhDanh,
+  selectedClass,
+  selectedWeek,
+  config?.mon,
+  config?.baiTapTuan,
+  config?.kiemTraDinhKi,
+  config?.hocKy,
+]);
+
 
   const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff", label: "T", color: "primary" },

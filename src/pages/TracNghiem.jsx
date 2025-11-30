@@ -715,6 +715,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
           thucHanh: null,
           tongCong: null,
           lyThuyet: null,
+          lyThuyetPhanTram: null,
         };
 
         // Cập nhật lyThuyet
@@ -935,6 +936,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
           thucHanh: null,
           tongCong: null,
           lyThuyet: null,
+          lyThuyetPhanTram: null,
         };
 
         // Cập nhật lyThuyet

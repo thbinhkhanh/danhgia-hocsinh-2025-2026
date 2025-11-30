@@ -126,43 +126,83 @@ export default function GiaoVien() {
 
   // Lắng nghe realtime trạng thái đánh giá
   useEffect(() => {
-  const { lop, tuan, mon } = config;
-  if (!lop || !tuan || !mon) return;
+    const { lop, tuan, mon, kiemTraDinhKi, hocKy } = config;
+    if (!lop || (!tuan && !kiemTraDinhKi) || !mon) return;
 
-  const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
-  const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
+    let unsubscribeDGTX = () => {};
+    let unsubscribeKTDK = () => {};
 
-  const unsubscribe = onSnapshot(tuanRef, snap => {
-    if (snap.exists()) {
-      const data = snap.data();
-      const updated = {};
-      const scores = {};
-
-      Object.entries(data).forEach(([id, info]) => {
-        if (info && typeof info === "object") {
-          // ✅ Trạng thái hiển thị chính (status hoặc diemTracNghiem)
-          updated[id] = config.tracNghiem
-            ? info.diemTracNghiem || ""
-            : info.status || "";
-
-          // ✅ Lưu điểm chi tiết vào studentScores
-          scores[id] = {
-            diemTN: info.diemTN ?? null,
-            diemTracNghiem: info.diemTracNghiem || "",
-          };
+    // 1️⃣ Lắng nghe DGTX
+    if (!kiemTraDinhKi) {
+      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
+      const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
+      unsubscribeDGTX = onSnapshot(tuanRef, snap => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const updated = {};
+          const scores = {};
+          Object.entries(data).forEach(([id, info]) => {
+            if (info && typeof info === "object") {
+              updated[id] = config.tracNghiem ? info.diemTracNghiem || "" : info.status || "";
+              scores[id] = {
+                diemTN: info.diemTN ?? null,
+                diemTracNghiem: info.diemTracNghiem || "",
+              };
+            }
+          });
+          setStudentStatus(updated);
+          setStudentScores(scores);
+        } else {
+          setStudentStatus({});
+          setStudentScores({});
         }
       });
-
-      setStudentStatus(updated);
-      setStudentScores(scores);
-    } else {
-      setStudentStatus({});
-      setStudentScores({});
     }
-  });
 
-  return () => unsubscribe();
-}, [config.lop, config.tuan, config.mon]);
+    // 2️⃣ Lắng nghe KTDK
+    if (kiemTraDinhKi) {
+      const mapHocKy = (hk) => {
+        switch (hk) {
+          case "Giữa kỳ I": return "GKI";
+          case "Cuối kỳ I": return "CKI";
+          case "Giữa kỳ II": return "GKII";
+          case "Cuối năm": return "CN";
+          default: return "GKI";
+        }
+      };
+
+      const docHocKy = mapHocKy(hocKy);
+      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
+
+      console.log("🔎 KTDK useEffect - hocKy raw:", hocKy, "→ mapped:", docHocKy, "lop:", classKey);
+
+      const ktDocRef = doc(db, "KTDK", docHocKy);
+      unsubscribeKTDK = onSnapshot(ktDocRef, snap => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const classData = data[classKey] || {};
+          const scores = {};
+          Object.entries(classData).forEach(([id, info]) => {
+            console.log("📄 Snapshot HS:", id, "lyThuyet:", info.lyThuyet, "lyThuyetPhanTram:", info.lyThuyetPhanTram);
+            // lưu cả điểm gốc và phần trăm với key mới
+            scores[id] = { 
+              lyThuyet: info.lyThuyet ?? null,
+              lyThuyetPhanTram: info.lyThuyetPhanTram ?? null 
+            };
+          });
+          console.log("✅ Scores object:", scores);
+          setStudentScores(prev => ({ ...prev, ...scores }));
+        } else {
+          setStudentScores({});
+        }
+      });
+    }
+
+    return () => {
+      unsubscribeDGTX();
+      unsubscribeKTDK();
+    };
+  }, [config.lop, config.tuan, config.mon, config.kiemTraDinhKi, config.hocKy]);
 
   // Lưu trạng thái học sinh
   const saveStudentStatus = async (studentId, hoVaTen, status) => {
@@ -306,76 +346,105 @@ export default function GiaoVien() {
 
       {/* Danh sách học sinh */}
       <Grid container spacing={2} justifyContent="center">
-        {columns.map((col, colIdx) => (
-          <Grid item key={colIdx}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {col.map(student => {
-                const status = studentStatus[student.maDinhDanh];
-                const chipProps =
-                  {
-                    "Hoàn thành tốt": { label: "T", color: "primary" },
-                    "Hoàn thành": { label: "H", color: "secondary" },
-                    "Chưa hoàn thành": { label: "C", color: "warning" },
-                  }[status] || null;
+  {columns.map((col, colIdx) => (
+    <Grid item key={colIdx}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {col.map(student => {
+          return (
+            <Paper
+              key={student.maDinhDanh}
+              elevation={3}
+              onClick={() => {
+                config.tracNghiem
+                  ? setStudentForTracNghiem(student)
+                  : setStudentForDanhGia(student);
+              }}
+              sx={{
+                minWidth: 120,
+                width: { xs: "75vw", sm: "auto" },
+                p: 2,
+                borderRadius: 2,
+                cursor: "pointer",
+                textAlign: "left",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                bgcolor: "#ffffff",
+                transition: "0.2s",
+                boxShadow: 1,
+                "&:hover": {
+                  transform: "scale(1.03)",
+                  boxShadow: 4,
+                  bgcolor: "#f5f5f5",
+                },
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight="medium" noWrap>
+                {student.stt}. {student.hoVaTen}
+              </Typography>
 
-                return (
-                  <Paper
-                    key={student.maDinhDanh}
-                    elevation={3}
-                    onClick={() => {
-                      config.tracNghiem
-                        ? setStudentForTracNghiem(student)
-                        : setStudentForDanhGia(student);
-                    }}
-                    sx={{
-                      minWidth: 120,
-                      width: { xs: "75vw", sm: "auto" },
-                      p: 2,
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      bgcolor: "#ffffff",
-                      color: "inherit",
-                      transition: "0.2s",
-                      boxShadow: 1,
-                      "&:hover": {
-                        transform: "scale(1.03)",
-                        boxShadow: 4,
-                        bgcolor: "#f5f5f5",
-                      },
-                    }}
-                  >
-                    <Typography variant="subtitle2" fontWeight="medium" noWrap>
-                      {student.stt}. {student.hoVaTen}
-                    </Typography>
-                    {chipProps && (
-                      <Chip
-                        label={chipProps.label}
-                        color={chipProps.color}
-                        size="small"
-                        sx={{
-                          fontWeight: "bold",
-                          borderRadius: "50%",
-                          width: 28,
-                          height: 28,
-                          minWidth: 0,
-                          p: 0,
-                          justifyContent: "center",
-                          fontSize: "0.8rem",
-                          boxShadow: "0 0 4px rgba(0,0,0,0.15)",
-                        }}
-                      />
-                    )}
-                  </Paper>
-                );
-              })}
-            </Box>
-          </Grid>
-        ))}
-      </Grid>
+              {/* CHIP BTT hoặc KTDK cùng màu */}
+                {(() => {
+                  let chipProps = null;
+
+                  if (config.kiemTraDinhKi) {
+                    const lyThuyet = studentScores[student.maDinhDanh]?.lyThuyet;             // điểm gốc
+                    const lyThuyetPhanTram = studentScores[student.maDinhDanh]?.lyThuyetPhanTram; // phần trăm
+
+                    if (student.maDinhDanh === "7956673972") {
+                      console.log("🔎 Chip render HS:", student.maDinhDanh, "lyThuyet:", lyThuyet, "lyThuyetPhanTram:", lyThuyetPhanTram);
+                    }
+
+                    if (lyThuyet !== undefined && lyThuyet !== null &&
+                        lyThuyetPhanTram !== undefined && lyThuyetPhanTram !== null) {
+                      let color = "warning";
+                      if (lyThuyetPhanTram >= 85) color = "primary";      // xanh
+                      else if (lyThuyetPhanTram >= 50) color = "secondary"; // tím
+                      else color = "warning";                             // cam
+
+                      // label hiển thị điểm số, màu dựa vào phần trăm
+                      chipProps = { label: String(lyThuyet), color };
+                    }
+                  } else {
+                    const status = studentStatus[student.maDinhDanh];
+                    if (student.maDinhDanh === "7956673972") {
+                      console.log("🔎 DGTX - HS:", student.maDinhDanh, "Status:", status);
+                    }
+                    chipProps =
+                      {
+                        "Hoàn thành tốt": { label: "T", color: "primary" },
+                        "Hoàn thành": { label: "H", color: "secondary" },
+                        "Chưa hoàn thành": { label: "C", color: "warning" },
+                      }[status] || null;
+                  }
+
+                  return chipProps && (
+                    <Chip
+                      label={chipProps.label}
+                      color={chipProps.color}
+                      size="small"
+                      sx={{
+                        fontWeight: "bold",
+                        borderRadius: "50%",
+                        width: 28,
+                        height: 28,
+                        minWidth: 0,
+                        p: 0,
+                        justifyContent: "center",
+                        fontSize: "0.8rem",
+                        boxShadow: "0 0 4px rgba(0,0,0,0.15)",
+                      }}
+                    />
+                  );
+                })()}
+            </Paper>
+          );
+        })}
+      </Box>
+    </Grid>
+  ))}
+</Grid>
+
     </Paper>
 
     {/* Dialog đánh giá */}
