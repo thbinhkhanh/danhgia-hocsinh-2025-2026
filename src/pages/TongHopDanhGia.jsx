@@ -641,7 +641,8 @@ useEffect(() => {
 
 const handleDownload = async () => {
   try {
-    await exportEvaluationToExcelFromTable(students, selectedClass, weekFrom, weekTo);
+    const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
+    exportEvaluationToExcelFromTable(students, selectedClass, weekFrom, weekTo);
   } catch (error) {
     console.error("❌ Lỗi khi xuất Excel:", error);
   }

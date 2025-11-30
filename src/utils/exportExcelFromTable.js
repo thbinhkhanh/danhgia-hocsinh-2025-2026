@@ -8,13 +8,6 @@ const statusMap = {
   "": "",
 };
 
-/**
- * Xuất Excel từ dữ liệu hiện có trên bảng (students)
- * @param {Array} students - danh sách học sinh đang hiển thị
- * @param {string} selectedClass - tên lớp hiện tại
- * @param {number} weekFrom - tuần bắt đầu
- * @param {number} weekTo - tuần kết thúc
- */
 export const exportEvaluationToExcelFromTable = async (
   students,
   selectedClass,
@@ -26,102 +19,98 @@ export const exportEvaluationToExcelFromTable = async (
     return;
   }
 
-  // 🧾 Tạo workbook và worksheet
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Đánh giá");
 
-  // 🔹 Header gồm các tuần + Xếp loại + Nhận xét
-  const headerKeys = ["STT", "HỌ VÀ TÊN", "LỚP"];
+  // 🔹 Header Hàng 1
+  const headerRow1 = ["STT", "HỌ VÀ TÊN", "LỚP"];
   for (let week = weekFrom; week <= weekTo; week++) {
-    headerKeys.push(`TUẦN ${week}`);
+    headerRow1.push(`TUẦN ${week}`, null); // 2 cột/tuần
   }
-  headerKeys.push("XẾP LOẠI", "NHẬN XÉT");
+  headerRow1.push("XẾP LOẠI", "NHẬN XÉT");
+  sheet.addRow(headerRow1);
 
-  const headerRow = sheet.addRow(headerKeys);
+  // 🔹 Header Hàng 2
+  const headerRow2 = ["", "", ""];
+  for (let week = weekFrom; week <= weekTo; week++) {
+    headerRow2.push("HS", "GV");
+  }
+  headerRow2.push("", "");
+  sheet.addRow(headerRow2);
+
+  // 🔹 Merge cột cho TUẦN
+  let colIndex = 4; // bắt đầu từ cột 4 (sau STT, HỌ VÀ TÊN, LỚP)
+  for (let week = weekFrom; week <= weekTo; week++) {
+    sheet.mergeCells(1, colIndex, 1, colIndex + 1);
+    colIndex += 2;
+  }
 
   // 🔹 Style header
-  headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    cell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF1976D2" },
-    };
-    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-    cell.border = {
-      top: { style: "thin" },
-      bottom: { style: "thin" },
-      left: { style: "thin" },
-      right: { style: "thin" },
-    };
-  });
-
-  // 🔹 Duyệt từng học sinh
-  students.forEach((student) => {
-    const rowData = [
-      student.stt,
-      student.hoVaTen,
-      selectedClass,
-      ...Array.from({ length: weekTo - weekFrom + 1 }, (_, i) => {
-        const weekNum = weekFrom + i;
-        const weekId = `tuan_${weekNum}`;
-        const status = student.statusByWeek?.[weekId] || "";
-        return statusMap[status] || "";
-      }),
-      student.xepLoai || "",
-      student.nhanXet || "",
-    ];
-
-    const row = sheet.addRow(rowData);
-
-    // 🔹 Style từng ô
-    row.eachCell((cell, colNumber) => {
-      const key = headerKeys[colNumber - 1];
-      cell.alignment = {
-        horizontal: key === "HỌ VÀ TÊN" || key === "NHẬN XÉT" ? "left" : "center",
-        vertical: "middle",
-        wrapText: true,
-      };
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1976D2" } };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       cell.border = {
         top: { style: "thin" },
         bottom: { style: "thin" },
         left: { style: "thin" },
         right: { style: "thin" },
       };
+    });
+  });
 
-      // 🎨 Tô màu cho cột "XẾP LOẠI"
-      if (key === "XẾP LOẠI") {
+  // 🔹 Duyệt từng học sinh
+  students.forEach((student) => {
+    const weekData = [];
+    for (let week = weekFrom; week <= weekTo; week++) {
+      const weekId = `tuan_${week}`;
+      const raw = student.statusByWeek?.[weekId];
+      const hs = raw && typeof raw === "object" ? statusMap[raw.hs || ""] : statusMap[raw || ""];
+      const gv = raw && typeof raw === "object" ? statusMap[raw.gv || ""] : "";
+      weekData.push(hs, gv);
+    }
+
+    const rowData = [
+      student.stt,
+      student.hoVaTen,
+      selectedClass,
+      ...weekData,
+      student.dgtx || "",
+      student.nhanXet || "",
+    ];
+
+    const row = sheet.addRow(rowData);
+
+    row.eachCell((cell, colNumber) => {
+      let alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      if (colNumber === 2 || colNumber === rowData.length) alignment.horizontal = "left";
+      cell.alignment = alignment;
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+      };
+      if (colNumber === rowData.length - 1) {
         cell.font = {
-          //bold: true,
-          color:
-            cell.value === "C"
-              ? { argb: "FFDC2626" } // đỏ
-              : { argb: "FF1976D2" }, // xanh dương
+          color: cell.value === "C" ? { argb: "FFDC2626" } : { argb: "FF1976D2" },
         };
       }
     });
   });
 
-  // 🔹 Đặt độ rộng cột hợp lý
+  // 🔹 Đặt độ rộng cột
   sheet.columns.forEach((column, index) => {
-    const key = headerKeys[index];
-    if (key === "STT" || key.startsWith("TUẦN")) {
-      column.width = 9;
-    } else if (key === "LỚP") {
-      column.width = 10;
-    } else if (key === "HỌ VÀ TÊN") {
-      column.width = 28.5;
-    } else if (key === "XẾP LOẠI") {
-      column.width = 12;
-    } else if (key === "NHẬN XÉT") {
-      column.width = 60; // đủ dài cho nhận xét
-    }
+    if (index === 0 || (index >= 3 && (index - 3) % 2 === 0)) column.width = 9;
+    else if (index === 2) column.width = 10;
+    else if (index === 1) column.width = 28.5;
+    else if (index === sheet.columns.length - 2) column.width = 12;
+    else if (index === sheet.columns.length - 1) column.width = 60;
   });
 
   // 💾 Xuất file Excel
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   saveAs(blob, `Đánh giá HS ${selectedClass} tuần ${weekFrom}-${weekTo}.xlsx`);
 };

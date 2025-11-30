@@ -52,7 +52,7 @@ export const exportKetQuaExcel = async (results, className, mon) => {
         r.mon || "",
         r.ngayKiemTra || "",
         r.thoiGianLamBai || "",
-        r.diem || "",
+        r.diem ?? "",
       ]);
       row.height = 30;
       row.eachCell((cell, colNumber) => {

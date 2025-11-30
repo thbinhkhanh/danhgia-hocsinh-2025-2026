@@ -1,26 +1,32 @@
-// ✅ exportKTDK.js
 import ExcelJS from "exceljs/dist/exceljs.min.js";
 import { saveAs } from "file-saver";
 
 /**
- * Xuất danh sách kiểm tra định kỳ ra Excel (giấy ngang, ô tự co giãn)
+ * Xuất danh sách kiểm tra định kỳ ra Excel (giữ định dạng bảng cũ)
  * @param {Array} students - Mảng học sinh
- * @param {string} className - Tên lớp (ví dụ: "4.1")
- * @param {string} term - Học kỳ ("HK1" hoặc "HK2" hoặc "CN")
+ * @param {string} className - Tên lớp
+ * @param {string} term - GKI, CKI, GKII, CN
  */
-export const exportKTDK = async (students, className, term = "HK1") => {
+export const exportKTDK = async (students, className, term = "CKI") => {
   if (!students || students.length === 0) {
     alert("❌ Không có dữ liệu học sinh để xuất!");
     return;
   }
 
+  const termMap = {
+    GKI: "Giữa kì I",
+    CKI: "Cuối kì I",
+    GKII: "Giữa kì II",
+    CN: "Cả năm",
+  };
+  const termLabel = termMap[term] || term;
+
   try {
-    // 🧾 Tạo workbook và worksheet
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("KTĐK", {
       pageSetup: {
-        paperSize: 9, // A4
-        orientation: "landscape", // ✅ giấy ngang
+        paperSize: 9,
+        orientation: "landscape",
         fitToPage: true,
         fitToWidth: 1,
         fitToHeight: 0,
@@ -48,11 +54,9 @@ export const exportKTDK = async (students, className, term = "HK1") => {
     titleRow.alignment = { horizontal: "center", vertical: "middle" };
     titleRow.height = 25;
 
-    // 🔹 Học kỳ & Năm học (ví dụ: "Học kì I – NH: 2025-2026")
+    // 🔹 Dòng học kỳ & năm học
     const currentYear = new Date().getFullYear();
-    const subRow = sheet.addRow([
-      `Học kì ${term === "HK1" ? "I" : term === "HK2" ? "II" : "Cả năm"} – NH: ${currentYear}-${currentYear + 1}`,
-    ]);
+    const subRow = sheet.addRow([`${termLabel} – NH: ${currentYear}-${currentYear + 1}`]);
     subRow.font = { italic: true, size: 12 };
     sheet.mergeCells(`A3:H3`);
     subRow.alignment = { horizontal: "center" };
@@ -87,17 +91,17 @@ export const exportKTDK = async (students, className, term = "HK1") => {
       };
     });
 
-    // 🔹 Ghi dữ liệu học sinh
+    // 🔹 Dữ liệu (sửa field đúng)
     students.forEach((s, idx) => {
       const row = sheet.addRow([
         idx + 1,
-        s.hoVaTen,
-        s.dgtx || "",
-        s.tracNghiem || "",
-        s.thucHanh || "",
-        s.tongCong || "",
-        s.xepLoai || "",
-        s.nhanXet || "",
+        s.hoVaTen ?? "",
+        s.dgtx ?? "",
+        s.lyThuyet ?? "",
+        s.thucHanh ?? "",
+        s.tongCong ?? "",
+        s.mucDat ?? "",
+        s.nhanXet ?? "",
       ]);
 
       row.eachCell((cell, col) => {
@@ -105,7 +109,7 @@ export const exportKTDK = async (students, className, term = "HK1") => {
         cell.alignment = {
           vertical: "middle",
           horizontal: col === 2 || col === 8 ? "left" : "center",
-          wrapText: true, // ✅ tự co giãn dòng
+          wrapText: true,
           indent: col === 2 || col === 8 ? 1 : 0,
         };
         cell.border = {
@@ -119,14 +123,14 @@ export const exportKTDK = async (students, className, term = "HK1") => {
 
     // 🔹 Độ rộng cột
     sheet.columns = [
-      { width: 6 },   // STT
-      { width: 35 },  // Họ và tên
-      { width: 10 },  // ĐGTX
-      { width: 11 },  // Lí thuyết
-      { width: 11 },  // Thực hành
-      { width: 11 },  // Tổng cộng
-      { width: 11 },  // Mức đạt
-      { width: 45 },  // Nhận xét
+      { width: 6 },
+      { width: 35 },
+      { width: 10 },
+      { width: 11 },
+      { width: 11 },
+      { width: 11 },
+      { width: 11 },
+      { width: 45 },
     ];
 
     // 💾 Xuất file
