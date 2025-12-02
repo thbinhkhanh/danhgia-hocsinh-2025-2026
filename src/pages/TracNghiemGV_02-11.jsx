@@ -295,16 +295,13 @@ useEffect(() => {
   const createEmptyQuestion = () => ({
     id: `q_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     title: "",
-    question: "",             // nội dung câu hỏi
-    option: "",               // riêng cho fillblank (câu hỏi có [...])
-    type: "single",           // mặc định: 1 lựa chọn
-    options: ["", "", "", ""],// luôn có mảng options
+    question: "",
+    type: "single",                // 🟢 mặc định: 1 lựa chọn
+    options: ["", "", "", ""],     // 🟢 AUTO 4 lựa chọn
     score: 1,
-    correct: [],              // đáp án đúng
-    sortType: "fixed",        // cho loại sort
-    pairs: [],                // cho loại matching
-    answers: [],              // cho loại fillblank
-    questionImage: ""         // cho loại image
+    correct: [],                   // 🟢 chưa chọn đáp án
+    sortType: "fixed",
+    pairs: [],
   });
 
   // Hàm dùng để reorder khi kéo thả (nếu dùng sau)
@@ -326,14 +323,12 @@ useEffect(() => {
     // Đặt trạng thái là đề mới
     setIsEditingNewDoc(true);
 
-    // 🔹 Reset dropdown về giá trị hợp lệ hoặc rỗng có MenuItem fallback
-    setExamType("bt");                        // mặc định Bài tập tuần
-    setSelectedClass("");                     // có <MenuItem value="">Chọn lớp</MenuItem>
-    setSelectedSubject("");                   // có <MenuItem value="">Chọn môn</MenuItem>
-    setSemester("");                          // có <MenuItem value="">Chọn học kỳ</MenuItem>
-    setSchoolYear("");                        // có <MenuItem value="">Chọn năm học</MenuItem>
-    setExamLetter("");                        // có <MenuItem value="">Chọn đề</MenuItem
-    setDeTuan("");                            // có <MenuItem value="">Chọn tuần</MenuItem
+    // 🔹 Reset tất cả dropdown về null / empty string
+    setSelectedClass("");
+    setSelectedSubject("");
+    setSemester("");
+    setSchoolYear("");
+    setExamLetter("");
 
     // 🔹 KHÔNG update context hay localStorage ở đây
     // updateQuizConfig({ deTracNghiem: null });
@@ -1159,7 +1154,6 @@ useEffect(() => {
                 onChange={(e) => setSelectedClass(e.target.value)}
                 label="Lớp"
               >
-                <MenuItem value="">Chọn</MenuItem>   {/* 🔹 thêm dòng này */}
                 {classes.map((lop) => (
                   <MenuItem key={lop} value={lop}>{lop}</MenuItem>
                 ))}
@@ -1185,7 +1179,7 @@ useEffect(() => {
               <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
                 <InputLabel>Tuần</InputLabel>
                 <Select
-                  value={deTuan || ""}   // fallback rỗng khi reset
+                  value={deTuan}
                   onChange={(e) => {
                     const w = Number(e.target.value);
                     setDeTuan(w);
@@ -1193,11 +1187,7 @@ useEffect(() => {
                   }}
                   label="Tuần"
                 >
-                  {/* MenuItem mặc định */}
-                  <MenuItem value="">Chọn tuần</MenuItem>
-
-                  {/* Chỉ render khi hocKyMap[semester] tồn tại */}
-                  {semester && hocKyMap[semester] ? (
+                  {semester &&
                     Array.from(
                       { length: hocKyMap[semester].to - hocKyMap[semester].from + 1 },
                       (_, i) => i + hocKyMap[semester].from
@@ -1205,8 +1195,7 @@ useEffect(() => {
                       <MenuItem key={t} value={t}>
                         Tuần {t}
                       </MenuItem>
-                    ))
-                  ) : null}
+                    ))}
                 </Select>
               </FormControl>
             )}

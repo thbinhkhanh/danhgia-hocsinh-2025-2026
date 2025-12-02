@@ -13,8 +13,6 @@ import { ChevronRight, ChevronLeft } from "@mui/icons-material";
 import { collection, getDocs, deleteDoc, setDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 
-import DeleteConfirmDialog from "../dialog/DeleteConfirmDialog";
-
 export default function DeThi() {
   const account = localStorage.getItem("account") || "";
 
@@ -25,7 +23,6 @@ export default function DeThi() {
   const [pendingSelectedExam, setPendingSelectedExam] = useState(null);
 
   const [selectedExamToDelete, setSelectedExamToDelete] = useState(null);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -92,20 +89,15 @@ export default function DeThi() {
   };
 
   // ==================== Xóa đề khỏi danh sách chính ====================
-  const handleDeleteExam = () => {
+  const handleDeleteExam = async () => {
     if (!selectedExamToDelete) {
-      setSnackbar({
-        open: true,
-        message: "Vui lòng chọn một đề để xóa!",
-        severity: "warning",
-      });
+      alert("Vui lòng chọn một đề để xóa!");
       return;
     }
-    setOpenDeleteDialog(true); // mở dialog xác nhận
-  };
 
-  // hàm thực hiện xóa khi bấm nút Xóa trong dialog
-  const confirmDeleteExam = async () => {
+    const confirmDelete = window.confirm("Bạn chắc chắn muốn xóa đề này?");
+    if (!confirmDelete) return;
+
     try {
       await deleteDoc(doc(db, "TRACNGHIEM_BK", selectedExamToDelete.id));
 
@@ -113,14 +105,13 @@ export default function DeThi() {
         prev.filter((e) => e.id !== selectedExamToDelete.id)
       );
 
+      // Nếu đề bị xóa cũng nằm trong đề đã chọn → xóa luôn
       setSelectedExam((prev) =>
         prev.filter((e) => e.id !== selectedExamToDelete.id)
       );
-
       await removeExamFromFirestore(selectedExamToDelete);
 
       setSelectedExamToDelete(null);
-      setOpenDeleteDialog(false);
 
       setSnackbar({
         open: true,
@@ -129,14 +120,8 @@ export default function DeThi() {
       });
     } catch (err) {
       console.error("Lỗi xóa đề:", err);
-      setSnackbar({
-        open: true,
-        message: `❌ Lỗi khi xóa đề: ${err.message}`,
-        severity: "error",
-      });
     }
   };
-
 
   return (
     <Box
@@ -310,13 +295,6 @@ export default function DeThi() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
-      {/* DeleteConfirmDialog */}
-      <DeleteConfirmDialog
-        open={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
-        onConfirm={confirmDeleteExam}
-      />
     </Box>
   );
 }

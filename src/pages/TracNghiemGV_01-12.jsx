@@ -38,10 +38,6 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 
-import OpenExamDialog from "../dialog/OpenExamDialog";
-import ExamDeleteConfirmDialog from "../dialog/ExamDeleteConfirmDialog";
-
-
 export default function TracNghiemGV() {
   const { config, setConfig } = useConfig(); // 🔹 thêm dòng này
   const { config: quizConfig, updateConfig: updateQuizConfig } = useTracNghiem();
@@ -66,7 +62,6 @@ const [schoolYear, setSchoolYear] = useState(savedConfig.schoolYear || "2025-202
 const [examLetter, setExamLetter] = useState(savedConfig.examLetter || "");
 const [examType, setExamType] = useState("bt");
 const [dialogExamType, setDialogExamType] = useState("");
-const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
 useEffect(() => {
   if (openDialog) {
@@ -295,16 +290,13 @@ useEffect(() => {
   const createEmptyQuestion = () => ({
     id: `q_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     title: "",
-    question: "",             // nội dung câu hỏi
-    option: "",               // riêng cho fillblank (câu hỏi có [...])
-    type: "single",           // mặc định: 1 lựa chọn
-    options: ["", "", "", ""],// luôn có mảng options
+    question: "",
+    type: "single",                // 🟢 mặc định: 1 lựa chọn
+    options: ["", "", "", ""],     // 🟢 AUTO 4 lựa chọn
     score: 1,
-    correct: [],              // đáp án đúng
-    sortType: "fixed",        // cho loại sort
-    pairs: [],                // cho loại matching
-    answers: [],              // cho loại fillblank
-    questionImage: ""         // cho loại image
+    correct: [],                   // 🟢 chưa chọn đáp án
+    sortType: "fixed",
+    pairs: [],
   });
 
   // Hàm dùng để reorder khi kéo thả (nếu dùng sau)
@@ -326,14 +318,12 @@ useEffect(() => {
     // Đặt trạng thái là đề mới
     setIsEditingNewDoc(true);
 
-    // 🔹 Reset dropdown về giá trị hợp lệ hoặc rỗng có MenuItem fallback
-    setExamType("bt");                        // mặc định Bài tập tuần
-    setSelectedClass("");                     // có <MenuItem value="">Chọn lớp</MenuItem>
-    setSelectedSubject("");                   // có <MenuItem value="">Chọn môn</MenuItem>
-    setSemester("");                          // có <MenuItem value="">Chọn học kỳ</MenuItem>
-    setSchoolYear("");                        // có <MenuItem value="">Chọn năm học</MenuItem>
-    setExamLetter("");                        // có <MenuItem value="">Chọn đề</MenuItem
-    setDeTuan("");                            // có <MenuItem value="">Chọn tuần</MenuItem
+    // 🔹 Reset tất cả dropdown về null / empty string
+    setSelectedClass("");
+    setSelectedSubject("");
+    setSemester("");
+    setSchoolYear("");
+    setExamLetter("");
 
     // 🔹 KHÔNG update context hay localStorage ở đây
     // updateQuizConfig({ deTracNghiem: null });
@@ -875,7 +865,7 @@ useEffect(() => {
       }
 
       const data = docSnap.data();
-      
+
       const weekFromFile = data.week || 1;      // lấy tuần từ dữ liệu đề
       setDeTuan(weekFromFile);                 // cập nhật state riêng TracNghiemGV
       localStorage.setItem("deTuan", weekFromFile); // lưu localStorage riêng trang này
@@ -975,7 +965,7 @@ useEffect(() => {
     ]);
   };
 
-  const handleDeleteSelectedDoc = () => {
+  const handleDeleteSelectedDoc = async () => {
     if (!selectedDoc) {
       setSnackbar({
         open: true,
@@ -985,17 +975,21 @@ useEffect(() => {
       return;
     }
 
-    setOpenDialog(false);       // đóng dialog danh sách đề
-    setOpenDeleteDialog(true);  // mở dialog xác nhận xóa
-  };
+    const docToDelete = docList.find(d => d.id === selectedDoc);
+    const confirm = window.confirm(
+      `❗ Bạn có chắc muốn xóa đề: ${docToDelete?.id || "?"}?`
+    );
 
-  const confirmDeleteSelectedDoc = async () => {
+    setOpenDialog(false);
+
+    if (!confirm) return;
+
     try {
-      const docToDelete = docList.find(d => d.id === selectedDoc);
-
+      // 🔹 Lấy trường học đăng nhập
       const school = localStorage.getItem("school") || "";
-      const collectionName =
-        school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
+
+      // 🔹 Chọn collection theo trường
+      const collectionName = school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
 
       await deleteDoc(doc(db, collectionName, selectedDoc));
 
@@ -1004,6 +998,7 @@ useEffect(() => {
       updateQuizConfig({ quizList: updatedList });
       setSelectedDoc(null);
 
+      // 🔄 Nếu đề bị xóa trùng với đề đang mở → reset giao diện
       const isCurrentQuizDeleted =
         selectedClass === docToDelete?.class &&
         selectedSubject === docToDelete?.subject &&
@@ -1016,7 +1011,6 @@ useEffect(() => {
         updateQuizConfig({ deTracNghiem: null });
       }
 
-      setOpenDeleteDialog(false);
 
       setSnackbar({
         open: true,
@@ -1032,6 +1026,7 @@ useEffect(() => {
       });
     }
   };
+
 
   useEffect(() => {
     // Ưu tiên lấy từ context nếu có
@@ -1159,7 +1154,6 @@ useEffect(() => {
                 onChange={(e) => setSelectedClass(e.target.value)}
                 label="Lớp"
               >
-                <MenuItem value="">Chọn</MenuItem>   {/* 🔹 thêm dòng này */}
                 {classes.map((lop) => (
                   <MenuItem key={lop} value={lop}>{lop}</MenuItem>
                 ))}
@@ -1185,7 +1179,7 @@ useEffect(() => {
               <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
                 <InputLabel>Tuần</InputLabel>
                 <Select
-                  value={deTuan || ""}   // fallback rỗng khi reset
+                  value={deTuan}
                   onChange={(e) => {
                     const w = Number(e.target.value);
                     setDeTuan(w);
@@ -1193,11 +1187,7 @@ useEffect(() => {
                   }}
                   label="Tuần"
                 >
-                  {/* MenuItem mặc định */}
-                  <MenuItem value="">Chọn tuần</MenuItem>
-
-                  {/* Chỉ render khi hocKyMap[semester] tồn tại */}
-                  {semester && hocKyMap[semester] ? (
+                  {semester &&
                     Array.from(
                       { length: hocKyMap[semester].to - hocKyMap[semester].from + 1 },
                       (_, i) => i + hocKyMap[semester].from
@@ -1205,8 +1195,7 @@ useEffect(() => {
                       <MenuItem key={t} value={t}>
                         Tuần {t}
                       </MenuItem>
-                    ))
-                  ) : null}
+                    ))}
                 </Select>
               </FormControl>
             )}
@@ -1834,22 +1823,138 @@ useEffect(() => {
         </Stack>
 
         {/* DIALOG MỞ ĐỀ */}
-        <OpenExamDialog
+        <Dialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
-          dialogExamType={dialogExamType}
-          setDialogExamType={setDialogExamType}
-          filterClass={filterClass}
-          setFilterClass={setFilterClass}
-          classes={classes}
-          loadingList={loadingList}
-          docList={docList}
-          selectedDoc={selectedDoc}
-          setSelectedDoc={setSelectedDoc}
-          handleOpenSelectedDoc={handleOpenSelectedDoc}
-          handleDeleteSelectedDoc={handleDeleteSelectedDoc}
-          fetchQuizList={fetchQuizList}
-        />
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: 6,
+              bgcolor: "#f9f9f9",
+              overflow: "hidden",
+            },
+          }}
+        >
+          {/* Thanh tiêu đề */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "linear-gradient(to right, #1976d2, #42a5f5)",
+              color: "#fff",
+              px: 2,
+              py: 1.2,
+              borderTopLeftRadius: 12,
+              borderTopRightRadius: 12,
+            }}
+          >
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: "bold", fontSize: "1.1rem", letterSpacing: 0.5 }}
+            >
+              📂 Danh sách đề
+            </Typography>
+            <IconButton onClick={() => setOpenDialog(false)} sx={{ color: "#fff", p: 0.6 }}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* Nội dung Dialog */}
+          <DialogContent dividers sx={{ maxHeight: 350, overflowY: "auto", px: 2, py: 2, bgcolor: "#fff" }}>
+            
+            {/* Loại đề + Lọc lớp cùng hàng */}
+            <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: "wrap" }}>
+              {/* Chọn loại đề */}
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Loại đề</InputLabel>
+                <Select
+                  value={dialogExamType || "bt"}
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    setDialogExamType(type);
+                    fetchQuizList(type);
+                  }}
+                  label="Loại đề"
+                >
+                  <MenuItem value="bt">Bài tập tuần</MenuItem>
+                  <MenuItem value="ktdk">KTĐK</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Bộ lọc lớp */}
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Lọc lớp</InputLabel>
+                <Select
+                  value={filterClass}
+                  onChange={(e) => setFilterClass(e.target.value)}
+                  label="Lọc lớp"
+                >
+                  <MenuItem value="Tất cả">Tất cả</MenuItem>
+                  {classes.map((lop) => (
+                    <MenuItem key={lop} value={lop}>{lop}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+
+
+            {/* Bảng danh sách đề */}
+            <Box sx={{ maxHeight: 260, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2, mb: 1 }}>
+              {loadingList ? (
+                <Typography align="center" sx={{ p: 2, color: "gray" }}>
+                  ⏳ Đang tải danh sách đề...
+                </Typography>
+              ) : docList.length === 0 ? (
+                <Typography align="center" sx={{ p: 2, color: "gray" }}>
+                  Không có đề nào.
+                </Typography>
+              ) : (
+                docList
+                  .filter((doc) => filterClass === "Tất cả" ? true : doc.class === filterClass)
+                  .filter((doc) => {
+                    // 🔹 Lọc theo loại đề
+                    if (dialogExamType === "bt") return doc.collection === "BAITAP_TUAN";
+                    else return doc.collection === "TRACNGHIEM_BK"; // KTĐK
+                  })
+                  .map((doc) => (
+                    <Stack
+                      key={doc.id}
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{
+                        px: 2,
+                        py: 1,
+                        height: 36,
+                        cursor: "pointer",
+                        borderRadius: 1,
+                        backgroundColor: selectedDoc === doc.id ? "#E3F2FD" : "transparent",
+                        "&:hover": { backgroundColor: "#f5f5f5" },
+                      }}
+                      onClick={() => setSelectedDoc(doc.id)}
+                      onDoubleClick={() => handleOpenSelectedDoc(doc.id)}
+                    >
+                      <Typography variant="subtitle1">{doc.id}</Typography>
+                    </Stack>
+                  ))
+              )}
+            </Box>
+          </DialogContent>
+
+          {/* Nút hành động */}
+          <DialogActions sx={{ px: 3, pb: 2, justifyContent: "center", gap: 1.5 }}>
+            <Button onClick={() => handleOpenSelectedDoc(selectedDoc)} variant="contained" disabled={!selectedDoc}>
+              Mở đề
+            </Button>
+            <Button onClick={handleDeleteSelectedDoc} variant="outlined" color="error" disabled={!selectedDoc}>
+              Xóa đề
+            </Button>
+          </DialogActions>
+        </Dialog>
+
 
         {/* SNACKBAR */}
         <Snackbar
@@ -1860,12 +1965,6 @@ useEffect(() => {
         >
           <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
         </Snackbar>
-        
-        <ExamDeleteConfirmDialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-          onConfirm={confirmDeleteSelectedDoc}
-        />
 
       </Card>
     </Box>

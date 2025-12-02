@@ -23,6 +23,10 @@ import Draggable from "react-draggable";
 import { useTheme, useMediaQuery } from "@mui/material"; 
 import { useNavigate } from "react-router-dom";
 
+import DoneDialog from "../dialog/DoneDialog";
+import StudentStatusDialog from "../dialog/StudentStatusDialog";
+
+
 export default function HocSinh() {
   // 🔹 Lấy context
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
@@ -590,219 +594,26 @@ export default function HocSinh() {
       </Grid>
     </Paper>
 
-    {/* 🔹 Dialog hiển thị khi chọn học sinh */}
-    <Dialog
-      open={Boolean(expandedStudent)}
-      onClose={(event, reason) => {
-        if (reason !== "backdropClick") {
-          setExpandedStudent(null);
-        }
-      }}
-      maxWidth="xs"
-      fullWidth
+    {/* 🔹 Dialog hiển thị đánh giá học sinh */}
+    <StudentStatusDialog
+      expandedStudent={expandedStudent}
+      setExpandedStudent={setExpandedStudent}
+      studentStatus={studentStatus}
+      handleStatusChange={handleStatusChange}
+      saving={saving}
       PaperComponent={PaperComponent}
-    >
-
-      {expandedStudent && (
-        <>
-          <DialogTitle
-            id="draggable-dialog-title"
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              bgcolor: "#64b5f6",
-              flexWrap: "wrap",
-              py: 1.5,
-              cursor: "move", // 🟢 thêm để dễ thấy có thể kéo
-            }}
-          >
-
-            <Box>
-              <Typography
-                variant="subtitle1"
-                fontWeight="bold"
-                sx={{ color: "#ffffff", fontSize: "1.05rem" }}
-              >
-                {expandedStudent.hoVaTen.toUpperCase()}
-              </Typography>
-            </Box>
-
-            {/*<IconButton
-              onClick={() => setExpandedStudent(null)}
-              sx={{
-                color: "#f44336",
-                "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>*/}
-
-            <IconButton
-              onClick={() => setExpandedStudent(null)}
-              disabled={saving} // 🔒 khóa khi đang lưu
-              sx={{
-                color: saving ? "#ccc" : "#f44336",
-                "&:hover": saving ? {} : { bgcolor: "rgba(244,67,54,0.1)" },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-
-          </DialogTitle>
-
-          <DialogContent sx={{ mt: 2 }}>
-            <Stack spacing={1}>
-              {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map((s) => {
-                const isSelected = studentStatus[expandedStudent.maDinhDanh] === s;
-                return (
-                  <Button
-                    key={s}
-                    variant={isSelected ? "contained" : "outlined"}
-                    color={
-                      s === "Hoàn thành tốt"
-                        ? "primary"
-                        : s === "Hoàn thành"
-                        ? "secondary"
-                        : "warning"
-                    }
-                    onClick={() =>
-                      handleStatusChange(
-                        expandedStudent.maDinhDanh,
-                        expandedStudent.hoVaTen,
-                        s
-                      )
-                    }
-                  >
-                    {isSelected ? `✓ ${s}` : s}
-                  </Button>
-                );
-              })}
-
-              {/* 🔹 Nút hủy đánh giá */}
-              {studentStatus[expandedStudent.maDinhDanh] && (
-                <Box sx={{ mt: 5, textAlign: "center" }}>
-                  <Button
-                    onClick={() => {
-                      handleStatusChange(
-                        expandedStudent.maDinhDanh,
-                        expandedStudent.hoVaTen,
-                        ""
-                      );
-                      setExpandedStudent(null); // 🔹 Đóng dialog sau khi hủy
-                    }}
-                    sx={{
-                      width: 160,
-                      px: 2,
-                      bgcolor: "#4caf50",
-                      color: "#ffffff",
-                      borderRadius: 1,
-                      textTransform: "none",
-                      fontWeight: "bold",
-                      "&:hover": {
-                        bgcolor: "#388e3c",
-                      },
-                      mt: 1,
-                    }}
-                  >
-                    HỦY ĐÁNH GIÁ
-                  </Button>
-                </Box>
-              )}
-            </Stack>
-          </DialogContent>
-        </>
-      )}
-    </Dialog>
+    />
 
     {/* Dialog thông báo học sinh đã làm bài */}
-    <Dialog
+    <DoneDialog
       open={openDoneDialog}
       onClose={() => setOpenDoneDialog(false)}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          p: 3,
-          bgcolor: "#e3f2fd", // 🌤 cùng màu nền trang chính
-          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
-        },
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-        <Box
-          sx={{
-            bgcolor: "#42a5f5",
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
-          }}
-        >
-          ℹ️
-        </Box>
-        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
-          Thông báo
-        </DialogTitle>
-      </Box>
+      doneStudent={doneStudent}
+      config={config}
+      choXemDiem={choXemDiem}
+      convertPercentToScore={convertPercentToScore}
+    />
 
-      <DialogContent sx={{ textAlign: "center" }}>
-        <Typography sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}>
-          {doneStudent?.hoVaTen || "Học sinh"}
-        </Typography>
-
-        <Typography sx={{ fontSize: 16, color: "#1565c0", mt: 2, mb: 0.5 }}>
-          Đã hoàn thành bài kiểm tra.
-        </Typography>
-
-        <Typography sx={{ fontSize: 16, color: "#0d47a1", fontWeight: 500, mt: 2 }}>
-          {config?.baiTapTuan ? (
-            <>
-              Điểm của bạn:{" "}
-              <span style={{ color: "red", fontWeight: "bold" }}>
-                {convertPercentToScore(doneStudent?.diemTN)}
-              </span>
-            </>
-          ) : config?.kiemTraDinhKi ? (
-            choXemDiem ? (
-              <>
-                Điểm của bạn:{" "}
-                <span style={{ color: "red", fontWeight: "bold" }}>
-                  {doneStudent?.diemTN ?? "Chưa có điểm"}
-                </span>
-              </>
-            ) : (
-              ""
-            )
-          ) : (
-            ""
-          )}
-        </Typography>
-      </DialogContent>
-
-      <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
-        <Button
-          variant="contained"
-          onClick={() => setOpenDoneDialog(false)}
-          sx={{
-            borderRadius: 2,
-            px: 4,
-            bgcolor: "#64b5f6",
-            color: "#fff",
-            "&:hover": { bgcolor: "#42a5f5" },
-          }}
-        >
-          OK
-        </Button>
-      </DialogActions>
-    </Dialog>
   </Box>
 );
 
