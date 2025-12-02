@@ -295,13 +295,16 @@ useEffect(() => {
   const createEmptyQuestion = () => ({
     id: `q_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     title: "",
-    question: "",
-    type: "single",                // 🟢 mặc định: 1 lựa chọn
-    options: ["", "", "", ""],     // 🟢 AUTO 4 lựa chọn
+    question: "",             // nội dung câu hỏi
+    option: "",               // riêng cho fillblank (câu hỏi có [...])
+    type: "single",           // mặc định: 1 lựa chọn
+    options: ["", "", "", ""],// luôn có mảng options
     score: 1,
-    correct: [],                   // 🟢 chưa chọn đáp án
-    sortType: "fixed",
-    pairs: [],
+    correct: [],              // đáp án đúng
+    sortType: "fixed",        // cho loại sort
+    pairs: [],                // cho loại matching
+    answers: [],              // cho loại fillblank
+    questionImage: ""         // cho loại image
   });
 
   // Hàm dùng để reorder khi kéo thả (nếu dùng sau)
@@ -322,22 +325,14 @@ useEffect(() => {
 
     // Đặt trạng thái là đề mới
     setIsEditingNewDoc(true);
-
-    // 🔹 Reset tất cả dropdown về null / empty string
-    setSelectedClass("");
-    setSelectedSubject("");
-    setSemester("");
-    setSchoolYear("");
-    setExamLetter("");
-
-    // 🔹 KHÔNG update context hay localStorage ở đây
-    // updateQuizConfig({ deTracNghiem: null });
-    // localStorage.setItem(...) → bỏ
-
-    // Khi người dùng bấm "Lưu" mới update context/localStorage
+    setExamType("bt");                        
+    setSelectedClass("");                     
+    setSelectedSubject("");                   
+    setSemester("");                          
+    setSchoolYear("");                        
+    setExamLetter("");                        
+    setDeTuan("");                            
   };
-
-
 
   const handleAddQuestion = () => setQuestions((prev) => [...prev, createEmptyQuestion()]);
 
@@ -600,194 +595,6 @@ useEffect(() => {
   }
 };
 
-  const handleSaveAll_1 = async () => {
-    const invalid = questions
-      .map((q, i) => (!isQuestionValid(q) ? `Câu ${i + 1}` : null))
-      .filter(Boolean);
-
-    if (invalid.length > 0) {
-      setSnackbar({
-        open: true,
-        message: `❌ Các câu hỏi chưa hợp lệ: ${invalid.join(", ")}`,
-        severity: "error",
-      });
-      return;
-    }
-
-    try {
-      const uploadImage = async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", "tracnghiem_upload");
-
-        const response = await fetch(
-          "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload",
-          { method: "POST", body: formData }
-        );
-
-        if (!response.ok) throw new Error("Upload hình thất bại");
-        const data = await response.json();
-        return data.secure_url;
-      };
-
-      const questionsToSave = [];
-
-      for (let q of questions) {
-        let updatedQ = { ...q };
-
-        if (q.type === "image") {
-          const uploadedOptions = await Promise.all(
-            (q.options || []).map(async (opt) => {
-              if (opt instanceof File) return await uploadImage(opt);
-              return opt;
-            })
-          );
-          updatedQ.options = uploadedOptions;
-          updatedQ.correct = updatedQ.correct || [];
-        }
-
-        if (q.type === "matching") updatedQ.correct = q.pairs.map((_, i) => i);
-        if (q.type === "sort") updatedQ.correct = q.options.map((_, i) => i);
-        if (q.type === "single") updatedQ.correct = q.correct?.length ? q.correct : [0];
-        if (q.type === "multiple") updatedQ.correct = q.correct || [];
-        if (q.type === "truefalse")
-          updatedQ.correct =
-            q.correct?.length === q.options?.length ? q.correct : q.options.map(() => "");
-
-        questionsToSave.push(updatedQ);
-      }
-
-      localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
-      const cfg = { selectedClass, selectedSubject, semester };
-      localStorage.setItem("teacherConfig", JSON.stringify(cfg));
-
-      if (!selectedClass || !selectedSubject) {
-        throw new Error("Vui lòng chọn lớp và môn trước khi lưu");
-      }
-
-      // ================================
-      // 🔥 LOGIC MỚI: CHỌN COLLECTION & TÊN FILE
-      // ================================
-      let collectionName;
-      let docId;
-
-      if (examType === "ktdk") {
-        // Lưu đề KTĐK vào TRACNGHIEM_BK
-        collectionName = "TRACNGHIEM_BK";
-
-        const semesterMap = {
-          "Giữa kỳ I": "GKI",
-          "Cuối kỳ I": "CKI",
-          "Giữa kỳ II": "GKII",
-          "Cả năm": "CN",
-        };
-
-        const shortSchoolYear = (year) => {
-          const parts = year.split("-");
-          return parts.length === 2
-            ? parts[0].slice(2) + "-" + parts[1].slice(2)
-            : year;
-        };
-
-        docId = `quiz_${selectedClass}_${selectedSubject}_${
-          semesterMap[semester]
-        }_${shortSchoolYear(schoolYear)} (${examLetter})`;
-      } else {
-        // Bài tập → Lưu vào BAITAP_TUAN
-        collectionName = "BAITAP_TUAN";
-        docId = `quiz_${selectedClass}_${selectedSubject}_${week}`;
-      }
-
-      console.log("📁 Document path:", `${collectionName} / ${docId}`);
-
-      const quizRef = doc(db, collectionName, docId);
-
-      // ================================
-      // 🔥 LƯU LÊN FIRESTORE
-      // ================================
-
-      const examTypeToSave = examType;
-
-      await setDoc(quizRef, {
-        class: selectedClass,
-        subject: selectedSubject,
-        semester,
-        schoolYear,
-        examLetter,
-        week,
-        examType: examTypeToSave,
-        questions: questionsToSave,
-      });
-      
-      try {
-        const configRef = doc(db, "CONFIG", "config");
-        await setDoc(
-          configRef,
-          {
-            deTracNghiem: docId,              
-            tenDe: docId,                     
-          },
-          { merge: true }
-        );
-        
-      } catch (err) {
-        console.error("❌ Lỗi khi ghi CONFIG:", err);
-      }
-
-      // ================================
-      // 🔄 CẬP NHẬT CONTEXT (rất quan trọng)
-      // ================================
-      const newDoc = {
-        id: docId,
-        class: selectedClass,
-        subject: selectedSubject,
-        semester,
-        week,
-        examType: examTypeToSave,
-        questions: questionsToSave,
-      };
-
-      // Lưu tuần riêng cho TracNghiemGV
-      setDeTuan(week);                        // cập nhật state deTuan
-      localStorage.setItem("deTuan", week);   // lưu localStorage
-      try {
-        const configRef = doc(db, "CONFIG", "config");
-        await setDoc(
-          configRef,
-          { deTuan: week },                   // lưu tuần vào CONFIG
-          { merge: true }
-        );
-      } catch (err) {
-        console.error("❌ Lỗi khi ghi deTuan vào CONFIG:", err);
-      }
-
-
-
-      const existed = quizConfig.quizList?.some((d) => d.id === docId);
-
-      if (!existed) {
-        const updatedList = [...(quizConfig.quizList || []), newDoc];
-        updateQuizConfig({ quizList: updatedList });
-      }
-
-      setSnackbar({
-        open: true,
-        message: "✅ Đã lưu thành công!",
-        severity: "success",
-      });
-
-      setIsEditingNewDoc(false);
-
-    } catch (err) {
-      console.error(err);
-      setSnackbar({
-        open: true,
-        message: `❌ Lỗi khi lưu đề: ${err.message}`,
-        severity: "error",
-      });
-    }
-  };
-
   // --- Hàm mở dialog và fetch danh sách document ---
  // Mở dialog với mặc định loại đề "Bài tập tuần"
   const handleOpenDialog = () => {
@@ -985,16 +792,18 @@ useEffect(() => {
   };
 
   const confirmDeleteSelectedDoc = async () => {
+    // Đóng dialog ngay khi xác nhận
+    setOpenDeleteDialog(false);
+
     try {
       const docToDelete = docList.find(d => d.id === selectedDoc);
+      if (!docToDelete) return;
 
-      const school = localStorage.getItem("school") || "";
-      const collectionName =
-        school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
+      // ❌ Bỏ logic "TH Lâm Văn Bền"
+      // ✅ Dùng collection từ chính document
+      await deleteDoc(doc(db, docToDelete.collection, docToDelete.id));
 
-      await deleteDoc(doc(db, collectionName, selectedDoc));
-
-      const updatedList = docList.filter(d => d.id !== selectedDoc);
+      const updatedList = docList.filter(d => d.id !== docToDelete.id);
       setDocList(updatedList);
       updateQuizConfig({ quizList: updatedList });
       setSelectedDoc(null);
@@ -1010,8 +819,6 @@ useEffect(() => {
         setQuestions([createEmptyQuestion()]);
         updateQuizConfig({ deTracNghiem: null });
       }
-
-      setOpenDeleteDialog(false);
 
       setSnackbar({
         open: true,
@@ -1154,6 +961,7 @@ useEffect(() => {
                 onChange={(e) => setSelectedClass(e.target.value)}
                 label="Lớp"
               >
+                <MenuItem value="">Chọn</MenuItem>   {/* 🔹 thêm dòng này */}
                 {classes.map((lop) => (
                   <MenuItem key={lop} value={lop}>{lop}</MenuItem>
                 ))}
@@ -1179,7 +987,7 @@ useEffect(() => {
               <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
                 <InputLabel>Tuần</InputLabel>
                 <Select
-                  value={deTuan}
+                  value={deTuan || ""}   // fallback rỗng khi reset
                   onChange={(e) => {
                     const w = Number(e.target.value);
                     setDeTuan(w);
@@ -1187,7 +995,11 @@ useEffect(() => {
                   }}
                   label="Tuần"
                 >
-                  {semester &&
+                  {/* MenuItem mặc định */}
+                  <MenuItem value="">Chọn tuần</MenuItem>
+
+                  {/* Chỉ render khi hocKyMap[semester] tồn tại */}
+                  {semester && hocKyMap[semester] ? (
                     Array.from(
                       { length: hocKyMap[semester].to - hocKyMap[semester].from + 1 },
                       (_, i) => i + hocKyMap[semester].from
@@ -1195,7 +1007,8 @@ useEffect(() => {
                       <MenuItem key={t} value={t}>
                         Tuần {t}
                       </MenuItem>
-                    ))}
+                    ))
+                  ) : null}
                 </Select>
               </FormControl>
             )}

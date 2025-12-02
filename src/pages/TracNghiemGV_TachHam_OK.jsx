@@ -41,7 +41,6 @@ import DialogActions from "@mui/material/DialogActions";
 import OpenExamDialog from "../dialog/OpenExamDialog";
 import ExamDeleteConfirmDialog from "../dialog/ExamDeleteConfirmDialog";
 import QuestionCard from "../Types/questions/QuestionCard";
-import { saveAllQuestions } from "../utils/saveAllQuestions";
 
 export default function TracNghiemGV() {
   const { config, setConfig } = useConfig(); // 🔹 thêm dòng này
@@ -403,26 +402,198 @@ useEffect(() => {
     return correct;
   }
 
-  const handleSaveAll = () => {
-  saveAllQuestions({
-    questions,
-    isQuestionValid,
-    db,
-    selectedClass,
-    selectedSubject,
-    semester,
-    schoolYear,
-    examLetter,
-    examType,
-    week: quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1",
-    quizConfig,
-    updateQuizConfig,
-    setDeTuan,
-    setSnackbar,
-    setIsEditingNewDoc,
-  });
-};
+  const handleSaveAll = async () => {
+    const invalid = questions
+      .map((q, i) => (!isQuestionValid(q) ? `Câu ${i + 1}` : null))
+      .filter(Boolean);
 
+    if (invalid.length > 0) {
+      setSnackbar({
+        open: true,
+        message: `❌ Các câu hỏi chưa hợp lệ: ${invalid.join(", ")}`,
+        severity: "error",
+      });
+      return;
+    }
+
+    try {
+      // --- SAFE week value (fix ReferenceError) ---
+      const weekValue =
+        (typeof week !== "undefined" && week !== null)
+          ? week
+          : (quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1");
+
+      const uploadImage = async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", "tracnghiem_upload");
+
+        const response = await fetch(
+          "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload",
+          { method: "POST", body: formData }
+        );
+
+        if (!response.ok) throw new Error("Upload hình thất bại");
+        const data = await response.json();
+        return data.secure_url;
+      };
+
+      const questionsToSave = [];
+
+      for (let q of questions) {
+        let updatedQ = { ...q };
+
+        if (q.type === "image") {
+          const uploadedOptions = await Promise.all(
+            (q.options || []).map(async (opt) => {
+              if (opt instanceof File) return await uploadImage(opt);
+              return opt;
+            })
+          );
+          updatedQ.options = uploadedOptions;
+          updatedQ.correct = updatedQ.correct || [];
+        }
+
+        if (q.type === "matching") updatedQ.correct = q.pairs.map((_, i) => i);
+        if (q.type === "sort") updatedQ.correct = q.options.map((_, i) => i);
+        if (q.type === "single") updatedQ.correct = q.correct?.length ? q.correct : [0];
+        if (q.type === "multiple") updatedQ.correct = q.correct || [];
+        if (q.type === "truefalse")
+          updatedQ.correct =
+            q.correct?.length === q.options?.length ? q.correct : q.options.map(() => "");
+
+        questionsToSave.push(updatedQ);
+      }
+
+      localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
+      const cfg = { selectedClass, selectedSubject, semester };
+      localStorage.setItem("teacherConfig", JSON.stringify(cfg));
+
+      if (!selectedClass || !selectedSubject) {
+        throw new Error("Vui lòng chọn lớp và môn trước khi lưu");
+      }
+
+      // ================================
+      // 🔥 LOGIC MỚI: CHỌN COLLECTION & TÊN FILE
+      // ================================
+      let collectionName;
+      let docId;
+
+      if (examType === "ktdk") {
+        // Lưu đề KTĐK vào TRACNGHIEM_BK
+        collectionName = "TRACNGHIEM_BK";
+
+        const semesterMap = {
+          "Giữa kỳ I": "GKI",
+          "Cuối kỳ I": "CKI",
+          "Giữa kỳ II": "GKII",
+          "Cả năm": "CN",
+        };
+
+        const shortSchoolYear = (year) => {
+          const parts = year.split("-");
+          return parts.length === 2
+            ? parts[0].slice(2) + "-" + parts[1].slice(2)
+            : year;
+        };
+
+        docId = `quiz_${selectedClass}_${selectedSubject}_${
+          semesterMap[semester]
+        }_${shortSchoolYear(schoolYear)} (${examLetter})`;
+      } else {
+        // Bài tập → Lưu vào BAITAP_TUAN
+        collectionName = "BAITAP_TUAN";
+        // use safe weekValue instead of potentially-undefined week
+        docId = `quiz_${selectedClass}_${selectedSubject}_${weekValue}`;
+      }
+
+      console.log("📁 Document path:", `${collectionName} / ${docId}`);
+
+      const quizRef = doc(db, collectionName, docId);
+
+      // ================================
+      // 🔥 LƯU LÊN FIRESTORE
+      // ================================
+
+      const examTypeToSave = examType;
+
+      await setDoc(quizRef, {
+        class: selectedClass,
+        subject: selectedSubject,
+        semester,
+        schoolYear,
+        examLetter,
+        week: weekValue,
+        examType: examTypeToSave,
+        questions: questionsToSave,
+      });
+      
+      try {
+        const configRef = doc(db, "CONFIG", "config");
+        await setDoc(
+          configRef,
+          {
+            deTracNghiem: docId,              
+            tenDe: docId,                     
+          },
+          { merge: true }
+        );
+        
+      } catch (err) {
+        console.error("❌ Lỗi khi ghi CONFIG:", err);
+      }
+
+      // ================================
+      // 🔄 CẬP NHẬT CONTEXT (rất quan trọng)
+      // ================================
+      const newDoc = {
+        id: docId,
+        class: selectedClass,
+        subject: selectedSubject,
+        semester,
+        week: weekValue,
+        examType: examTypeToSave,
+        questions: questionsToSave,
+      };
+
+      // Lưu tuần riêng cho TracNghiemGV
+      setDeTuan(weekValue);                        // cập nhật state deTuan
+      localStorage.setItem("deTuan", weekValue);   // lưu localStorage
+      try {
+        const configRef = doc(db, "CONFIG", "config");
+        await setDoc(
+          configRef,
+          { deTuan: weekValue },                   // lưu tuần vào CONFIG
+          { merge: true }
+        );
+      } catch (err) {
+        console.error("❌ Lỗi khi ghi deTuan vào CONFIG:", err);
+      }
+
+      const existed = quizConfig.quizList?.some((d) => d.id === docId);
+
+      if (!existed) {
+        const updatedList = [...(quizConfig.quizList || []), newDoc];
+        updateQuizConfig({ quizList: updatedList });
+      }
+
+      setSnackbar({
+        open: true,
+        message: "✅ Đã lưu thành công!",
+        severity: "success",
+      });
+
+      setIsEditingNewDoc(false);
+
+    } catch (err) {
+      console.error(err);
+      setSnackbar({
+        open: true,
+        message: `❌ Lỗi khi lưu đề: ${err.message}`,
+        severity: "error",
+      });
+    }
+  };
 
   // --- Hàm mở dialog và fetch danh sách document ---
  // Mở dialog với mặc định loại đề "Bài tập tuần"
