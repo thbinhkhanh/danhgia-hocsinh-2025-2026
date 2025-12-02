@@ -1,3 +1,5 @@
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+
 export const autoSubmitQuiz = async ({
   studentName,
   studentClass,
