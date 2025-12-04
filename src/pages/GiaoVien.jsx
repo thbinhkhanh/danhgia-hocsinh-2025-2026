@@ -342,7 +342,7 @@ export default function GiaoVien() {
 
     if (!lop || !mon) return;
 
-    // ---- 🔥 Thông báo xác nhận theo mode ----
+    // ---- 🔥 Thông báo xác nhận theo mode --------
     const confirmMessages = {
       dgt:  `Bạn có chắc muốn xóa đánh giá tuần của lớp ${lop}?`,
       btt:  `Bạn có chắc muốn xóa bài tập tuần ${tuan} của lớp ${lop}?`,
