@@ -31,8 +31,19 @@ return (
 </Select>
 </FormControl>
 
+<TextField
+  label="Điểm"
+  type="number"
+  size="small"
+  value={q.score}
+  inputProps={{ step: 0.5 }}     // ⭐ Bước tăng 0.5
+  onChange={(e) => {
+    const v = e.target.value;
+    update(qi, { score: v === "" ? "" : parseFloat(v) });
+  }}
+  sx={{ width: 80 }}
+/>
 
-<TextField label="Điểm" type="number" size="small" value={q.score} onChange={(e) => update(qi, { score: parseFloat(e.target.value) || 1 })} sx={{ width: 80 }} />
 </Stack>
 );
 };

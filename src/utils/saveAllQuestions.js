@@ -17,7 +17,7 @@ export const saveAllQuestions = async ({
   setSnackbar,
   setIsEditingNewDoc,
 }) => {
-  const invalid = questions
+  /*const invalid = questions
     .map((q, i) => (!isQuestionValid(q) ? `Câu ${i + 1}` : null))
     .filter(Boolean);
 
@@ -28,7 +28,7 @@ export const saveAllQuestions = async ({
       severity: "error",
     });
     return;
-  }
+  }*/
 
   try {
     const weekValue =

@@ -406,7 +406,7 @@ useEffect(() => {
   const handleSaveAll = () => {
   saveAllQuestions({
     questions,
-    isQuestionValid,
+    //isQuestionValid,
     db,
     selectedClass,
     selectedSubject,

@@ -50,6 +50,9 @@ export default function HocSinh() {
   const [weekData, setWeekData] = useState({});
 
   const choXemDiem = config?.choXemDiem; // lấy từ config
+  const [recentStudents, setRecentStudents] = useState([]); // học sinh gần đây trên máy
+  const [showAll, setShowAll] = useState(false); // nút mở rộng
+
 
 
   useEffect(() => {
@@ -80,6 +83,15 @@ export default function HocSinh() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!selectedClass) return;
+
+    const key = `recent_${selectedClass}`;
+    const stored = JSON.parse(localStorage.getItem(key) || "[]");
+
+    setRecentStudents(stored);
+  }, [selectedClass, students]);
+
   // 🔹 Lấy danh sách lớp (ưu tiên cache từ context)
   useEffect(() => {
     const fetchClasses = async () => {
@@ -104,7 +116,7 @@ export default function HocSinh() {
     fetchClasses();
   }, [config.lop]); // ✅ phụ thuộc config.lop để set lớp đúng
 
-  // 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
+    // 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
   useEffect(() => {
     if (!selectedClass) return;
 
@@ -162,23 +174,41 @@ export default function HocSinh() {
 
     const fetchWeekData = async () => {
       try {
-        const classKey = config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+        const classKey =
+          config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+
         const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
         const tuanSnap = await getDoc(tuanRef);
 
         if (tuanSnap.exists()) {
-          setWeekData(tuanSnap.data());
+          const data = tuanSnap.data();
+          setWeekData(data);
+
+          // 🔥 TẠO MAP TRẠNG THÁI
+          const statusMap = {};
+          for (const id in data) {
+            statusMap[id] = data[id]?.status || "";
+          }
+
+          console.log("[INIT] studentStatus loaded:", statusMap);
+
+          // 🔥 CẬP NHẬT studentStatus NGAY LÚC LOAD TUẦN
+          setStudentStatus(statusMap);
+
         } else {
           setWeekData({});
+          setStudentStatus({});
         }
       } catch (err) {
         console.error("❌ Lỗi khi tải dữ liệu tuần:", err);
         setWeekData({});
+        setStudentStatus({});
       }
     };
 
     fetchWeekData();
   }, [selectedClass, selectedWeek, config?.mon]);
+
 
   // 🔹 Cột hiển thị
   const getColumns = () => {
@@ -375,246 +405,454 @@ export default function HocSinh() {
     return rounded;
   };
 
+  const getMode = (config) => {
+  if (config.kiemTraDinhKi) return "ktdk";
+  if (config.baiTapTuan) return "btt";
+  if (config.danhGiaTuan) return "dgt";
+  return "normal";
+};
+
   return (
-  <Box
-    sx={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
-      pt: 3,
-      px: 3,
-    }}
-  >
-    <Paper
-      elevation={6}
+    <Box
       sx={{
-        p: 4,
-        borderRadius: 3,
-        width: "100%",
-        maxWidth: 1420,
-        bgcolor: "white",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
+        pt: 3,
+        px: 3,
       }}
     >
-      {/* 🔹 Tiêu đề */}
-      <Box sx={{ textAlign: "center", mb: -1 }}>
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          sx={{
-            color: "#1976d2",
-            //borderBottom: "3px solid #1976d2",
-            display: "inline-block",
-            pb: 1,
-          }}
-        >
-          {selectedClass
-            ? `DANH SÁCH LỚP ${selectedClass}`
-            : "DANH SÁCH HỌC SINH"}
-        </Typography>
-      </Box>
-
-      <Box
+      <Paper
+        elevation={6}
         sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 2,
-          mt: 2,
-          mb: 4,
+          p: 4,
+          borderRadius: 3,
+          width: "100%",
+          maxWidth: 1420,
+          bgcolor: "white",
+          minHeight: 650, // 🔹 Chiều cao cố định
         }}
       >
-        {/* 🔹 Môn (chỉ hiển thị, không cho thay đổi) */}
-        <TextField
-          label="Môn"
-          value={config.mon || "Tin học"}
-          InputProps={{ readOnly: true }}
-          size="small"
+        {/* 🔹 Tiêu đề */}
+        <Box sx={{ textAlign: "center", mb: -1 }}>
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            sx={{
+              color: "#1976d2",
+              display: "inline-block",
+              pb: 1,
+            }}
+          >
+            {selectedClass
+              ? `DANH SÁCH LỚP ${selectedClass}`
+              : "DANH SÁCH HỌC SINH"}
+          </Typography>
+        </Box>
+
+        <Box
           sx={{
-            width: 120,
-            //bgcolor: "#f5f5f5",
-            "& .MuiInputBase-input.Mui-disabled": { color: "#000" },
-            fontWeight: "bold",
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 2,
+            mt: 2,
+            mb: 4,
           }}
-        />
+        >
+          {/* 🔹 Môn (chỉ hiển thị, không cho thay đổi) */}
+          <TextField
+            label="Môn"
+            value={config.mon || "Tin học"}
+            InputProps={{ readOnly: true }}
+            size="small"
+            sx={{
+              width: 120,
+              "& .MuiInputBase-input.Mui-disabled": { color: "#000" },
+              fontWeight: "bold",
+            }}
+          />
 
-        {/* 🔹 Tuần (chỉ hiển thị, không cho thay đổi) */}
-        <TextField
-          label="Tuần"
-          value={`Tuần ${config.tuan || 1}`}
-          InputProps={{ readOnly: true }}
-          size="small"
+          {/* 🔹 Tuần (chỉ hiển thị, không cho thay đổi) */}
+          <TextField
+            label="Tuần"
+            value={`Tuần ${config.tuan || 1}`}
+            InputProps={{ readOnly: true }}
+            size="small"
+            sx={{
+              width: 120,
+              "& .MuiInputBase-input.Mui-disabled": { color: "#000" },
+              fontWeight: "bold",
+            }}
+          />
+        </Box>
+
+        {/* 🔹 Học sinh gần đây */}
+        {config.hienThiTenGanDay && recentStudents.length > 0 && !showAll && (
+  <Box
+    sx={{
+      mb: 3,
+      ml: { xs: 0, sm: 15 },
+      textAlign: "left",
+    }}
+  >
+    <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+      Học sinh gần đây:
+    </Typography>
+
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        mb: 1,
+        ml: { xs: 0, sm: 1 },
+      }}
+    >
+      {recentStudents.slice(0, 5).map((student) => (
+        <Paper
+          key={student.maDinhDanh}
+          elevation={3}
           sx={{
-            width: 120,
-            //bgcolor: "#f5f5f5",
-            "& .MuiInputBase-input.Mui-disabled": { color: "#000" },
-            fontWeight: "bold",
+            width: { xs: "90%", sm: 250 },
+            minHeight: 40,
+            p: 2,
+            borderRadius: 2,
+            cursor: "pointer",
+            textAlign: "left",
+            bgcolor: "#fff",
+            display: "flex",
+            alignItems: "center",
+            transition: "0.2s",
+            "&:hover": {
+              transform: "scale(1.03)",
+              boxShadow: 4,
+              bgcolor: "#f5f5f5",
+            },
           }}
-        />
-      </Box>
-
-      {/* 🔹 Danh sách học sinh */}
-      <Grid container spacing={2} justifyContent="center">
-        {columns.map((col, colIdx) => (
-          <Grid item key={colIdx}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {col.map((student) => {
-                const status = studentStatus[student.maDinhDanh];
-                return (
-                  <Paper
-                    key={student.maDinhDanh}
-                    elevation={3}
-                    sx={{
-                      minWidth: 120,
-                      width: { xs: "75vw", sm: "auto" },
-                      p: 2,
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      bgcolor: "#ffffff",
-                      transition: "0.2s",
-                      "&:hover": {
-                        transform: "scale(1.03)",
-                        boxShadow: 4,
-                        bgcolor: "#f5f5f5",
-                      },
-                    }}
-                    onClick={async () => {
-                      const isBaiTapTuan = Boolean(config?.baiTapTuan);
-                      const isKiemTraDinhKi = Boolean(config?.kiemTraDinhKi);
-
-                      try {
-                        if (isBaiTapTuan) {
-                          // 🔹 Bài tập tuần
-                          const hsData = weekData?.[student.maDinhDanh];
-                          const daLamBai = hsData?.diemTracNghiem !== undefined && hsData?.diemTracNghiem !== null;
-
-                          if (daLamBai) {
-                            setDoneStudent({
-                              hoVaTen: student.hoVaTen,
-                              diemTN: hsData?.diemTN ?? hsData?.diemTracNghiem,
-                            });
-                            setOpenDoneDialog(true);
-                            return;
-                          }
-
-                          // Chưa làm → mở trang Trắc nghiệm
-                          navigate("/tracnghiem", {
-                            state: {
-                              studentId: student.maDinhDanh,
-                              fullname: student.hoVaTen,
-                              lop: selectedClass,
-                              selectedWeek,
-                              mon: config.mon,
-                            },
-                          });
-
-                        } else if (isKiemTraDinhKi) {
-                          // 🔹 Kiểm tra định kỳ
-                          const hocKyMap = {
-                            "Giữa kỳ I": "GKI",
-                            "Cuối kỳ I": "CKI",
-                            "Giữa kỳ II": "GKII",
-                            "Cả năm": "CN",
-                          };
-                          const hocKyFirestore = hocKyMap[config.hocKy];
-
-                          if (!hocKyFirestore) {
-                            setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
-                            setOpenDoneDialog(true);
-                            return;
-                          }
-
-                          // Truy cập document cấp cao nhất (ví dụ: CKI)
-                          const docRef = doc(db, "KTDK", hocKyFirestore);
-                          const docSnap = await getDoc(docRef);
-                          const fullData = docSnap.exists() ? docSnap.data() : null;
-
-                          console.log("📦 Firestore fullData:", fullData);
-
-                          // Truy cập map lớp → map học sinh
-                          const hsData = fullData?.[selectedClass]?.[student.maDinhDanh];
-
-                          console.log("🎯 hsData:", hsData);
-
-                          const lyThuyet = hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
-
-                          if (lyThuyet != null) {
-                            setDoneStudent({
-                              hoVaTen: hsData?.hoVaTen ?? student.hoVaTen,
-                              diemTN: lyThuyet,
-                            });
-                            setOpenDoneDialog(true);
-                            return;
-                          }
-
-                          // Chưa làm → mở trang Trắc nghiệm
-                          navigate("/tracnghiem", {
-                            state: {
-                              studentId: student.maDinhDanh,
-                              fullname: student.hoVaTen,
-                              lop: selectedClass,
-                              selectedWeek,
-                              mon: config.mon,
-                            },
-                          });
-
-                        } else {
-                          // 🔹 Mặc định → đánh giá định kỳ
-                          setExpandedStudent(student);
-                        }
-                      } catch (err) {
-                        console.error("❌ Lỗi khi kiểm tra trạng thái học sinh:", err);
-                        setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài. Vui lòng thử lại!");
-                        setOpenDoneDialog(true);
-                      }
-                    }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <Typography variant="subtitle2" fontWeight="medium">
-                        {student.stt}. {student.hoVaTen}
-                      </Typography>
-                      {status && (
-                        <Chip
-                          label={statusColors[status].label}
-                          color={statusColors[status].color}
-                          size="small"
-                          sx={{ ml: 1, fontWeight: "bold" }}
-                        />
-                      )}
-                    </Box>
-                  </Paper>
+          onClick={async () => {
+            try {
+              // --- Cập nhật recentStudents khi click ---
+              setRecentStudents((prev) => {
+                const filtered = prev.filter(
+                  (s) => s.maDinhDanh !== student.maDinhDanh
                 );
-              })}
-            </Box>
-          </Grid>
-        ))}
-      </Grid>
-    </Paper>
+                const updated = [student, ...filtered];
+                localStorage.setItem("recentStudents", JSON.stringify(updated));
+                return updated;
+              });
 
-    {/* 🔹 Dialog hiển thị đánh giá học sinh */}
-    <StudentStatusDialog
-      expandedStudent={expandedStudent}
-      setExpandedStudent={setExpandedStudent}
-      studentStatus={studentStatus}
-      handleStatusChange={handleStatusChange}
-      saving={saving}
-      PaperComponent={PaperComponent}
-    />
+              const mode = getMode(config);
 
-    {/* Dialog thông báo học sinh đã làm bài */}
-    <DoneDialog
-      open={openDoneDialog}
-      onClose={() => setOpenDoneDialog(false)}
-      doneStudent={doneStudent}
-      config={config}
-      choXemDiem={choXemDiem}
-      convertPercentToScore={convertPercentToScore}
-    />
+              if (mode === "btt") {
+                const hsData = weekData?.[student.maDinhDanh];
+                const daLamBai =
+                  hsData?.diemTracNghiem !== undefined &&
+                  hsData?.diemTracNghiem !== null;
 
+                if (daLamBai) {
+                  setDoneStudent({
+                    hoVaTen: student.hoVaTen,
+                    diemTN: hsData?.diemTN ?? hsData?.diemTracNghiem,
+                  });
+                  setOpenDoneDialog(true);
+                  return;
+                }
+
+                navigate("/tracnghiem", {
+                  state: {
+                    studentId: student.maDinhDanh,
+                    fullname: student.hoVaTen,
+                    lop: selectedClass,
+                    selectedWeek,
+                    mon: config.mon,
+                  },
+                });
+                return;
+              }
+
+              if (mode === "ktdk") {
+                const hocKyMap = {
+                  "Giữa kỳ I": "GKI",
+                  "Cuối kỳ I": "CKI",
+                  "Giữa kỳ II": "GKII",
+                  "Cả năm": "CN",
+                };
+                const hocKyFirestore = hocKyMap[config.hocKy];
+
+                if (!hocKyFirestore) {
+                  setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
+                  setOpenDoneDialog(true);
+                  return;
+                }
+
+                const docRef = doc(db, "KTDK", hocKyFirestore);
+                const docSnap = await getDoc(docRef);
+                const fullData = docSnap.exists() ? docSnap.data() : null;
+                const hsData =
+                  fullData?.[selectedClass]?.[student.maDinhDanh];
+                const lyThuyet =
+                  hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
+
+                if (lyThuyet != null) {
+                  setDoneStudent({
+                    hoVaTen: hsData?.hoVaTen ?? student.hoVaTen,
+                    diemTN: lyThuyet,
+                  });
+                  setOpenDoneDialog(true);
+                  return;
+                }
+
+                navigate("/tracnghiem", {
+                  state: {
+                    studentId: student.maDinhDanh,
+                    fullname: student.hoVaTen,
+                    lop: selectedClass,
+                    selectedWeek,
+                    mon: config.mon,
+                  },
+                });
+                return;
+              }
+
+              if (mode === "dgt") {
+                // 🔹 Đánh giá tuần: mở dialog và truyền trạng thái hiện tại
+                const currentStatus =
+                  studentStatus && studentStatus[student.maDinhDanh]
+                    ? String(studentStatus[student.maDinhDanh]).trim()
+                    : "";
+
+                setExpandedStudent({
+                  ...student,
+                  status: currentStatus, // ✅ gắn trạng thái vào expandedStudent
+                });
+
+                return;
+              }
+
+              // fallback
+              setExpandedStudent(student);
+            } catch (err) {
+              console.error("❌ Lỗi khi kiểm tra trạng thái học sinh:", err);
+              setDoneMessage(
+                "⚠️ Có lỗi khi kiểm tra trạng thái bài. Vui lòng thử lại!"
+              );
+              setOpenDoneDialog(true);
+            }
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight="medium">
+            {student.stt}. {student.hoVaTen}
+          </Typography>
+        </Paper>
+      ))}
+    </Box>
+
+    <Box sx={{ mt: 4, ml: 1 }}>
+      <Button
+        size="small"
+        variant="contained"
+        onClick={() => setShowAll(true)}
+        sx={{
+          backgroundColor: "#1976d2",
+          color: "#fff",
+          "&:hover": { backgroundColor: "#1565c0" },
+        }}
+      >
+        Chế độ xem: Cả lớp
+      </Button>
+    </Box>
   </Box>
-);
+)}
 
+
+        {/* 🔹 Danh sách học sinh */}
+        {(!config.hienThiTenGanDay || recentStudents.length === 0 || showAll) && (
+          <Grid container spacing={2} justifyContent="center">
+            {columns.map((col, colIdx) => (
+              <Grid item key={colIdx}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {col.map((student) => {
+                    const status = studentStatus[student.maDinhDanh];
+                    return (
+                      <Paper
+                        key={student.maDinhDanh}
+                        elevation={3}
+                        sx={{
+                          minWidth: 120,
+                          width: { xs: "75vw", sm: "auto" },
+                          p: 2,
+                          borderRadius: 2,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          bgcolor: "#ffffff",
+                          transition: "0.2s",
+                          "&:hover": { transform: "scale(1.03)", boxShadow: 4, bgcolor: "#f5f5f5" },
+                        }}
+                        onClick={async () => {
+                          try {
+                            const mode = getMode(config);
+                            console.log("[List] Click:", {
+                              mode,
+                              id: student.maDinhDanh,
+                              name: student.hoVaTen,
+                            });
+
+                            if (mode === "btt") {
+                              const hsData = weekData?.[student.maDinhDanh];
+                              const daLamBai =
+                                hsData?.diemTracNghiem !== undefined && hsData?.diemTracNghiem !== null;
+                              console.log("[BTT] hsData:", hsData, "daLamBai:", daLamBai);
+
+                              if (daLamBai) {
+                                setDoneStudent({
+                                  hoVaTen: student.hoVaTen,
+                                  diemTN: hsData?.diemTN ?? hsData?.diemTracNghiem,
+                                });
+                                setOpenDoneDialog(true);
+                              } else {
+                                navigate("/tracnghiem", {
+                                  state: {
+                                    studentId: student.maDinhDanh,
+                                    fullname: student.hoVaTen,
+                                    lop: selectedClass,
+                                    selectedWeek,
+                                    mon: config.mon,
+                                  },
+                                });
+                              }
+                            } else if (mode === "ktdk") {
+                              const hocKyMap = {
+                                "Giữa kỳ I": "GKI",
+                                "Cuối kỳ I": "CKI",
+                                "Giữa kỳ II": "GKII",
+                                "Cả năm": "CN",
+                              };
+                              const hocKyFirestore = hocKyMap[config.hocKy];
+                              console.log("[KTDK] hocKy:", config.hocKy, "=>", hocKyFirestore);
+
+                              if (!hocKyFirestore) {
+                                setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
+                                setOpenDoneDialog(true);
+                                return;
+                              }
+
+                              const docRef = doc(db, "KTDK", hocKyFirestore);
+                              const docSnap = await getDoc(docRef);
+                              const fullData = docSnap.exists() ? docSnap.data() : null;
+                              const hsData = fullData?.[selectedClass]?.[student.maDinhDanh];
+                              const lyThuyet = hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
+                              console.log("[KTDK] fullData?", !!fullData, "hsData:", hsData, "lyThuyet:", lyThuyet);
+
+                              if (lyThuyet != null) {
+                                setDoneStudent({
+                                  hoVaTen: hsData?.hoVaTen ?? student.hoVaTen,
+                                  diemTN: lyThuyet,
+                                });
+                                setOpenDoneDialog(true);
+                              } else {
+                                navigate("/tracnghiem", {
+                                  state: {
+                                    studentId: student.maDinhDanh,
+                                    fullname: student.hoVaTen,
+                                    lop: selectedClass,
+                                    selectedWeek,
+                                    mon: config.mon,
+                                  },
+                                });
+                              }
+                            } else if (mode === "dgt") {
+                              // 🔹 Đánh giá tuần: mở dialog, trạng thái sẽ được đọc từ studentStatus
+                              const raw = studentStatus?.[student.maDinhDanh];
+                              const currentStatus = raw ? String(raw).trim() : "";
+                              console.log("[DGT] id:", student.maDinhDanh, "rawStatus:", raw, "currentStatus:", currentStatus);
+
+                              // 🔹 Truyền status vào expandedStudent
+                              setExpandedStudent({
+                                ...student,
+                                status: currentStatus,
+                              });
+                            } else {
+                              console.log("[Fallback] Open dialog without status");
+                              setExpandedStudent({
+                                ...student,
+                                status: studentStatus?.[student.maDinhDanh] || "",
+                              });
+                            }
+
+
+                            // Lưu recent students nếu bật hiển thị
+                            if (config.hienThiTenGanDay) {
+                              const key = `recent_${selectedClass}`;
+                              const updated = [student, ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh)];
+                              if (updated.length > 10) updated.pop();
+                              console.log("[Recent] Update and save:", key, updated.map(s => s.maDinhDanh));
+                              localStorage.setItem(key, JSON.stringify(updated));
+                              setRecentStudents(updated);
+                            }
+                          } catch (err) {
+                            console.error("❌ Lỗi khi kiểm tra trạng thái học sinh:", err);
+                            setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài. Vui lòng thử lại!");
+                            setOpenDoneDialog(true);
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <Typography variant="subtitle2" fontWeight="medium">
+                            {student.stt}. {student.hoVaTen}
+                          </Typography>                          
+                        </Box>
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+
+        {/* 🔹 Nút quay lại danh sách gần đây nếu đang xem toàn lớp */}
+          {showAll && config.hienThiTenGanDay && recentStudents.length > 0 && (
+            <Box sx={{ mt: 3, mb: 3, ml: 15 }}>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => setShowAll(false)}
+                sx={{
+                  backgroundColor: "#1976d2",
+                  color: "#ffffff",
+                  "&:hover": { backgroundColor: "#1565c0" }
+                }}
+              >
+                Chế độ xem: Gần đây
+              </Button>
+            </Box>
+          )}
+
+      </Paper>
+
+      {/* 🔹 Dialog hiển thị đánh giá học sinh */}
+      <StudentStatusDialog
+        expandedStudent={expandedStudent}
+        setExpandedStudent={setExpandedStudent}
+        studentStatus={studentStatus}
+        handleStatusChange={handleStatusChange}
+        saving={saving}
+        PaperComponent={PaperComponent}
+      />
+
+      {/* Dialog thông báo học sinh đã làm bài */}
+      <DoneDialog
+        open={openDoneDialog}
+        onClose={() => setOpenDoneDialog(false)}
+        doneStudent={doneStudent}
+        config={config}
+        choXemDiem={choXemDiem}
+        convertPercentToScore={convertPercentToScore}
+      />
+    </Box>
+  );
 }

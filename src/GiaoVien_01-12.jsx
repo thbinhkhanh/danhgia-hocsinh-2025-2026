@@ -327,57 +327,25 @@ export default function GiaoVien() {
     }
   };
 
-  // Hàm dùng chung
-  const getMode = (config) => {
-    if (config.kiemTraDinhKi) return "ktdk";
-    if (config.baiTapTuan)    return "btt";
-    if (config.danhGiaTuan)   return "dgt";
-    return "normal";
-  };
-
   const deleteClassScores = async (config) => {
-    const { lop, tuan, mon, hocKy } = config;
-
-    const mode = getMode(config);   // <---- dùng lại, không lặp code
-
+    const { lop, tuan, mon, baiTapTuan, kiemTraDinhKi, hocKy } = config;
     if (!lop || !mon) return;
 
-    // ---- 🔥 Thông báo xác nhận theo mode ----
-    const confirmMessages = {
-      dgt:  `Bạn có chắc muốn xóa đánh giá tuần của lớp ${lop}?`,
-      btt:  `Bạn có chắc muốn xóa bài tập tuần ${tuan} của lớp ${lop}?`,
-      ktdk: `Bạn có chắc muốn xóa điểm KTĐK của lớp ${lop}?`,
-    };
-
-    const confirmed = window.confirm(confirmMessages[mode] || "Bạn có chắc muốn xoá?");
-    if (!confirmed) return;
-
-    // ------------------------------
-    // 1️⃣ ĐÁNH GIÁ TUẦN (DGTX)
-    // ------------------------------
-    if (mode === "dgt") {
-      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
-      const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
-      const snap = await getDoc(tuanRef);
-
-      if (snap.exists()) {
-        const data = snap.data();
-        const updates = {};
-
-        Object.keys(data).forEach((studentId) => {
-          updates[`${studentId}`] = ""; 
-        });
-
-        await updateDoc(tuanRef, updates);
-        console.log(`❌ Đã xoá trạng thái đánh giá tuần của lớp ${lop}`);
-      }
+    // Xác nhận
+    const message =
+      baiTapTuan
+        ? `Bạn có chắc xóa điểm tuần ${tuan} của lớp ${lop}?`
+        : kiemTraDinhKi
+        ? `Bạn có chắc xóa điểm KTĐK của lớp ${lop}?`
+        : "";
+    const confirmed = window.confirm(message);
+    if (!confirmed) {
+      console.log("❎ Hủy thao tác xóa");
       return;
     }
 
-    // ------------------------------
-    // 2️⃣ BÀI TẬP TUẦN (BTT)
-    // ------------------------------
-    if (mode === "btt") {
+    // DGTX: đặt null điểm tuần
+    if (baiTapTuan) {
       const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
       const tuanRef = doc(db, "DGTX", classKey, "tuan", `tuan_${tuan}`);
       const snap = await getDoc(tuanRef);
@@ -385,33 +353,29 @@ export default function GiaoVien() {
       if (snap.exists()) {
         const data = snap.data();
         const updates = {};
-
         Object.keys(data).forEach((studentId) => {
           updates[`${studentId}.diemTN`] = null;
           updates[`${studentId}.diemTracNghiem`] = null;
         });
-
         await updateDoc(tuanRef, updates);
-        console.log(`❌ Đã reset điểm bài tập tuần của lớp ${lop}`);
+        console.log(`❌ Đã reset điểm tuần ${tuan} của lớp ${lop} về null`);
       }
-      return;
     }
 
-    // ------------------------------
-    // 3️⃣ KIỂM TRA ĐỊNH KỲ (KTDK)
-    // ------------------------------
-    if (mode === "ktdk") {
-      const mapHocKy = (hk) =>
-        ({
-          "Giữa kỳ I": "GKI",
-          "Cuối kỳ I": "CKI",
-          "Giữa kỳ II": "GKII",
-          "Cuối năm": "CN",
-        }[hk] || "GKI");
+    // KTDK: dùng FieldPath theo overload field–value pairs
+    if (kiemTraDinhKi) {
+      const mapHocKy = (hk) => {
+        switch (hk) {
+          case "Giữa kỳ I": return "GKI";
+          case "Cuối kỳ I": return "CKI";
+          case "Giữa kỳ II": return "GKII";
+          case "Cuối năm": return "CN";
+          default: return "GKI";
+        }
+      };
 
       const docHocKy = mapHocKy(hocKy);
-      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop;
-
+      const classKey = mon === "Công nghệ" ? `${lop}_CN` : lop; // ví dụ "4.1"
       const ktDocRef = doc(db, "KTDK", docHocKy);
       const snap = await getDoc(ktDocRef);
 
@@ -419,31 +383,20 @@ export default function GiaoVien() {
         const data = snap.data();
         const classData = data[classKey] || {};
 
-        Object.keys(classData).forEach((studentId) => {
+        // chỉnh sửa trực tiếp object học sinh
+        Object.keys(classData).forEach(studentId => {
           classData[studentId].lyThuyet = null;
           classData[studentId].lyThuyetPhanTram = null;
         });
 
+        // ghi đè lại lớp 4.1, merge để giữ nguyên các lớp khác
         await setDoc(ktDocRef, { [classKey]: classData }, { merge: true });
 
-        console.log(`❌ Đã reset điểm kiểm tra định kỳ của lớp ${lop}`);
+        console.log(`❌ Đã reset điểm KTĐK của lớp ${lop} về null`);
       }
     }
+
   };
-
-
-  // reset dialog và trạng thái khi chuyển chế độ kiểm tra/bài tập tuần
-  useEffect(() => {
-    // đóng các dialog hiện tại
-    setStudentForDanhGia(null);
-    setStudentForTracNghiem(null);
-
-    // reset trạng thái học sinh để tránh giữ dữ liệu cũ
-    setStudentStatus({});
-    setStudentScores({});
-  }, [config.kiemTraDinhKi, config.baiTapTuan]);
-;
-
 
   return (
   <Box
@@ -547,22 +500,10 @@ export default function GiaoVien() {
                     key={student.maDinhDanh}
                     elevation={3}
                     onClick={() => {
-                      const mode = getMode(config);   // ← dùng hàm dùng chung
-
-                      if (mode === "ktdk" || mode === "btt") {
-                        // mở dialog trắc nghiệm (phần 2)
-                        setStudentForTracNghiem(student);
-
-                      } else if (mode === "dgt") {
-                        // mở dialog đánh giá tuần (phần 1)
-                        setStudentForDanhGia(student);
-
-                      } else {
-                        // fallback
-                        setStudentForDanhGia(student);
-                      }
+                      config.tracNghiem
+                        ? setStudentForTracNghiem(student)
+                        : setStudentForDanhGia(student);
                     }}
-
                     sx={{
                       minWidth: 120,
                       width: { xs: "75vw", sm: "auto" },
@@ -589,71 +530,58 @@ export default function GiaoVien() {
 
                     {/* CHIP BTT hoặc KTDK cùng màu */}
                       {(() => {
-                        const mode = getMode(config);   // ← dùng chung
-
                         let chipProps = null;
 
-                        // --- KTDK ---
-                        if (mode === "ktdk") {
-                          const { lyThuyet, lyThuyetPhanTram } = studentScores[student.maDinhDanh] || {};
-                          if (lyThuyet != null && lyThuyetPhanTram != null) {
-                            let color = "warning";
-                            if (lyThuyetPhanTram >= 85) color = "primary";
-                            else if (lyThuyetPhanTram >= 50) color = "secondary";
+                        if (config.kiemTraDinhKi) {
+                          const lyThuyet = studentScores[student.maDinhDanh]?.lyThuyet;             // điểm gốc
+                          const lyThuyetPhanTram = studentScores[student.maDinhDanh]?.lyThuyetPhanTram; // phần trăm
 
+                          if (student.maDinhDanh === "7956673972") {
+                            console.log("🔎 Chip render HS:", student.maDinhDanh, "lyThuyet:", lyThuyet, "lyThuyetPhanTram:", lyThuyetPhanTram);
+                          }
+
+                          if (lyThuyet !== undefined && lyThuyet !== null &&
+                              lyThuyetPhanTram !== undefined && lyThuyetPhanTram !== null) {
+                            let color = "warning";
+                            if (lyThuyetPhanTram >= 85) color = "primary";      // xanh
+                            else if (lyThuyetPhanTram >= 50) color = "secondary"; // tím
+                            else color = "warning";                             // cam
+
+                            // label hiển thị điểm số, màu dựa vào phần trăm
                             chipProps = { label: String(lyThuyet), color };
                           }
-                        }
-
-                        // --- BÀI TẬP TUẦN (BTT) ---
-                        else if (mode === "btt") {
-                          const m = (studentScores[student.maDinhDanh]?.diemTracNghiem || "").trim();
-
+                        } else {
+                          const status = studentStatus[student.maDinhDanh];
+                          if (student.maDinhDanh === "7956673972") {
+                            console.log("🔎 DGTX - HS:", student.maDinhDanh, "Status:", status);
+                          }
                           chipProps =
                             {
                               "Hoàn thành tốt": { label: "T", color: "primary" },
                               "Hoàn thành": { label: "H", color: "secondary" },
                               "Chưa hoàn thành": { label: "C", color: "warning" },
-                            }[m] || null;
+                            }[status] || null;
                         }
 
-                        // --- ĐÁNH GIÁ TUẦN (DGTX) ---
-                        else if (mode === "dgt") {
-                          const s = String(studentStatus[student.maDinhDanh] || "").trim();
-
-                          chipProps =
-                            {
-                              "Hoàn thành tốt": { label: "T", color: "primary" },
-                              "Hoàn thành": { label: "H", color: "secondary" },
-                              "Chưa hoàn thành": { label: "C", color: "warning" },
-                            }[s] || null;
-                        }
-
-                        // --- fallback ---
-                        else {
-                          chipProps = null;
-                        }
-
-                        return (
-                          chipProps && (
-                            <Chip
-                              key={`chip-${student.maDinhDanh}-${mode}`}
-                              label={chipProps.label}
-                              color={chipProps.color}
-                              size="small"
-                              sx={{
-                                fontWeight: "bold",
-                                borderRadius: "50%",
-                                width: 28,
-                                height: 28,
-                                minWidth: 0,
-                              }}
-                            />
-                          )
+                        return chipProps && (
+                          <Chip
+                            label={chipProps.label}
+                            color={chipProps.color}
+                            size="small"
+                            sx={{
+                              fontWeight: "bold",
+                              borderRadius: "50%",
+                              width: 28,
+                              height: 28,
+                              minWidth: 0,
+                              p: 0,
+                              justifyContent: "center",
+                              fontSize: "0.8rem",
+                              boxShadow: "0 0 4px rgba(0,0,0,0.15)",
+                            }}
+                          />
                         );
                       })()}
-
-
                   </Paper>
                 );
               })}

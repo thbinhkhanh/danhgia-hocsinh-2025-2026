@@ -113,10 +113,8 @@ export default function TracNghiem() {
   const [studentId, setStudentId] = useState(locationState.studentId || "HS001");
   const [fullname, setFullname] = useState(locationState.fullname || "Test");
   const [lop, setLop] = useState(locationState.lop || "4.1");
-  const [selectedWeek, setSelectedWeek] = useState(locationState.selectedWeek || 11);
+  const [selectedWeek, setSelectedWeek] = useState(locationState.selectedWeek || 13);
   const [mon, setMon] = useState(locationState.mon || "Tin học");
-
-  
 
   const studentInfo = {
     id: studentId,
@@ -297,7 +295,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
 
             // → Tạo đúng docId bạn yêu cầu
             const expectedDocId = `quiz_Lớp ${classNumber}_${monHoc}_${selectedWeek}`;
-            //console.log("👉 Tìm đề trong BAITAP_TUAN:", expectedDocId);
+            console.log("👉 Tìm đề trong BAITAP_TUAN:", expectedDocId);
 
             // 🔍 Load từ collection BAITAP_TUAN
             const baitapTuanSnap = await getDocs(collection(db, "BAITAP_TUAN"));

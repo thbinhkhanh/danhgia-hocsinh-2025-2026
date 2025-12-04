@@ -17,6 +17,9 @@ import {
   Snackbar,
   Dialog,
   DialogContent,
+  FormLabel,
+  RadioGroup,
+  Radio,
 } from "@mui/material";
 import TextField from "@mui/material/TextField";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
@@ -158,6 +161,7 @@ useEffect(() => {
         xuatFileBaiLam: data.xuatFileBaiLam || false,
         timeLimit: data.timeLimit || 1,
         pass: data.pass || "",
+        hienThiTenGanDay: data.hienThiTenGanDay || false,
       });
 
       // Đồng bộ các select input
@@ -189,17 +193,24 @@ useEffect(() => {
   initConfig();
 }, [classData, setClassData]);
 
-// 🔹 Cập nhật Firestore + Context
-const updateFirestoreAndContext = async (field, value) => {
-  try {
-    const newConfig = { ...config, [field]: value };
-    await setDoc(doc(db, "CONFIG", "config"), newConfig, { merge: true });
-    setConfig(newConfig);
-  } catch (err) {
-    console.error("❌ Lỗi khi cập nhật Firestore:", err);
-  }
-};
+  // 🔹 Cập nhật Firestore + Context
+  const updateFirestoreAndContext = async (field, value) => {
+    try {
+      let newConfig;
 
+      if (field === null && typeof value === "object") {
+        // value là object chứa nhiều field
+        newConfig = { ...config, ...value };
+      } else {
+        newConfig = { ...config, [field]: value };
+      }
+
+      await setDoc(doc(db, "CONFIG", "config"), newConfig, { merge: true });
+      setConfig(newConfig);
+    } catch (err) {
+      console.error("❌ Lỗi khi cập nhật Firestore:", err);
+    }
+  };
 
   // 🔹 Các hàm thay đổi select
   const handleSemesterChange = (e) => {
@@ -474,27 +485,63 @@ const updateFirestoreAndContext = async (field, value) => {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={config.baiTapTuan || false}
+                    checked={config.hienThiTenGanDay || false}
                     onChange={(e) =>
-                      updateFirestoreAndContext("baiTapTuan", e.target.checked)
+                      updateFirestoreAndContext("hienThiTenGanDay", e.target.checked)
                     }
                     color="primary"
                   />
                 }
-                label="Bài tập tuần"
+                label="Hiển thị tên gần đây"
               />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={config.kiemTraDinhKi || false}
-                    onChange={(e) =>
-                      updateFirestoreAndContext("kiemTraDinhKi", e.target.checked)
-                    }
-                    color="primary"
+              
+               <Divider sx={{ mt: 1, mb: 1 }} />
+               
+              <FormControl>
+                <FormLabel>Chọn loại đánh giá</FormLabel>
+
+                <RadioGroup
+                  value={
+                    config.danhGiaTuan
+                      ? "danhGiaTuan"
+                      : config.baiTapTuan
+                      ? "baiTapTuan"
+                      : config.kiemTraDinhKi
+                      ? "kiemTraDinhKi"
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const newState = {
+                      danhGiaTuan: v === "danhGiaTuan",
+                      baiTapTuan: v === "baiTapTuan",
+                      kiemTraDinhKi: v === "kiemTraDinhKi",
+                    };
+                    // ✅ dùng đúng hàm từ context, không gọi setConfig local
+                    setConfig(newState);
+                  }}
+                >
+                  <FormControlLabel
+                    value="danhGiaTuan"
+                    control={<Radio color="primary" />}
+                    label="Đánh giá tuần"
                   />
-                }
-                label="Kiểm tra định kì"
-              />
+
+                  <FormControlLabel
+                    value="baiTapTuan"
+                    control={<Radio color="primary" />}
+                    label="Bài tập tuần"
+                  />
+
+                  <FormControlLabel
+                    value="kiemTraDinhKi"
+                    control={<Radio color="primary" />}
+                    label="Kiểm tra định kì"
+                  />
+                </RadioGroup>
+
+              </FormControl>
+
 
                <Divider sx={{ mt: 1, mb: 1 }} />
 

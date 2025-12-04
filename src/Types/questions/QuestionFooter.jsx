@@ -16,9 +16,9 @@ const QuestionFooter = ({ q, qi, update, handleDelete }) => (
       </Select>
     </FormControl>
 
-    <Typography sx={{ color: q.isValid ? "green" : "red" }}>
+    {/*<Typography sx={{ color: q.isValid ? "green" : "red" }}>
       {q.isValid ? "Hợp lệ" : "Chưa hợp lệ"}
-    </Typography>
+    </Typography>*/}
 
     <Tooltip title={`Xóa câu ${qi + 1}`}>
       <IconButton onClick={() => handleDelete(qi)}>
