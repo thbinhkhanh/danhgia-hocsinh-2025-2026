@@ -27,7 +27,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import BackupIcon from "@mui/icons-material/Backup";
 import RestoreIcon from "@mui/icons-material/Restore";
 import * as XLSX from "xlsx";
-import { doc, getDoc, getDocs, collection, setDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { ConfigContext } from "../context/ConfigContext";
@@ -390,27 +390,7 @@ useEffect(() => {
     }
   }, [config.timeLimit]);
 
-  useEffect(() => {
-    const docRef = doc(db, "CONFIG", "config");
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      const data = docSnap.exists() ? docSnap.data() : {};
-
-      const tuan = data.tuan || 1;
-      const lop = data.lop || "";
-      const mon = data.mon || "Tin học";
-      const deTracNghiem = data.deTracNghiem || "";
-
-      // đưa vào context
-      setConfig({ tuan, lop, mon, deTracNghiem });
-
-      // đưa vào local state
-      setSelectedWeek(tuan);
-      setSelectedClass(lop);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   return (
   <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>

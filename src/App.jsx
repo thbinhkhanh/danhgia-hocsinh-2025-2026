@@ -52,12 +52,14 @@ function AppContent() {
   const navigate = useNavigate();
   const { config, setConfig } = useContext(ConfigContext);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true); 
   const account = localStorage.getItem("account"); // thêm dòng này trước <Routes>
 
   // ✅ Lấy trạng thái login ban đầu
   useEffect(() => {
     const loggedIn = localStorage.getItem("loggedIn") === "true";
     setIsLoggedIn(loggedIn);
+    setLoading(false); 
   }, []);
 
   // ✅ Theo dõi thay đổi login giữa các tab
@@ -139,6 +141,8 @@ function AppContent() {
         ]
       : [{ path: "/login", label: "Đăng nhập" }]),
   ];
+
+  if (loading) return null;
 
   return (
     <>

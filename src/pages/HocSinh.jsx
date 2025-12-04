@@ -10,7 +10,8 @@ import {
   Chip,
   TextField,
   FormControl, 
-  InputLabel
+  InputLabel,
+  Tooltip
 } from "@mui/material";
 
 import { db } from "../firebase";
@@ -25,6 +26,9 @@ import { useNavigate } from "react-router-dom";
 
 import DoneDialog from "../dialog/DoneDialog";
 import StudentStatusDialog from "../dialog/StudentStatusDialog";
+
+import GroupIcon from '@mui/icons-material/Group';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 
 export default function HocSinh() {
@@ -492,181 +496,188 @@ export default function HocSinh() {
 
         {/* 🔹 Học sinh gần đây */}
         {config.hienThiTenGanDay && recentStudents.length > 0 && !showAll && (
-  <Box
-    sx={{
-      mb: 3,
-      ml: { xs: 0, sm: 15 },
-      textAlign: "left",
-    }}
-  >
-    <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-      Học sinh gần đây:
-    </Typography>
+          <Box
+            sx={{
+              mb: 3,
+              ml: { xs: 0, sm: 15 },
+              textAlign: "left",
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+              Học sinh gần đây:
+            </Typography>
 
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        mb: 1,
-        ml: { xs: 0, sm: 1 },
-      }}
-    >
-      {recentStudents.slice(0, 5).map((student) => (
-        <Paper
-          key={student.maDinhDanh}
-          elevation={3}
-          sx={{
-            width: { xs: "90%", sm: 250 },
-            minHeight: 40,
-            p: 2,
-            borderRadius: 2,
-            cursor: "pointer",
-            textAlign: "left",
-            bgcolor: "#fff",
-            display: "flex",
-            alignItems: "center",
-            transition: "0.2s",
-            "&:hover": {
-              transform: "scale(1.03)",
-              boxShadow: 4,
-              bgcolor: "#f5f5f5",
-            },
-          }}
-          onClick={async () => {
-            try {
-              // --- Cập nhật recentStudents khi click ---
-              setRecentStudents((prev) => {
-                const filtered = prev.filter(
-                  (s) => s.maDinhDanh !== student.maDinhDanh
-                );
-                const updated = [student, ...filtered];
-                localStorage.setItem("recentStudents", JSON.stringify(updated));
-                return updated;
-              });
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                mb: 1,
+                ml: { xs: 0, sm: 1 },
+              }}
+            >
+              {recentStudents.slice(0, 5).map((student) => (
+                <Paper
+                  key={student.maDinhDanh}
+                  elevation={3}
+                  sx={{
+                    width: { xs: "90%", sm: 250 },
+                    minHeight: 40,
+                    p: 2,
+                    borderRadius: 2,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    bgcolor: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    transition: "0.2s",
+                    "&:hover": {
+                      transform: "scale(1.03)",
+                      boxShadow: 4,
+                      bgcolor: "#f5f5f5",
+                    },
+                  }}
+                  onClick={async () => {
+                    try {
+                      // --- Cập nhật recentStudents khi click ---
+                      setRecentStudents((prev) => {
+                        const filtered = prev.filter(
+                          (s) => s.maDinhDanh !== student.maDinhDanh
+                        );
+                        const updated = [student, ...filtered];
+                        localStorage.setItem("recentStudents", JSON.stringify(updated));
+                        return updated;
+                      });
 
-              const mode = getMode(config);
+                      const mode = getMode(config);
 
-              if (mode === "btt") {
-                const hsData = weekData?.[student.maDinhDanh];
-                const daLamBai =
-                  hsData?.diemTracNghiem !== undefined &&
-                  hsData?.diemTracNghiem !== null;
+                      if (mode === "btt") {
+                        const hsData = weekData?.[student.maDinhDanh];
+                        const daLamBai =
+                          hsData?.diemTracNghiem !== undefined &&
+                          hsData?.diemTracNghiem !== null;
 
-                if (daLamBai) {
-                  setDoneStudent({
-                    hoVaTen: student.hoVaTen,
-                    diemTN: hsData?.diemTN ?? hsData?.diemTracNghiem,
-                  });
-                  setOpenDoneDialog(true);
-                  return;
-                }
+                        if (daLamBai) {
+                          setDoneStudent({
+                            hoVaTen: student.hoVaTen,
+                            diemTN: hsData?.diemTN ?? hsData?.diemTracNghiem,
+                          });
+                          setOpenDoneDialog(true);
+                          return;
+                        }
 
-                navigate("/tracnghiem", {
-                  state: {
-                    studentId: student.maDinhDanh,
-                    fullname: student.hoVaTen,
-                    lop: selectedClass,
-                    selectedWeek,
-                    mon: config.mon,
-                  },
-                });
-                return;
-              }
+                        navigate("/tracnghiem", {
+                          state: {
+                            studentId: student.maDinhDanh,
+                            fullname: student.hoVaTen,
+                            lop: selectedClass,
+                            selectedWeek,
+                            mon: config.mon,
+                          },
+                        });
+                        return;
+                      }
 
-              if (mode === "ktdk") {
-                const hocKyMap = {
-                  "Giữa kỳ I": "GKI",
-                  "Cuối kỳ I": "CKI",
-                  "Giữa kỳ II": "GKII",
-                  "Cả năm": "CN",
-                };
-                const hocKyFirestore = hocKyMap[config.hocKy];
+                      if (mode === "ktdk") {
+                        const hocKyMap = {
+                          "Giữa kỳ I": "GKI",
+                          "Cuối kỳ I": "CKI",
+                          "Giữa kỳ II": "GKII",
+                          "Cả năm": "CN",
+                        };
+                        const hocKyFirestore = hocKyMap[config.hocKy];
 
-                if (!hocKyFirestore) {
-                  setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
-                  setOpenDoneDialog(true);
-                  return;
-                }
+                        if (!hocKyFirestore) {
+                          setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
+                          setOpenDoneDialog(true);
+                          return;
+                        }
 
-                const docRef = doc(db, "KTDK", hocKyFirestore);
-                const docSnap = await getDoc(docRef);
-                const fullData = docSnap.exists() ? docSnap.data() : null;
-                const hsData =
-                  fullData?.[selectedClass]?.[student.maDinhDanh];
-                const lyThuyet =
-                  hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
+                        const docRef = doc(db, "KTDK", hocKyFirestore);
+                        const docSnap = await getDoc(docRef);
+                        const fullData = docSnap.exists() ? docSnap.data() : null;
+                        const hsData =
+                          fullData?.[selectedClass]?.[student.maDinhDanh];
+                        const lyThuyet =
+                          hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
 
-                if (lyThuyet != null) {
-                  setDoneStudent({
-                    hoVaTen: hsData?.hoVaTen ?? student.hoVaTen,
-                    diemTN: lyThuyet,
-                  });
-                  setOpenDoneDialog(true);
-                  return;
-                }
+                        if (lyThuyet != null) {
+                          setDoneStudent({
+                            hoVaTen: hsData?.hoVaTen ?? student.hoVaTen,
+                            diemTN: lyThuyet,
+                          });
+                          setOpenDoneDialog(true);
+                          return;
+                        }
 
-                navigate("/tracnghiem", {
-                  state: {
-                    studentId: student.maDinhDanh,
-                    fullname: student.hoVaTen,
-                    lop: selectedClass,
-                    selectedWeek,
-                    mon: config.mon,
-                  },
-                });
-                return;
-              }
+                        navigate("/tracnghiem", {
+                          state: {
+                            studentId: student.maDinhDanh,
+                            fullname: student.hoVaTen,
+                            lop: selectedClass,
+                            selectedWeek,
+                            mon: config.mon,
+                          },
+                        });
+                        return;
+                      }
 
-              if (mode === "dgt") {
-                // 🔹 Đánh giá tuần: mở dialog và truyền trạng thái hiện tại
-                const currentStatus =
-                  studentStatus && studentStatus[student.maDinhDanh]
-                    ? String(studentStatus[student.maDinhDanh]).trim()
-                    : "";
+                      if (mode === "dgt") {
+                        // 🔹 Đánh giá tuần: mở dialog và truyền trạng thái hiện tại
+                        const currentStatus =
+                          studentStatus && studentStatus[student.maDinhDanh]
+                            ? String(studentStatus[student.maDinhDanh]).trim()
+                            : "";
 
-                setExpandedStudent({
-                  ...student,
-                  status: currentStatus, // ✅ gắn trạng thái vào expandedStudent
-                });
+                        setExpandedStudent({
+                          ...student,
+                          status: currentStatus, // ✅ gắn trạng thái vào expandedStudent
+                        });
 
-                return;
-              }
+                        return;
+                      }
 
-              // fallback
-              setExpandedStudent(student);
-            } catch (err) {
-              console.error("❌ Lỗi khi kiểm tra trạng thái học sinh:", err);
-              setDoneMessage(
-                "⚠️ Có lỗi khi kiểm tra trạng thái bài. Vui lòng thử lại!"
-              );
-              setOpenDoneDialog(true);
-            }
-          }}
-        >
-          <Typography variant="subtitle2" fontWeight="medium">
-            {student.stt}. {student.hoVaTen}
-          </Typography>
-        </Paper>
-      ))}
-    </Box>
+                      // fallback
+                      setExpandedStudent(student);
+                    } catch (err) {
+                      console.error("❌ Lỗi khi kiểm tra trạng thái học sinh:", err);
+                      setDoneMessage(
+                        "⚠️ Có lỗi khi kiểm tra trạng thái bài. Vui lòng thử lại!"
+                      );
+                      setOpenDoneDialog(true);
+                    }
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight="medium">
+                    {student.stt}. {student.hoVaTen}
+                  </Typography>
+                </Paper>
+              ))}
+            </Box>
 
-    <Box sx={{ mt: 4, ml: 1 }}>
-      <Button
-        size="small"
-        variant="contained"
-        onClick={() => setShowAll(true)}
-        sx={{
-          backgroundColor: "#1976d2",
-          color: "#fff",
-          "&:hover": { backgroundColor: "#1565c0" },
-        }}
-      >
-        Chế độ xem: Cả lớp
-      </Button>
-    </Box>
-  </Box>
-)}
+            <Box sx={{ mt: 6, ml: 1 }}>
+              <Box sx={{ mt: 6, ml: 1 }}>
+                <Tooltip title="Chế độ xem: Cả lớp">
+                  <IconButton
+                    onClick={() => setShowAll(true)}
+                    sx={{
+                      fontSize: '1.2rem',        // tương đương cỡ chữ Button trước
+                      padding: '6px 16px',       // giữ padding cân đối
+                      minHeight: '36px',
+                      border: '1px solid',       // viền
+                      borderColor: 'primary.main', 
+                      borderRadius: '4px',       // bo góc
+                      color: 'primary.main',     // màu icon
+                      '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.1)' }, // hover nhẹ
+                    }}
+                  >
+                    <GroupIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
+          </Box>
+        )}
 
 
         {/* 🔹 Danh sách học sinh */}
@@ -816,19 +827,24 @@ export default function HocSinh() {
 
         {/* 🔹 Nút quay lại danh sách gần đây nếu đang xem toàn lớp */}
           {showAll && config.hienThiTenGanDay && recentStudents.length > 0 && (
-            <Box sx={{ mt: 3, mb: 3, ml: 15 }}>
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => setShowAll(false)}
-                sx={{
-                  backgroundColor: "#1976d2",
-                  color: "#ffffff",
-                  "&:hover": { backgroundColor: "#1565c0" }
-                }}
-              >
-                Chế độ xem: Gần đây
-              </Button>
+            <Box sx={{ mt: 6, mb: 3, ml: 15 }}>
+              <Tooltip title="Chế độ xem: Gần đây">
+                <IconButton
+                  onClick={() => setShowAll(false)}
+                  sx={{
+                    fontSize: '1.2rem',                 // cỡ icon tương đương cỡ chữ Button trước
+                    padding: '6px 16px',                // giữ padding cân đối
+                    minHeight: '36px',                  // chiều cao cân đối
+                    border: '1px solid',                // viền
+                    borderColor: 'primary.main',        // màu viền xanh primary
+                    borderRadius: '4px',                // bo góc
+                    color: 'primary.main',              // màu icon
+                    '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.1)' }, // hover nhẹ
+                  }}
+                >
+                  <AccessTimeIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
           )}
 
