@@ -15,7 +15,7 @@ import { db } from "./firebase";
 import HocSinh from "./pages/HocSinh";
 import Login from "./pages/Login";
 import QuanTri from "./pages/QuanTri";
-//import QuanTri_KTDK from "./pages/QuanTri_KTDK";
+import QuanTri_KTDK from "./pages/QuanTri_KTDK";
 
 import GiaoVien from "./pages/GiaoVien";
 import TongHopDanhGia from "./pages/TongHopDanhGia";
@@ -297,9 +297,18 @@ function AppContent() {
 
           <Route
             path="/quan-tri"
-            element={isLoggedIn ? <QuanTri /> : <Navigate to="/login" replace />}
+            element={
+              isLoggedIn ? (
+                localStorage.getItem("account") === "Admin" ? (
+                  <QuanTri />
+                ) : (
+                  <QuanTri_KTDK />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
           />
-
 
         </Routes>
       </Box>
