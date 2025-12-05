@@ -1,103 +1,169 @@
 import React from "react";
-import { Box, Paper, IconButton, Typography, Checkbox, Stack } from "@mui/material";
+import { Box, Paper, IconButton, Typography, Checkbox, Stack, Button } from "@mui/material";
 
 const ImageOptions = ({ q, qi, update }) => {
-  const handleImageChange = (file, index) => {
-    const reader = new FileReader();
-    reader.onload = () => {
+
+  // ---- Upload Cloudinary ----
+  const uploadToCloudinary = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "tracnghiem_upload");
+    formData.append("folder", "questions");
+
+    const res = await fetch("https://api.cloudinary.com/v1_1/dxzpfljv4/image/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Upload hình thất bại");
+
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  // ---- Khi chọn hình ----
+  const handleImageChange = async (file, index) => {
+    try {
+      const url = await uploadToCloudinary(file);
+
       const newOptions = [...q.options];
-      newOptions[index] = reader.result;
+      newOptions[index] = url;
+
       update(qi, { options: newOptions });
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      alert("Upload hình thất bại!");
+    }
+  };
+
+  // ---- Thêm ô hình ----
+  const addOption = () => {
+    const newOptions = [...(q.options || []), ""];
+    update(qi, { options: newOptions });
+  };
+
+  // ---- Xoá ô hình (dồn mảng) ----
+  const removeOption = (index) => {
+    const options = q.options || [];
+    const correct = q.correct || [];
+
+    const newOptions = options.filter((_, i) => i !== index);
+
+    // cập nhật correct vì index bị dịch
+    const newCorrect = correct
+      .filter((c) => c !== index)
+      .map((c) => (c > index ? c - 1 : c));
+
+    update(qi, { options: newOptions, correct: newCorrect });
   };
 
   return (
-    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
-      {Array.from({ length: 4 }).map((_, oi) => {
-        const img = q.options?.[oi] || "";
-        const isChecked = q.correct?.includes(oi) || false;
+    <Stack spacing={2} mb={2}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        flexWrap="wrap"
+        alignItems="center"
+      >
+        {(q.options || []).map((img, oi) => {
+          const isChecked = q.correct?.includes(oi) || false;
 
-        return (
-          <Box key={oi} sx={{ position: "relative" }}>
-            <Paper
-              sx={{
-                width: { xs: "80%", sm: 120 },
-                height: { xs: 80, sm: 120 },
-                border: "2px dashed #90caf9",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-              }}
-            >
-              {img ? (
-                <>
-                  <img
-                    src={img}
-                    alt={`option-${oi}`}
-                    style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-                  />
-                  <IconButton
-                    size="small"
-                    sx={{ position: "absolute", top: 2, right: 2 }}
-                    onClick={() => {
-                      const newOptions = [...q.options];
-                      newOptions[oi] = "";
-                      update(qi, { options: newOptions });
+          return (
+            <Box key={oi} sx={{ position: "relative" }}>
+              <Paper
+                sx={{
+                  width: { xs: "80%", sm: 120 },
+                  height: { xs: 80, sm: 120 },
+                  border: "2px dashed #90caf9",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                }}
+              >
+                {img ? (
+                  <>
+                    <img
+                      src={img}
+                      alt={`option-${oi}`}
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                    />
 
-                      const newCorrect = (q.correct || []).filter(c => c !== oi);
-                      update(qi, { correct: newCorrect });
+                    {/* Nút xoá hình & xoá ô */}
+                    <IconButton
+                      size="small"
+                      sx={{ position: "absolute", top: 2, right: 2 }}
+                      onClick={() => removeOption(oi)}
+                    >
+                      ✕
+                    </IconButton>
+                  </>
+                ) : (
+                  // Nút tải hình
+                  <label
+                    style={{
+                      cursor: "pointer",
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    ✕
-                  </IconButton>
-                </>
-              ) : (
-                <label
-                  style={{
-                    cursor: "pointer",
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Typography variant="body2" sx={{ textAlign: "center" }}>
-                    Tải hình lên
-                  </Typography>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: "none" }}
-                    onChange={(e) => e.target.files?.[0] && handleImageChange(e.target.files[0], oi)}
-                  />
-                </label>
-              )}
-            </Paper>
+                    <Typography variant="body2" sx={{ textAlign: "center" }}>
+                      Tải hình lên
+                    </Typography>
 
-            {img && (
-              <Checkbox
-                checked={isChecked}
-                onChange={(e) => {
-                  let newCorrect = [...(q.correct || [])];
-                  if (e.target.checked) newCorrect.push(oi);
-                  else newCorrect = newCorrect.filter((c) => c !== oi);
-                  update(qi, { correct: newCorrect });
-                }}
-                sx={{
-                  position: "absolute",
-                  top: -10,
-                  left: -10,
-                  bgcolor: "background.paper",
-                  borderRadius: "50%",
-                }}
-              />
-            )}
-          </Box>
-        );
-      })}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(e) =>
+                        e.target.files?.[0] &&
+                        handleImageChange(e.target.files[0], oi)
+                      }
+                    />
+                  </label>
+                )}
+              </Paper>
+
+              {/* Checkbox chọn đáp án */}
+              {img && (
+                <Checkbox
+                  checked={isChecked}
+                  onChange={(e) => {
+                    let newCorrect = [...(q.correct || [])];
+                    if (e.target.checked) newCorrect.push(oi);
+                    else newCorrect = newCorrect.filter((c) => c !== oi);
+                    update(qi, { correct: newCorrect });
+                  }}
+                  sx={{
+                    position: "absolute",
+                    top: -10,
+                    left: -10,
+                    bgcolor: "background.paper",
+                    borderRadius: "50%",
+                  }}
+                />
+              )}
+            </Box>
+          );
+        })}
+
+        {/* Nút thêm hình */}
+        <Button
+          variant="outlined"
+          onClick={addOption}
+          sx={{
+            height: 120,
+            width: 120,
+            borderRadius: 2,
+            borderStyle: "dashed",
+          }}
+        >
+          + Thêm hình
+        </Button>
+      </Stack>
     </Stack>
   );
 };
