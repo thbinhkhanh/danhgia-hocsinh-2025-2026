@@ -655,30 +655,29 @@ export default function HocSinh() {
               ))}
             </Box>
 
-            <Box sx={{ mt: 6, ml: 1 }}>
-              <Box sx={{ mt: 6, ml: 1 }}>
-                <Tooltip title="Chế độ xem: Cả lớp">
-                  <IconButton
-                    onClick={() => setShowAll(true)}
-                    sx={{
-                      fontSize: '1.2rem',        // tương đương cỡ chữ Button trước
-                      padding: '6px 16px',       // giữ padding cân đối
-                      minHeight: '36px',
-                      border: '1px solid',       // viền
-                      borderColor: 'primary.main', 
-                      borderRadius: '4px',       // bo góc
-                      color: 'primary.main',     // màu icon
-                      '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.1)' }, // hover nhẹ
-                    }}
-                  >
-                    <GroupIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
+            <Box sx={{ mt: 6, ml: { xs: 0, sm: 1 } }}>
+              <Tooltip title="Chế độ xem: Cả lớp">
+                <IconButton
+                  onClick={() => setShowAll(true)}
+                  sx={{
+                    fontSize: '1.2rem',
+                    padding: '6px 16px',
+                    minHeight: '36px',
+                    border: '1px solid',
+                    borderColor: 'primary.main',
+                    borderRadius: '4px',
+                    color: 'primary.main',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                    },
+                  }}
+                >
+                  <GroupIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
           </Box>
         )}
-
 
         {/* 🔹 Danh sách học sinh */}
         {(!config.hienThiTenGanDay || recentStudents.length === 0 || showAll) && (
@@ -826,27 +825,34 @@ export default function HocSinh() {
         )}
 
         {/* 🔹 Nút quay lại danh sách gần đây nếu đang xem toàn lớp */}
-          {showAll && config.hienThiTenGanDay && recentStudents.length > 0 && (
-            <Box sx={{ mt: 6, mb: 3, ml: 15 }}>
-              <Tooltip title="Chế độ xem: Gần đây">
-                <IconButton
-                  onClick={() => setShowAll(false)}
-                  sx={{
-                    fontSize: '1.2rem',                 // cỡ icon tương đương cỡ chữ Button trước
-                    padding: '6px 16px',                // giữ padding cân đối
-                    minHeight: '36px',                  // chiều cao cân đối
-                    border: '1px solid',                // viền
-                    borderColor: 'primary.main',        // màu viền xanh primary
-                    borderRadius: '4px',                // bo góc
-                    color: 'primary.main',              // màu icon
-                    '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.1)' }, // hover nhẹ
-                  }}
-                >
-                  <AccessTimeIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          )}
+        {showAll && config.hienThiTenGanDay && recentStudents.length > 0 && (
+          <Grid container spacing={2} justifyContent="left" sx={{ mt: 6, mb: 3 }}>
+            
+            {/* Đặt icon vào đúng vị trí của CỘT ĐẦU TIÊN */}
+            <Grid item>
+              <Box sx={{ ml: { xs: 0, sm: 1 } }}>
+                <Tooltip title="Chế độ xem: Gần đây">
+                  <IconButton
+                    onClick={() => setShowAll(false)}
+                    sx={{
+                      fontSize: '1.2rem',
+                      padding: '6px 16px',
+                      minHeight: '36px',
+                      border: '1px solid',
+                      borderColor: 'primary.main',
+                      borderRadius: '4px',
+                      color: 'primary.main',
+                      '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.1)' },
+                    }}
+                  >
+                    <AccessTimeIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Grid>
+          </Grid>
+        )}
+
 
       </Paper>
 
