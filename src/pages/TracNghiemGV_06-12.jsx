@@ -899,24 +899,6 @@ useEffect(() => {
               updateQuestionAt={updateQuestionAt}
               handleDeleteQuestion={handleDeleteQuestion}
               handleImageChange={handleImageChange}
-              saveAllQuestions={() =>
-                saveAllQuestions({
-                  questions,
-                  db,
-                  selectedClass,
-                  selectedSubject,
-                  semester,
-                  schoolYear,
-                  examLetter,
-                  examType,
-                  week: deTuan,
-                  quizConfig,
-                  updateQuizConfig,
-                  setDeTuan,
-                  setSnackbar,
-                  setIsEditingNewDoc,
-                })
-              }
             />
           ))}
         </Stack>
@@ -925,9 +907,9 @@ useEffect(() => {
         {/* Nút thêm câu hỏi + nút lưu đề */}
         <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
           <Button variant="contained" onClick={addQuestion}>Thêm câu hỏi</Button>
-          {/*<Button variant="outlined" color="secondary" onClick={handleSaveAll} disabled={questions.length === 0}>
+          <Button variant="outlined" color="secondary" onClick={handleSaveAll} disabled={questions.length === 0}>
             Lưu đề
-          </Button>*/}
+          </Button>
         </Stack>
 
         {/* DIALOG MỞ ĐỀ */}
