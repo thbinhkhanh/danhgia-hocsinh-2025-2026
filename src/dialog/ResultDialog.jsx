@@ -106,6 +106,8 @@ const ResultDialog = ({
                     ? studentResult?.diem
                     : configData?.baiTapTuan === true
                     ? convertPercentToScore(studentResult?.diemTN)
+                    : configData?.onTap === true
+                    ? studentResult?.diem // 👉 nhánh Ôn tập
                     : ""}
                 </span>
               </Typography>

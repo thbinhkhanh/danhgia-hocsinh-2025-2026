@@ -104,7 +104,7 @@ export const exportQuizPDF = async (
     switch(q.type) {
       case "single":
         q.options.forEach((opt, i) => {
-          const selected = answers[q.id] === i ? "(•)" : "( )";
+          const selected = answers[q.id] === i ? "(●)" : "( )";
           const correctArray = Array.isArray(q.correct) ? q.correct : [q.correct];
           const isCorrect = answers[q.id] === i && correctArray.includes(i);
 
@@ -150,7 +150,7 @@ export const exportQuizPDF = async (
         });
         break;
 
-      case "truefalse": {
+            case "truefalse": {
         const userArray = answers[q.id] || [];
 
         q.options.forEach((opt, i) => {
@@ -190,109 +190,16 @@ export const exportQuizPDF = async (
 
       case "matching":
         const ans = answers[q.id] || [];
-
-        // lineHeight gốc → giảm nhẹ 25% cho khoảng cách gọn hơn
-        const compactLineHeight = lineHeight * 0.75;
-
-        for (let i = 0; i < q.leftOptions.length; i++) {
-          const left = q.leftOptions[i];
+        q.leftOptions.forEach((left, i) => {
           const rightIdx = ans[i];
           const right = rightIdx !== undefined ? q.rightOptions[rightIdx] : "?";
           const isCorrect = rightIdx === q.correct[i];
 
-          const isLeftImage =
-            (typeof left === "object" && left?.url) ||
-            (typeof left === "string" && /^https?:\/\//i.test(left));
+          const line = pdf.splitTextToSize(`${left} → ${right}`, pageWidth - 2 * margin - 10);
+          const optionHeight = line.length * lineHeight;
+          if (y + optionHeight > pageBottom) { pdf.addPage(); y = margin; }
+          pdf.text(line, margin + 5, y);
 
-          let blockHeight = 0;
-
-          /* ========================================================
-            1) LEFT LÀ HÌNH
-          ======================================================== */
-          if (isLeftImage) {
-            const imgSrc = typeof left === "object" ? left.url : left;
-
-            try {
-              const imgBlob = await fetch(imgSrc).then(r => r.blob());
-              const reader = new FileReader();
-
-              const base64 = await new Promise((resolve) => {
-                reader.onload = () => resolve(reader.result);
-                reader.readAsDataURL(imgBlob);
-              });
-
-              // ⭐ GIẢM KÍCH THƯỚC HÌNH CÒN 1/3
-              const imgWidth = 20;
-              const imgHeight = 20;
-
-              // ⭐ GIẢM PADDING DỌC
-              const vPadding = 4;
-
-              if (y + imgHeight + vPadding > pageBottom) {
-                pdf.addPage();
-                y = margin;
-              }
-
-              // Vẽ hình
-              pdf.addImage(base64, "PNG", margin + 5, y, imgWidth, imgHeight);
-
-              // Vẽ mũi tên
-              pdf.text("→", margin + 35, y + imgHeight / 2 + 3);
-
-              // text right
-              const line = pdf.splitTextToSize(
-                `${right}`,
-                pageWidth - margin * 2 - 90
-              );
-
-              pdf.text(line, margin + 50, y + imgHeight / 2 + 3);
-
-              // ⭐ giảm chiều cao block cho sát hình
-              blockHeight = imgHeight + vPadding;
-
-            } catch (err) {
-              // fallback nếu hình lỗi
-              const fallbackLine = pdf.splitTextToSize(
-                `${left} → ${right}`,
-                pageWidth - 2 * margin - 10
-              );
-
-              const optionHeight = fallbackLine.length * compactLineHeight;
-
-              if (y + optionHeight > pageBottom) {
-                pdf.addPage();
-                y = margin;
-              }
-
-              pdf.text(fallbackLine, margin + 5, y);
-              blockHeight = optionHeight;
-            }
-          }
-
-          /* ========================================================
-            2) LEFT LÀ TEXT
-          ======================================================== */
-          else {
-            const line = pdf.splitTextToSize(
-              `${left} → ${right}`,
-              pageWidth - 2 * margin - 10
-            );
-
-            const optionHeight = line.length * compactLineHeight;
-
-            if (y + optionHeight > pageBottom) {
-              pdf.addPage();
-              y = margin;
-            }
-
-            pdf.text(line, margin + 5, y);
-
-            blockHeight = optionHeight;
-          }
-
-          /* ========================================================
-            3) ĐÁNH DẤU ĐÚNG / SAI
-          ======================================================== */
           if (rightIdx !== undefined) {
             if (isCorrect) {
               pdf.setTextColor(0, 128, 0);
@@ -303,15 +210,14 @@ export const exportQuizPDF = async (
             }
             pdf.setTextColor(0, 0, 0);
           } else if (q.correct[i] !== undefined) {
+            // thiếu
             pdf.setTextColor(255, 0, 0);
             pdf.text("✓", margin + 150, y);
             pdf.setTextColor(0, 0, 0);
           }
 
-          /* Sang dòng tiếp */
-          y += blockHeight;
-        }
-
+          y += optionHeight;
+        });
         break;
 
       case "sort": {
@@ -347,7 +253,7 @@ export const exportQuizPDF = async (
 
       case "image":
         let x = margin + 5;
-        const imgSize = 20;
+        const imgSize = 25;
         for (let i = 0; i < q.options.length; i++) {
           const imgUrl = q.options[i];
           const selected = (answers[q.id] || []).includes(i) ? "[x]" : "[ ]";

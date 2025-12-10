@@ -71,6 +71,7 @@ export default function HocSinh() {
         const mon = data.mon || "Tin học";
         const lop = data.lop || "";
         const deTracNghiem = data.deTracNghiem || ""; // 🔹 Thêm dòng này
+        const onTap = data.onTap || false; // 🔹 Thêm dòng này
 
         // 🔹 Cập nhật ConfigContext đầy đủ
         setConfig({ tuan, mon, lop, deTracNghiem });
@@ -413,6 +414,7 @@ export default function HocSinh() {
   if (config.kiemTraDinhKi) return "ktdk";
   if (config.baiTapTuan) return "btt";
   if (config.danhGiaTuan) return "dgt";
+  if (config.onTap) return "ontap";  // 🔹 Nhánh mới
   return "normal";
 };
 
@@ -545,12 +547,14 @@ export default function HocSinh() {
                           (s) => s.maDinhDanh !== student.maDinhDanh
                         );
                         const updated = [student, ...filtered];
-                        localStorage.setItem("recentStudents", JSON.stringify(updated));
+                        const key = `recent_${selectedClass}`;
+                        localStorage.setItem(key, JSON.stringify(updated));
                         return updated;
                       });
 
                       const mode = getMode(config);
 
+                      // ===== BÀI TẬP TUẦN =====
                       if (mode === "btt") {
                         const hsData = weekData?.[student.maDinhDanh];
                         const daLamBai =
@@ -578,6 +582,7 @@ export default function HocSinh() {
                         return;
                       }
 
+                      // ===== KIỂM TRA ĐỊNH KỲ =====
                       if (mode === "ktdk") {
                         const hocKyMap = {
                           "Giữa kỳ I": "GKI",
@@ -596,10 +601,8 @@ export default function HocSinh() {
                         const docRef = doc(db, "KTDK", hocKyFirestore);
                         const docSnap = await getDoc(docRef);
                         const fullData = docSnap.exists() ? docSnap.data() : null;
-                        const hsData =
-                          fullData?.[selectedClass]?.[student.maDinhDanh];
-                        const lyThuyet =
-                          hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
+                        const hsData = fullData?.[selectedClass]?.[student.maDinhDanh];
+                        const lyThuyet = hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
 
                         if (lyThuyet != null) {
                           setDoneStudent({
@@ -622,19 +625,64 @@ export default function HocSinh() {
                         return;
                       }
 
+                      // ===== ĐÁNH GIÁ TUẦN =====
                       if (mode === "dgt") {
-                        // 🔹 Đánh giá tuần: mở dialog và truyền trạng thái hiện tại
                         const currentStatus =
-                          studentStatus && studentStatus[student.maDinhDanh]
+                          studentStatus?.[student.maDinhDanh]
                             ? String(studentStatus[student.maDinhDanh]).trim()
                             : "";
 
                         setExpandedStudent({
                           ...student,
-                          status: currentStatus, // ✅ gắn trạng thái vào expandedStudent
+                          status: currentStatus,
                         });
-
                         return;
+                      }
+
+                      // ===== ÔN TẬP =====
+                      if (mode === "ontap") {
+                        const studentClass = selectedClass;
+                        const classNumber = studentClass.match(/\d+/)?.[0];
+                        const monHoc = config.mon?.trim();
+                        const hocKyMap = {
+                          "Giữa kỳ I": "GKI",
+                          "Cuối kỳ I": "CKI",
+                          "Giữa kỳ II": "GKII",
+                          "Cả năm": "CN",
+                        };
+                        const hocKyCode = hocKyMap[config.hocKy]?.trim();
+
+                        if (!classNumber || !monHoc || !hocKyCode) {
+                          setDoneMessage("⚠️ Thiếu thông tin lớp, môn hoặc học kỳ để mở ôn tập!");
+                          setOpenDoneDialog(true);
+                          return;
+                        }
+
+                        const ontapSnap = await getDocs(collection(db, "TRACNGHIEM_ONTAP"));
+                        const matchedDoc = ontapSnap.docs.find(d =>
+                          d.id.includes(`Lớp ${classNumber}`) &&
+                          d.id.includes(monHoc) &&
+                          d.id.includes(hocKyCode)
+                        );
+
+                        if (!matchedDoc) {
+                          setDoneMessage(`❌ Không tìm thấy đề Ôn tập ${config.hocKy}`);
+                          setOpenDoneDialog(true);
+                          return;
+                        }
+
+                        // 👉 Luôn navigate, không kiểm tra đã làm hay chưa
+                        navigate("/tracnghiem", {
+                          state: {
+                            studentId: student.maDinhDanh,
+                            fullname: student.hoVaTen,
+                            lop: selectedClass,
+                            selectedWeek,
+                            mon: monHoc,
+                            collectionName: "TRACNGHIEM_ONTAP",
+                            docId: matchedDoc.id,
+                          },
+                        });
                       }
 
                       // fallback

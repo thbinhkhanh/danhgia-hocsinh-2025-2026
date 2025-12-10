@@ -156,6 +156,7 @@ useEffect(() => {
         tuan: data.tuan || 1,
         baiTapTuan: data.baiTapTuan || false,
         kiemTraDinhKi: data.kiemTraDinhKi || false,
+        onTap: data.onTap || false, 
         choXemDiem: data.choXemDiem || false,
         choXemDapAn: data.choXemDapAn || false,
         xuatFileBaiLam: data.xuatFileBaiLam || false,
@@ -528,6 +529,8 @@ useEffect(() => {
                       ? "baiTapTuan"
                       : config.kiemTraDinhKi
                       ? "kiemTraDinhKi"
+                      : config.onTap
+                      ? "onTap"
                       : ""
                   }
                   onChange={(e) => {
@@ -536,8 +539,8 @@ useEffect(() => {
                       danhGiaTuan: v === "danhGiaTuan",
                       baiTapTuan: v === "baiTapTuan",
                       kiemTraDinhKi: v === "kiemTraDinhKi",
+                      onTap: v === "onTap", // thêm trạng thái Ôn tập
                     };
-                    // ✅ dùng đúng hàm từ context, không gọi setConfig local
                     setConfig(newState);
                   }}
                 >
@@ -546,19 +549,23 @@ useEffect(() => {
                     control={<Radio color="primary" />}
                     label="Đánh giá tuần"
                   />
-
                   <FormControlLabel
                     value="baiTapTuan"
                     control={<Radio color="primary" />}
                     label="Bài tập tuần"
                   />
-
                   <FormControlLabel
                     value="kiemTraDinhKi"
                     control={<Radio color="primary" />}
                     label="Kiểm tra định kì"
                   />
+                  <FormControlLabel
+                    value="onTap"
+                    control={<Radio color="primary" />}
+                    label="Ôn tập"
+                  />
                 </RadioGroup>
+
 
               </FormControl>
 

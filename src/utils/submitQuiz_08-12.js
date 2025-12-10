@@ -255,28 +255,6 @@ export const handleSubmitQuiz = async ({
         },
         { merge: true }
       );
-    } else if (configData?.onTap === true) {
-      // ❗ NHÁNH ÔN TẬP
-      const collectionRoot = "BINHKHANH_ONTAP";
-      const studentDocId = normalizeName(studentName);
-
-      const docRef = doc(
-        db,
-        `${collectionRoot}/${configData.hocKy}/${studentClass}/${studentDocId}`
-      );
-      await setDoc(
-        docRef,
-        {
-          hoVaTen: capitalizeName(studentName),
-          lop: studentClass,
-          mon: monHoc,
-          diem: total,
-          phanTram,
-          ngayLam: new Date().toLocaleDateString("vi-VN"),
-          thoiGianLamBai: durationStr,
-        },
-        { merge: true }
-      );
     }
 
     // ❗ Nếu là bài tập tuần (DGTX)
