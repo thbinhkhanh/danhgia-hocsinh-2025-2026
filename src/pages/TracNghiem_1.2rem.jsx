@@ -1022,7 +1022,7 @@ return (
                                     fontWeight="400"
                                     sx={{
                                       userSelect: "none",
-                                      fontSize: "1.1rem", // ⭐ Tăng cỡ chữ tại đây
+                                      fontSize: "1.2rem", // ⭐ Tăng cỡ chữ tại đây
                                     }}
                                   >
                                     {currentQuestion.options[optIdx]}
@@ -1131,7 +1131,7 @@ return (
                           <span
                             style={{
                               /* GIỐNG CỘT PHẢI */
-                              fontSize: "1.1rem",
+                              fontSize: "1.2rem",
                               fontWeight: 400,
                               fontFamily: "Arial, Helvetica, sans-serif",
 
@@ -1213,7 +1213,7 @@ return (
                                   textAlign: "center",
 
                                   /* GIỮ NGUYÊN FONT */
-                                  fontSize: "1.1rem",
+                                  fontSize: "1.2rem",
                                   fontWeight: 400,
                                   fontFamily: "Arial, Helvetica, sans-serif",
 
@@ -1359,7 +1359,7 @@ return (
                       variant="body1"
                       sx={{
                         userSelect: "none",
-                        fontSize: "1.1rem", // ⭐ Tăng cỡ chữ tại đây
+                        fontSize: "1.2rem", // ⭐ Tăng cỡ chữ tại đây
                       }}
                     >
                       {currentQuestion.options[optIdx]}
@@ -1441,7 +1441,7 @@ return (
                       variant="body1"
                       sx={{
                         userSelect: "none",
-                        fontSize: "1.1rem", // ⭐ Tăng cỡ chữ tại đây
+                        fontSize: "1.2rem", // ⭐ Tăng cỡ chữ tại đây
                       }}
                     >
                       {currentQuestion.options[optIdx]}
@@ -1510,7 +1510,7 @@ return (
                   >
                     <Typography
                       variant="body1"
-                      sx={{ userSelect: "none", fontSize: "1.1rem" }}
+                      sx={{ userSelect: "none", fontSize: "1.2rem" }}
                     >
                       {opt}
                     </Typography>
@@ -1650,7 +1650,7 @@ return (
                   sx={{
                     width: "100%",
                     lineHeight: 1.6,
-                    fontSize: "1.1rem",   // tăng cỡ chữ lên 1.1rem
+                    fontSize: "1.2rem",   // tăng cỡ chữ lên 1.2rem
                     whiteSpace: "normal", // Cho phép xuống dòng tự nhiên
                     fontFamily: "Roboto, Arial, sans-serif", // đồng bộ phông chữ
                   }}
@@ -1659,7 +1659,7 @@ return (
                     <span key={idx} style={{ display: "inline", fontFamily: "Roboto, Arial, sans-serif" }}>
                       
                       {/* Phần văn bản */}
-                      <span style={{ fontSize: "1.1rem", marginRight: 6, fontFamily: "Roboto, Arial, sans-serif" }}>
+                      <span style={{ fontSize: "1.2rem", marginRight: 6, fontFamily: "Roboto, Arial, sans-serif" }}>
                         {part}
                       </span>
 
@@ -1690,7 +1690,7 @@ return (
                                   borderRadius: 6,
                                   verticalAlign: "middle",
                                   color: color,
-                                  fontSize: "1.1rem",
+                                  fontSize: "1.2rem",
                                   fontFamily: "Roboto, Arial, sans-serif", // đồng bộ phông chữ
                                 }}
                               >
@@ -1706,7 +1706,7 @@ return (
                                           background: "#e3f2fd",
                                           borderRadius: 4,
                                           display: "inline-block",
-                                          fontSize: "1.1rem",
+                                          fontSize: "1.2rem",
                                           color: color,
                                           cursor: "grab",
                                           fontFamily: "Roboto, Arial, sans-serif", // đồng bộ phông chữ
@@ -1729,7 +1729,7 @@ return (
 
                 {/* ======================= KHU VỰC THẺ TỪ ======================= */}
                 <Box sx={{ mt: 2, textAlign: "left" }}>
-                  <Typography sx={{ mb: 1, fontWeight: "bold", fontSize: "1.1rem", fontFamily: "Roboto, Arial, sans-serif" }}>
+                  <Typography sx={{ mb: 1, fontWeight: "bold", fontSize: "1.2rem", fontFamily: "Roboto, Arial, sans-serif" }}>
                     Các từ cần điền:
                   </Typography>
 
@@ -1770,7 +1770,7 @@ return (
                                     justifyContent: "center",
                                     minHeight: 30,
                                     fontFamily: "Roboto, Arial, sans-serif", // đồng bộ phông chữ
-                                    fontSize: "1.1rem", // tăng cỡ chữ
+                                    fontSize: "1.2rem", // tăng cỡ chữ
                                   }}
                                 >
                                   {word}
