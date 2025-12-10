@@ -1022,7 +1022,7 @@ return (
                                     fontWeight="400"
                                     sx={{
                                       userSelect: "none",
-                                      fontSize: "1.2rem", // ⭐ Tăng cỡ chữ tại đây
+                                      fontSize: "1.1rem", // ⭐ Tăng cỡ chữ tại đây
                                     }}
                                   >
                                     {currentQuestion.options[optIdx]}
@@ -1131,7 +1131,7 @@ return (
                           <span
                             style={{
                               /* GIỐNG CỘT PHẢI */
-                              fontSize: "1.2rem",
+                              fontSize: "1.1rem",
                               fontWeight: 400,
                               fontFamily: "Arial, Helvetica, sans-serif",
 
@@ -1213,7 +1213,7 @@ return (
                                   textAlign: "center",
 
                                   /* GIỮ NGUYÊN FONT */
-                                  fontSize: "1.2rem",
+                                  fontSize: "1.1rem",
                                   fontWeight: 400,
                                   fontFamily: "Arial, Helvetica, sans-serif",
 
@@ -1359,7 +1359,7 @@ return (
                       variant="body1"
                       sx={{
                         userSelect: "none",
-                        fontSize: "1.2rem", // ⭐ Tăng cỡ chữ tại đây
+                        fontSize: "1.1rem", // ⭐ Tăng cỡ chữ tại đây
                       }}
                     >
                       {currentQuestion.options[optIdx]}
@@ -1441,7 +1441,7 @@ return (
                       variant="body1"
                       sx={{
                         userSelect: "none",
-                        fontSize: "1.2rem", // ⭐ Tăng cỡ chữ tại đây
+                        fontSize: "1.1rem", // ⭐ Tăng cỡ chữ tại đây
                       }}
                     >
                       {currentQuestion.options[optIdx]}
@@ -1510,7 +1510,7 @@ return (
                   >
                     <Typography
                       variant="body1"
-                      sx={{ userSelect: "none", fontSize: "1.2rem" }}
+                      sx={{ userSelect: "none", fontSize: "1.1rem" }}
                     >
                       {opt}
                     </Typography>
@@ -1650,18 +1650,22 @@ return (
                   sx={{
                     width: "100%",
                     lineHeight: 1.6,
-                    fontSize: "1.2rem",   // tăng cỡ chữ lên 1.2rem
-                    whiteSpace: "normal", // Cho phép xuống dòng tự nhiên
-                    fontFamily: "Roboto, Arial, sans-serif", // đồng bộ phông chữ
+                    fontSize: "1.1rem",
+                    whiteSpace: "normal",
+                    fontFamily: "Roboto, Arial, sans-serif",
                   }}
                 >
                   {currentQuestion.option.split("[...]").map((part, idx) => (
                     <span key={idx} style={{ display: "inline", fontFamily: "Roboto, Arial, sans-serif" }}>
                       
                       {/* Phần văn bản */}
-                      <span style={{ fontSize: "1.2rem", marginRight: 6, fontFamily: "Roboto, Arial, sans-serif" }}>
+                      <Typography
+                        component="span"                 // chuyển thành span để inline
+                        variant="body1"
+                        sx={{ mr: 0.5, lineHeight: 1.5, fontSize: "1.1rem" }}
+                      >
                         {part}
-                      </span>
+                      </Typography>
 
                       {/* Chỗ trống */}
                       {idx < currentQuestion.option.split("[...]").length - 1 && (
@@ -1677,48 +1681,56 @@ return (
                                 : "#000";
 
                             return (
-                              <span
+                              <Box
+                                component="span"          // span để inline
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
-                                style={{
-                                  display: "inline-block",
+                                sx={{
+                                  display: "inline-flex", // giữ cùng dòng
+                                  alignItems: "baseline", // căn với baseline của text
+                                  justifyContent: "center",
                                   minWidth: 80,
-                                  minHeight: 36,
-                                  padding: "4px 6px",
-                                  marginRight: 6,
+                                  maxWidth: 300,
+                                  // bỏ minHeight lớn và margin-bottom gây vỡ dòng
+                                  px: 1,
                                   border: "1px dashed #90caf9",
-                                  borderRadius: 6,
-                                  verticalAlign: "middle",
+                                  borderRadius: 1,
+                                  fontFamily: "Roboto, Arial, sans-serif",
+                                  fontSize: "1.1rem",
+                                  lineHeight: "normal",
                                   color: color,
-                                  fontSize: "1.2rem",
-                                  fontFamily: "Roboto, Arial, sans-serif", // đồng bộ phông chữ
+                                  verticalAlign: "baseline",
                                 }}
                               >
                                 {userWord && (
                                   <Draggable draggableId={`filled-${idx}`} index={0}>
                                     {(prov) => (
-                                      <div
+                                      <Paper
                                         ref={prov.innerRef}
                                         {...prov.draggableProps}
                                         {...prov.dragHandleProps}
-                                        style={{
-                                          padding: "4px 10px",
-                                          background: "#e3f2fd",
-                                          borderRadius: 4,
-                                          display: "inline-block",
-                                          fontSize: "1.2rem",
-                                          color: color,
+                                        sx={{
+                                          px: 2,
+                                          py: 0.5,
+                                          bgcolor: "#e3f2fd",
                                           cursor: "grab",
-                                          fontFamily: "Roboto, Arial, sans-serif", // đồng bộ phông chữ
+                                          fontFamily: "Roboto, Arial, sans-serif",
+                                          fontSize: "1.1rem",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          minHeight: 30,
+                                          maxWidth: "100%",
+                                          color: color,
                                         }}
                                       >
                                         {userWord}
-                                      </div>
+                                      </Paper>
                                     )}
                                   </Draggable>
                                 )}
                                 {provided.placeholder}
-                              </span>
+                              </Box>
                             );
                           }}
                         </Droppable>
@@ -1729,7 +1741,7 @@ return (
 
                 {/* ======================= KHU VỰC THẺ TỪ ======================= */}
                 <Box sx={{ mt: 2, textAlign: "left" }}>
-                  <Typography sx={{ mb: 1, fontWeight: "bold", fontSize: "1.2rem", fontFamily: "Roboto, Arial, sans-serif" }}>
+                  <Typography sx={{ mb: 1, fontWeight: "bold", fontSize: "1.1rem", fontFamily: "Roboto, Arial, sans-serif" }}>
                     Các từ cần điền:
                   </Typography>
 
@@ -1769,8 +1781,8 @@ return (
                                     alignItems: "center",
                                     justifyContent: "center",
                                     minHeight: 30,
-                                    fontFamily: "Roboto, Arial, sans-serif", // đồng bộ phông chữ
-                                    fontSize: "1.2rem", // tăng cỡ chữ
+                                    fontFamily: "Roboto, Arial, sans-serif",
+                                    fontSize: "1.1rem",
                                   }}
                                 >
                                   {word}

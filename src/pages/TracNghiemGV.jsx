@@ -300,7 +300,7 @@ useEffect(() => {
     option: "",               // riêng cho fillblank (câu hỏi có [...])
     type: "single",           // mặc định: 1 lựa chọn
     options: ["", "", "", ""],// luôn có mảng options
-    score: 1,
+    score: 0.5,
     correct: [],              // đáp án đúng
     sortType: "fixed",        // cho loại sort
     pairs: [],                // cho loại matching
