@@ -28,6 +28,8 @@ import TracNghiem from "./pages/TracNghiem";
 import TracNghiemGV from "./pages/TracNghiemGV";
 //import TracNghiemGV_TN from "./pages/TracNghiemGV_TN";
 import DeThi from "./pages/DeThi";
+import TracNghiemTest from "./pages/TracNghiem_Test";
+
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
@@ -102,7 +104,7 @@ function AppContent() {
 
 
   // ✅ Danh sách menu
-  const navItems1 = [
+  /*const navItems1 = [
     { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
     ...(isLoggedIn
       ? [          
@@ -115,12 +117,13 @@ function AppContent() {
           { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
           { path: "/tracnghiem", label: "Trắc nghiệm", icon: <SchoolIcon fontSize="small" /> },  
           { path: "/tracnghiem-gv", label: "Soạn đề", icon: <MenuBookIcon fontSize="small" /> },
+          { path: "/tracnghiem-test", label: "Test đề", icon: <MenuBookIcon fontSize="small" /> },
           { path: "/de-thi", label: "Đề thi", icon: <MenuBookIcon fontSize="small" /> },
           { path: "/quan-tri", label: "Hệ thống", icon: <SettingsIcon fontSize="small" /> },
           { label: "Đăng xuất", onClick: handleLogout, icon: <LogoutIcon fontSize="small" /> },
         ]
       : [{ path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> }]),
-  ];
+  ];*/
 
   const navItems = [
     { path: "/hocsinh", label: "Học sinh" },
@@ -133,8 +136,9 @@ function AppContent() {
           { path: "/ketqua", label: "Kết quả" },
           { path: "/thongke", label: "Thống kê" },
           { path: "/danhsach", label: "Danh sách" },
-          { path: "/tracnghiem", label: "Trắc nghiệm" },
+          //{ path: "/tracnghiem", label: "Trắc nghiệm" },
           { path: "/tracnghiem-gv", label: "Soạn đề" },
+          { path: "/tracnghiem-test", label: "Test đề" }, 
           { path: "/de-thi", label: "Đề thi" },
           { path: "/quan-tri", label: "Hệ thống" },
           { label: "Đăng xuất", onClick: handleLogout }
@@ -294,6 +298,11 @@ function AppContent() {
               )
             }
           />
+          <Route
+            path="/tracnghiem-test"
+            element={isLoggedIn ? <TracNghiemTest /> : <Navigate to="/login" replace />}
+          />
+
           <Route
             path="/de-thi"
             element={isLoggedIn ? <DeThi /> : <Navigate to="/login" replace />}
