@@ -773,16 +773,16 @@ return (
         borderRadius: 3,
         width: "100%",
         maxWidth: 1000,
-        minWidth: { xs: "auto", sm: 700 },
-        minHeight: 650,           // <-- chiều cao tối thiểu
+        minWidth: { xs: "auto", sm: 700 },   // sửa minWidth giống mẫu
+        minHeight: { xs: "auto", sm: 650 },  // sửa minHeight giống mẫu
         display: "flex",
         flexDirection: "column",
+        gap: 2,
         position: "relative",
         boxSizing: "border-box",
-        backgroundColor: "#fff",
+        backgroundColor: "#fff",             // thêm nền trắng giống mẫu
       }}
     >
-
       {/* Nút thoát */}
       <Tooltip title="Thoát trắc nghiệm" arrow>
         <IconButton
@@ -1810,10 +1810,13 @@ return (
           justifyContent="space-between"
           alignItems="center"
           sx={{
-            position: "absolute",   // ghim tuyệt đối trong Paper
-            bottom: 30,             // cách cạnh dưới 16px
-            left: 30,
-            right: 30,
+            position: { xs: "static", sm: "absolute" }, // mobile: theo luồng, desktop: ghim tuyệt đối
+            bottom: { sm: 30 },                         // desktop: cách đáy 30px
+            left: { sm: 30 },
+            right: { sm: 30 },
+            mt: { xs: 2, sm: 0 },                       // mobile: cách option phía trên
+            mb: { xs: 2, sm: 0 },                       // mobile: cách cạnh dưới thêm khoảng trống
+            //px: { xs: 2, sm: 0 },                       // mobile: thêm padding ngang nếu muốn
           }}
         >
           <Button
