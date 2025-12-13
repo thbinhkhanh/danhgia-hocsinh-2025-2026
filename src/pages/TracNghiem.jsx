@@ -773,15 +773,16 @@ return (
         borderRadius: 3,
         width: "100%",
         maxWidth: 1000,
-        minWidth: { xs: "auto", sm: 600 },
-        minHeight: { xs: "auto", sm: 500 },
+        minWidth: { xs: "auto", sm: 700 },
+        minHeight: 650,           // <-- chiều cao tối thiểu
         display: "flex",
         flexDirection: "column",
-        gap: 2,
         position: "relative",
         boxSizing: "border-box",
+        backgroundColor: "#fff",
       }}
     >
+
       {/* Nút thoát */}
       <Tooltip title="Thoát trắc nghiệm" arrow>
         <IconButton
@@ -1802,55 +1803,63 @@ return (
         </>
       )}
 
-      {/* Nút điều hướng và bắt đầu/nộp bài */}
-      <Stack direction="column" sx={{ width: "100%", mt: 3 }} spacing={0}>
-        {started && !loading && (
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
+      {/* Nút điều hướng luôn cố định ở đáy Paper */}
+      {started && !loading && (
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{
+            position: "absolute",   // ghim tuyệt đối trong Paper
+            bottom: 30,             // cách cạnh dưới 16px
+            left: 30,
+            right: 30,
+          }}
+        >
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            sx={{
+              width: { xs: "150px", sm: "150px" },
+              bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
+              borderRadius: 1,
+              color: "#0d47a1",
+              "&:hover": { bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9" },
+            }}
+          >
+            Câu trước
+          </Button>
+
+          {currentIndex < questions.length - 1 ? (
             <Button
               variant="outlined"
-              startIcon={<ArrowBackIcon />}
-              onClick={handlePrev}
-              disabled={currentIndex === 0}
+              endIcon={<ArrowForwardIcon />}
+              onClick={handleNext}
               sx={{
                 width: { xs: "150px", sm: "150px" },
-                bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
+                bgcolor: "#bbdefb",
                 borderRadius: 1,
                 color: "#0d47a1",
-                "&:hover": { bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9" },
+                "&:hover": { bgcolor: "#90caf9" },
               }}
             >
-              Câu trước
+              Câu sau
             </Button>
-
-            {currentIndex < questions.length - 1 ? (
-              <Button
-                variant="outlined"
-                endIcon={<ArrowForwardIcon />}
-                onClick={handleNext}
-                sx={{
-                  width: { xs: "150px", sm: "150px" },
-                  bgcolor: "#bbdefb",
-                  borderRadius: 1,
-                  color: "#0d47a1",
-                  "&:hover": { bgcolor: "#90caf9" },
-                }}
-              >
-                Câu sau
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSubmit}
-                disabled={submitted || isEmptyQuestion}
-                sx={{ width: { xs: "120px", sm: "150px" }, borderRadius: 1 }}
-              >
-                Nộp bài
-              </Button>
-            )}
-          </Stack>
-        )}
-      </Stack>
+          ) : (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSubmit}
+              disabled={submitted || isEmptyQuestion}
+              sx={{ width: { xs: "120px", sm: "150px" }, borderRadius: 1 }}
+            >
+              Nộp bài
+            </Button>
+          )}
+        </Stack>
+      )}
 
       {notFoundMessage && (
         <Card
