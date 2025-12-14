@@ -781,6 +781,7 @@ return (
         position: "relative",
         boxSizing: "border-box",
         backgroundColor: "#fff",             // thêm nền trắng giống mẫu
+        pb: 3,
       }}
     >
       {/* Nút thoát */}
@@ -907,7 +908,7 @@ return (
           </Box>
         </Box>
       )}
-
+      
       {/* KHU VỰC HIỂN THỊ CÂU HỎI */}
       {!loading && currentQuestion && (
         <>
@@ -1804,19 +1805,16 @@ return (
       )}
 
       {/* Nút điều hướng luôn cố định ở đáy Paper */}
+      <Box sx={{ flexGrow: 1 }} />
       {started && !loading && (
         <Stack
           direction="row"
           justifyContent="space-between"
           alignItems="center"
           sx={{
-            position: { xs: "static", sm: "absolute" }, // mobile: theo luồng, desktop: ghim tuyệt đối
-            bottom: { sm: 30 },                         // desktop: cách đáy 30px
-            left: { sm: 30 },
-            right: { sm: 30 },
-            mt: { xs: 2, sm: 0 },                       // mobile: cách option phía trên
-            mb: { xs: 2, sm: 0 },                       // mobile: cách cạnh dưới thêm khoảng trống
-            //px: { xs: 2, sm: 0 },                       // mobile: thêm padding ngang nếu muốn
+            position: "static",  // luôn theo luồng, nằm dưới option cuối
+            mt: 2,               // cách option phía trên
+            mb: { xs: "20px", sm: "5px" },               
           }}
         >
           <Button
@@ -1863,6 +1861,7 @@ return (
           )}
         </Stack>
       )}
+
 
       {notFoundMessage && (
         <Card
