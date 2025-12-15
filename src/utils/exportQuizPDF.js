@@ -316,29 +316,47 @@ export const exportQuizPDF = async (
 
       case "sort": {
         const userOrder = answers[q.id] || [];
-        const userTexts = userOrder.map((idx) => q.options[idx]);
         const correctTexts = q.correctTexts || [];
 
-        userTexts.forEach((text, i) => {
+        // Nếu có tương tác thì lấy theo thứ tự userOrder, ngược lại lấy nguyên options gốc
+        const displayOptions =
+          userOrder.length > 0
+            ? userOrder.map((idx) => q.options[idx])
+            : q.options;
+
+        displayOptions.forEach((text, i) => {
+          // Nếu có tương tác thì so sánh với đáp án, ngược lại luôn coi là "thiếu"
           const isCorrect =
-            correctTexts.length === userTexts.length &&
+            userOrder.length > 0 &&
+            correctTexts.length === displayOptions.length &&
             text === correctTexts[i];
 
-          const line = pdf.splitTextToSize(`${i + 1}. ${text}`, pageWidth - 2 * margin - 10);
+          const line = pdf.splitTextToSize(
+            `${i + 1}. ${text}`,
+            pageWidth - 2 * margin - 10
+          );
           const optionHeight = line.length * lineHeight;
-          if (y + optionHeight > pageBottom) { pdf.addPage(); y = margin; }
+          if (y + optionHeight > pageBottom) {
+            pdf.addPage();
+            y = margin;
+          }
           pdf.text(line, margin + 5, y);
 
           if (userOrder.length > 0) {
+            // có tương tác → đánh dấu đúng/sai
             if (isCorrect) {
-              pdf.setTextColor(0, 128, 0);
+              pdf.setTextColor(0, 128, 0); // xanh lá
               pdf.text("✓", margin + 150, y);
             } else {
-              pdf.setTextColor(255, 0, 0);
+              pdf.setTextColor(255, 0, 0); // đỏ
               pdf.text("✗", margin + 150, y);
             }
-            pdf.setTextColor(0, 0, 0);
+          } else {
+            // không tương tác → luôn đánh dấu tick màu đỏ
+            pdf.setTextColor(255, 0, 0);
+            pdf.text("✓", margin + 150, y);
           }
+          pdf.setTextColor(0, 0, 0);
 
           y += optionHeight;
         });

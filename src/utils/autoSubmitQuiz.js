@@ -53,6 +53,7 @@ export const autoSubmitQuiz = async ({
     setSaving(true);
 
     // --- Tính điểm thô ---
+    setSaving(true);
     let total = 0;
     questions.forEach(q => {
       const rawAnswer = answers[q.id];
@@ -64,7 +65,9 @@ export const autoSubmitQuiz = async ({
 
       } else if (q.type === "multiple" || q.type === "image") {
         const userSet = new Set(Array.isArray(rawAnswer) ? rawAnswer : []);
-        const correctSet = new Set(Array.isArray(q.correct) ? q.correct : [q.correct]);
+        const correctSet = new Set(
+          Array.isArray(q.correct) ? q.correct : [q.correct]
+        );
         if (
           userSet.size === correctSet.size &&
           [...correctSet].every(x => userSet.has(x))
@@ -75,25 +78,37 @@ export const autoSubmitQuiz = async ({
         const userOrder = Array.isArray(rawAnswer) ? rawAnswer : [];
         const userTexts = userOrder.map(idx => q.options[idx]);
         const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
+
         const isCorrect =
           userTexts.length === correctTexts.length &&
           userTexts.every((t, i) => t === correctTexts[i]);
+
         if (isCorrect) total += q.score ?? 1;
 
       } else if (q.type === "matching") {
         const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
         const correctArray = Array.isArray(q.correct) ? q.correct : [];
-        const isCorrect =
-          userArray.length === correctArray.length &&
-          userArray.every((val, i) => val === correctArray[i]);
-        if (isCorrect) total += q.score ?? 1;
 
+        let isCorrect = false;
+
+        if (userArray.length > 0) {
+          // Người dùng có sắp xếp → so sánh trực tiếp
+          isCorrect =
+            userArray.length === correctArray.length &&
+            userArray.every((val, i) => val === correctArray[i]);
+        }
+        // Nếu userArray.length === 0 → không tương tác → không cộng điểm
+
+        if (isCorrect) total += q.score ?? 1;
       } else if (q.type === "truefalse") {
         const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
         const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
         if (userArray.length === correctArray.length) {
           const isAllCorrect = userArray.every((val, i) => {
-            const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
+            const originalIdx = Array.isArray(q.initialOrder)
+              ? q.initialOrder[i]
+              : i;
             return val === correctArray[originalIdx];
           });
           if (isAllCorrect) total += q.score ?? 1;
@@ -102,9 +117,12 @@ export const autoSubmitQuiz = async ({
       } else if (q.type === "fillblank") {
         const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
         const correctAnswers = Array.isArray(q.options) ? q.options : [];
-        if (correctAnswers.length > 0 && userAnswers.length === correctAnswers.length) {
-          const isAllCorrect = correctAnswers.every((correct, i) =>
-            userAnswers[i] && userAnswers[i].trim() === correct.trim()
+
+        if (userAnswers.length === correctAnswers.length) {
+          const isAllCorrect = correctAnswers.every(
+            (correct, i) =>
+              userAnswers[i] &&
+              userAnswers[i].trim() === correct.trim()
           );
           if (isAllCorrect) total += q.score ?? 1;
         }

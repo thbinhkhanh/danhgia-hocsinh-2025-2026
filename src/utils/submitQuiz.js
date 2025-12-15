@@ -110,11 +110,18 @@ export const handleSubmitQuiz = async ({
       } else if (q.type === "matching") {
         const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
         const correctArray = Array.isArray(q.correct) ? q.correct : [];
-        const isCorrect =
-          userArray.length === correctArray.length &&
-          userArray.every((val, i) => val === correctArray[i]);
-        if (isCorrect) total += q.score ?? 1;
 
+        let isCorrect = false;
+
+        if (userArray.length > 0) {
+          // Người dùng có sắp xếp → so sánh trực tiếp
+          isCorrect =
+            userArray.length === correctArray.length &&
+            userArray.every((val, i) => val === correctArray[i]);
+        }
+        // Nếu userArray.length === 0 → không tương tác → không cộng điểm
+
+        if (isCorrect) total += q.score ?? 1;
       } else if (q.type === "truefalse") {
         const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
         const correctArray = Array.isArray(q.correct) ? q.correct : [];

@@ -179,6 +179,21 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
     });
   };
 
+  // Hàm shuffleUntilDifferent: đảo mảng cho đến khi khác ít nhất 1 phần tử so với gốc
+  function shuffleUntilDifferent(items) {
+    if (!Array.isArray(items) || items.length === 0) return items;
+    let shuffled = [...items];
+    let attempts = 0;
+    do {
+      shuffled = shuffleArray([...items]);
+      attempts++;
+    } while (
+      shuffled.every((item, idx) => item.idx === items[idx].idx) &&
+      attempts < 100
+    );
+    return shuffled;
+  }
+
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
@@ -406,9 +421,12 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
               return p.left ?? "";
             });
 
-            // giữ nguyên logic của bạn bên phải
+            // cột phải: đảo cho đến khi khác ít nhất 1 phần tử
             const rightOptionsOriginal = pairs.map((p, idx) => ({ opt: p.right, idx }));
-            const processedRightOptions = shuffleArray(rightOptionsOriginal);
+            const processedRightOptions =
+              q.sortType === "shuffle"
+                ? shuffleUntilDifferent(rightOptionsOriginal)
+                : rightOptionsOriginal;
 
             const originalRightIndexMap = {};
             processedRightOptions.forEach((item, newIndex) => {
@@ -426,7 +444,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
               leftOptions,
               rightOptions: processedRightOptions.map(i => i.opt),
               correct: newCorrect,
-              score: q.score ?? 1
+              score: q.score ?? 1,
             };
           }
 
@@ -437,7 +455,13 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
               : ["", "", "", ""];
 
             const indexed = options.map((opt, idx) => ({ opt, idx }));
-            const processed = q.sortType === "shuffle" ? shuffleArray(indexed) : indexed;
+
+            // Nếu sortType là "shuffle" thì đảo, nếu là "fixed" thì giữ nguyên
+            const processed =
+              q.sortType === "shuffle"
+                ? shuffleUntilDifferent(indexed)
+                : indexed;
+
             const shuffledOptions = processed.map(i => i.opt);
 
             return {
@@ -446,10 +470,10 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
               type,
               question: questionText,
               image: q.image ?? null,
-              options: shuffledOptions,                    // hiển thị theo shuffle
-              initialSortOrder: processed.map(i => i.idx), // thứ tự index sau shuffle
+              options: shuffledOptions,                    // hiển thị theo shuffle hoặc giữ nguyên
+              initialSortOrder: processed.map(i => i.idx), // thứ tự index sau shuffle/giữ nguyên
               correctTexts: options,                       // đáp án đúng: text gốc Firestore
-              score: q.score ?? 1
+              score: q.score ?? 1,
             };
           }
 
