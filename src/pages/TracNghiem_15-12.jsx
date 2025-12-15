@@ -1091,18 +1091,18 @@ return (
 
                     const imgSrc = typeof left === "object" ? left?.url : left;
 
-                    // Chiều cao đồng bộ với cột phải
-                    const matchedHeight = isImage ? { xs: 60, sm: 90 } : { xs: 48, sm: 48 };
+                    // giảm kích thước cell
+                    const height = isImage ? { xs: 60, sm: 90 } : { xs: 40, sm: 44 };
 
                     return (
                       <Paper
                         key={i}
                         sx={{
                           width: "100%",
-                          minHeight: matchedHeight,   // ⭐ luôn dùng matchedHeight
-                          height: matchedHeight,      // ⭐ đồng bộ với cột phải
+                          minHeight: height,
+                          height: height,
                           px: 0.5,
-                          py: 0.5,
+                          py: isImage ? 0.5 : 0.5,
 
                           display: "flex",
                           alignItems: "center",
@@ -1132,9 +1132,11 @@ return (
                         ) : (
                           <span
                             style={{
+                              /* GIỐNG CỘT PHẢI */
                               fontSize: "1.1rem",
                               fontWeight: 400,
                               fontFamily: "Arial, Helvetica, sans-serif",
+
                               wordBreak: "break-word",
                               whiteSpace: "normal",
                               padding: "4px 2px",
@@ -1144,6 +1146,7 @@ return (
                           >
                             {left}
                           </span>
+
                         )}
                       </Paper>
                     );
