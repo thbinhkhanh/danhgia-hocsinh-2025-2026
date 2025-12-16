@@ -1833,11 +1833,14 @@ return (
           justifyContent="space-between"
           alignItems="center"
           sx={{
-            position: "static",  // luôn theo luồng, nằm dưới option cuối
-            mt: 2,               // cách option phía trên
-            mb: { xs: "20px", sm: "5px" },               
+            position: "static",
+            mt: 2,                     // cách option phía trên
+            pt: 2,                     // ⬅⬅⬅ KHOẢNG CÁCH GIỮA GẠCH & NÚT
+            mb: { xs: "20px", sm: "5px" },
+            borderTop: "1px solid #e0e0e0",
           }}
         >
+
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
