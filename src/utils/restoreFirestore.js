@@ -2,47 +2,53 @@ import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
 /**
- * Hàm phục hồi toàn bộ dữ liệu từ file JSON, với progress callback
- * @param {File} file - file JSON backup
- * @param {function} onProgress - callback nhận giá trị 0-100 để cập nhật thanh tiến trình
+ * Phục hồi dữ liệu từ file JSON backup theo tùy chọn
+ * @param {File} file
+ * @param {string[]} selectedCollections - các collection được chọn để phục hồi
+ * @param {function} onProgress callback 0–100
  */
-export const restoreAllFromJson = async (file, onProgress) => {
+export const restoreAllFromJson = async (file, selectedCollections, onProgress) => {
   try {
     const text = await file.text();
     const data = JSON.parse(text);
 
-    const collections = Object.keys(data);
+    const QUIZ_ARRAY = [
+      "BAITAP_TUAN",
+      "TRACNGHIEM_BK",
+      "TRACNGHIEM_LVB",
+    ];
+
+    // Lọc collection có trong file và được chọn
+    const collections = Object.keys(data).filter(c => selectedCollections.includes(c));
+
     let progressCount = 0;
+    const progressStep = Math.floor(100 / collections.length);
 
-    for (let colIndex = 0; colIndex < collections.length; colIndex++) {
-      const colName = collections[colIndex];
-
+    for (const colName of collections) {
       // --------------------------------------------
-      // ✅ 1. PHỤC HỒI các collection dạng quiz (TRACNGHIEM, BAITAP_TUAN, TRACNGHIEM_BK, DETHI_BK)
+      // 1️⃣ QUIZ (questions là array trong document)
       // --------------------------------------------
-      if (["TRACNGHIEM", "BAITAP_TUAN", "TRACNGHIEM_BK", "DETHI_BK"].includes(colName)) {
-        const quizDocs = data[colName] || {};
-        const quizIds = Object.keys(quizDocs);
-        const totalQuiz = quizIds.length;
+      if (QUIZ_ARRAY.includes(colName)) {
+        const docs = data[colName] || {};
+        const ids = Object.keys(docs);
+        const total = ids.length;
 
-        for (let i = 0; i < totalQuiz; i++) {
-          const quizId = quizIds[i];
-          const quizData = quizDocs[quizId];
-
-          await setDoc(doc(db, colName, quizId), quizData, { merge: true });
+        for (let i = 0; i < total; i++) {
+          const id = ids[i];
+          await setDoc(doc(db, colName, id), docs[id], { merge: true });
 
           if (onProgress) {
-            const progressStep = ((i + 1) / totalQuiz) * 10; // mỗi collection quiz chiếm ~10%
-            onProgress(Math.min(Math.round(progressCount + progressStep), 99));
+            const step = ((i + 1) / total) * progressStep;
+            onProgress(Math.min(Math.round(progressCount + step), 99));
           }
         }
 
-        progressCount += 10;
+        progressCount += progressStep;
         continue;
       }
 
       // --------------------------------------------
-      // ✅ 2. PHỤC HỒI DGTX (nhiều cấp)
+      // 2️⃣ DGTX (nhiều cấp)
       // --------------------------------------------
       if (colName === "DGTX") {
         const classes = Object.keys(data.DGTX || {});
@@ -51,79 +57,77 @@ export const restoreAllFromJson = async (file, onProgress) => {
         for (let i = 0; i < totalClasses; i++) {
           const lopId = classes[i];
           const tuanData = data.DGTX[lopId]?.tuan || {};
+          const tuanIds = Object.keys(tuanData);
 
-          const tuanKeys = Object.keys(tuanData);
-          if (tuanKeys.length === 0) continue;
-
-          await Promise.all(
-            tuanKeys.map(async (tuanId) => {
-              const weekContent = tuanData[tuanId];
-              const tuanRef = doc(db, "DGTX", lopId, "tuan", tuanId);
-              await setDoc(tuanRef, weekContent, { merge: true });
-            })
-          );
+          for (const tuanId of tuanIds) {
+            await setDoc(
+              doc(db, "DGTX", lopId, "tuan", tuanId),
+              tuanData[tuanId],
+              { merge: true }
+            );
+          }
 
           if (onProgress) {
-            const dgtxProgress = ((i + 1) / totalClasses) * 70; // DGTX chiếm 70%
-            onProgress(Math.min(Math.round(progressCount + dgtxProgress), 99));
+            const step = ((i + 1) / totalClasses) * progressStep;
+            onProgress(Math.min(Math.round(progressCount + step), 99));
           }
         }
 
-        progressCount += 70;
+        progressCount += progressStep;
         continue;
       }
 
       // --------------------------------------------
-      // ✅ 3. PHỤC HỒI KTDK (cấu trúc đặc biệt)
+      // 3️⃣ KTDK
       // --------------------------------------------
       if (colName === "KTDK") {
-        const hocKyDocs = data.KTDK || {};
-        const hocKyIds = Object.keys(hocKyDocs);
-        const totalHocKy = hocKyIds.length;
+        const docs = data.KTDK || {};
+        const ids = Object.keys(docs);
+        const total = ids.length;
 
-        for (let i = 0; i < totalHocKy; i++) {
-          const hocKyId = hocKyIds[i];
-          const hocKyData = hocKyDocs[hocKyId];
-
-          await setDoc(doc(db, "KTDK", hocKyId), hocKyData, { merge: true });
+        for (let i = 0; i < total; i++) {
+          const id = ids[i];
+          await setDoc(doc(db, "KTDK", id), docs[id], { merge: true });
 
           if (onProgress) {
-            const ktProgress = ((i + 1) / totalHocKy) * 10;
-            onProgress(Math.min(Math.round(progressCount + ktProgress), 99));
+            const step = ((i + 1) / total) * progressStep;
+            onProgress(Math.min(Math.round(progressCount + step), 99));
           }
         }
 
-        progressCount += 10;
+        progressCount += progressStep;
         continue;
       }
 
       // --------------------------------------------
-      // ✅ 4. PHỤC HỒI các collection đơn giản: DANHSACH, CONFIG
+      // 4️⃣ DANHSACH, CONFIG (collection phẳng)
       // --------------------------------------------
-      const docs = data[colName] || {};
-      const docIds = Object.keys(docs);
-      const totalDocs = docIds.length;
+      if (["DANHSACH", "CONFIG"].includes(colName)) {
+        const docs = data[colName] || {};
+        const ids = Object.keys(docs);
+        const total = ids.length;
 
-      for (let j = 0; j < totalDocs; j++) {
-        const id = docIds[j];
-        await setDoc(doc(db, colName, id), docs[id], { merge: true });
+        for (let i = 0; i < total; i++) {
+          const id = ids[i];
+          await setDoc(doc(db, colName, id), docs[id], { merge: true });
 
-        if (onProgress && totalDocs > 0) {
-          const otherProgress =
-            ((j + 1) / totalDocs) * (20 / (collections.length - 2)); // chia cho phần còn lại
-          onProgress(Math.min(Math.round(progressCount + otherProgress), 99));
+          if (onProgress) {
+            const step = ((i + 1) / total) * progressStep;
+            onProgress(Math.min(Math.round(progressCount + step), 99));
+          }
         }
-      }
 
-      progressCount += 20 / (collections.length - 2);
+        progressCount += progressStep;
+        continue;
+      }
     }
 
     if (onProgress) onProgress(100);
-    console.log("✅ Đã phục hồi dữ liệu thành công!");
+    console.log("✅ Phục hồi dữ liệu hoàn tất!");
     return true;
 
   } catch (err) {
-    console.error("❌ Lỗi khi phục hồi backup:", err);
+    console.error("❌ Lỗi khi phục hồi:", err);
     return false;
   }
 };

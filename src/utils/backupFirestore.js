@@ -1,161 +1,111 @@
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 
 /**
- * Lấy toàn bộ dữ liệu backup: DANHSACH, CONFIG, KTDK, DGTX, TRACNGHIEM, BAITAP_TUAN, TRACNGHIEM_BK, DETHI_BK
- * @param {function} onProgress - callback nhận giá trị 0-100 để cập nhật thanh tiến trình
- * @returns {object} backupData - dữ liệu backup đầy đủ
+ * Lấy dữ liệu backup theo tùy chọn
+ * @param {function} onProgress - callback 0–100
+ * @param {string[]} selectedCollections - các collection được chọn để backup
+ * @returns {object} backupData
  */
-export const fetchAllBackup = async (onProgress) => {
+export const fetchAllBackup = async (onProgress, selectedCollections) => {
   try {
     const backupData = {
       DANHSACH: {},
       CONFIG: {},
       KTDK: {},
       DGTX: {},
-      TRACNGHIEM: {},
-      BAITAP_TUAN: {},   // ✅ thêm mới
-      TRACNGHIEM_BK: {}, // ✅ thêm mới
-      DETHI_BK: {},      // ✅ thêm mới
+      BAITAP_TUAN: {},
+      TRACNGHIEM_BK: {},
+      TRACNGHIEM_LVB: {},
     };
 
-    const collections = [
-      "DANHSACH",
-      "CONFIG",
-      "KTDK",
-      "DGTX",
-      "TRACNGHIEM",
-      "BAITAP_TUAN",
-      "TRACNGHIEM_BK",
-      "DETHI_BK"
-    ];
+    const QUIZ_ARRAY = ["BAITAP_TUAN", "TRACNGHIEM_BK", "TRACNGHIEM_LVB"];
+
+    if (!selectedCollections || selectedCollections.length === 0) {
+      console.warn("⚠️ Không có collection nào được chọn để backup");
+      return {};
+    }
+
     let progressCount = 0;
+    const progressStep = Math.floor(100 / selectedCollections.length);
 
-    for (const colName of collections) {
-      // ----------------------------------------
-      // ✅ 1. Các collection dạng quiz (TRACNGHIEM, BAITAP_TUAN, TRACNGHIEM_BK, DETHI_BK)
-      // ----------------------------------------
-      if (["TRACNGHIEM", "BAITAP_TUAN", "TRACNGHIEM_BK", "DETHI_BK"].includes(colName)) {
+    for (const colName of selectedCollections) {
+      // 1️⃣ QUIZ: questions nằm trong document
+      if (QUIZ_ARRAY.includes(colName)) {
         const snap = await getDocs(collection(db, colName));
-        const ids = snap.docs.map(d => d.id);
-        const total = ids.length;
+        snap.forEach(d => {
+          backupData[colName][d.id] = d.data();
+        });
 
-        for (let i = 0; i < total; i++) {
-          const id = ids[i];
-          const docSnap = await getDoc(doc(db, colName, id));
-          if (docSnap.exists()) {
-            backupData[colName][id] = docSnap.data();
-          }
-
-          if (onProgress) {
-            const progressStep = Math.round(((i + 1) / total) * 10);
-            const overallProgress = Math.round(progressCount + progressStep);
-            onProgress(Math.min(overallProgress, 99));
-          }
-        }
-
-        progressCount += 10;
+        progressCount += progressStep;
+        if (onProgress) onProgress(Math.min(progressCount, 99));
         continue;
       }
 
-      // ----------------------------------------
-      // ✅ 2. Xử lý DGTX (nhiều cấp)
-      // ----------------------------------------
+      // 2️⃣ DGTX (nhiều cấp)
       if (colName === "DGTX") {
         const classSnap = await getDocs(collection(db, "DANHSACH"));
         const classIds = classSnap.docs.map(d => d.id);
         const classIdsWithCN = [...classIds, ...classIds.map(id => `${id}_CN`)];
 
-        const totalClasses = classIdsWithCN.length;
-
-        for (let j = 0; j < totalClasses; j++) {
-          const lopId = classIdsWithCN[j];
+        for (const lopId of classIdsWithCN) {
           const tuanSnap = await getDocs(collection(db, "DGTX", lopId, "tuan"));
-
           if (!tuanSnap.empty) {
             backupData.DGTX[lopId] = { tuan: {} };
-
-            await Promise.all(
-              tuanSnap.docs.map(async (tuanDoc) => {
-                const tuanId = tuanDoc.id;
-                const tuanDataSnap = await getDoc(doc(db, "DGTX", lopId, "tuan", tuanId));
-                if (tuanDataSnap.exists()) {
-                  backupData.DGTX[lopId]["tuan"][tuanId] = tuanDataSnap.data();
-                }
-              })
-            );
-          }
-
-          if (onProgress) {
-            const dgtxProgress = Math.round(((j + 1) / totalClasses) * 70);
-            const overallProgress = Math.round(progressCount + dgtxProgress * (30 / 70));
-            onProgress(Math.min(overallProgress, 99));
+            tuanSnap.forEach(t => {
+              backupData.DGTX[lopId].tuan[t.id] = t.data();
+            });
           }
         }
 
-        progressCount += 70;
-        continue;
-      }
-
-      // ----------------------------------------
-      // ✅ 3. Xử lý KTDK (cấu trúc đặc biệt)
-      // ----------------------------------------
-      if (colName === "KTDK") {
-        const snap = await getDocs(collection(db, "KTDK"));
-        for (const docSnap of snap.docs) {
-          const hocKyId = docSnap.id;
-          const hocKyData = docSnap.data();
-          backupData.KTDK[hocKyId] = hocKyData;
-        }
-        progressCount += 10;
+        progressCount += progressStep;
         if (onProgress) onProgress(Math.min(progressCount, 99));
         continue;
       }
 
-      // ----------------------------------------
-      // ✅ 4. Các collection đơn giản (DANHSACH, CONFIG)
-      // ----------------------------------------
-      const snap = await getDocs(collection(db, colName));
-      snap.forEach(docSnap => {
-        backupData[colName][docSnap.id] = docSnap.data();
-      });
+      // 3️⃣ KTDK
+      if (colName === "KTDK") {
+        const snap = await getDocs(collection(db, "KTDK"));
+        snap.forEach(d => {
+          backupData.KTDK[d.id] = d.data();
+        });
 
-      progressCount += 10;
-      if (onProgress) onProgress(Math.min(progressCount, 99));
+        progressCount += progressStep;
+        if (onProgress) onProgress(Math.min(progressCount, 99));
+        continue;
+      }
+
+      // 4️⃣ Collection phẳng khác (DANHSACH, CONFIG)
+      if (["DANHSACH", "CONFIG"].includes(colName)) {
+        const snap = await getDocs(collection(db, colName));
+        snap.forEach(d => {
+          backupData[colName][d.id] = d.data();
+        });
+
+        progressCount += progressStep;
+        if (onProgress) onProgress(Math.min(progressCount, 99));
+        continue;
+      }
     }
 
-    // Lọc lớp DGTX không có dữ liệu
-    Object.keys(backupData.DGTX).forEach(lopId => {
-      const tuan = backupData.DGTX[lopId]?.tuan;
-      if (!tuan || Object.keys(tuan).length === 0) {
-        delete backupData.DGTX[lopId];
-      }
-    });
+    // Lọc DGTX rỗng nếu được backup
+    if (selectedCollections.includes("DGTX")) {
+      Object.keys(backupData.DGTX).forEach(lopId => {
+        if (
+          !backupData.DGTX[lopId]?.tuan ||
+          Object.keys(backupData.DGTX[lopId].tuan).length === 0
+        ) {
+          delete backupData.DGTX[lopId];
+        }
+      });
+    }
 
     if (onProgress) onProgress(100);
-    console.log("✅ Đã tổng hợp đầy đủ dữ liệu backup!");
+    console.log("✅ Backup hoàn tất");
     return backupData;
 
   } catch (err) {
-    console.error("❌ Lỗi khi fetch backup:", err);
+    console.error("❌ Lỗi khi backup:", err);
     return {};
   }
-};
-
-/**
- * Xuất dữ liệu backup ra file JSON
- * @param {object} data - dữ liệu backup
- */
-export const exportBackupToJson = (data) => {
-  if (!data || Object.keys(data).length === 0) {
-    console.warn("⚠️ Không có dữ liệu để xuất");
-    return;
-  }
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `backup_full_${new Date().toISOString()}.json`;
-  a.click();
 };
