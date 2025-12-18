@@ -322,35 +322,70 @@ export default function TongHopKQ() {
   return (
     <Box sx={{ minHeight: "100vh", background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)", pt: 3, px: 2, display: "flex", justifyContent: "center" }}>
       <Paper sx={{ p: 4, borderRadius: 3, width: "100%", maxWidth: 900, bgcolor: "white" }} elevation={6}>
+        <Box
+          sx={{
+            position: "relative",
+            mb: 2,
+          }}
+        >
+          {/* ICONS – luôn căn trái */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-start",
+            }}
+          >
+            <Stack direction="row" spacing={1}>
+              <Tooltip title="Xuất Excel">
+                <IconButton onClick={handleExportExcel} color="primary">
+                  <FileDownload />
+                </IconButton>
+              </Tooltip>
 
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <Stack direction="row" spacing={1}>
-            <Tooltip title="Xuất Excel">
-              <IconButton onClick={handleExportExcel} color="primary">
-                <FileDownload />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Xóa lớp">
-              <IconButton onClick={handleDeleteClass} color="error" disabled={deleting}>
-                <Delete />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Xóa toàn trường">
-              <IconButton
-                onClick={handleDeleteSchool}
-                sx={{
-                  color: "#d32f2f",
-                }}
-              >
-                <DeleteForeverIcon />
-              </IconButton>
-            </Tooltip>
-          </Stack>
+              <Tooltip title="Xóa lớp">
+                <IconButton
+                  onClick={handleDeleteClass}
+                  color="error"
+                  disabled={deleting}
+                >
+                  <Delete />
+                </IconButton>
+              </Tooltip>
 
-          <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2", flexGrow: 1, textAlign: "center" }}>
+              <Tooltip title="Xóa toàn trường">
+                <IconButton
+                  onClick={handleDeleteSchool}
+                  sx={{ color: "#d32f2f" }}
+                >
+                  <DeleteForeverIcon />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </Box>
+
+          {/* TIÊU ĐỀ */}
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            sx={{
+              color: "#1976d2",
+
+              // 📱 Mobile: xuống dòng, căn giữa
+              textAlign: "center",
+              mt: 1,
+
+              // 🖥 Desktop: căn giữa tuyệt đối
+              position: { md: "absolute" },
+              left: { md: "50%" },
+              transform: { md: "translateX(-50%)" },
+              top: { md: 0 },
+            }}
+          >
             KẾT QUẢ KIỂM TRA
           </Typography>
         </Box>
+
 
         <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap", justifyContent: "center" }}>
           <TextField
@@ -454,98 +489,97 @@ export default function TongHopKQ() {
             {snackbarMessage}
           </Alert>
         </Snackbar>
-
-
+        
         <Dialog
-  open={dialogOpen}
-  onClose={(_, reason) => {
-    if (reason === "backdropClick" || reason === "escapeKeyDown") return;
-    setDialogOpen(false);
-  }}
-  maxWidth="xs"
-  fullWidth
-  PaperProps={{
-    sx: {
-      borderRadius: 3,
-      p: 3,
-      bgcolor: "#fff",
-      boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
-    },
-  }}
->
-  {/* Header */}
-  <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-    <Box
-      sx={{
-        bgcolor: "#42a5f5",
-        color: "#fff",
-        borderRadius: "50%",
-        width: 36,
-        height: 36,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        mr: 1.5,
-        fontWeight: "bold",
-        fontSize: 18,
-      }}
-    >
-      ❓
-    </Box>
+          open={dialogOpen}
+          onClose={(_, reason) => {
+            if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+            setDialogOpen(false);
+          }}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              p: 3,
+              bgcolor: "#fff",
+              boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
+            },
+          }}
+        >
+          {/* Header */}
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <Box
+              sx={{
+                bgcolor: "#42a5f5",
+                color: "#fff",
+                borderRadius: "50%",
+                width: 36,
+                height: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mr: 1.5,
+                fontWeight: "bold",
+                fontSize: 18,
+              }}
+            >
+              ❓
+            </Box>
 
-    <DialogTitle
-      sx={{
-        p: 0,
-        fontWeight: "bold",
-        color: "#1565c0",
-        flex: 1,
-      }}
-    >
-      {dialogTitle}
-    </DialogTitle>
+            <DialogTitle
+              sx={{
+                p: 0,
+                fontWeight: "bold",
+                color: "#1565c0",
+                flex: 1,
+              }}
+            >
+              {dialogTitle}
+            </DialogTitle>
 
-    {/* Nút đóng */}
-    <IconButton
-      onClick={() => setDialogOpen(false)}
-      sx={{
-        ml: "auto",
-        color: "#f44336",
-        "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
-      }}
-    >
-      <CloseIcon />
-    </IconButton>
-  </Box>
+            {/* Nút đóng */}
+            <IconButton
+              onClick={() => setDialogOpen(false)}
+              sx={{
+                ml: "auto",
+                color: "#f44336",
+                "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
 
-  {/* Nội dung */}
-  <DialogContent dividers>
-    <Typography
-      sx={{
-        fontSize: 16,
-        color: "#333",
-        whiteSpace: "pre-line",
-        mb: 2, // ✅ chỉ tăng khoảng cách text ↔ divider
-      }}
-    >
-      {dialogContent}
-    </Typography>
-  </DialogContent>
+          {/* Nội dung */}
+          <DialogContent dividers>
+            <Typography
+              sx={{
+                fontSize: 16,
+                color: "#333",
+                whiteSpace: "pre-line",
+                mb: 2, // ✅ chỉ tăng khoảng cách text ↔ divider
+              }}
+            >
+              {dialogContent}
+            </Typography>
+          </DialogContent>
 
-  {/* Actions */}
-  <DialogActions>
-    <Button onClick={() => setDialogOpen(false)}>
-      Hủy
-    </Button>
-    <Button
-      variant="contained"
-      color="primary"
-      onClick={dialogAction}
-      sx={{ fontWeight: "bold" }}
-    >
-      Xác nhận
-    </Button>
-  </DialogActions>
-</Dialog>
+          {/* Actions */}
+          <DialogActions>
+            <Button onClick={() => setDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={dialogAction}
+              sx={{ fontWeight: "bold" }}
+            >
+              Xác nhận
+            </Button>
+          </DialogActions>
+        </Dialog>
 
 
       </Paper>
