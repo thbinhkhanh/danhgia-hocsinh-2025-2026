@@ -255,11 +255,14 @@ function AppContent() {
       {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
         <Routes>
+          {/* 🔹 Mặc định mở trang Ôn tập */}
+          <Route path="/" element={<Navigate to="/tracnghiem-ontap" replace />} />
+
           <Route path="/tracnghiem-ontap" element={<TracNghiem_OnTap />} />
-          <Route path="/" element={<Navigate to="/hocsinh" replace />} />
           <Route path="/hocsinh" element={<HocSinh />} />
           <Route path="/tracnghiem" element={<TracNghiem />} />
           <Route path="/login" element={<Login />} />
+
           <Route
             path="/danhsach"
             element={isLoggedIn ? <DanhSachHS /> : <Navigate to="/login" replace />}
@@ -284,7 +287,6 @@ function AppContent() {
             path="/ketqua"
             element={isLoggedIn ? <TongHopKQ /> : <Navigate to="/login" replace />}
           />
-
           <Route
             path="/thongke"
             element={isLoggedIn ? <ThongKe /> : <Navigate to="/login" replace />}
@@ -292,31 +294,27 @@ function AppContent() {
           <Route
             path="/tracnghiem-gv"
             element={
-              isLoggedIn ? (
-                //account === "Admin" ? <TracNghiemGV /> : <TracNghiemGV_TN />
-                account === "Admin" ? <TracNghiemGV /> : <TracNghiemGV />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              isLoggedIn
+                ? account === "Admin"
+                  ? <TracNghiemGV />
+                  : <TracNghiemGV />
+                : <Navigate to="/login" replace />
             }
           />
           <Route
             path="/tracnghiem-test"
             element={isLoggedIn ? <TracNghiemTest /> : <Navigate to="/login" replace />}
           />
-
           <Route
             path="/de-thi"
             element={isLoggedIn ? <DeThi /> : <Navigate to="/login" replace />}
           />
-
           <Route
             path="/quan-tri"
             element={isLoggedIn ? <QuanTri /> : <Navigate to="/login" replace />}
           />
-
-
         </Routes>
+
       </Box>
     </>
   );
