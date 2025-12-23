@@ -655,11 +655,9 @@ export default function TracNghiem_OnTap() {
       const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
 
       // Gọi export PDF
-      //exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
-      // ⬅️ Chỉ xuất file nếu được bật
-      if (xuatFileBaiLam === true) {
+      /*if (xuatFileBaiLam === true) {
         exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
-      }
+      }*/
 
       // Ngày theo định dạng Việt Nam
       const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
@@ -797,12 +795,9 @@ export default function TracNghiem_OnTap() {
       const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
 
       // Gọi export PDF
-      //exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
-      // ⬅️ Chỉ xuất file nếu được bật
-      if (xuatFileBaiLam === true) {
+      /*if (xuatFileBaiLam === true) {
         exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
-      }
-
+      */
 
       // Ngày theo định dạng Việt Nam
       const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
