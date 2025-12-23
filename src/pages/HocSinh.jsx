@@ -74,7 +74,15 @@ export default function HocSinh() {
         const onTap = data.onTap || false; // 🔹 Thêm dòng này
 
         // 🔹 Cập nhật ConfigContext đầy đủ
-        setConfig({ tuan, mon, lop, deTracNghiem });
+        setConfig(prev =>
+          prev.tuan === tuan &&
+          prev.mon === mon &&
+          prev.lop === lop &&
+          prev.deTracNghiem === deTracNghiem
+            ? prev
+            : { ...prev, tuan, mon, lop, deTracNghiem }
+        );
+
 
         // 🔹 Cập nhật local state
         setSelectedWeek(tuan);
@@ -280,89 +288,81 @@ export default function HocSinh() {
 
 
   useEffect(() => {
-  if (!expandedStudent?.maDinhDanh || !selectedClass) return;
+    if (!expandedStudent?.maDinhDanh || !selectedClass) return;
 
-  // Nếu là kiểm tra định kỳ → ưu tiên loại này
-  if (config?.kiemTraDinhKi === true) {
-    const hocKy = config?.hocKy || "GKI";
+    const fetchStatus = async () => {
+      try {
+        // ========================
+        // 🔴 KIỂM TRA ĐỊNH KỲ
+        // ========================
+        if (config?.kiemTraDinhKi) {
+          const hocKy = config?.hocKy || "GKI";
+          const classKey =
+            config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
 
-    const classKey =
-      config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+          const ref = doc(
+            db,
+            `KTDK/${hocKy}/${classKey}/${expandedStudent.maDinhDanh}`
+          );
 
-    const ktdkRef = doc(
-      db,
-      `KTDK/${hocKy}/${classKey}/${expandedStudent.maDinhDanh}`
-    );
+          const snap = await getDoc(ref);
+          if (!snap.exists()) {
+            setStudentStatus(prev => ({
+              ...prev,
+              [expandedStudent.maDinhDanh]: ""
+            }));
+            return;
+          }
 
-    const unsubscribe = onSnapshot(ktdkRef, (docSnap) => {
-      if (!docSnap.exists()) {
-        setStudentStatus((prev) => ({
-          ...prev,
-          [expandedStudent.maDinhDanh]: ""
-        }));
-        return;
-      }
-
-      const data = docSnap.data();
-      const lyThuyet = data?.lyThuyet ?? null;
-
-      const status = lyThuyet !== null ? "ĐÃ LÀM KIỂM TRA" : "";
-
-      setStudentStatus((prev) => ({
-        ...prev,
-        [expandedStudent.maDinhDanh]: status
-      }));
-    });
-
-    return () => unsubscribe();
-  }
-
-  // ========================
-  // 🟢 BÀI TẬP TUẦN – DGTX
-  // ========================
-  if (config?.baiTapTuan === true) {
-    if (!selectedWeek) return;
-
-    const classKey =
-      config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-
-    const tuanRef = doc(
-      db,
-      `DGTX/${classKey}/tuan/tuan_${selectedWeek}`
-    );
-
-    const unsubscribe = onSnapshot(
-      tuanRef,
-      (docSnap) => {
-        if (!docSnap.exists()) return;
-
-        const record = docSnap.data()?.[expandedStudent.maDinhDanh];
-        const currentStatus = record?.status || "";
-
-        setStudentStatus((prev) => {
-          if (prev[expandedStudent.maDinhDanh] === currentStatus) return prev;
-          return {
+          const lyThuyet = snap.data()?.lyThuyet ?? null;
+          setStudentStatus(prev => ({
             ...prev,
-            [expandedStudent.maDinhDanh]: currentStatus,
-          };
-        });
-      },
-      (error) => {
-        console.error("❌ Lỗi khi lắng nghe đánh giá realtime:", error);
-      }
-    );
+            [expandedStudent.maDinhDanh]:
+              lyThuyet !== null ? "ĐÃ LÀM KIỂM TRA" : ""
+          }));
+          return;
+        }
 
-    return () => unsubscribe();
-  }
-}, [
-  expandedStudent?.maDinhDanh,
-  selectedClass,
-  selectedWeek,
-  config?.mon,
-  config?.baiTapTuan,
-  config?.kiemTraDinhKi,
-  config?.hocKy,
-]);
+        // ========================
+        // 🟢 BÀI TẬP TUẦN – DGTX
+        // ========================
+        if (config?.baiTapTuan && selectedWeek) {
+          const classKey =
+            config?.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+
+          const ref = doc(
+            db,
+            `DGTX/${classKey}/tuan/tuan_${selectedWeek}`
+          );
+
+          const snap = await getDoc(ref);
+          if (!snap.exists()) return;
+
+          const record = snap.data()?.[expandedStudent.maDinhDanh];
+          const status = record?.status || "";
+
+          setStudentStatus(prev =>
+            prev[expandedStudent.maDinhDanh] === status
+              ? prev
+              : { ...prev, [expandedStudent.maDinhDanh]: status }
+          );
+        }
+      } catch (err) {
+        console.error("❌ Lỗi tải trạng thái học sinh:", err);
+      }
+    };
+
+    fetchStatus();
+  }, [
+    expandedStudent?.maDinhDanh,
+    selectedClass,
+    selectedWeek,
+    config?.mon,
+    config?.baiTapTuan,
+    config?.kiemTraDinhKi,
+    config?.hocKy,
+  ]);
+
 
 
   const statusColors = {
@@ -727,37 +727,26 @@ const handleLoaiHoatDongChange = async (e) => {
 
                       // ===== ÔN TẬP =====
                       if (mode === "ontap") {
-                        const studentClass = selectedClass;
-                        const classNumber = studentClass.match(/\d+/)?.[0];
+                        const classNumber = selectedClass.match(/\d+/)?.[0];
                         const monHoc = config.mon?.trim();
+
                         const hocKyMap = {
                           "Giữa kỳ I": "GKI",
                           "Cuối kỳ I": "CKI",
                           "Giữa kỳ II": "GKII",
                           "Cả năm": "CN",
                         };
-                        const hocKyCode = hocKyMap[config.hocKy]?.trim();
+                        const hocKyCode = hocKyMap[config.hocKy];
 
                         if (!classNumber || !monHoc || !hocKyCode) {
-                          setDoneMessage("⚠️ Thiếu thông tin lớp, môn hoặc học kỳ để mở ôn tập!");
+                          setDoneMessage("⚠️ Thiếu thông tin để mở Ôn tập");
                           setOpenDoneDialog(true);
                           return;
                         }
 
-                        const ontapSnap = await getDocs(collection(db, "TRACNGHIEM_ONTAP"));
-                        const matchedDoc = ontapSnap.docs.find(d =>
-                          d.id.includes(`Lớp ${classNumber}`) &&
-                          d.id.includes(monHoc) &&
-                          d.id.includes(hocKyCode)
-                        );
+                        // ✅ ID đề Ôn tập XÁC ĐỊNH – không quét collection
+                        const docId = `ONTAP_L${classNumber}_${monHoc}_${hocKyCode}`;
 
-                        if (!matchedDoc) {
-                          setDoneMessage(`❌ Không tìm thấy đề Ôn tập ${config.hocKy}`);
-                          setOpenDoneDialog(true);
-                          return;
-                        }
-
-                        // 👉 Luôn navigate, không kiểm tra đã làm hay chưa
                         navigate("/tracnghiem", {
                           state: {
                             studentId: student.maDinhDanh,
@@ -766,10 +755,13 @@ const handleLoaiHoatDongChange = async (e) => {
                             selectedWeek,
                             mon: monHoc,
                             collectionName: "TRACNGHIEM_ONTAP",
-                            docId: matchedDoc.id,
+                            docId,
                           },
                         });
+
+                        return; // 🚫 chặn fallback
                       }
+
 
                       // fallback
                       setExpandedStudent(student);
