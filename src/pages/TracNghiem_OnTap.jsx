@@ -59,7 +59,7 @@ function shuffleArray(array) {
   return arr;
 }
 
-export default function TracNghiem_Test() {
+export default function TracNghiem_OnTap() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -156,14 +156,21 @@ export default function TracNghiem_Test() {
         const colName = school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
         const colRef = collection(db, colName);
         const snapshot = await getDocs(colRef);
-        const exams = snapshot.docs.map(d => d.id);
+
+        // Lọc bỏ những đề có "(C)" ở cuối
+        const exams = snapshot.docs
+            .map(d => d.id)
+            .filter(id => !/\(C\)$/.test(id));
 
         setExamList(exams);
 
-        // Nếu selectedExam hiện tại không hợp lệ, set mặc định là exam đầu tiên
-        if (!selectedExam || !exams.includes(selectedExam)) {
-            if (exams.length > 0) setSelectedExam(exams[0]);
+        // ✅ Giữ selectedExam rỗng khi load
+        if (selectedExam === undefined || selectedExam === null) {
+            setSelectedExam("");
+        } else if (selectedExam && !exams.includes(selectedExam)) {
+            setSelectedExam(""); // reset nếu exam hiện tại không còn trong list
         }
+
         } catch (error) {
         console.error("Lỗi tải danh sách đề:", error);
         setExamList([]);
@@ -172,7 +179,9 @@ export default function TracNghiem_Test() {
     };
 
     fetchExams();
-  }, [school]); // chạy lại khi school thay đổi
+ }, [school]);
+
+
 
   // ⭐ RESET TOÀN BỘ SAU KHI CHỌN ĐỀ MỚI
   useEffect(() => {
@@ -995,31 +1004,31 @@ return (
             color: "#1976d2", // màu xanh
           }}
         >
-          TEST ĐỀ KIỂM TRA
+          ÔN TẬP
         </Typography>
 
         {/* Ô chọn đề */}
         <FormControl fullWidth size="small" sx={{ mb: -2 }}>
-          <InputLabel
+            <InputLabel
             id="exam-select-label"
             sx={{ fontSize: "16px", fontWeight: "bold" }}
-          >
+            >
             Chọn đề
-          </InputLabel>
+            </InputLabel>
 
-          <Select
+            <Select
             labelId="exam-select-label"
             value={selectedExam}
             label="Chọn đề"
             onChange={(e) => setSelectedExam(e.target.value)}
             sx={{ fontSize: "16px", fontWeight: 500 }}
-          >
+            >
             {examList.map((exam) => (
-              <MenuItem key={exam} value={exam} sx={{ fontSize: "16px" }}>
+                <MenuItem key={exam} value={exam} sx={{ fontSize: "16px" }}>
                 {exam}
-              </MenuItem>
+                </MenuItem>
             ))}
-          </Select>
+            </Select>
         </FormControl>
       </Box>
 

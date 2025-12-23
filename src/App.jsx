@@ -29,7 +29,7 @@ import TracNghiemGV from "./pages/TracNghiemGV";
 //import TracNghiemGV_TN from "./pages/TracNghiemGV_TN";
 import DeThi from "./pages/DeThi";
 import TracNghiemTest from "./pages/TracNghiem_Test";
-
+import TracNghiem_OnTap from "./pages/TracNghiem_OnTap"; // Thêm vào các import page
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
@@ -126,7 +126,8 @@ function AppContent() {
   ];*/
 
   const navItems = [
-    { path: "/hocsinh", label: "Học sinh" },
+    { path: "/tracnghiem-ontap", label: "Ôn tập" }, // thêm vào đầu menu
+    /*{ path: "/hocsinh", label: "Học sinh" },*/
     ...(isLoggedIn
       ? [                     
           { path: "/giaovien", label: "Đánh giá" },
@@ -254,6 +255,7 @@ function AppContent() {
       {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
         <Routes>
+          <Route path="/tracnghiem-ontap" element={<TracNghiem_OnTap />} />
           <Route path="/" element={<Navigate to="/hocsinh" replace />} />
           <Route path="/hocsinh" element={<HocSinh />} />
           <Route path="/tracnghiem" element={<TracNghiem />} />

@@ -441,39 +441,27 @@ const handleClassChange = (e) => {
 };
 
 const handleLoaiHoatDongChange = async (e) => {
-  const value = e.target.value;
+  const value = e.target.value; // "A" hoặc "B"
 
+  // 🔹 Cập nhật config local
   const newConfig = {
     ...config,
-
-    // ❌ TẮT TOÀN BỘ 4 CỜ
-    baiTapTuan: false,
-    danhGiaTuan: false,
-    kiemTraDinhKi: false,
-    onTap: false,
-
-    // ✅ BẬT ĐÚNG THEO SELECT
-    ...(value === "onTap" && { onTap: true }),
-    ...(value === "kiemTraDinhKi" && { kiemTraDinhKi: true }),
+    de: value,  // lưu đề A/B
   };
 
-  // 1️⃣ UI đổi ngay
   setConfig(newConfig);
 
-  // 2️⃣ Firestore (ghi đủ 4 cờ)
-  await setDoc(
-    doc(db, "CONFIG", "config"),
-    {
-      baiTapTuan: newConfig.baiTapTuan,
-      danhGiaTuan: newConfig.danhGiaTuan,
-      kiemTraDinhKi: newConfig.kiemTraDinhKi,
-      onTap: newConfig.onTap,
-    },
-    { merge: true }
-  );
+  // 🔹 Cập nhật Firestore
+  try {
+    await setDoc(
+      doc(db, "CONFIG", "config"),
+      { de: value },
+      { merge: true }
+    );
+  } catch (err) {
+    console.error("❌ Lỗi cập nhật Đề:", err);
+  }
 };
-
-
 
   return (
     <Box
@@ -546,20 +534,14 @@ const handleLoaiHoatDongChange = async (e) => {
           <InputLabel>Loại</InputLabel>
           <Select
             label="Loại"
-            value={
-              config.onTap
-                ? "onTap"
-                : config.kiemTraDinhKi
-                ? "kiemTraDinhKi"
-                : ""
-            }
+            value={config.de === "A" ? "A" : config.de === "B" ? "B" : ""}
             onChange={handleLoaiHoatDongChange}
           >
-            <MenuItem value="onTap">Ôn tập</MenuItem>
-            <MenuItem value="kiemTraDinhKi">KTĐK</MenuItem>
+            <MenuItem value="A">Đề A</MenuItem>
+            <MenuItem value="B">Đề B</MenuItem>
           </Select>
-
         </FormControl>
+
           
           
           {/* 🔹 Môn (chỉ hiển thị) */}
@@ -627,25 +609,23 @@ const handleLoaiHoatDongChange = async (e) => {
                   }}
                   onClick={async () => {
                     try {
-                      // --- Cập nhật recentStudents khi click ---
-                      setRecentStudents((prev) => {
-                        const filtered = prev.filter(
-                          (s) => s.maDinhDanh !== student.maDinhDanh
-                        );
-                        const updated = [student, ...filtered];
-                        const key = `recent_${selectedClass}`;
-                        localStorage.setItem(key, JSON.stringify(updated));
-                        return updated;
+                      const mode = getMode(config);
+                      console.log("[List] Click:", {
+                        mode,
+                        id: student.maDinhDanh,
+                        name: student.hoVaTen,
                       });
 
-                      const mode = getMode(config);
-
-                      // ===== BÀI TẬP TUẦN =====
+                      // =========================
+                      // 🔹 BÀI TẬP TUẦN
+                      // =========================
                       if (mode === "btt") {
                         const hsData = weekData?.[student.maDinhDanh];
                         const daLamBai =
                           hsData?.diemTracNghiem !== undefined &&
                           hsData?.diemTracNghiem !== null;
+
+                        console.log("[BTT] hsData:", hsData, "daLamBai:", daLamBai);
 
                         if (daLamBai) {
                           setDoneStudent({
@@ -668,36 +648,70 @@ const handleLoaiHoatDongChange = async (e) => {
                         return;
                       }
 
-                      // ===== KIỂM TRA ĐỊNH KỲ =====
-                      if (mode === "ktdk") {
+                      // =========================
+                      // 🔹 KTDK + ÔN TẬP (CHUNG)
+                      // =========================
+                      if (mode === "ktdk" || mode === "ontap") {
                         const hocKyMap = {
                           "Giữa kỳ I": "GKI",
                           "Cuối kỳ I": "CKI",
                           "Giữa kỳ II": "GKII",
                           "Cả năm": "CN",
                         };
-                        const hocKyFirestore = hocKyMap[config.hocKy];
 
-                        if (!hocKyFirestore) {
+                        const hocKyCode = hocKyMap[config.hocKy];
+                        console.log(`[${mode.toUpperCase()}] hocKy:`, config.hocKy, "=>", hocKyCode);
+
+                        if (!hocKyCode) {
                           setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
                           setOpenDoneDialog(true);
                           return;
                         }
 
-                        const docRef = doc(db, "KTDK", hocKyFirestore);
-                        const docSnap = await getDoc(docRef);
-                        const fullData = docSnap.exists() ? docSnap.data() : null;
-                        const hsData = fullData?.[selectedClass]?.[student.maDinhDanh];
-                        const lyThuyet = hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
+                        let collectionName;
+                        let docId;
 
-                        if (lyThuyet != null) {
-                          setDoneStudent({
-                            hoVaTen: hsData?.hoVaTen ?? student.hoVaTen,
-                            diemTN: lyThuyet,
-                          });
-                          setOpenDoneDialog(true);
-                          return;
+                        if (mode === "ktdk") {
+                          collectionName = "KTDK";
+                          docId = hocKyCode;
+
+                          // 🔹 kiểm tra đã làm (chỉ KTDK)
+                          const docRef = doc(db, "KTDK", hocKyCode);
+                          const docSnap = await getDoc(docRef);
+                          const fullData = docSnap.exists() ? docSnap.data() : null;
+                          const hsData = fullData?.[selectedClass]?.[student.maDinhDanh];
+                          const lyThuyet = hsData?.lyThuyet ?? hsData?.LyThuyet ?? null;
+
+                          console.log("[KTDK] hsData:", hsData, "lyThuyet:", lyThuyet);
+
+                          if (lyThuyet != null) {
+                            setDoneStudent({
+                              hoVaTen: hsData?.hoVaTen ?? student.hoVaTen,
+                              diemTN: lyThuyet,
+                            });
+                            setOpenDoneDialog(true);
+                            return;
+                          }
+                        } else {
+                          // 🔹 ÔN TẬP
+                          const classNumber = selectedClass.match(/\d+/)?.[0];
+                          const monHoc = config.mon?.trim();
+
+                          if (!classNumber || !monHoc) {
+                            setDoneMessage("⚠️ Thiếu thông tin để mở Ôn tập");
+                            setOpenDoneDialog(true);
+                            return;
+                          }
+
+                          collectionName = "TRACNGHIEM_ONTAP";
+                          docId = `ONTAP_L${classNumber}_${monHoc}_${hocKyCode}`;
                         }
+
+                        console.log(
+                          `[${mode.toUpperCase()}] Navigate →`,
+                          collectionName,
+                          docId
+                        );
 
                         navigate("/tracnghiem", {
                           state: {
@@ -706,17 +720,21 @@ const handleLoaiHoatDongChange = async (e) => {
                             lop: selectedClass,
                             selectedWeek,
                             mon: config.mon,
+                            collectionName,
+                            docId,
                           },
                         });
                         return;
                       }
 
-                      // ===== ĐÁNH GIÁ TUẦN =====
+                      // =========================
+                      // 🔹 ĐÁNH GIÁ TUẦN
+                      // =========================
                       if (mode === "dgt") {
-                        const currentStatus =
-                          studentStatus?.[student.maDinhDanh]
-                            ? String(studentStatus[student.maDinhDanh]).trim()
-                            : "";
+                        const raw = studentStatus?.[student.maDinhDanh];
+                        const currentStatus = raw ? String(raw).trim() : "";
+
+                        console.log("[DGT]", student.maDinhDanh, currentStatus);
 
                         setExpandedStudent({
                           ...student,
@@ -725,54 +743,38 @@ const handleLoaiHoatDongChange = async (e) => {
                         return;
                       }
 
-                      // ===== ÔN TẬP =====
-                      if (mode === "ontap") {
-                        const classNumber = selectedClass.match(/\d+/)?.[0];
-                        const monHoc = config.mon?.trim();
+                      // =========================
+                      // 🔹 FALLBACK
+                      // =========================
+                      console.log("[Fallback] Open dialog");
+                      setExpandedStudent({
+                        ...student,
+                        status: studentStatus?.[student.maDinhDanh] || "",
+                      });
 
-                        const hocKyMap = {
-                          "Giữa kỳ I": "GKI",
-                          "Cuối kỳ I": "CKI",
-                          "Giữa kỳ II": "GKII",
-                          "Cả năm": "CN",
-                        };
-                        const hocKyCode = hocKyMap[config.hocKy];
-
-                        if (!classNumber || !monHoc || !hocKyCode) {
-                          setDoneMessage("⚠️ Thiếu thông tin để mở Ôn tập");
-                          setOpenDoneDialog(true);
-                          return;
-                        }
-
-                        // ✅ ID đề Ôn tập XÁC ĐỊNH – không quét collection
-                        const docId = `ONTAP_L${classNumber}_${monHoc}_${hocKyCode}`;
-
-                        navigate("/tracnghiem", {
-                          state: {
-                            studentId: student.maDinhDanh,
-                            fullname: student.hoVaTen,
-                            lop: selectedClass,
-                            selectedWeek,
-                            mon: monHoc,
-                            collectionName: "TRACNGHIEM_ONTAP",
-                            docId,
-                          },
-                        });
-
-                        return; // 🚫 chặn fallback
+                      // =========================
+                      // 🔹 LƯU HỌC SINH GẦN ĐÂY
+                      // =========================
+                      if (config.hienThiTenGanDay) {
+                        const key = `recent_${selectedClass}`;
+                        const updated = [
+                          student,
+                          ...recentStudents.filter(
+                            (s) => s.maDinhDanh !== student.maDinhDanh
+                          ),
+                        ];
+                        if (updated.length > 10) updated.pop();
+                        localStorage.setItem(key, JSON.stringify(updated));
+                        setRecentStudents(updated);
                       }
 
-
-                      // fallback
-                      setExpandedStudent(student);
                     } catch (err) {
-                      console.error("❌ Lỗi khi kiểm tra trạng thái học sinh:", err);
-                      setDoneMessage(
-                        "⚠️ Có lỗi khi kiểm tra trạng thái bài. Vui lòng thử lại!"
-                      );
+                      console.error("❌ Lỗi khi click học sinh:", err);
+                      setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài. Vui lòng thử lại!");
                       setOpenDoneDialog(true);
                     }
                   }}
+
                 >
                   <Typography variant="subtitle2" fontWeight="medium">
                     {student.stt}. {student.hoVaTen}
