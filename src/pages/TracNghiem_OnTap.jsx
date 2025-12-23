@@ -2210,7 +2210,7 @@ return (
         <Button
           variant="contained"
           color="error"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/login")}
           sx={{ borderRadius: 2, px: 3, mb: 2 }}
         >
           Thoát
