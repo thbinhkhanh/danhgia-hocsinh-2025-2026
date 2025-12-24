@@ -372,17 +372,25 @@ export default function BackupPage({ open, onClose }) {
               <FormControlLabel control={<Checkbox checked={backupOptions["DGTX"]} onChange={() => toggleOption("DGTX")} />} label="Kết quả ĐGTX" />
             </Box>
 
-            {loading && (
-              <>
-                <LinearProgress variant="determinate" value={progress} sx={{ mt: 2 }} />
-                <Typography variant="body2" align="center" color="text.secondary">
-                  Đang sao lưu... {progress}%
-                </Typography>
-              </>
-            )}
-
           </Stack>
         </DialogContent>
+        
+        {loading && (
+          <>
+            <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
+              <LinearProgress variant="determinate" value={progress} />
+            </Box>
+
+            <Typography
+              variant="body2"
+              align="center"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              Đang sao lưu... {progress}%
+            </Typography>
+          </>
+        )}
 
         <DialogActions>
           <Button onClick={onClose}>Hủy</Button>

@@ -280,7 +280,7 @@ export default function RestorePage({ open, onClose }) {
         <Alert severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
             {snackbar.message}
         </Alert>
-    </Snackbar>
+      </Snackbar>
 
     </>
   );

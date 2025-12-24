@@ -405,16 +405,26 @@ export default function RestorePage({ open, onClose }) {
               ))}
             </Box>
 
-            {loading && (
-              <>
-                <LinearProgress variant="determinate" value={progress} sx={{ mt: 2 }} />
-                <Typography variant="body2" align="center" color="text.secondary">
-                  Đang phục hồi... {progress}%
-                </Typography>
-              </>
-            )}
+            
           </Stack>
         </DialogContent>
+        
+        {loading && (
+          <>
+            <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
+              <LinearProgress variant="determinate" value={progress} />
+            </Box>
+
+            <Typography
+              variant="body2"
+              align="center"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              Đang phục hồi... {progress}%
+            </Typography>
+          </>
+        )}
 
         <DialogActions sx={{ justifyContent: "flex-end" }}>
           <Button onClick={onClose}>Hủy</Button>
