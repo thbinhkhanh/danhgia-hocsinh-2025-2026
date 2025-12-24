@@ -102,7 +102,7 @@ export default function TracNghiem_OnTap() {
   const account = localStorage.getItem("account") || "";
   const school = account === "TH Lâm Văn Bền" ? account : "TH Bình Khánh";
   const { selectedClass } = useSelectedClass();
-  
+
   // Lấy lớp từ tên đề
   const detectedClass = selectedExam?.match(/Lớp\s*(\d+)/)?.[1] || "Test";
 
@@ -979,8 +979,13 @@ return (
         }}
       >
         <Typography variant="subtitle1" fontWeight="bold">
-          Tên: {studentName}
+          Tên: {studentName
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')}
         </Typography>
+
         <Typography variant="subtitle1" fontWeight="bold">
           Lớp: {studentClass}
         </Typography>
