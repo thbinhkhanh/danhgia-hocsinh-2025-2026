@@ -46,6 +46,10 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 
+import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
+import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
+import ResultDialog from "../dialog/ResultDialog";
+
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -575,10 +579,13 @@ export default function TracNghiem_OnTap() {
     });
 
     if (unanswered.length > 0) {
-      setUnansweredQuestions(unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1));
+      setUnansweredQuestions(
+        unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1)
+      );
       setOpenAlertDialog(true);
       return;
     }
+
 
     try {
       setSaving(true);
@@ -992,27 +999,34 @@ return (
       </Box>
 
       {/* Nút thoát */}
-      <Tooltip title="Thoát trắc nghiệm" arrow>
-        <IconButton
-          onClick={() => {
-            if (submitted) {
-              navigate(-1);
-            } else {
-              setOpenExitConfirm(true);
-            }
-          }}
-          sx={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            color: "#f44336",
-            bgcolor: "rgba(255,255,255,0.9)",
-            "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </Tooltip>
+      <>
+        <Tooltip title="Thoát trắc nghiệm" arrow>
+          <IconButton
+            onClick={() => {
+              if (submitted) {
+                navigate(-1);
+              } else {
+                setOpenExitConfirm(true);
+              }
+            }}
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              color: "#f44336",
+              bgcolor: "rgba(255,255,255,0.9)",
+              "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Tooltip>
+
+        <ExitConfirmDialog
+          open={openExitConfirm}
+          onClose={() => setOpenExitConfirm(false)}
+        />
+      </>
 
       {/* Tiêu đề */}
       <Box
@@ -2086,178 +2100,11 @@ return (
     </Paper>
 
     {/* Dialog cảnh báo chưa làm hết */}
-    <Dialog
+    <IncompleteAnswersDialog
       open={openAlertDialog}
       onClose={() => setOpenAlertDialog(false)}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          p: 0,
-          bgcolor: "#e3f2fd",
-          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
-        },
-      }}
-    >
-      {/* Header với nền màu full width */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          p: 0.75, // chiều cao header
-          bgcolor: "#90caf9", // nền màu xanh nhạt
-          borderRadius: "12px 12px 0 0", // bo 2 góc trên
-          mb: 2,
-        }}
-      >
-        <Box
-          sx={{
-            bgcolor: "#42a5f5", // xanh đậm cho icon
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
-          }}
-        >
-          ⚠️
-        </Box>
-
-        <DialogTitle
-          sx={{
-            p: 0,
-            fontWeight: "bold",
-            color: "#0d47a1", // màu xanh tiêu đề
-            fontSize: 20,
-          }}
-        >
-          Chưa hoàn thành
-        </DialogTitle>
-      </Box>
-
-      {/* Nội dung */}
-      <DialogContent sx={{ px: 3, pb: 3 }}>
-        <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
-          Bạn chưa chọn đáp án cho câu: {unansweredQuestions.join(", ")}.<br />
-          Vui lòng trả lời tất cả câu hỏi trước khi nộp.
-        </Typography>
-      </DialogContent>
-
-      {/* Nút OK */}
-      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
-        <Button
-          variant="contained"
-          onClick={() => setOpenAlertDialog(false)}
-          sx={{
-            px: 4,
-            borderRadius: 2,
-            bgcolor: "#42a5f5", // xanh đậm giống mẫu
-            color: "#fff",
-            "&:hover": { bgcolor: "#1e88e5" },
-            fontWeight: "bold",
-            mb:2,
-          }}
-        >
-          OK
-        </Button>
-      </DialogActions>
-    </Dialog>
-
-    {/* Dialog xác nhận thoát */}
-    <Dialog
-      open={openExitConfirm}
-      onClose={() => setOpenExitConfirm(false)}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          p: 0,
-          bgcolor: "#e3f2fd",
-          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
-        },
-      }}
-    >
-      {/* Header với nền màu full width giống ResultDialog */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          p: 0.75, // chiều cao header
-          bgcolor: "#90caf9", // nền màu xanh nhạt
-          borderRadius: "12px 12px 0 0", // bo 2 góc trên
-          mb: 2,
-        }}
-      >
-        <Box
-          sx={{
-            bgcolor: "#42a5f5", // xanh đậm cho icon
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36, // kích thước icon giống ResultDialog
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
-          }}
-        >
-          ℹ️
-        </Box>
-
-        <DialogTitle
-          sx={{
-            p: 0,
-            fontWeight: "bold",
-            color: "#0d47a1",
-            fontSize: 20, // font size giống ResultDialog
-          }}
-        >
-          Xác nhận thoát
-        </DialogTitle>
-      </Box>
-
-      {/* Nội dung */}
-      <DialogContent
-        sx={{
-          px: 3,
-          py: 3,
-          minHeight: 50, // giữ chiều cao nội dung
-        }}
-      >
-        <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
-          Bạn có chắc chắn muốn thoát khỏi bài trắc nghiệm?<br />
-          Mọi tiến trình chưa nộp sẽ bị mất.
-        </Typography>
-      </DialogContent>
-
-      {/* Footer */}
-      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
-        <Button
-          variant="outlined"
-          onClick={() => setOpenExitConfirm(false)}
-          sx={{ borderRadius: 2, px: 3, mb: 2 }}
-        >
-          Hủy
-        </Button>
-        <Button
-          variant="contained"
-          color="error"
-          onClick={() => navigate("/hocsinh")}
-          sx={{ borderRadius: 2, px: 3, mb: 2 }}
-        >
-          Thoát
-        </Button>
-      </DialogActions>
-    </Dialog>
+      unansweredQuestions={unansweredQuestions}
+    />
 
     <Dialog
       open={openResultDialog}
@@ -2271,24 +2118,14 @@ return (
       PaperProps={{
         sx: {
           borderRadius: 3,
-          p: 0,
+          p: 3,
           bgcolor: "#e3f2fd",
           boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
         },
       }}
     >
-
-      {/* Header với nền màu full width */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          p: 0.75,
-          bgcolor: "#90caf9",
-          borderRadius: "12px 12px 0 0", // bo 2 góc trên
-          mb: 2,
-        }}
-      >
+      {/* Header */}
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
         <Box
           sx={{
             bgcolor: "#42a5f5",
@@ -2306,52 +2143,46 @@ return (
         >
           🎉
         </Box>
-
-        <DialogTitle
+        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
+          KẾT QUẢ
+        </DialogTitle>
+        <IconButton
+          onClick={() => setOpenResultDialog(false)}
           sx={{
-            p: 0,
-            fontWeight: "bold",
-            color: "#0d47a1",
-            fontSize: 20,
+            ml: "auto",
+            color: "#f44336",
+            "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
           }}
         >
-          Kết quả
-        </DialogTitle>
+          <CloseIcon />
+        </IconButton>
       </Box>
 
       {/* Nội dung */}
-      <DialogContent sx={{ textAlign: "center", px: 3, pb: 3 }}>
-        <Typography
-          sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}
-        >
-          {studentResult?.hoVaTen?.toUpperCase()}
+      <DialogContent sx={{ textAlign: "center" }}>
+        <Typography sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}>
+          {studentResult?.hoVaTen?.toUpperCase() || "HỌC SINH"}
         </Typography>
 
-        <Typography sx={{ fontSize: 17, color: "#1565c0", mb: 1 }}>
-          <strong>Lớp: </strong>
-          <span style={{ fontWeight: "bold" }}>{studentResult?.lop}</span>
+        <Typography sx={{ fontSize: 16, color: "#1565c0", mb: 1 }}>
+          Lớp: <span style={{ fontWeight: 600 }}>{studentResult?.lop}</span>
         </Typography>
 
-        {/* Nếu cho xem điểm */}
         {choXemDiem ? (
-          <Typography
-            sx={{
-              fontSize: 17,
-              fontWeight: 700,
-              mt: 1,
-            }}
-          >
-            <span style={{ color: "#1565c0" }}>Điểm:</span>&nbsp;
-            <span style={{ color: "red" }}>{studentResult?.diem}</span>
+          <Typography sx={{ fontSize: 16, color: "#0d47a1", mt: 2 }}>
+            Điểm:&nbsp;
+            <span style={{ fontWeight: 700, color: "red" }}>
+              {studentResult?.diem}
+            </span>
           </Typography>
         ) : (
           <Typography
             sx={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: "red",
+              fontSize: 16,
               mt: 2,
               textAlign: "center",
+              fontWeight: 700,
+              color: "red",
             }}
           >
             ĐÃ HOÀN THÀNH BÀI KIỂM TRA
@@ -2376,8 +2207,8 @@ return (
           OK
         </Button>
       </DialogActions>
-
     </Dialog>
+
     
     {/* Snackbar */}
     <Snackbar
