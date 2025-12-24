@@ -30,6 +30,12 @@ const BACKUP_KEYS = [
   { key: "BAITAP_TUAN", label: "Bài tập tuần" },
   { key: "TRACNGHIEM_BK", label: "Đề KTĐK Bình Khánh" },
   { key: "TRACNGHIEM_LVB", label: "Đề KTĐK Lâm Văn Bền" },
+
+  // 🔹 bổ sung từ 2 hàm trước
+  { key: "LAMVANBEN", label: "Cấu hình & Lớp Lâm Văn Bền" },
+  { key: "MATKHAU", label: "Mật khẩu tài khoản" },
+  { key: "DETHI_LVB", label: "Đề đã chọn LVB" },
+  { key: "DETHI_BK", label: "Đề đã chọn BK" },
 ];
 
 export default function BackupPage({ open, onClose }) {
@@ -44,54 +50,63 @@ export default function BackupPage({ open, onClose }) {
     severity: "success",
   });
 
+ const [groupOptions, setGroupOptions] = useState({
+  configGroup: ["CONFIG","LAMVANBEN","MATKHAU","DANHSACH"].every(k => backupOptions[k]),
+  bankGroup: ["TRACNGHIEM_BK","TRACNGHIEM_LVB","BAITAP_TUAN"].every(k => backupOptions[k]),
+  examGroup: ["DETHI_BK","DETHI_LVB"].every(k => backupOptions[k]),
+  resultGroup: ["KTDK","DGTX"].every(k => backupOptions[k]),
+});
+
+
   const toggleOption = (key) => {
     setBackupOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   // ----- Hàm export JSON -----
-  const exportBackupToJson = (data) => {
+  const exportBackupToJson = (data, backupOptions) => {
     if (!data || Object.keys(data).length === 0) return;
 
-    const SHORT_NAMES = {
-        DANHSACH: "DS",
-        CONFIG: "CFG",
-        KTDK: "KTDK",
-        DGTX: "DGTX",
-        BAITAP_TUAN: "BT",
-        TRACNGHIEM_BK: "BK",
-        TRACNGHIEM_LVB: "LVB",
+    // Định nghĩa các nhóm theo checkbox
+    const GROUPS = {
+      "Cauhinh": ["CONFIG", "LAMVANBEN", "MATKHAU", "DANHSACH"],
+      "Nganhangde": ["TRACNGHIEM_BK", "TRACNGHIEM_LVB", "BAITAP_TUAN"],
+      "Dethi": ["DETHI_BK", "DETHI_LVB"],
+      "Ketqua": ["KTDK", "DGTX"],
     };
 
-    const allKeys = Object.keys(SHORT_NAMES);
-    const keys = Object.keys(data);
+    // Lọc các nhóm có ít nhất 1 checkbox được chọn
+    const selectedGroups = Object.entries(GROUPS)
+      .filter(([groupName, keys]) => keys.some((k) => backupOptions[k])) // nếu có ít nhất 1 key được chọn
+      .map(([groupName]) => groupName); // lấy tên nhóm
 
-    // Nếu backup đủ tất cả collection thì đặt tên "full"
+    // Nếu tất cả nhóm đều được chọn -> đặt tên gọn "full"
     const collectionsName =
-        keys.length === allKeys.length
+      selectedGroups.length === Object.keys(GROUPS).length
         ? "full"
-        : keys.map((k) => SHORT_NAMES[k] || k).join("_");
+        : selectedGroups.join("_");
 
     // Format thời gian: dd-MM-yy (hh:mm:ss)
     const now = new Date();
     const pad = (n) => n.toString().padStart(2, "0");
     const day = pad(now.getDate());
     const month = pad(now.getMonth() + 1);
-    const year = now.getFullYear().toString().slice(-2); // lấy 2 số cuối
+    const year = now.getFullYear().toString().slice(-2);
     const hours = pad(now.getHours());
     const minutes = pad(now.getMinutes());
     const seconds = pad(now.getSeconds());
-
     const timestamp = `${day}-${month}-${year} (${hours}:${minutes}:${seconds})`;
 
+    // Tạo file JSON và tải xuống
     const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
+      type: "application/json",
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `Backup_${collectionsName}_${timestamp}.json`;
     a.click();
-    };
+  };
+
 
   // ----- Hàm backup theo checkbox -----
   const fetchAllBackup = async (onProgress, selectedCollections) => {
@@ -133,8 +148,8 @@ export default function BackupPage({ open, onClose }) {
           snap.forEach((d) => (backupData.KTDK[d.id] = d.data()));
         }
 
-        // 4️⃣ Collection phẳng: DANHSACH, CONFIG
-        else if (["DANHSACH", "CONFIG"].includes(colName)) {
+        // 4️⃣ Collection phẳng: DANHSACH, CONFIG, LAMVANBEN, MATKHAU, DETHI_LVB, DETHI_BK
+        else if (["DANHSACH", "CONFIG", "LAMVANBEN", "MATKHAU", "DETHI_LVB", "DETHI_BK"].includes(colName)) {
           const snap = await getDocs(collection(db, colName));
           if (!snap.empty) backupData[colName] = {};
           snap.forEach((d) => (backupData[colName][d.id] = d.data()));
@@ -162,6 +177,7 @@ export default function BackupPage({ open, onClose }) {
     }
   };
 
+
   const handleBackup = async () => {
     const selected = Object.keys(backupOptions).filter((k) => backupOptions[k]);
     if (selected.length === 0) {
@@ -177,7 +193,7 @@ export default function BackupPage({ open, onClose }) {
       setLoading(true);
       setProgress(0);
       const data = await fetchAllBackup(setProgress, selected);
-      exportBackupToJson(data);
+      exportBackupToJson(data, backupOptions);
       setSnackbar({
         open: true,
         severity: "success",
@@ -195,6 +211,16 @@ export default function BackupPage({ open, onClose }) {
       setLoading(false);
       setProgress(0);
     }
+  };
+
+  const getGroupState = (keys) => {
+    const values = keys.map(k => backupOptions[k] || false);
+    const allChecked = values.every(v => v === true);
+    const allUnchecked = values.every(v => v === false);
+    return {
+      checked: allChecked,
+      indeterminate: !allChecked && !allUnchecked
+    };
   };
 
   return (
@@ -227,7 +253,7 @@ export default function BackupPage({ open, onClose }) {
                 🗄️
             </Box>
             <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0", flex: 1 }}>
-                Chọn dữ liệu sao lưu
+                SAO LƯU DỮ LIỆU
             </DialogTitle>
 
             {/* Nút X màu đỏ góc phải */}
@@ -243,42 +269,120 @@ export default function BackupPage({ open, onClose }) {
             </IconButton>
             </Box>
 
-
         <DialogContent dividers>
-            <Stack spacing={0.5}>
-                {BACKUP_KEYS.map(({ key, label }) => (
-                <React.Fragment key={key}>
-                    <FormControlLabel
-                    control={
-                        <Checkbox
-                        checked={backupOptions[key]}
-                        onChange={() => toggleOption(key)}
-                        />
-                    }
-                    label={label}
-                    />
-                    {key === "DGTX" && <Divider sx={{ mt: 1, mb: 1 }} />}
-                </React.Fragment>
-                ))}
+          <Stack spacing={1}>            
+            {/* ====== 1️⃣ Cấu hình ====== */}
+            <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+              <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
+                Cấu hình
+              </Typography>
+              <Checkbox
+                {...getGroupState(["CONFIG","LAMVANBEN","MATKHAU","DANHSACH"])}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setBackupOptions(prev => ({
+                    ...prev,
+                    CONFIG: checked,
+                    LAMVANBEN: checked,
+                    MATKHAU: checked,
+                    DANHSACH: checked
+                  }));
+                }}
+                sx={{ ml: 1 }}
+              />
+            </Box>
+            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <FormControlLabel control={<Checkbox checked={backupOptions["CONFIG"]} onChange={() => toggleOption("CONFIG")} />} label="Cấu hình Bình Khánh" />
+              <FormControlLabel control={<Checkbox checked={backupOptions["LAMVANBEN"]} onChange={() => toggleOption("LAMVANBEN")} />} label="Cấu hình Lâm Văn Bền" />
+              <FormControlLabel control={<Checkbox checked={backupOptions["MATKHAU"]} onChange={() => toggleOption("MATKHAU")} />} label="Mật khẩu tài khoản" />
+              <FormControlLabel control={<Checkbox checked={backupOptions["DANHSACH"]} onChange={() => toggleOption("DANHSACH")} />} label="Danh sách lớp BK" />
+            </Box>
+            <Divider sx={{ mt: 1, mb: 1 }} />
 
-                {loading && (
-                <>
-                    <LinearProgress
-                    variant="determinate"
-                    value={progress}
-                    sx={{ mt: 2 }}
-                    />
-                    <Typography
-                    variant="body2"
-                    align="center"
-                    color="text.secondary"
-                    >
-                    Đang sao lưu... {progress}%
-                    </Typography>
-                </>
-                )}
-            </Stack>
-            </DialogContent>
+            {/* ====== 2️⃣ Ngân hàng đề ====== */}
+            <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+              <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
+                Ngân hàng đề
+              </Typography>
+              <Checkbox
+                {...getGroupState(["TRACNGHIEM_BK","TRACNGHIEM_LVB","BAITAP_TUAN"])}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setBackupOptions(prev => ({
+                    ...prev,
+                    TRACNGHIEM_BK: checked,
+                    TRACNGHIEM_LVB: checked,
+                    BAITAP_TUAN: checked
+                  }));
+                }}
+                sx={{ ml: 1 }}
+              />
+            </Box>
+            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <FormControlLabel control={<Checkbox checked={backupOptions["TRACNGHIEM_BK"]} onChange={() => toggleOption("TRACNGHIEM_BK")} />} label="Đề KTĐK Bình Khánh" />
+              <FormControlLabel control={<Checkbox checked={backupOptions["TRACNGHIEM_LVB"]} onChange={() => toggleOption("TRACNGHIEM_LVB")} />} label="Đề KTĐK Lâm Văn Bền" />
+              <FormControlLabel control={<Checkbox checked={backupOptions["BAITAP_TUAN"]} onChange={() => toggleOption("BAITAP_TUAN")} />} label="Bài tập tuần" />
+            </Box>
+            <Divider sx={{ mt: 1, mb: 1 }} />
+
+            {/* ====== 3️⃣ Đề thi ====== */}
+            <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+              <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
+                Đề thi
+              </Typography>
+              <Checkbox
+                {...getGroupState(["DETHI_BK","DETHI_LVB"])}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setBackupOptions(prev => ({
+                    ...prev,
+                    DETHI_BK: checked,
+                    DETHI_LVB: checked
+                  }));
+                }}
+                sx={{ ml: 1 }}
+              />
+            </Box>
+            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <FormControlLabel control={<Checkbox checked={backupOptions["DETHI_BK"]} onChange={() => toggleOption("DETHI_BK")} />} label="Đề thi Bình Khánh" />
+              <FormControlLabel control={<Checkbox checked={backupOptions["DETHI_LVB"]} onChange={() => toggleOption("DETHI_LVB")} />} label="Đề thi Lâm Văn Bền" />
+            </Box>
+            <Divider sx={{ mt: 1, mb: 1 }} />
+
+            {/* ====== 4️⃣ Kết quả ====== */}
+            <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+              <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
+                Kết quả
+              </Typography>
+              <Checkbox
+                {...getGroupState(["KTDK","DGTX"])}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setBackupOptions(prev => ({
+                    ...prev,
+                    KTDK: checked,
+                    DGTX: checked
+                  }));
+                }}
+                sx={{ ml: 1 }}
+              />
+            </Box>
+            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <FormControlLabel control={<Checkbox checked={backupOptions["KTDK"]} onChange={() => toggleOption("KTDK")} />} label="Kết quả KTĐK" />
+              <FormControlLabel control={<Checkbox checked={backupOptions["DGTX"]} onChange={() => toggleOption("DGTX")} />} label="Kết quả ĐGTX" />
+            </Box>
+
+            {loading && (
+              <>
+                <LinearProgress variant="determinate" value={progress} sx={{ mt: 2 }} />
+                <Typography variant="body2" align="center" color="text.secondary">
+                  Đang sao lưu... {progress}%
+                </Typography>
+              </>
+            )}
+
+          </Stack>
+        </DialogContent>
 
         <DialogActions>
           <Button onClick={onClose}>Hủy</Button>
