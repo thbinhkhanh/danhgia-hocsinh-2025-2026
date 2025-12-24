@@ -257,8 +257,8 @@ function AppContent() {
       {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
         <Routes>
-          {/* 🔹 Mặc định mở trang Ôn tập */}
-          <Route path="/" element={<Navigate to="/tracnghiem-ontap" replace />} />
+          {/* 🔹 Mặc định mở trang Học Sinh */}
+          <Route path="/" element={<Navigate to="/hocsinh" replace />} />
 
           <Route path="/tracnghiem-ontap" element={<TracNghiem_OnTap />} />
           <Route path="/hocsinh" element={<HocSinh />} />
