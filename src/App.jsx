@@ -39,6 +39,8 @@ import { TracNghiemProvider } from "./context/TracNghiemContext";
 import { StudentDataProvider } from "./context/StudentDataContext";
 import { StudentKTDKProvider } from "./context/StudentKTDKContext";
 import { AdminProvider, AdminContext } from "./context/AdminContext";
+import { SelectedClassProvider } from "./context/SelectedClassContext";
+
 
 // 🔹 Import icon
 import MenuBookIcon from "@mui/icons-material/MenuBook";
@@ -126,8 +128,8 @@ function AppContent() {
   ];*/
 
   const navItems = [
-    { path: "/tracnghiem-ontap", label: "Ôn tập" }, // thêm vào đầu menu
-    /*{ path: "/hocsinh", label: "Học sinh" },*/
+    /*{ path: "/tracnghiem-ontap", label: "Ôn tập" }, // thêm vào đầu menu*/
+    { path: "/hocsinh", label: "Học sinh" },
     ...(isLoggedIn
       ? [                     
           { path: "/giaovien", label: "Đánh giá" },
@@ -329,7 +331,9 @@ export default function App() {
             <StudentProvider>
               <StudentDataProvider>
                 <StudentKTDKProvider>
-                  <AppContent />
+                  <SelectedClassProvider>  {/* ← Thêm vào đây */}
+                    <AppContent />
+                  </SelectedClassProvider>
                 </StudentKTDKProvider>
               </StudentDataProvider>
             </StudentProvider>
@@ -339,3 +343,4 @@ export default function App() {
     </ConfigProvider>
   );
 }
+

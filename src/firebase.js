@@ -11,7 +11,7 @@ const firebaseConfig = {
   storageBucket: "danhgia-hocsinh-2025-2026.appspot.com",
   messagingSenderId: "28452007439",
   appId: "1:28452007439:web:394af089959cd9361cfd7a"
-};
+}
 
 
 // 🔹 Cấu hình Firebase mới cho dự án "danhgia-hs-2025-2026"

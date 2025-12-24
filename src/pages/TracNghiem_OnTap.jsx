@@ -24,10 +24,13 @@ import {
 import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
 // Thay cho react-beautiful-dnd
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useLocation, useNavigate } from "react-router-dom";
+
 
 import { db } from "../firebase";
 import { useContext } from "react";
 import { ConfigContext } from "../context/ConfigContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
 import { exportQuizPDF } from "../utils/exportQuizPDF"; 
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -42,9 +45,6 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
-
-import { useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -101,7 +101,8 @@ export default function TracNghiem_OnTap() {
   // Lấy trường từ tài khoản đăng nhập
   const account = localStorage.getItem("account") || "";
   const school = account === "TH Lâm Văn Bền" ? account : "TH Bình Khánh";
-
+  const { selectedClass } = useSelectedClass();
+  
   // Lấy lớp từ tên đề
   const detectedClass = selectedExam?.match(/Lớp\s*(\d+)/)?.[1] || "Test";
 
@@ -151,35 +152,43 @@ export default function TracNghiem_OnTap() {
   };
 
   useEffect(() => {
-    const fetchExams = async () => {
-        try {
-        const colName = school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
-        const colRef = collection(db, colName);
-        const snapshot = await getDocs(colRef);
+  const fetchExams = async () => {
+    try {
+      if (!selectedClass) return;
 
-        // Lọc bỏ những đề có "(C)" ở cuối
-        const exams = snapshot.docs
-            .map(d => d.id)
-            .filter(id => !/\(C\)$/.test(id));
+      // 🔹 Trích số lớp từ selectedClass (4.2 -> 4, 5.3 -> 5)
+      const classNumber = selectedClass.split(".")[0];
 
-        setExamList(exams);
+      const colName = school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
+      const colRef = collection(db, colName);
+      const snapshot = await getDocs(colRef);
 
-        // ✅ Giữ selectedExam rỗng khi load
-        if (selectedExam === undefined || selectedExam === null) {
-            setSelectedExam("");
-        } else if (selectedExam && !exams.includes(selectedExam)) {
-            setSelectedExam(""); // reset nếu exam hiện tại không còn trong list
-        }
+      // Lọc đề theo lớp + bỏ những đề có "(C)" ở cuối
+      const exams = snapshot.docs
+        .map(d => d.id)
+        .filter(id => {
+          // id có thể có dạng "Lớp 2 - Toán 1", "Lớp 5 - Văn 2", ...
+          const match = id.match(/Lớp (\d+)/);
+          return match && match[1] === classNumber && !/\(C\)$/.test(id);
+        });
 
-        } catch (error) {
-        console.error("Lỗi tải danh sách đề:", error);
-        setExamList([]);
+      setExamList(exams);
+
+      // ✅ reset selectedExam nếu không còn trong list
+      if (!selectedExam || !exams.includes(selectedExam)) {
         setSelectedExam("");
-        }
-    };
+      }
 
-    fetchExams();
- }, [school]);
+    } catch (error) {
+      console.error("Lỗi tải danh sách đề:", error);
+      setExamList([]);
+      setSelectedExam("");
+    }
+  };
+
+  fetchExams();
+}, [school, selectedClass]);
+
 
 
 
@@ -516,9 +525,12 @@ export default function TracNghiem_OnTap() {
     fetchQuestions();
  }, [selectedExam]);
 
-  const studentClass = studentInfo.class;
-  const studentName = studentInfo.name;
+  //const studentClass = studentInfo.class;
+  //const studentName = studentInfo.name;
 
+  const studentName = location.state?.fullname || "...";
+  const studentClass = location.state?.lop || "...";
+  
   // Hàm chuyển chữ đầu thành hoa
   const capitalizeName = (name = "") =>
     name
@@ -949,6 +961,30 @@ return (
         boxSizing: "border-box",
       }}
     >
+      {/* 🔹 Thông tin học sinh ở góc trên/trái */}
+      <Box
+        sx={{
+          p: 1.5,
+          border: "2px solid #1976d2",
+          borderRadius: 2,
+          color: "#1976d2",
+          width: "fit-content",
+          mb: 2,
+          position: { xs: "relative", sm: "absolute" },
+          top: { sm: 16 },
+          left: { sm: 16 },
+          alignSelf: { xs: "flex-start", sm: "auto" },
+          bgcolor: { xs: "#fff", sm: "transparent" },
+          zIndex: 2,
+        }}
+      >
+        <Typography variant="subtitle1" fontWeight="bold">
+          Tên: {studentName}
+        </Typography>
+        <Typography variant="subtitle1" fontWeight="bold">
+          Lớp: {studentClass}
+        </Typography>
+      </Box>
 
       {/* Nút thoát */}
       <Tooltip title="Thoát trắc nghiệm" arrow>
@@ -2210,7 +2246,7 @@ return (
         <Button
           variant="contained"
           color="error"
-          onClick={() => navigate("/login")}
+          onClick={() => navigate("/hocsinh")}
           sx={{ borderRadius: 2, px: 3, mb: 2 }}
         >
           Thoát

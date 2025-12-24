@@ -328,7 +328,7 @@ export default function QuanTri() {
                   label="Thời gian (phút)"
                   type="number"
                   size="small"
-                  disabled={!config.baiTapTuan}
+                  //disabled={!config.baiTapTuan}
                   value={timeInput}
                   onChange={(e) => handleTimeLimitChange(e.target.value)}
                   sx={{ flex: 1 }} // bằng chiều rộng Lớp
