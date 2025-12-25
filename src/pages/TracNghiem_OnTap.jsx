@@ -78,7 +78,7 @@ export default function TracNghiem_OnTap() {
   const [progress, setProgress] = useState(0);
   const { config } = useContext(ConfigContext);
   const monOnTap = config?.mon || "";
-  
+
   const [saving, setSaving] = useState(false);
   const [openExitConfirm, setOpenExitConfirm] = useState(false);
 
@@ -956,6 +956,23 @@ const handleDragEnd = (result) => {
   });
 };
 
+const formatExamName = (exam) => {
+  // Lấy A, B, C...
+  const match = exam.match(/\(([^)]+)\)$/);
+  const version = match ? match[1] : "";
+
+  // Bỏ quiz_ và phần _CKI_...
+  const cleaned = exam
+    .replace("quiz_", "")
+    .replace(/_CKI_.*/, "");
+
+  // cleaned: "Lớp 4_Tin học"
+  const parts = cleaned.split("_");
+  const subject = parts[1]; // Tin học / Công nghệ
+
+  return `${subject} (Đề ${version})`;
+};
+
 return (
   <Box
     id="quiz-container"  // <-- Thêm dòng này
@@ -1060,43 +1077,46 @@ return (
       >
         {/* Tiêu đề */}
         <Typography
-  variant="h6"
-  sx={{
-    fontWeight: "bold",
-    fontSize: "20px",
-    mb: 2,
-    mt: -1,
-    color: "#1976d2",
-  }}
->
-  {monOnTap
-    ? `ÔN TẬP ${monOnTap.toUpperCase()}`
-    : "ÔN TẬP"}
-</Typography>
-
+          variant="h6"
+          sx={{
+            fontWeight: "bold",
+            fontSize: "20px",
+            mb: 2,
+            mt: -1,
+            color: "#1976d2",
+          }}
+        >
+          {monOnTap
+            ? `ÔN TẬP ${monOnTap.toUpperCase()}`
+            : "ÔN TẬP"}
+        </Typography>
 
         {/* Ô chọn đề */}
-        <FormControl fullWidth size="small" sx={{ mb: -2 }}>
-            <InputLabel
+        <FormControl
+          size="small"
+          sx={{ width: 250, mb: -2 }}   // 👈 đặt độ rộng tại đây
+        >
+          <InputLabel
             id="exam-select-label"
             sx={{ fontSize: "16px", fontWeight: "bold" }}
-            >
+          >
             Chọn đề
-            </InputLabel>
+          </InputLabel>
 
-            <Select
+          <Select
             labelId="exam-select-label"
             value={selectedExam}
             label="Chọn đề"
             onChange={(e) => setSelectedExam(e.target.value)}
             sx={{ fontSize: "16px", fontWeight: 500 }}
-            >
+            renderValue={(value) => formatExamName(value)}
+          >
             {examList.map((exam) => (
-                <MenuItem key={exam} value={exam} sx={{ fontSize: "16px" }}>
-                {exam}
-                </MenuItem>
+              <MenuItem key={exam} value={exam} sx={{ fontSize: "16px" }}>
+                {formatExamName(exam)}
+              </MenuItem>
             ))}
-            </Select>
+          </Select>
         </FormControl>
       </Box>
 
