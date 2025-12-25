@@ -77,6 +77,8 @@ export default function TracNghiem_OnTap() {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const { config } = useContext(ConfigContext);
+  const monOnTap = config?.mon || "";
+  
   const [saving, setSaving] = useState(false);
   const [openExitConfirm, setOpenExitConfirm] = useState(false);
 
@@ -156,44 +158,57 @@ export default function TracNghiem_OnTap() {
   };
 
   useEffect(() => {
-  const fetchExams = async () => {
-    try {
-      if (!selectedClass) return;
+    const fetchExams = async () => {
+      try {
+        if (!selectedClass) return;
 
-      // 🔹 Trích số lớp từ selectedClass (4.2 -> 4, 5.3 -> 5)
-      const classNumber = selectedClass.split(".")[0];
+        const classNumber = selectedClass.split(".")[0];
+        const monFromConfig = config?.mon?.trim(); // Tin học / Công nghệ
 
-      const colName = school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
-      const colRef = collection(db, colName);
-      const snapshot = await getDocs(colRef);
+        const colName =
+          school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
 
-      // Lọc đề theo lớp + bỏ những đề có "(C)" ở cuối
-      const exams = snapshot.docs
-        .map(d => d.id)
-        .filter(id => {
-          // id có thể có dạng "Lớp 2 - Toán 1", "Lớp 5 - Văn 2", ...
-          const match = id.match(/Lớp (\d+)/);
-          return match && match[1] === classNumber && !/\(C\)$/.test(id);
-        });
+        const snapshot = await getDocs(collection(db, colName));
 
-      setExamList(exams);
+        const exams = snapshot.docs
+          .map(d => d.id)
+          .filter(id => {
+            /*
+              id ví dụ:
+              quiz_Lớp 5_Tin học_CKI_25-26 (A)
+            */
+            const match = id.match(/quiz_Lớp\s*(\d+)_([^_]+)_/i);
+            if (!match) return false;
 
-      // ✅ reset selectedExam nếu không còn trong list
-      if (!selectedExam || !exams.includes(selectedExam)) {
+            const lop = match[1];        // "5"
+            const mon = match[2];        // "Tin học"
+
+            // 🔹 Lọc theo lớp
+            if (lop !== classNumber) return false;
+
+            // 🔹 Lọc theo môn từ config
+            if (monFromConfig && mon !== monFromConfig) return false;
+
+            // 🔹 Bỏ đề (C)
+            if (/\(C\)\s*$/.test(id)) return false;
+
+            return true;
+          });
+
+        setExamList(exams);
+
+        if (!selectedExam || !exams.includes(selectedExam)) {
+          setSelectedExam("");
+        }
+      } catch (error) {
+        console.error("❌ Lỗi tải danh sách đề:", error);
+        setExamList([]);
         setSelectedExam("");
       }
+    };
 
-    } catch (error) {
-      console.error("Lỗi tải danh sách đề:", error);
-      setExamList([]);
-      setSelectedExam("");
-    }
-  };
-
-  fetchExams();
-}, [school, selectedClass]);
-
-
+    fetchExams();
+  }, [school, selectedClass, config?.mon]);
 
 
   // ⭐ RESET TOÀN BỘ SAU KHI CHỌN ĐỀ MỚI
@@ -1045,17 +1060,20 @@ return (
       >
         {/* Tiêu đề */}
         <Typography
-          variant="h6"
-          sx={{
-            fontWeight: "bold",
-            fontSize: "20px",
-            mb: 2,
-            mt: -1,
-            color: "#1976d2", // màu xanh
-          }}
-        >
-          ÔN TẬP
-        </Typography>
+  variant="h6"
+  sx={{
+    fontWeight: "bold",
+    fontSize: "20px",
+    mb: 2,
+    mt: -1,
+    color: "#1976d2",
+  }}
+>
+  {monOnTap
+    ? `ÔN TẬP ${monOnTap.toUpperCase()}`
+    : "ÔN TẬP"}
+</Typography>
+
 
         {/* Ô chọn đề */}
         <FormControl fullWidth size="small" sx={{ mb: -2 }}>
@@ -1181,7 +1199,7 @@ return (
                         maxWidth: "100%",
                         height: "auto",
                         borderRadius: 8,
-                        marginTop: "-24px",
+                        marginTop: "-12px",
                       }}
                     />
                   </Box>
@@ -1537,7 +1555,7 @@ return (
                         maxWidth: "100%",
                         height: "auto",
                         borderRadius: 8,
-                        marginTop: "-24px", // thay mt: -6, tự viết margin trên style
+                        marginTop: "-12px", // thay mt: -6, tự viết margin trên style
                       }}
                     />
                   </Box>
@@ -1621,7 +1639,7 @@ return (
                         maxWidth: "100%",
                         height: "auto",
                         borderRadius: 8,
-                        marginTop: "-24px", // thay mt: -6, tự viết margin trên style
+                        marginTop: "-12px", // thay mt: -6, tự viết margin trên style
                       }}
                     />
                   </Box>
@@ -1704,7 +1722,7 @@ return (
                         maxWidth: "100%",
                         height: "auto",
                         borderRadius: 8,
-                        marginTop: "-24px", // thay mt: -6, tự viết margin trên style
+                        marginTop: "-12px", // thay mt: -6, tự viết margin trên style
                       }}
                     />
                   </Box>

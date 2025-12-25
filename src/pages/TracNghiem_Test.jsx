@@ -1122,7 +1122,7 @@ return (
                         maxWidth: "100%",
                         height: "auto",
                         borderRadius: 8,
-                        marginTop: "-24px",
+                        marginTop: "-12px",
                       }}
                     />
                   </Box>
@@ -1478,7 +1478,7 @@ return (
                         maxWidth: "100%",
                         height: "auto",
                         borderRadius: 8,
-                        marginTop: "-24px", // thay mt: -6, tự viết margin trên style
+                        marginTop: "-12px", // thay mt: -6, tự viết margin trên style
                       }}
                     />
                   </Box>
@@ -1562,7 +1562,7 @@ return (
                         maxWidth: "100%",
                         height: "auto",
                         borderRadius: 8,
-                        marginTop: "-24px", // thay mt: -6, tự viết margin trên style
+                        marginTop: "-12px", // thay mt: -6, tự viết margin trên style
                       }}
                     />
                   </Box>
@@ -1645,7 +1645,7 @@ return (
                         maxWidth: "100%",
                         height: "auto",
                         borderRadius: 8,
-                        marginTop: "-24px", // thay mt: -6, tự viết margin trên style
+                        marginTop: "-12px", // thay mt: -6, tự viết margin trên style
                       }}
                     />
                   </Box>
