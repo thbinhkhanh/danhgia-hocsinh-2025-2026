@@ -96,7 +96,7 @@ export const exportKTDK = async (students, className, term = "CKI") => {
       const row = sheet.addRow([
         idx + 1,
         s.hoVaTen ?? "",
-        s.dgtx ?? "",
+        s.dgtx_mucdat ?? "",
         s.lyThuyet ?? "",
         s.thucHanh ?? "",
         s.tongCong ?? "",

@@ -143,28 +143,17 @@ export default function XuatDanhGia() {
 
         let matchCount = 0;
         sheet.eachRow((row, rowNumber) => {
-          if (rowNumber < 2) return; // bỏ header
+          if (rowNumber < 2) return;
           const idExcel = String(row.getCell(colId).value || "")
             .trim()
             .replace(/[\u200B-\u200D\uFEFF]/g, "");
           const hs = classData[idExcel];
-          if (!hs) return;
-
-          matchCount++;
-
-          if (term === "GKI" || term === "GKII") {
-            // Giữa kỳ I & II: xuất dgtx_mucdat + dgtx_nx
-            if (colDgtx > 0) row.getCell(colDgtx).value = hs.dgtx_mucdat || "";
-            if (colNX > 0) row.getCell(colNX).value = hs.dgtx_nx || "";
-          } else {
-            // Cuối kỳ hoặc cả năm: xuất dgtx_mucdat + nhanXet + tongCong (cột F)
-            if (colDgtx > 0) row.getCell(colDgtx).value = hs.mucDat || "";
+          if (hs) {
+            matchCount++;
+            if (colDgtx > 0) row.getCell(colDgtx).value = hs.dgtx || "";
             if (colNX > 0) row.getCell(colNX).value = hs.nhanXet || "";
-            // Cột F (index 6 trong ExcelJS, 1-based) = tongCong
-            row.getCell(6).value = hs.tongCong ?? "";
           }
         });
-
 
         if (matchCount === 0) {
           skipped.push(`Lớp ${className}: Không có học sinh nào khớp trong Excel`);

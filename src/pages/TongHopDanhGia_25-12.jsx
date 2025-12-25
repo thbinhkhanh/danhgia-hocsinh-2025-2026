@@ -163,6 +163,7 @@ export default function TongHopDanhGia() {
     return { xepLoai: xepLoaiRutGon, nhanXet };
   }
 
+
   function getNhanXetMuc(subject) {
     return subject === "Công nghệ" ? nhanXetCongNghe : nhanXetTinHoc;
   }
@@ -207,14 +208,12 @@ const handleSaveAll = async () => {
   students.forEach((s) => {
     const studentData = {
       hoVaTen: s.hoVaTen || "",
-      //lyThuyet: null,
-      //thucHanh: null,
-      //tongCong: null,
-      //mucDat: s.mucDat || "",    
-      //ktdk_nx: s.ktdk_nx || "",
-
-      dgtx_nx: s.nhanXet || "",
-      dgtx_mucdat: s.dgtx || "",         // ✅ Mức đạt chung (HS + GV)
+      lyThuyet: null,
+      thucHanh: null,
+      tongCong: null,
+      mucDat: s.mucDat || "",    // ✅ Giữ nguyên
+      nhanXet: s.nhanXet || "",
+      dgtx: s.dgtx || "",         // ✅ Mức đạt chung (HS + GV)
       dgtx_gv: s.dgtx_gv || "",
     };
 
@@ -442,27 +441,13 @@ const fetchStudentsAndStatus = async () => {
     // Merge dữ liệu KTDK
     if (bangDiemSnap.exists()) {
       const classData = bangDiemSnap.data()[classKey] || {};
-
       Object.keys(studentMap).forEach(id => {
         const s = studentMap[id];
-        const kt = classData[id] || {};
-
-        // ✅ ĐGTX giáo viên
-        s.dgtx_gv = kt.dgtx_gv || "";
-
-        // ✅ Mức đạt ĐGTX
-        s.dgtx_mucdat = kt.dgtx_mucdat || "";
-
-        // ✅ Nhận xét ĐGTX: chỉ lấy nếu khác rỗng
-        if (kt.dgtx_nx && kt.dgtx_nx.trim() !== "") {
-          s.nhanXet = kt.dgtx_nx;
-        }
-
-        // (nếu bạn còn dùng status)
-        s.status = kt.status || "";
+        s.dgtx_gv = classData[id]?.dgtx_gv || "";
+        s.nhanXet = classData[id]?.nhanXet || "";
+        s.status = classData[id]?.status || "";
       });
     }
-
 
     // Bước 3: Tính mức đạt, nhận xét tự động
     const evaluatedList = Object.values(studentMap).map(s => {
@@ -479,7 +464,7 @@ const fetchStudentsAndStatus = async () => {
         return acc;
       }, {});
 
-      return { ...s, ...weekCols, xepLoai: dgtx, dgtx, nhanXet };
+      return { ...s, ...weekCols, xepLoai: dgtx, dgtx_gv: s.dgtx_gv, dgtx, nhanXet };
     });
 
     // Sắp xếp theo tên cuối

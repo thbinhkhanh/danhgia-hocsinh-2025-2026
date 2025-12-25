@@ -86,84 +86,106 @@ export default function NhapdiemKTDK() {
   }, [classData, setClassData]);
 
   const fetchStudentsAndStatus = async (cls) => {
-  const currentClass = cls || selectedClass;
-  if (!currentClass) return;
+    const currentClass = cls || selectedClass;
+    if (!currentClass) return;
 
-  try {
-    const selectedSemester = config.hocKy || "Giữa kỳ I";
+    try {
+      // 🔹 Lấy học kỳ từ config (đồng bộ với handleSaveAll)
+      const selectedSemester = config.hocKy || "Giữa kỳ I";
 
-    let termDoc;
-    switch (selectedSemester) {
-      case "Giữa kỳ I": termDoc = "GKI"; break;
-      case "Cuối kỳ I": termDoc = "CKI"; break;
-      case "Giữa kỳ II": termDoc = "GKII"; break;
-      default: termDoc = "CN";
-    }
+      // 🔹 Xác định tài liệu học kỳ trong Firestore
+      let termDoc;
+      switch (selectedSemester) {
+        case "Giữa kỳ I":
+          termDoc = "GKI";
+          break;
+        case "Cuối kỳ I":
+          termDoc = "CKI";
+          break;
+        case "Giữa kỳ II":
+          termDoc = "GKII";
+          break;
+        default:
+          termDoc = "CN";
+          break;
+      }
 
-    const classKey =
-      config?.mon === "Công nghệ" ? `${currentClass}_CN` : currentClass;
 
-    // 🔹 LẤY KTDK
-    const docRef = doc(db, "KTDK", termDoc);
-    const snap = await getDoc(docRef);
-    const termData = snap.exists() ? snap.data() : {};
-    const ktData = termData[classKey] || {};
+      // 🔹 Tên lớp: chỉ giữ dạng "4.1" hoặc "4.1_CN"
+      const classKey = config?.mon === "Công nghệ" ? `${currentClass}_CN` : currentClass;
 
-    // 🔹 LẤY DANHSACH
-    const docRefList = doc(db, "DANHSACH", currentClass);
-    const snapList = await getDoc(docRefList);
-    const listData = snapList.exists() ? snapList.data() : {};
+      // 🔹 Kiểm tra cache trước
+      const cached = getStudentsForClass(termDoc, classKey);
+      if (cached) {
+        setStudents(cached);
+        return;
+      }
 
-    // 🔹 MERGE: DANHSACH là gốc
-    const mergedData = {};
+      // 🔹 Lấy dữ liệu từ Firestore
+      const docRef = doc(db, "KTDK", termDoc);
+      const snap = await getDoc(docRef);
+      //const termData = snap.exists() ? snap.data() : {};
+      //const classData = termData[classKey] || {};
 
-    Object.entries(listData).forEach(([maDinhDanh, info]) => {
-      const dgtxMucDat = ktData[maDinhDanh]?.dgtx_mucdat || "";
-      const nhanXet = ktData[maDinhDanh]?.nhanXet || "";
+      const termData = snap.exists() ? snap.data() : {};
+      let classData = termData[classKey] || {};
 
-      mergedData[maDinhDanh] = {
+      // 🟡 Nếu chưa có dữ liệu trong KTDK, lấy danh sách học sinh từ DANHSACH
+      if (Object.keys(classData).length === 0) {
+        const docRefList = doc(db, "DANHSACH", currentClass);
+        const snapList = await getDoc(docRefList);
+        if (snapList.exists()) {
+          const listData = snapList.data();
+          classData = {};
+          Object.entries(listData).forEach(([maDinhDanh, info]) => {
+            classData[maDinhDanh] = {
+              hoVaTen: info.hoVaTen || "",
+              dgtx: info.dgtx || "",
+              dgtx_gv: "",
+              lyThuyet: null,
+              thucHanh: null,
+              tongCong: null,
+              mucDat: "",
+              nhanXet: "",
+            };
+          });
+        }
+      }
+
+      // 1️⃣ Tạo danh sách học sinh (chưa gán STT)
+      let studentList = Object.entries(classData).map(([maDinhDanh, info]) => ({
+        maDinhDanh,
         hoVaTen: info.hoVaTen || "",
+        dgtx: info.dgtx || "",
+        dgtx_gv: info.dgtx_gv || "",
+        lyThuyet: info.lyThuyet ?? null,
+        thucHanh: info.thucHanh ?? null,
+        tongCong: info.tongCong ?? null,
+        mucDat: info.mucDat || "",
+        nhanXet: info.nhanXet || "",
+      }));
 
-        dgtx_mucdat: dgtxMucDat,
-        nhanXet: nhanXet, // ⭐ CHỈ FIELD NÀY
+      // 2️⃣ Sắp xếp theo tên
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
 
-        lyThuyet: ktData[maDinhDanh]?.lyThuyet ?? null,
-        thucHanh: ktData[maDinhDanh]?.thucHanh ?? null,
-        tongCong: ktData[maDinhDanh]?.tongCong ?? null,
-        mucDat: ktData[maDinhDanh]?.mucDat || "",
-      };
-    });
+      // 3️⃣ Gán lại số thứ tự sau khi sắp xếp
+      studentList = studentList.map((s, idx) => ({
+        ...s,
+        stt: idx + 1,
+      }));
 
-
-    // 🔹 TẠO LIST
-    let studentList = Object.entries(mergedData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      ...info,
-    }));
-
-    // 🔹 SORT THEO TÊN
-    studentList.sort((a, b) => {
-      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-
-    // 🔹 GÁN STT
-    studentList = studentList.map((s, idx) => ({
-      ...s,
-      stt: idx + 1,
-    }));
-
-    // 🔹 SET + CACHE
-    setStudents(studentList);
-    setStudentsForClass(termDoc, classKey, studentList);
-
-  } catch (err) {
-    console.error("❌ Lỗi khi lấy dữ liệu:", err);
-    setStudents([]);
-  }
-};
-
+      // 4️⃣ Lưu và cache
+      setStudents(studentList);
+      setStudentsForClass(termDoc, classKey, studentList);
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy dữ liệu:", err);
+      setStudents([]);
+    }
+  };
 
   const fetchNhanXet = (cls, mon) => {
   const subject = mon || selectedSubject; // ưu tiên tham số
@@ -264,12 +286,9 @@ useEffect(() => {
 
           // ✅ Nếu chỉnh trực tiếp Mức đạt → tự động cập nhật nhận xét
           if (field === "mucDat") {
-            if (!updated.mucDat) {
-              updated.nhanXet = "";
-            } else {
-              updated.nhanXet = getNhanXetTuDong(updated.mucDat);
-            }
+            updated.nhanXet = getNhanXetTuDong(updated.mucDat);
           }
+
           return updated;
         }
         return s;
@@ -293,8 +312,10 @@ useEffect(() => {
   const handleSaveAll = async () => {
     if (!students || students.length === 0) return;
 
+    // 🔹 Lấy học kỳ từ config (đồng bộ với CONFIG)
     const selectedSemester = config.hocKy || "Giữa kỳ I";
 
+    // 🔹 Xác định tài liệu Firestore cần lưu
     let termDoc;
     switch (selectedSemester) {
       case "Giữa kỳ I":
@@ -311,36 +332,35 @@ useEffect(() => {
         break;
     }
 
-    const classKey =
-      config.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
+
+    // 🔹 Tên lớp rút gọn (4.1 hoặc 4.1_CN)
+    const classKey = config.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
 
     const docRef = doc(db, "KTDK", termDoc);
     const batch = writeBatch(db);
 
+    // 🔹 Chuẩn hóa dữ liệu học sinh
+    const studentsMap = {};
     students.forEach((s) => {
-      batch.set(
-        docRef,
-        {
-          [classKey]: {
-            [s.maDinhDanh]: {
-              hoVaTen: s.hoVaTen || "",
-              lyThuyet: parseOrNull(s.lyThuyet),
-              thucHanh: parseOrNull(s.thucHanh),
-              tongCong: parseOrNull(s.tongCong),
-              mucDat: s.mucDat || "",
-
-              // ⭐ FIELD DUY NHẤT
-              nhanXet: s.nhanXet || "",
-            },
-          },
-        },
-        { merge: true }
-      );
+      studentsMap[s.maDinhDanh] = {
+        hoVaTen: s.hoVaTen || "",
+        lyThuyet: parseOrNull(s.lyThuyet),
+        thucHanh: parseOrNull(s.thucHanh),
+        tongCong: parseOrNull(s.tongCong),
+        mucDat: s.mucDat || "",
+        nhanXet: s.nhanXet || "",
+        dgtx: s.dgtx || "",
+        dgtx_gv: s.dgtx_gv || "",
+      };
     });
+
+    // 🔹 Gộp dữ liệu vào batch (merge để không ghi đè lớp khác)
+    batch.set(docRef, { [classKey]: studentsMap }, { merge: true });
 
     try {
       await batch.commit();
 
+      // ✅ Cập nhật context cache
       setStudentData((prev) => ({ ...prev, [classKey]: students }));
       if (typeof setStudentsForClass === "function") {
         setStudentsForClass(termDoc, classKey, students);
@@ -360,7 +380,6 @@ useEffect(() => {
       });
     }
   };
-
 
 
   const handleDownload = async () => {
@@ -581,13 +600,14 @@ useEffect(() => {
             <TableHead>
               <TableRow>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 50, px: 1, whiteSpace: "nowrap" }}>STT</TableCell>
-                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220, px: 1, whiteSpace: "nowrap" }}>Họ và tên</TableCell>                
-                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>ĐGTX</TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220, px: 1, whiteSpace: "nowrap" }}>Họ và tên</TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>HS đánh giá</TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>GV đánh giá</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Lí thuyết</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Thực hành</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Tổng cộng</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Mức đạt</TableCell>
-                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 500, px: 1, whiteSpace: "nowrap" }}>Nhận xét</TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 350, px: 1, whiteSpace: "nowrap" }}>Nhận xét</TableCell>
               </TableRow>
             </TableHead>
 
@@ -597,11 +617,58 @@ useEffect(() => {
                   <TableCell align="center" sx={{ px: 1 }}>{student.stt}</TableCell>
                   <TableCell align="left" sx={{ px: 1 }}>{student.hoVaTen}</TableCell>
 
+                  {/* 🟦 Cột Học sinh (trước là ĐGTX) */}
+                  <TableCell align="center" sx={{ px: 1 }}>
+                    <Typography variant="body2" sx={{ textAlign: "center" }}>
+                      {student.dgtx || ""}
+                    </Typography>
+                  </TableCell>
+
                   {/* 🟩 Cột Giáo viên – nhập theo cột, dùng teacher.dgtx */}
                   <TableCell align="center" sx={{ px: 1 }}>
-                    <Box sx={{ textAlign: "center", fontSize: "14px", py: 0.5 }}>
-                      {student.dgtx_mucdat || "-"}
-                    </Box>
+                    <FormControl
+                      variant="standard"
+                      fullWidth
+                      sx={{
+                        "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
+                        "&:hover .MuiSelect-icon": { opacity: 1 },
+                      }}
+                    >
+                      <Select
+                        value={student.dgtx_gv || ""}
+                        onChange={(e) =>
+                          handleCellChange(student.maDinhDanh, "dgtx_gv", e.target.value)
+                        }
+                        disableUnderline
+                        id={`teacher-dgtx-${idx}`}
+                        sx={{
+                          textAlign: "center",
+                          px: 1,
+                          "& .MuiSelect-select": {
+                            py: 0.5,
+                            fontSize: "14px",
+                          },
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const next = document.getElementById(`teacher-dgtx-${idx + 1}`);
+                            if (next) next.focus();
+                          }
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>-</em>
+                        </MenuItem>
+                        <MenuItem value="T">T</MenuItem>
+                        <MenuItem value="H">H</MenuItem>
+                        <MenuItem value="C">C</MenuItem>
+                      </Select>
+                    </FormControl>
+
+
+
+
                   </TableCell>
 
                   {/* 🟨 Cột Lí thuyết */}
