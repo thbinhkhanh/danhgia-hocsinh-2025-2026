@@ -59,7 +59,8 @@ export const nhanXetTinHoc = {
   ]
 };
 
-export const nhanXetCongNghe = {
+// Giữa kỳ
+export const nhanXetCongNgheGiuaKy = {
   tot: [
     "Em học tập tích cực, cẩn thận và hoàn thành tốt các sản phẩm Công nghệ.",
     "Em có ý thức học tập tốt, sáng tạo trong các hoạt động thực hành.",
@@ -120,3 +121,101 @@ export const nhanXetCongNghe = {
     "Em chưa hoàn thành nhiệm vụ học tập, cần chăm chỉ và cẩn thận hơn.",
   ]
 };
+
+// Cuối kỳ I hoặc cả năm
+export const nhanXetCongNgheCuoiKy = {
+  tot: {
+    lyThuyet: [
+      "Em học tích cực, hoàn thành tốt sản phẩm",
+      "Em có ý thức học tập, chủ động trong lý thuyết",
+      "Em tự tin trình bày ý tưởng, nắm chắc kiến thức",
+      "Em luôn hoàn thành bài tập đúng hạn",
+      "Em hợp tác tốt trong nhóm lý thuyết",
+      "Em sáng tạo trong trình bày và áp dụng kiến thức",
+      "Em chủ động đặt câu hỏi và thảo luận",
+      "Em trình bày lý thuyết rõ ràng, dễ hiểu"
+    ],
+    thucHanh: [
+      "thực hành đúng hướng dẫn, sản phẩm đạt yêu cầu.",
+      "làm việc chăm chỉ, giữ gìn dụng cụ và an toàn.",
+      "hứng thú trong giờ học, thực hiện đúng hướng dẫn.",
+      "thao tác thành thạo, sản phẩm khoa học và logic.",
+      "biết vận dụng kiến thức giải quyết tình huống.",
+      "hoàn thành sản phẩm đúng quy trình, sáng tạo.",
+      "sản phẩm đẹp mắt, áp dụng tốt kỹ thuật học.",
+      "thực hiện thí nghiệm chính xác, chú ý từng bước."
+    ]
+  },
+  kha: {
+    lyThuyet: [
+      "Em học tập tốt, hoàn thành nhiệm vụ",
+      "Em cần mạnh dạn hơn khi trình bày ý tưởng",
+      "Em nắm kiến thức cơ bản, cần luyện tập thêm",
+      "Em có tiến bộ, cần phát huy chủ động",
+      "Em biết trao đổi và hợp tác nhóm",
+      "Em trình bày bài học logic, cần sáng tạo hơn",
+      "Em tích cực hỏi đáp trong lý thuyết",
+      "Em tham gia thảo luận nhóm nhưng cần mạch lạc hơn"
+    ],
+    thucHanh: [
+      "thực hành đúng hướng dẫn, cần rèn kỹ năng.",
+      "làm việc cẩn thận, sản phẩm tốt nhưng cần cố gắng.",
+      "sử dụng dụng cụ đúng cách, cần tập trung hơn.",
+      "hoàn thành sản phẩm nhưng cần cải thiện thẩm mỹ.",
+      "thao tác cơ bản tốt, cần nâng cao tốc độ và chính xác.",
+      "tham gia tích cực, cần chủ động hơn trong nhóm.",
+      "sản phẩm đầy đủ nhưng cần thêm sáng tạo.",
+      "cần luyện tập để hoàn thiện kỹ năng."
+    ]
+  },
+  trungbinh: {
+    lyThuyet: [
+      "Em hoàn thành cơ bản, cần cố gắng hơn",
+      "Em học còn chậm, cần tập trung",
+      "Em nắm kiến thức trọng tâm, cần luyện tập thêm",
+      "Em cần chủ động hơn khi làm bài",
+      "Em học đúng nhưng thiếu tự tin",
+      "Em cần hỗ trợ để hiểu và vận dụng kiến thức",
+      "Em nên tham khảo thêm tài liệu",
+      "Em nên luyện tập thường xuyên"
+    ],
+    thucHanh: [
+      "thực hành đúng nhưng sản phẩm chưa đẹp.",
+      "còn lúng túng, cần hỗ trợ thầy cô và bạn bè.",
+      "thao tác chậm, cần luyện kỹ năng cơ bản.",
+      "chưa hoàn thành một số nhiệm vụ.",
+      "làm việc vội vàng, cần rèn tính tỉ mỉ.",
+      "cần luyện tập thêm nâng cao kỹ năng.",
+      "cần cải thiện thao tác, sản phẩm chưa đạt.",
+      "cần chú ý kỹ thuật để nâng cao chất lượng."
+    ]
+  },
+  yeu: {
+    lyThuyet: [
+      "Em cần cố gắng hơn",
+      "Em gặp khó khăn, cần hỗ trợ",
+      "Em chưa hoàn thành yêu cầu, cần chăm chỉ",
+      "Em nắm kiến thức yếu, cần kế hoạch học tập",
+      "Em thiếu tự tin và chủ động",
+      "Em cần kèm cặp sát sao để tiến bộ",
+      "Em nên ôn luyện thường xuyên",
+      "Em cần tập trung và chủ động tham gia"
+    ],
+    thucHanh: [
+      "cần cố gắng hơn trong thực hành.",
+      "còn lúng túng, cần hỗ trợ thầy cô và bạn bè.",
+      "chưa hoàn thành nhiệm vụ, cần chăm chỉ và cẩn thận.",
+      "thao tác chưa chính xác, cần luyện tập nhiều hơn.",
+      "thiếu chủ động, cần nhắc nhở và hướng dẫn thêm.",
+      "chưa áp dụng kiến thức vào thực hành, cần hỗ trợ sát sao.",
+      "cần luyện tập đều đặn để nâng cao kỹ năng.",
+      "cần tham khảo hướng dẫn chi tiết để hoàn thành sản phẩm."
+    ]
+  }
+};
+
+
+
+
+
+

@@ -587,7 +587,7 @@ useEffect(() => {
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Thực hành</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Tổng cộng</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Mức đạt</TableCell>
-                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 350, px: 1, whiteSpace: "nowrap" }}>Nhận xét</TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 500, px: 1, whiteSpace: "nowrap" }}>Nhận xét</TableCell>
               </TableRow>
             </TableHead>
 
@@ -599,47 +599,10 @@ useEffect(() => {
 
                   {/* 🟩 Cột Giáo viên – nhập theo cột, dùng teacher.dgtx */}
                   <TableCell align="center" sx={{ px: 1 }}>
-                    <FormControl
-                      variant="standard"
-                      fullWidth
-                      sx={{
-                        "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
-                        "&:hover .MuiSelect-icon": { opacity: 1 },
-                      }}
-                    >
-                      <Select
-                        value={student.dgtx_mucdat || ""}    // ✅ HIỂN THỊ dgtx
-                        onChange={(e) =>
-                          handleCellChange(student.maDinhDanh, "dgtx_mucdat", e.target.value) // ✅ GHI dgtx_mucdat
-                        }
-                        disableUnderline
-                        id={`dgtx-${idx}`}
-                        sx={{
-                          textAlign: "center",
-                          px: 1,
-                          "& .MuiSelect-select": {
-                            py: 0.5,
-                            fontSize: "14px",
-                          },
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            const next = document.getElementById(`dgtx-${idx + 1}`);
-                            if (next) next.focus();
-                          }
-                        }}
-                      >
-                        <MenuItem value="">
-                          <em>-</em>
-                        </MenuItem>
-                        <MenuItem value="T">T</MenuItem>
-                        <MenuItem value="H">H</MenuItem>
-                        <MenuItem value="C">C</MenuItem>
-                      </Select>
-                    </FormControl>
+                    <Box sx={{ textAlign: "center", fontSize: "14px", py: 0.5 }}>
+                      {student.dgtx_mucdat || "-"}
+                    </Box>
                   </TableCell>
-
 
                   {/* 🟨 Cột Lí thuyết */}
                   <TableCell align="center" sx={{ px: 1 }}>
