@@ -38,7 +38,9 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
-import { nhanXetTinHoc, nhanXetCongNghe } from '../utils/nhanXet.js';
+//import { nhanXetTinHoc, nhanXetCongNghe } from '../utils/nhanXet.js';
+import { nhanXetTinHoc, nhanXetCongNgheGiuaKy as nhanXetCongNghe } from '../utils/nhanXet.js';
+
 
 export default function TongHopDanhGia() {
   // --- Context ---
