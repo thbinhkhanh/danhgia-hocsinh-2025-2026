@@ -365,6 +365,7 @@ useEffect(() => {
     if (!students || students.length === 0) return;
 
     const selectedSemester = config.hocKy || "Giữa kỳ I";
+    const isCongNghe = config.mon === "Công nghệ";
 
     let termDoc;
     switch (selectedSemester) {
@@ -396,7 +397,11 @@ useEffect(() => {
             [s.maDinhDanh]: {
               hoVaTen: s.hoVaTen || "",
               lyThuyet: parseOrNull(s.lyThuyet),
-              thucHanh: parseOrNull(s.thucHanh),
+              //thucHanh: parseOrNull(s.thucHanh),
+              thucHanh: isCongNghe
+                ? (s.thucHanh || "")
+                : parseOrNull(s.thucHanh),
+
               tongCong: parseOrNull(s.tongCong),
               mucDat: s.mucDat || "",
 
@@ -436,7 +441,7 @@ useEffect(() => {
 
   const handleDownload = async () => {
     try {
-      await exportKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I");
+      await exportKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I", config.mon);
     } catch (error) {
       console.error("❌ Lỗi khi xuất Excel:", error);
     }
@@ -482,7 +487,7 @@ useEffect(() => {
       return;
     }
     try {
-      await printKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I");
+      await printKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I", config.mon);
     } catch (err) {
       console.error("❌ Lỗi khi in:", err);
       alert("Lỗi khi in danh sách. Vui lòng thử lại!");
@@ -534,7 +539,7 @@ useEffect(() => {
 
           <Tooltip title="In danh sách KTĐK" arrow>
             <IconButton
-              onClick={() => printKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I")}
+              onClick={handlePrint}
               sx={{
                 color: "primary.main",
                 bgcolor: "white",

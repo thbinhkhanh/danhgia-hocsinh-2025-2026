@@ -1,8 +1,14 @@
-export const printKTDK = (students, className, selectedSemester = "Giữa kỳ I") => {
+export const printKTDK = (students, className, selectedSemester = "Giữa kỳ I", subject = "Tin học") => {
   if (!students || students.length === 0) {
     alert("❌ Không có dữ liệu để in!");
     return;
   }
+
+  // 🔹 Chuẩn hoá môn
+  const subjectLabel =
+    subject?.trim().toLowerCase() === "công nghệ"
+      ? "CÔNG NGHỆ"
+      : "TIN HỌC";
 
   // 🔹 Xác định termDoc
   let termDoc;
@@ -60,7 +66,7 @@ export const printKTDK = (students, className, selectedSemester = "Giữa kỳ I
     </head>
     <body>
       <div class="school-name">TRƯỜNG TIỂU HỌC BÌNH KHÁNH</div>
-      <div class="title">KẾT QUẢ KTĐK - LỚP ${className}</div>
+      <div class="title">MÔN ${subjectLabel} - LỚP ${className}</div>
       <div class="subtext" style="font-size:16px; margin-top:10px; margin-bottom:15px;">
         ${hocKy} – NH: ${currentYear}-${nextYear}
       </div>

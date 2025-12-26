@@ -7,7 +7,7 @@ import { saveAs } from "file-saver";
  * @param {string} className - Tên lớp
  * @param {string} term - GKI, CKI, GKII, CN
  */
-export const exportKTDK = async (students, className, term = "CKI") => {
+export const exportKTDK = async (students, className, term = "CKI", subject = "Tin học") => {
   if (!students || students.length === 0) {
     alert("❌ Không có dữ liệu học sinh để xuất!");
     return;
@@ -20,6 +20,11 @@ export const exportKTDK = async (students, className, term = "CKI") => {
     CN: "Cả năm",
   };
   const termLabel = termMap[term] || term;
+    const subjectLabel =
+    subject?.toLowerCase() === "công nghệ"
+      ? "CÔNG NGHỆ"
+      : "TIN HỌC";
+
 
   try {
     const workbook = new ExcelJS.Workbook();
@@ -48,7 +53,11 @@ export const exportKTDK = async (students, className, term = "CKI") => {
     schoolRow.alignment = { horizontal: "left" };
 
     // 🔹 Tiêu đề chính
-    const titleRow = sheet.addRow([`DANH SÁCH KIỂM TRA ĐỊNH KỲ LỚP ${className}`]);
+    //const titleRow = sheet.addRow([`KẾT QUẢ KTĐK - LỚP ${className}`]);
+    const titleRow = sheet.addRow([
+      `MÔN ${subjectLabel} - LỚP ${className}`,
+    ]);
+
     titleRow.font = { bold: true, size: 14, color: { argb: "FF0D47A1" } };
     sheet.mergeCells(`A2:H2`);
     titleRow.alignment = { horizontal: "center", vertical: "middle" };
@@ -138,7 +147,8 @@ export const exportKTDK = async (students, className, term = "CKI") => {
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
-    saveAs(blob, `KTĐK_${className}_${term}.xlsx`);
+    //saveAs(blob, `KTĐK_${className}_${term}.xlsx`);
+    saveAs(blob, `${subject}_${term}_${className}.xlsx`);
   } catch (err) {
     console.error("❌ Lỗi khi xuất Excel:", err);
     alert("Xuất danh sách KTĐK thất bại!");
