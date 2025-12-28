@@ -205,42 +205,66 @@ export const handleSubmitQuiz = async ({
 
     // ❗ Nếu là kiểm tra định kỳ
     if (kiemTraDinhKi) {
-      const classKey = studentClass.replace(".", "_");
-      const subjectKey = config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
-      const termDoc = mapHocKyToDocKey(configData?.hocKy || "Giữa kỳ I");
+      const collectionRoot = "BINHKHANH";
+      const studentDocId = normalizeName(studentName);
 
-      const hsRef = doc(db, "DATA", classKey, "HOCSINH", studentId);
+      // Lưu kết quả vào BINHKHANH
+      const docRef = doc(
+        db,
+        `${collectionRoot}/${configData.hocKy}/${studentClass}/${studentDocId}`
+      );
+      await setDoc(
+        docRef,
+        {
+          hoVaTen: capitalizeName(studentName),
+          lop: studentClass,
+          mon: monHoc,
+          diem: total,
+          ngayKiemTra,
+          thoiGianLamBai: durationStr,
+        },
+        { merge: true }
+      );
 
-      await updateDoc(hsRef, {
-        [`${subjectKey}.ktdk.${termDoc}.lyThuyet`]: total,
-        [`${subjectKey}.ktdk.${termDoc}.lyThuyetPhanTram`]: phanTram,
-        [`${subjectKey}.ktdk.${termDoc}.ngayKiemTra`]: ngayKiemTra,          // thêm ngày
-        [`${subjectKey}.ktdk.${termDoc}.thoiGianLamBai`]: durationStr,       // thêm thời gian làm bài
-      }).catch(async (err) => {
-        if (err.code === "not-found") {
-          await setDoc(
-            hsRef,
-            {
-              [subjectKey]: {
-                ktdk: {
-                  [termDoc]: {
-                    lyThuyet: total,
-                    lyThuyetPhanTram: phanTram,
-                    ngayKiemTra: ngayKiemTra,
-                    thoiGianLamBai: durationStr,
-                  },
-                },
-              },
-            },
-            { merge: true }
-          );
-        } else {
-          throw err;
-        }
-      });
+      // Lưu điểm vào KTDK
+      const ktRef = doc(db, `KTDK/${hocKiKey}`);
+      const ktSnap = await getDoc(ktRef);
+      if (!ktSnap.exists()) {
+        await setDoc(ktRef, {});
+      }
+
+      const ktData = ktSnap.exists() ? ktSnap.data() : {};
+      const lopData = ktData[studentClass] || {};
+
+      const studentData = lopData[studentId] || {
+        hoVaTen: capitalizeName(studentInfo.name),
+        dgtx: "T",
+        dgtx_gv: "",
+        mucDat: "",
+        nhanXet:
+          "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
+        thucHanh: null,
+        tongCong: null,
+        lyThuyet: null,
+        lyThuyetPhanTram: null,
+      };
+
+      studentData.lyThuyet = total;
+      studentData.lyThuyetPhanTram = phanTram;
+
+      await setDoc(
+        ktRef,
+        {
+          [studentClass]: {
+            ...lopData,
+            [studentId]: studentData,
+          },
+        },
+        { merge: true }
+      );
     } else if (configData?.onTap === true) {
       // ❗ NHÁNH ÔN TẬP
-      {/*const collectionRoot = "BINHKHANH_ONTAP";
+      const collectionRoot = "BINHKHANH_ONTAP";
       const studentDocId = normalizeName(studentName);
 
       const docRef = doc(
@@ -259,24 +283,14 @@ export const handleSubmitQuiz = async ({
           thoiGianLamBai: durationStr,
         },
         { merge: true }
-      );*/}
+      );
     }
 
     // ❗ Nếu là bài tập tuần (DGTX)
     else {
-      const classKey = (studentClass || "").replace(".", "_");
-      const monKey = config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
-
-      const weekNumber = Number(selectedWeek);
-      if (!weekNumber) return;
-
-      const hsRef = doc(
-        db,
-        "DATA",
-        classKey,
-        "HOCSINH",
-        studentId
-      );
+      const classKey =
+        config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
+      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
 
       const percent = phanTram;
       const resultText =
@@ -286,31 +300,24 @@ export const handleSubmitQuiz = async ({
           ? "Hoàn thành"
           : "Chưa hoàn thành";
 
-      // ⚠️ phân biệt ĐÁNH GIÁ TUẦN hay BÀI TẬP TUẦN
-      const isDanhGiaTuan = config?.danhGiaTuan === true;
-
-      const weekData = isDanhGiaTuan
-        ? {
-            status: resultText,
-          }
-        : {
-            TN_diem: percent,
-            TN_status: resultText,
-          };
-
-      await setDoc(
-        hsRef,
-        {
-          [monKey]: {
-            dgtx: {
-              [`tuan_${weekNumber}`]: weekData,
+      await updateDoc(tuanRef, {
+        [`${studentId}.hoVaTen`]: studentName,
+        [`${studentId}.diemTracNghiem`]: resultText,
+        [`${studentId}.diemTN`]: percent,
+      }).catch(async err => {
+        if (err.code === "not-found") {
+          await setDoc(tuanRef, {
+            [studentId]: {
+              hoVaTen: studentName,
+              diemTracNghiem: resultText,
+              diemTN: percent,
             },
-          },
-        },
-        { merge: true }
-      );
+          });
+        } else {
+          throw err;
+        }
+      });
     }
-
   } catch (err) {
     console.error("❌ Lỗi khi lưu điểm:", err);
   } finally {

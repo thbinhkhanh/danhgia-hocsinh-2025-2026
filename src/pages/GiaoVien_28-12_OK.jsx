@@ -26,8 +26,6 @@ import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteField, onSna
 import Draggable from "react-draggable";
 import { useTheme, useMediaQuery } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import DanhGiaGVDialog from "../dialog/DanhGiaGVDialog";
-import ThongBaoTracNghiemGVDialog from "../dialog/ThongBaoTracNghiemGVDialog";
 
 export default function GiaoVien() {
   const { studentData, setStudentData, setClassData } = useContext(StudentContext);
@@ -278,7 +276,7 @@ const handleStatusChange = (maDinhDanh, status) => {
     const { lop, tuan, mon, baiTapTuan, kiemTraDinhKi, hocKy } = config;
     if (!lop || !mon) return;
 
-    const classKey = lop.replace(".", "_");
+    const classKey = lop.replace(".", "_"); // consistent với DATA
     const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
     const studentRef = doc(db, "DATA", classKey, "HOCSINH", studentId);
 
@@ -286,36 +284,24 @@ const handleStatusChange = (maDinhDanh, status) => {
       if (baiTapTuan && tuan) {
         // Xóa điểm tuần trong DATA
         await updateDoc(studentRef, {
-          [`${subjectKey}.dgtx.tuan_${tuan}.TN_diem`]: null,
-          [`${subjectKey}.dgtx.tuan_${tuan}.TN_status`]: "",
+          [`${subjectKey}.dgtx.tuan_${tuan}.TN_diem`]: deleteField(),
+          [`${subjectKey}.dgtx.tuan_${tuan}.TN_status`]: deleteField(),
         });
         console.log(`✅ Đã xóa bài tập tuần ${tuan} của HS ${hoVaTen}`);
       }
 
       if (kiemTraDinhKi && hocKy) {
-        const hocKyMap = {
-          "Giữa kỳ I": "GKI",
-          "Cuối kỳ I": "CKI",
-          "Giữa kỳ II": "GKII",
-          "Cả năm": "CN",
-        };
-        const hocKyCode = hocKyMap[hocKy];
-
-        // Chỉ đặt các điểm về null, giữ nguyên nhận xét
+        // Xóa kiểm tra định kỳ trong DATA
         await updateDoc(studentRef, {
-          [`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`]: null,
-          [`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`]: null,
-          [`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`]: null,
-          [`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`]: null,
+          [`${subjectKey}.dgtx.ktdk_${hocKy}.TN_diem`]: deleteField(),
+          [`${subjectKey}.dgtx.ktdk_${hocKy}.TN_status`]: deleteField(),
         });
-
-        console.log(`✅ Đã reset điểm KTDK ${hocKy} của HS ${hoVaTen} (giữ nhận xét)`);
+        console.log(`✅ Đã xóa KTĐK ${hocKy} của HS ${hoVaTen}`);
       }
     } catch (err) {
       console.error("❌ Lỗi xóa dữ liệu trong DATA:", err);
     }
   };
-
 
 
   // Hàm dùng chung
@@ -363,24 +349,15 @@ const handleStatusChange = (maDinhDanh, status) => {
         // xóa điểm tuần, dùng TN_diem và TN_status
         if (dgtxData[`tuan_${tuan}`]) {
           updates[`${subjectKey}.dgtx.tuan_${tuan}.TN_diem`] = null;
-          updates[`${subjectKey}.dgtx.tuan_${tuan}.TN_status`] = "";
+          updates[`${subjectKey}.dgtx.tuan_${tuan}.TN_status`] = null;
         }
       } 
-      else if (mode === "ktdk" && hocKy) {
-        const hocKyMap = {
-          "Giữa kỳ I": "GKI",
-          "Cuối kỳ I": "CKI",
-          "Giữa kỳ II": "GKII",
-          "Cả năm": "CN",
-        };
-        const hocKyCode = hocKyMap[hocKy];
-
-        const ktdkData = studentData?.[subjectKey]?.ktdk?.[hocKyCode];
-        if (ktdkData) {
-          updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`] = null;
-          updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`] = null;
-          updates[`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`] = null;
-          updates[`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`] = null;
+      else if (mode === "ktdk") {
+        // xóa kiểm tra định kỳ
+        if (dgtxData[`ktdk_${hocKy}`]) {
+          updates[`${subjectKey}.dgtx.ktdk_${hocKy}.lyThuyet`] = null;
+          updates[`${subjectKey}.dgtx.ktdk_${hocKy}.lyThuyetPhanTram`] = null;
+          // Không xóa status nữa
         }
       }
 
@@ -629,23 +606,215 @@ const handleStatusChange = (maDinhDanh, status) => {
     </Paper>
 
     {/* Dialog đánh giá */}
-    <DanhGiaGVDialog
-      studentForDanhGia={studentForDanhGia}
-      setStudentForDanhGia={setStudentForDanhGia}
-      studentStatus={studentStatus}
-      handleStatusChange={handleStatusChange}
+    <Dialog
+      open={Boolean(studentForDanhGia)}
+      onClose={() => setStudentForDanhGia(null)}
+      maxWidth="xs"
+      fullWidth
       PaperComponent={PaperComponent}
-    />
+    >
+      {studentForDanhGia && (
+        <>
+          <DialogTitle
+            id="draggable-dialog-title"
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              bgcolor: "#64b5f6",
+              py: 1.5,
+              cursor: "move",
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ color: "#ffffff" }}>
+              {studentForDanhGia.hoVaTen.toUpperCase()}
+            </Typography>
+            <IconButton
+              onClick={() => setStudentForDanhGia(null)}
+              sx={{ color: "#f44336", "&:hover": { bgcolor: "rgba(244,67,54,0.1)" } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+
+          <DialogContent>
+            <Stack spacing={1.5} sx={{ mt: 2 }}>
+              {["Hoàn thành tốt", "Hoàn thành", "Chưa hoàn thành"].map(s => {
+                const isSelected = studentStatus[studentForDanhGia.maDinhDanh] === s;
+                return (
+                  <Button
+                    key={s}
+                    variant={isSelected ? "contained" : "outlined"}
+                    color={
+                      s === "Hoàn thành tốt"
+                        ? "primary"
+                        : s === "Hoàn thành"
+                        ? "secondary"
+                        : "warning"
+                    }
+                    onClick={() =>
+                      handleStatusChange(studentForDanhGia.maDinhDanh, s) 
+                    }
+                  >
+                    {isSelected ? `✓ ${s}` : s}
+                  </Button>
+                );
+              })}
+
+              {studentStatus[studentForDanhGia.maDinhDanh] && (
+                <Box sx={{ textAlign: "center", mt: 2 }}>
+                  <Button
+                    onClick={() => {
+                      handleStatusChange(studentForDanhGia.maDinhDanh, "");
+                      setStudentForDanhGia(null);
+                    }}
+                    sx={{
+                      bgcolor: "#4caf50",
+                      color: "#fff",
+                      "&:hover": { bgcolor: "#388e3c" },
+                      mt: 1,
+                    }}
+                  >
+                    HỦY ĐÁNH GIÁ
+                  </Button>
+                </Box>
+              )}
+            </Stack>
+          </DialogContent>
+        </>
+      )}
+    </Dialog>
 
     {/* Dialog điểm trắc nghiệm */}
-    <ThongBaoTracNghiemGVDialog
-      studentForTracNghiem={studentForTracNghiem}
-      setStudentForTracNghiem={setStudentForTracNghiem}
-      studentScores={studentScores}
-      config={config}
-      convertPercentToScore={convertPercentToScore}
-      deleteStudentScore={deleteStudentScore}
-    />
+    <Dialog
+      open={!!studentForTracNghiem}
+      onClose={() => setStudentForTracNghiem(null)}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 3,
+          bgcolor: "#e3f2fd",
+          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+        },
+      }}
+    >
+      {/* Header với icon và tiêu đề Thông báo */}
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <Box
+          sx={{
+            bgcolor: "#42a5f5",
+            color: "#fff",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mr: 1.5,
+            fontWeight: "bold",
+            fontSize: 18,
+          }}
+        >
+          📝
+        </Box>
+        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
+          Thông báo
+        </DialogTitle>
+        <IconButton
+          onClick={() => setStudentForTracNghiem(null)}
+          sx={{ ml: "auto", color: "#f44336", "&:hover": { bgcolor: "rgba(244,67,54,0.1)" } }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </Box>
+
+      {/* Nội dung: tên HS đặt phía dưới */}
+      <DialogContent sx={{ textAlign: "center" }}>
+        <Typography
+          sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}
+        >
+          {studentForTracNghiem?.hoVaTen?.toUpperCase() || "HỌC SINH"}
+        </Typography>
+
+        {(() => {
+          const score =
+            studentScores[studentForTracNghiem?.maDinhDanh] || {};
+
+          /* =====================
+            📘 BÀI TẬP TUẦN
+          ====================== */
+          if (config?.baiTapTuan) {
+            return (
+              <>
+                <Typography
+                  sx={{ fontSize: 16, color: "#0d47a1", mt: 2, mb: 0.5 }}
+                >
+                  <strong>Điểm trắc nghiệm:</strong>{" "}
+                  {score.TN_diem != null
+                    ? `${convertPercentToScore(score.TN_diem)} điểm`
+                    : "Chưa có"}
+                </Typography>
+
+                <Typography sx={{ fontSize: 16, color: "#1565c0", mt: 1 }}>
+                  <strong>Mức đạt:</strong> {score.TN_status || "Chưa có"}
+                </Typography>
+              </>
+            );
+          }
+
+          /* =====================
+            📝 KIỂM TRA ĐỊNH KỲ
+          ====================== */
+          if (config?.kiemTraDinhKi) {
+            return (
+              <>
+                <Typography
+                  sx={{ fontSize: 16, color: "#0d47a1", mt: 2, mb: 0.5 }}
+                >
+                  <strong>Điểm lý thuyết:</strong>{" "}
+                  {score.lyThuyet != null
+                    ? `${score.lyThuyet} điểm`
+                    : "Chưa có"}
+                </Typography>
+
+                {score.nhanXet && (
+                  <Typography
+                    sx={{ fontSize: 16, color: "#1565c0", mt: 1 }}
+                  >
+                    <strong>Nhận xét:</strong> {score.nhanXet}
+                  </Typography>
+                )}
+              </>
+            );
+          }
+
+          return null;
+        })()}
+      </DialogContent>
+
+      {/* Action */}
+      <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={() => {
+            deleteStudentScore(studentForTracNghiem.maDinhDanh, studentForTracNghiem.hoVaTen);
+            setStudentForTracNghiem(null);
+          }}
+          sx={{
+            borderRadius: 2,
+            px: 4,
+            bgcolor: "#f44336",
+            color: "#fff",
+            "&:hover": { bgcolor: "#d32f2f" },
+          }}
+        >
+          XÓA KẾT QUẢ
+        </Button>
+      </DialogActions>
+    </Dialog>
   </Box>
 );
 }

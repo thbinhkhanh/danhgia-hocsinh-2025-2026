@@ -8,23 +8,10 @@ import {
   LinearProgress,
   Alert,
 } from "@mui/material";
-
 import ExcelJS from "exceljs";
-
-import {
-  doc,
-  getDoc,
-  getDocs,
-  collection,
-  writeBatch,
-} from "firebase/firestore";
-
-import { getDatabase, ref, get, set } from "firebase/database";
-
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { useConfig } from "../context/ConfigContext";
-
-
+import { useConfig } from "../context/ConfigContext"; // ✅ Lấy context
 
 export default function XuatDanhGia() {
   const { config } = useConfig(); // ✅ Lấy học kỳ từ context
@@ -33,8 +20,6 @@ export default function XuatDanhGia() {
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(false);
   const [folderHandle, setFolderHandle] = useState(null);
-
-  const rtdb = getDatabase(); // ✅ BẮT BUỘC PHẢI CÓ
 
   // 🔹 Map học kỳ hiển thị → mã Firestore
   const mapTerm = (text) => {
@@ -276,138 +261,6 @@ export default function XuatDanhGia() {
     }
   };
 
-  const handleChuyenDuLieu = async () => {
-  try {
-    setLoading(true);
-    setMessage("🔄 Đang chuyển đổi dữ liệu...");
-    setProgress(0);
-
-    const TERM_LIST = ["GKI", "CKI", "GKII", "CN"];
-    const CLASS_LIST = [
-      "4.1", "4.2", "4.3", "4.4", "4.5", "4.6",
-      "5.1", "5.1_CN", "5.2", "5.3", "5.4", "5.4_CN"
-    ];
-
-    // 1️⃣ Lấy toàn bộ KTDK theo học kỳ
-    const ktdkByTerm = {};
-    for (const term of TERM_LIST) {
-      const snap = await getDoc(doc(db, "KTDK", term));
-      if (snap.exists()) ktdkByTerm[term] = snap.data();
-    }
-
-    let done = 0;
-
-    // 2️⃣ Duyệt qua tất cả lớp
-    for (const lop of CLASS_LIST) {
-      const lopKey = lop.replace(".", "_");
-      const batch = writeBatch(db);
-
-      // Lấy danh sách học sinh
-      const dsSnap = await getDoc(doc(db, "DANHSACH", lop));
-      if (!dsSnap.exists()) continue;
-      const danhSach = dsSnap.data();
-
-      // Lấy DGTX theo tuần
-      const tuanSnap = await getDocs(collection(db, `DGTX/${lop}/tuan`));
-      const dgtxTuanMap = {};
-
-      tuanSnap.forEach(tuanDoc => {
-        const tuanId = tuanDoc.id;
-        const tuanData = tuanDoc.data();
-
-        Object.entries(tuanData).forEach(([maHS, info]) => {
-          if (!dgtxTuanMap[maHS]) dgtxTuanMap[maHS] = {};
-
-          const { hoVaTen, diemTN, diemTracNghiem, ...rest } = info || {};
-
-          // Gán dữ liệu với field mới
-          dgtxTuanMap[maHS][tuanId] = {
-            ...rest,
-            ...(diemTN !== undefined ? { TN_diem: diemTN } : {}),
-            ...(diemTracNghiem !== undefined ? { TN_status: diemTracNghiem } : {})
-          };
-        });
-      });
-
-
-      let stt = 1;
-
-      for (const [maHS, hs] of Object.entries(danhSach)) {
-        const hsRef = doc(db, "DATA", lopKey, "HOCSINH", maHS);
-
-        // Chuẩn bị KTDK cho TinHoc & CongNghe
-        const tinHocKtdk = {};
-        const congNgheKtdk = {};
-
-        for (const term of TERM_LIST) {
-          const tin = ktdkByTerm[term]?.[lop]?.[maHS] || {};
-          const cn = ktdkByTerm[term]?.[`${lop}_CN`]?.[maHS] || {};
-
-          tinHocKtdk[term] = {
-            dgtx_gv: tin.dgtx_gv || "",
-            dgtx_mucdat: tin.dgtx_mucdat || "",
-            dgtx_nx: tin.dgtx_nx || "",
-            mucDat: tin.mucDat || "",
-            nhanXet: tin.nhanXet || "",
-            tongCong: tin.tongCong ?? null,
-            lyThuyet: tin.lyThuyet ?? null,
-            thucHanh: tin.thucHanh ?? null
-          };
-
-          congNgheKtdk[term] = {
-            dgtx_gv: cn.dgtx_gv || "",
-            dgtx_mucdat: cn.dgtx_mucdat || "",
-            dgtx_nx: cn.dgtx_nx || "",
-            mucDat: cn.mucDat || "",
-            nhanXet: cn.nhanXet || "",
-            tongCong: cn.tongCong ?? null,
-            lyThuyet: cn.lyThuyet ?? null,
-            thucHanh: cn.thucHanh ?? "" // luôn chuỗi T/H/C
-          };
-        }
-
-        let congNgheData = {};
-        let tinHocData = {};
-
-        if (!lop.includes("_CN") && CLASS_LIST.includes(`${lop}_CN`)) {
-          // Lớp thường có CN
-          tinHocData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: tinHocKtdk };
-          congNgheData = { dgtx: {}, ktdk: congNgheKtdk };
-        } else if (lop.includes("_CN")) {
-          // Lớp CN chỉ CongNghe
-          congNgheData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: congNgheKtdk };
-        } else {
-          // Lớp bình thường chỉ TinHoc
-          tinHocData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: tinHocKtdk };
-        }
-
-        const hsData = {
-          hoVaTen: hs.hoVaTen || "",
-          stt: stt++,
-          ...(Object.keys(congNgheData).length ? { CongNghe: congNgheData } : {}),
-          ...(Object.keys(tinHocData).length ? { TinHoc: tinHocData } : {})
-        };
-
-        batch.set(hsRef, hsData, { merge: true });
-      }
-
-      await batch.commit();
-      done++;
-      setProgress(Math.round((done / CLASS_LIST.length) * 100));
-    }
-
-    setMessage("✅ Chuyển đổi toàn bộ dữ liệu TẤT CẢ lớp, bao gồm CN!");
-    setSuccess(true);
-  } catch (err) {
-    console.error("❌ Lỗi chuyển đổi:", err);
-    setMessage("❌ Lỗi khi chuyển dữ liệu");
-    setSuccess(false);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 5 }}>
       <Card elevation={6} sx={{ p: 4, borderRadius: 3, maxWidth: 420, mx: "auto" }}>
@@ -441,15 +294,6 @@ export default function XuatDanhGia() {
             disabled={loading || !folderHandle}
           >
             Xuất kết quả
-          </Button>
-
-          <Button
-            variant="contained"
-            color="warning"
-            onClick={handleChuyenDuLieu}
-            disabled={loading}
-          >
-            🔁 Chuyển dữ liệu vào DATA
           </Button>
 
           {loading && (

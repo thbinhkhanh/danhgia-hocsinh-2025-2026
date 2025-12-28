@@ -170,65 +170,89 @@ export const autoSubmitQuiz = async ({
     const docId = studentInfo.id;
 
     if (kiemTraDinhKi) {
-      const collectionRoot = "BINHKHANH";
-      const studentDocId = normalizeName(studentName);
-      const docRef = doc(db, `${collectionRoot}/${configData.hocKy}/${lop}/${studentDocId}`);
-      await setDoc(docRef, {
-        hoVaTen: capitalizeName(studentName),
-        lop,
-        mon: monHoc,
-        diem: total,
-        ngayKiemTra,
-        thoiGianLamBai: durationStr,
-      }, { merge: true });
+      const classKey = studentClass.replace(".", "_");
+      const subjectKey = config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-      const ktRef = doc(db, `KTDK/${hocKiKey}`);
-      const ktSnap = await getDoc(ktRef);
-      if (!ktSnap.exists()) await setDoc(ktRef, {});
-      const ktData = ktSnap.exists() ? ktSnap.data() : {};
-      const lopData = ktData[studentClass] || {};
-      const studentData = lopData[docId] || {
-        hoVaTen: capitalizeName(studentInfo.name),
-        dgtx: "T",
-        dgtx_gv: "",
-        mucDat: "",
-        nhanXet: "Em học tập nghiêm túc, thao tác nhanh, nắm vững kiến thức Tin học cơ bản.",
-        thucHanh: null,
-        tongCong: null,
-        lyThuyet: null,
-        lyThuyetPhanTram: null,
-      };
+      const termDoc = mapHocKyToDocKey(configData?.hocKy || "Giữa kỳ I");
 
-      studentData.lyThuyet = total;
-      studentData.lyThuyetPhanTram = phanTram;
-
-      await setDoc(
-        ktRef,
-        { [studentClass]: { ...lopData, [docId]: studentData } },
-        { merge: true }
+      const hsRef = doc(
+        db,
+        "DATA",
+        classKey,
+        "HOCSINH",
+        studentId
       );
-    } else {
-      const classKey = config?.mon === "Công nghệ" ? `${studentClass}_CN` : studentClass;
-      const tuanRef = doc(db, `DGTX/${classKey}/tuan/tuan_${selectedWeek}`);
-      const percent = phanTram;
-      const resultText = percent >= 75 ? "Hoàn thành tốt" : percent >= 50 ? "Hoàn thành" : "Chưa hoàn thành";
 
-      await updateDoc(tuanRef, {
-        [`${studentId}.hoVaTen`]: studentName,
-        [`${studentId}.diemTracNghiem`]: resultText,
-        [`${studentId}.diemTN`]: percent,
-      }).catch(async err => {
+      await updateDoc(hsRef, {
+        [`${subjectKey}.ktdk.${termDoc}.lyThuyet`]: total,
+        [`${subjectKey}.ktdk.${termDoc}.lyThuyetPhanTram`]: phanTram,
+      }).catch(async (err) => {
         if (err.code === "not-found") {
-          await setDoc(tuanRef, {
-            [studentId]: {
-              hoVaTen: studentName,
-              diemTracNghiem: resultText,
-              diemTN: percent,
+          await setDoc(
+            hsRef,
+            {
+              [subjectKey]: {
+                ktdk: {
+                  [termDoc]: {
+                    lyThuyet: total,
+                    lyThuyetPhanTram: phanTram,
+                  },
+                },
+              },
             },
-          });
-        } else throw err;
+            { merge: true }
+          );
+        } else {
+          throw err;
+        }
       });
-    }
+    } else {
+        const classKey = (studentClass || "").replace(".", "_");
+        const monKey = config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
+
+        const weekNumber = Number(selectedWeek);
+        if (!weekNumber) return;
+
+        const hsRef = doc(
+          db,
+          "DATA",
+          classKey,
+          "HOCSINH",
+          studentId
+        );
+
+        const percent = phanTram;
+        const resultText =
+          percent >= 75
+            ? "Hoàn thành tốt"
+            : percent >= 50
+            ? "Hoàn thành"
+            : "Chưa hoàn thành";
+
+        // ⚠️ phân biệt ĐÁNH GIÁ TUẦN hay BÀI TẬP TUẦN
+        const isDanhGiaTuan = config?.danhGiaTuan === true;
+
+        const weekData = isDanhGiaTuan
+          ? {
+              status: resultText,
+            }
+          : {
+              TN_diem: percent,
+              TN_status: resultText,
+            };
+
+        await setDoc(
+          hsRef,
+          {
+            [monKey]: {
+              dgtx: {
+                [`tuan_${weekNumber}`]: weekData,
+              },
+            },
+          },
+          { merge: true }
+        );
+      }
 
   } catch (err) {
     console.error("❌ Lỗi khi auto submit:", err);

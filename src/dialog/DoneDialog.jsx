@@ -1,4 +1,3 @@
-// src/dialog/DoneDialog.jsx
 import React from "react";
 import {
   Dialog,
@@ -18,6 +17,8 @@ const DoneDialog = ({
   choXemDiem,
   convertPercentToScore,
 }) => {
+  const studentName = (doneStudent?.hoVaTen || "Học sinh").toUpperCase();
+
   return (
     <Dialog
       open={open}
@@ -28,7 +29,7 @@ const DoneDialog = ({
         sx: {
           borderRadius: 3,
           p: 3,
-          bgcolor: "#e3f2fd", // 🌤 cùng màu nền trang chính
+          bgcolor: "#e3f2fd",
           boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
         },
       }}
@@ -62,25 +63,31 @@ const DoneDialog = ({
         <Typography
           sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}
         >
-          {(doneStudent?.hoVaTen || "Học sinh").toUpperCase()}
+          {studentName}
         </Typography>
 
-        <Typography sx={{ fontSize: 16, color: "#1565c0", mt: 2, mb: 0.5 }}>
-          Đã hoàn thành bài kiểm tra.
-        </Typography>
+        {choXemDiem ? (
+          <Typography sx={{ fontSize: 16, color: "#1565c0", mt: 2, mb: 0.5 }}>
+            Đã hoàn thành bài kiểm tra
+          </Typography>
+        ) : (
+          <Typography sx={{ fontSize: 16, color: "red", mt: 2, mb: 0.5, fontWeight: "bold" }}>
+            Đã hoàn thành bài kiểm tra
+          </Typography>
+        )}
 
-        <Typography
-          sx={{ fontSize: 16, color: "#0d47a1", fontWeight: 500, mt: 2 }}
-        >
-          {config?.baiTapTuan ? (
-            <>
-              Điểm của bạn:{" "}
-              <span style={{ color: "red", fontWeight: "bold" }}>
-                {convertPercentToScore(doneStudent?.diemTN)}
-              </span>
-            </>
-          ) : config?.kiemTraDinhKi ? (
-            choXemDiem ? (
+        {choXemDiem && (
+          <Typography
+            sx={{ fontSize: 16, color: "#0d47a1", fontWeight: 500, mt: 2 }}
+          >
+            {config?.baiTapTuan ? (
+              <>
+                Điểm của bạn:{" "}
+                <span style={{ color: "red", fontWeight: "bold" }}>
+                  {convertPercentToScore(doneStudent?.diemTN)}
+                </span>
+              </>
+            ) : config?.kiemTraDinhKi ? (
               <>
                 Điểm của bạn:{" "}
                 <span style={{ color: "red", fontWeight: "bold" }}>
@@ -89,11 +96,9 @@ const DoneDialog = ({
               </>
             ) : (
               ""
-            )
-          ) : (
-            ""
-          )}
-        </Typography>
+            )}
+          </Typography>
+        )}
       </DialogContent>
 
       {/* Actions */}

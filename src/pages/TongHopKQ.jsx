@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Box,
   Paper,
@@ -29,6 +29,7 @@ import { Delete, FileDownload } from "@mui/icons-material";
 import { exportKetQuaExcel } from "../utils/exportKetQuaExcel";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+import { ConfigContext } from "../context/ConfigContext";
 
 export default function TongHopKQ() {
   const [classesList, setClassesList] = useState([]);
@@ -49,6 +50,7 @@ export default function TongHopKQ() {
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogContent, setDialogContent] = useState("");
   const [dialogAction, setDialogAction] = useState(null);
+  const { config } = useContext(ConfigContext);
 
   const folder = "BINHKHANH";
 
@@ -84,69 +86,93 @@ export default function TongHopKQ() {
   }, []);
 
   // Load kết quả và sắp xếp tên chuẩn Việt Nam
+  const hocKyMap = {
+    "Giữa kỳ I": "GKI",
+    "Cuối kỳ I": "CKI",
+    "Giữa kỳ II": "GKII",
+    "Cả năm": "CN",
+  };
+
   const loadResults = async () => {
-    if (!selectedLop || !selectedMon || !hocKi) return;
-    setLoading(true);
+  if (!selectedLop || !selectedMon || !config?.hocKy) return;
+  setLoading(true);
 
-    try {
-      // 👉 Chọn collection theo kieuHienThi
-      const folderToUse = kieuHienThi === "KTĐK" ? "BINHKHANH" : "BINHKHANH_ONTAP";
-      const colRef = collection(db, folderToUse, hocKi, selectedLop);
+  try {
+    const classKey = selectedLop.replace(".", "_");
+    const colRef = collection(db, "DATA", classKey, "HOCSINH");
+    const snapshot = await getDocs(colRef);
 
-      const snapshot = await getDocs(colRef);
+    if (snapshot.empty) {
+      setResults([]);
+      setSnackbarSeverity("warning");
+      setSnackbarMessage(`Không tìm thấy học sinh trong lớp ${selectedLop}`);
+      setSnackbarOpen(true);
+      setLoading(false);
+      return;
+    }
 
-      if (snapshot.empty) {
-        setResults([]);
-        setSnackbarSeverity("warning");
-        setSnackbarMessage(`Không tìm thấy kết quả cho lớp ${selectedLop}`);
-        setSnackbarOpen(true);
-        setLoading(false);
-        return;
+    const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
+    const hocKyCode = hocKyMap[config.hocKy];
+
+    const data = snapshot.docs.map(docSnap => {
+      const studentData = docSnap.data();
+      const studentId = docSnap.id;
+
+      let diem, diemTN, ngayHienThi, thoiGianLamBai, nhanXet;
+
+      if (kieuHienThi === "KTĐK") {
+        const ktdkData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
+        diem = ktdkData.lyThuyet ?? "";
+        ngayHienThi = ktdkData.ngayKiemTra ?? "";
+        thoiGianLamBai = ktdkData.thoiGianLamBai ?? "";
+      } else if (kieuHienThi === "ONTAP") {
+        const onTapData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
+        diem = onTapData.lyThuyet_onTap ?? "";
+        ngayHienThi = onTapData.ngayKiemTra_onTap ?? "";
+        thoiGianLamBai = onTapData.thoiGianLamBai_onTap ?? "";
       }
 
-      const data = snapshot.docs.map(docSnap => {
-        const raw = docSnap.data();
-        return {
-          docId: docSnap.id,
-          ...raw,
-
-          // ✅ Chuẩn hóa field ngày
-          ngayHienThi:
-            kieuHienThi === "KTĐK"
-              ? raw.ngayKiemTra || ""
-              : raw.ngayLam || "",
-        };
-      });
-
-      // Hàm sắp xếp tên chuẩn Việt Nam: tên → tên đệm → họ
-      const compareVietnameseName = (a, b) => {
-        const namePartsA = (a.hoVaTen || "").trim().split(" ").reverse();
-        const namePartsB = (b.hoVaTen || "").trim().split(" ").reverse();
-        const len = Math.max(namePartsA.length, namePartsB.length);
-
-        for (let i = 0; i < len; i++) {
-          const partA = (namePartsA[i] || "").toLowerCase();
-          const partB = (namePartsB[i] || "").toLowerCase();
-          const cmp = partA.localeCompare(partB);
-          if (cmp !== 0) return cmp;
-        }
-        return 0;
+      return {
+        docId: studentId,
+        hoVaTen: studentData.hoVaTen || "",
+        diem,
+        diemTN,
+        ngayHienThi,
+        thoiGianLamBai,
+        nhanXet,
       };
+    });
 
-      data.sort(compareVietnameseName);
+    // Sắp xếp tên chuẩn Việt Nam: tên → tên đệm → họ
+    const compareVietnameseName = (a, b) => {
+      const namePartsA = (a.hoVaTen || "").trim().split(" ").reverse();
+      const namePartsB = (b.hoVaTen || "").trim().split(" ").reverse();
+      const len = Math.max(namePartsA.length, namePartsB.length);
+      for (let i = 0; i < len; i++) {
+        const partA = (namePartsA[i] || "").toLowerCase();
+        const partB = (namePartsB[i] || "").toLowerCase();
+        const cmp = partA.localeCompare(partB);
+        if (cmp !== 0) return cmp;
+      }
+      return 0;
+    };
 
-      const numberedData = data.map((item, idx) => ({ stt: idx + 1, ...item }));
-      setResults(numberedData);
+    data.sort(compareVietnameseName);
 
-    } catch (err) {
-      console.error("❌ Lỗi khi load kết quả:", err);
-      setResults([]);
-      setSnackbarSeverity("error");
-      setSnackbarMessage("❌ Lỗi khi load kết quả!");
-      setSnackbarOpen(true);
-    }
-    setLoading(false);
-  };
+    const numberedData = data.map((item, idx) => ({ stt: idx + 1, ...item }));
+    setResults(numberedData);
+
+  } catch (err) {
+    console.error("❌ Lỗi khi load kết quả:", err);
+    setResults([]);
+    setSnackbarSeverity("error");
+    setSnackbarMessage("❌ Lỗi khi load kết quả!");
+    setSnackbarOpen(true);
+  }
+
+  setLoading(false);
+};
+
 
   useEffect(() => {
     loadResults();
@@ -159,30 +185,65 @@ export default function TongHopKQ() {
       `⚠️ Bạn có chắc muốn xóa toàn bộ kết quả lớp ${selectedLop}?\nHành động này không thể hoàn tác!`,
       async () => {
         try {
-          const folderToUse = kieuHienThi === "KTĐK" ? "BINHKHANH" : "BINHKHANH_ONTAP";
-          const colRef = collection(db, folderToUse, hocKi, selectedLop);
-          const snapshot = await getDocs(colRef);
-
-          if (snapshot.empty) {
+          if (!selectedLop) {
             setSnackbarSeverity("warning");
-            setSnackbarMessage(`Không có dữ liệu để xóa cho lớp ${selectedLop}!`);
+            setSnackbarMessage("Vui lòng chọn lớp để xóa!");
             setSnackbarOpen(true);
             return;
           }
 
-          const batch = writeBatch(db);
-          snapshot.docs.forEach(docSnap => batch.delete(docSnap.ref));
-          await batch.commit();
-
+          // 1️⃣ Xóa trên giao diện ngay lập tức
           setResults([]);
           setSnackbarSeverity("success");
-          setSnackbarMessage("✅ Đã xóa kết quả của lớp thành công!");
+          setSnackbarMessage(`✅ Đã xóa kết quả lớp ${selectedLop}`);
           setSnackbarOpen(true);
+
+          // 2️⃣ Xóa Firestore nền (không block UI)
+          const classKey = selectedLop.replace(".", "_");
+          const hsRef = collection(db, "DATA", classKey, "HOCSINH");
+          const snapshot = await getDocs(hsRef);
+
+          if (snapshot.empty) return; // Không có dữ liệu Firestore
+
+          const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
+          const hocKyMap = ["GKI", "CKI", "GKII", "CN"];
+          const CHUNK_SIZE = 450;
+
+          const updatesList = snapshot.docs.map(docSnap => {
+            const studentId = docSnap.id;
+            const studentData = docSnap.data();
+            const updates = {};
+
+            if (kieuHienThi === "KTĐK") {
+              const ktdkData = studentData?.[subjectKey]?.ktdk || {};
+              hocKyMap.forEach(hocKyCode => {
+                if (ktdkData[hocKyCode]) {
+                  updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`] = null;
+                  updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`] = null;
+                  updates[`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`] = null;
+                  updates[`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`] = null;
+                  updates[`${subjectKey}.ktdk.${hocKyCode}.thucHanh`] = null;
+                  updates[`${subjectKey}.ktdk.${hocKyCode}.tongCong`] = null;
+                }
+              });
+            }
+
+            return Object.keys(updates).length > 0
+              ? { docRef: doc(db, "DATA", classKey, "HOCSINH", studentId), updates }
+              : null;
+          }).filter(Boolean);
+
+          // Dùng batch chunk để tránh Firestore limit
+          for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
+            const batch = writeBatch(db);
+            updatesList.slice(i, i + CHUNK_SIZE).forEach(item => batch.update(item.docRef, item.updates));
+            await batch.commit(); // Không block UI, vẫn chạy nền
+          }
 
         } catch (err) {
           console.error("❌ Firestore: Xóa lớp thất bại:", err);
           setSnackbarSeverity("error");
-          setSnackbarMessage("❌ Xóa lớp thất bại!");
+          setSnackbarMessage("❌ Xóa lớp thất bại (FireStore)!");
           setSnackbarOpen(true);
         }
       }
@@ -190,7 +251,6 @@ export default function TongHopKQ() {
   };
 
   const handleDeleteSchool = () => {
-    // ❌ KHÔNG CÓ LỚP NÀO
     if (!classesList || classesList.length === 0) {
       setSnackbarSeverity("warning");
       setSnackbarMessage("Không có lớp nào để xóa!");
@@ -205,49 +265,62 @@ export default function TongHopKQ() {
       } của toàn trường?\nHành động này không thể hoàn tác!`,
       async () => {
         try {
-          const folderToUse =
-            kieuHienThi === "KTĐK" ? "BINHKHANH" : "BINHKHANH_ONTAP";
-
-          let totalDeleted = 0;
-          let hasData = false;
-          const CHUNK_SIZE = 450;
+          const hocKyList = ["GKI", "CKI", "GKII", "CN"];
+          let totalUpdated = 0;
+          const CHUNK_SIZE = 450; // tối đa 500 thao tác/batch, dùng 450 an toàn
 
           await Promise.all(
             classesList.map(async (lop) => {
-              const colRef = collection(db, folderToUse, hocKi, lop);
-              const snapshot = await getDocs(colRef);
+              const classKey = lop.replace(".", "_");
+              const hsRef = collection(db, "DATA", classKey, "HOCSINH");
+              const snapshot = await getDocs(hsRef);
 
               if (snapshot.empty) return;
 
-              hasData = true;
+              const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
+              const updatesList = snapshot.docs.map(docSnap => {
+                const studentId = docSnap.id;
+                const studentData = docSnap.data();
+                const updates = {};
 
-              for (let i = 0; i < snapshot.docs.length; i += CHUNK_SIZE) {
-                const batch = writeBatch(db);
-                snapshot.docs
-                  .slice(i, i + CHUNK_SIZE)
-                  .forEach((docSnap) => {
-                    batch.delete(docSnap.ref);
-                    totalDeleted++;
+                if (kieuHienThi === "KTĐK") {
+                  const ktdkData = studentData?.[subjectKey]?.ktdk || {};
+                  hocKyList.forEach(hocKyCode => {
+                    if (ktdkData[hocKyCode]) {
+                      updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`] = null;
+                      updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`] = null;
+                      updates[`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`] = null;
+                      updates[`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`] = null;
+                      updates[`${subjectKey}.ktdk.${hocKyCode}.thucHanh`] = null;
+                      updates[`${subjectKey}.ktdk.${hocKyCode}.tongCong`] = null;
+                    }
                   });
+                }
+
+                if (Object.keys(updates).length > 0) {
+                  return { docRef: doc(db, "DATA", classKey, "HOCSINH", studentId), updates };
+                }
+                return null;
+              }).filter(Boolean);
+
+              // Chia thành chunk và commit song song
+              for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
+                const batch = writeBatch(db);
+                updatesList.slice(i, i + CHUNK_SIZE).forEach(item => batch.update(item.docRef, item.updates));
                 await batch.commit();
+                totalUpdated += updatesList.slice(i, i + CHUNK_SIZE).length;
               }
             })
           );
 
-          // ❌ Có lớp nhưng không có dữ liệu
-          if (!hasData) {
+          if (totalUpdated > 0) {
+            setResults([]);
+            setSnackbarSeverity("success");
+            setSnackbarMessage(`✅ Đã xóa toàn trường (${totalUpdated} học sinh)`);
+          } else {
             setSnackbarSeverity("warning");
             setSnackbarMessage("Không có dữ liệu để xóa!");
-            setSnackbarOpen(true);
-            return;
           }
-
-          // ✅ Thành công
-          setResults([]);
-          setSnackbarSeverity("success");
-          setSnackbarMessage(
-            `✅ Đã xóa toàn trường (${totalDeleted} học sinh)`
-          );
           setSnackbarOpen(true);
 
         } catch (err) {
@@ -260,6 +333,7 @@ export default function TongHopKQ() {
       "error"
     );
   };
+
 
 
   // Xuất Excel
@@ -321,7 +395,7 @@ export default function TongHopKQ() {
 
   return (
     <Box sx={{ minHeight: "100vh", background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)", pt: 3, px: 2, display: "flex", justifyContent: "center" }}>
-      <Paper sx={{ p: 4, borderRadius: 3, width: "100%", maxWidth: 900, bgcolor: "white" }} elevation={6}>
+      <Paper sx={{ p: 4, borderRadius: 3, width: "100%", maxWidth: 700, bgcolor: "white" }} elevation={6}>
         <Box
           sx={{
             position: "relative",
@@ -428,37 +502,33 @@ export default function TongHopKQ() {
           <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}><CircularProgress /></Box>
         ) : (
           <Box sx={{ width: "100%", overflowX: "auto" }}>
-            <TableContainer component={Paper} sx={{ boxShadow: "none", minWidth: 750 }}>
+            <TableContainer component={Paper} sx={{ boxShadow: "none", minWidth: 700 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 50 }}>STT</TableCell>
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 200 }}>Họ và tên</TableCell>
-                    <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 80 }}>Lớp</TableCell>
-                    <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 100 }}>Môn</TableCell>
-                    <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 120 }}>Ngày</TableCell>
-                    <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 120 }}>Thời gian</TableCell>
-                    <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 80 }}>Điểm</TableCell>
+
+                    <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 70 }}>Điểm</TableCell>
+                    <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 70 }}>Thời gian</TableCell>
+                    <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 100 }}>Ngày</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {(results.length > 0 ? results : Array.from({ length: 5 }, (_, i) => ({
                     stt: i + 1,
                     hoVaTen: "",
-                    lop: "",
-                    mon: "",
-                    ngayKiemTra: "",
+                    diem: "",
                     thoiGianLamBai: "",
-                    diem: ""
+                    ngayHienThi: ""
                   }))).map(r => (
                     <TableRow key={r.stt}>
                       <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.stt}</TableCell>
                       <TableCell sx={{ px: 1, textAlign: "left", border: "1px solid rgba(0,0,0,0.12)" }}>{r.hoVaTen}</TableCell>
-                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.lop}</TableCell>
-                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.mon}</TableCell>
-                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.ngayHienThi}</TableCell>
-                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.thoiGianLamBai}</TableCell>
+
                       <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)", fontWeight: "bold" }}>{r.diem}</TableCell>
+                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.thoiGianLamBai}</TableCell>
+                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.ngayHienThi}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

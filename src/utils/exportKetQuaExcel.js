@@ -27,8 +27,8 @@ export const exportKetQuaExcel = async (results, className, mon) => {
     titleRow.height = 28;
     sheet.addRow([]);
 
-    // 🔹 Header
-    const headerKeys = ["STT", "HỌ VÀ TÊN", "Lớp", "Môn", "Ngày", "Thời gian", "Điểm"];
+    // 🔹 Header (STT → HỌ VÀ TÊN → Lớp → Môn → Điểm → Thời gian → Ngày)
+    const headerKeys = ["STT", "HỌ VÀ TÊN", "Lớp", "Môn", "Điểm", "Thời gian", "Ngày"];
     const headerRow = sheet.addRow(headerKeys);
     headerRow.height = 25;
     headerRow.eachCell((cell) => {
@@ -50,9 +50,9 @@ export const exportKetQuaExcel = async (results, className, mon) => {
         r.hoVaTen || "",
         r.lop || "",
         r.mon || "",
-        r.ngayKiemTra || "",
-        r.thoiGianLamBai || "",
         r.diem ?? "",
+        r.thoiGianLamBai || "",
+        r.ngayHienThi || "",
       ]);
       row.height = 30;
       row.eachCell((cell, colNumber) => {
@@ -78,9 +78,9 @@ export const exportKetQuaExcel = async (results, className, mon) => {
       { width: 30 },  // HỌ VÀ TÊN
       { width: 10 },  // Lớp
       { width: 12 },  // Môn
-      { width: 15 },  // Ngày
-      { width: 15 },  // Thời gian
       { width: 10 },  // Điểm
+      { width: 15 },  // Thời gian
+      { width: 15 },  // Ngày
     ];
 
     // 💾 Xuất file

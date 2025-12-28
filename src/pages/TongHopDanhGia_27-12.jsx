@@ -417,8 +417,8 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
         if (weekNum >= weekFrom && weekNum <= weekTo) {
           statusByWeek[key] = {
             hs: value?.status || "",
-            gv: value?.TN_status || "",
-            TN_diem: value?.TN_diem ?? null,
+            gv: value?.diemTracNghiem || "",
+            diemTN: value?.diemTN ?? null,
           };
         }
       });
@@ -454,7 +454,7 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
         const raw = s.statusByWeek[weekId] || {};
         acc[`Tuan_${weekNum}_HS`] = raw.hs || "-";
         acc[`Tuan_${weekNum}_GV`] = raw.gv || "-";
-        acc[`Tuan_${weekNum}_TN`] = raw.TN_diem ?? "-";
+        acc[`Tuan_${weekNum}_TN`] = raw.diemTN ?? "-";
         return acc;
       }, {});
 
@@ -494,6 +494,322 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
     setLoadingMessage("❌ Không thể tải dữ liệu");
   }
 };
+
+{/*const fetchStudentsAndStatus = async () => {
+  if (!selectedClass || !selectedSubject) return;
+
+  try {
+    setLoadingProgress(0);
+    setLoadingMessage("Đang tải dữ liệu học sinh...");
+
+    // 🔹 MAP HỌC KỲ (ĐÚNG DẤU)
+    const mapTerm = {
+      "Giữa kỳ I": "GKI",
+      "Cuối kỳ I": "CKI",
+      "Giữa kỳ II": "GKII",
+      "Cả năm": "CN",
+    };
+
+    const semester = selectedSemester || config.hocKy;
+    if (!semester || !mapTerm[semester]) {
+      console.error("❌ Học kỳ không hợp lệ:", semester);
+      return;
+    }
+
+    const termDoc = mapTerm[semester];
+
+    const classKey = selectedClass.replace(".", "_");
+    const cacheKey = `${classKey}_${selectedSubject}_${termDoc}`;
+
+    // 🔹 CACHE
+    if (studentData[cacheKey]?.length) {
+      setStudents(studentData[cacheKey]);
+      setLoadingMessage("✅ Đã tải dữ liệu từ cache");
+      setTimeout(() => setLoadingMessage(""), 1200);
+      return;
+    }
+
+    // 🔹 LẤY HỌC SINH
+    const hsSnap = await getDocs(
+      collection(db, "DATA", classKey, "HOCSINH")
+    );
+
+    if (hsSnap.empty) {
+      setStudents([]);
+      return;
+    }
+
+    const { from: weekFrom, to: weekTo } =
+      hocKyMap[semester] || { from: 1, to: 35 };
+
+    let studentList = [];
+
+    hsSnap.forEach(docSnap => {
+      const data = docSnap.data();
+
+      // 🔹 LẤY MÔN
+      const monData =
+        selectedSubject === "Công nghệ"
+          ? data.CongNghe || {}
+          : data.TinHoc || {};
+
+      // ❗ TÊN HS LẤY TỪ MON DATA
+      const hoVaTen = monData.hoVaTen || data.hoVaTen || "";
+
+      // 🔹 TUẦN LẤY TỪ dgtx
+      const dgtxData = monData.dgtx || {};
+      const statusByWeek = {};
+
+      Object.entries(dgtxData).forEach(([key, value]) => {
+        if (!key.startsWith("tuan_")) return;
+
+        const weekNum = parseInt(key.replace(/\D/g, ""), 10);
+        if (weekNum >= weekFrom && weekNum <= weekTo) {
+          statusByWeek[key] = {
+            hs: value?.status ?? "",
+            gv: value?.diemTracNghiem ?? "",
+            diemTN: value?.diemTN ?? null,
+          };
+        }
+      });
+
+      // 🔹 KTDK THEO HỌC KỲ
+      const ktdkAll = monData.ktdk || {};
+      const termData = ktdkAll[termDoc] || {};
+
+      studentList.push({
+        maDinhDanh: docSnap.id,
+        hoVaTen,
+        statusByWeek,
+
+        // 🔹 CỘT KTDK
+        dgtx_gv: termData.dgtx_gv ?? "",
+        dgtx_mucdat: termData.dgtx_mucdat ?? "",
+        nhanXet: termData.dgtx_nx?.trim() || "",
+
+      });
+    });
+
+    // 🔹 SẮP XẾP TUẦN
+    const sortedWeekIds = Array.from(
+      new Set(
+        studentList.flatMap(s => Object.keys(s.statusByWeek))
+      )
+    ).sort((a, b) => {
+      const nA = parseInt(a.replace(/\D/g, ""), 10);
+      const nB = parseInt(b.replace(/\D/g, ""), 10);
+      return nA - nB;
+    });
+
+    // 🔹 MAP CỘT TUẦN + ĐÁNH GIÁ
+    const evaluatedList = studentList.map(s => {
+      const { xepLoai: dgtx } = danhGiaHocSinh(
+        s,
+        weekFrom,
+        weekTo
+      );
+
+      const weekCols = sortedWeekIds.reduce((acc, weekId) => {
+        const weekNum = parseInt(weekId.replace(/\D/g, ""), 10);
+        const raw = s.statusByWeek[weekId] || {};
+
+        acc[`Tuan_${weekNum}_HS`] = raw.hs || "-";
+        acc[`Tuan_${weekNum}_GV`] = raw.gv || "-";
+        acc[`Tuan_${weekNum}_TN`] =
+          raw.diemTN !== null ? raw.diemTN : "-";
+
+        return acc;
+      }, {});
+
+      return {
+        ...s,
+        ...weekCols,
+        dgtx,
+        xepLoai: dgtx,
+      };
+    });
+
+    // 🔹 SẮP XẾP THEO TÊN
+    evaluatedList.sort((a, b) => {
+      const lastA = a.hoVaTen.trim().split(" ").slice(-1)[0];
+      const lastB = b.hoVaTen.trim().split(" ").slice(-1)[0];
+      return lastA.localeCompare(lastB, "vi", {
+        sensitivity: "base",
+      });
+    });
+
+    const finalList = evaluatedList.map((s, i) => ({
+      ...s,
+      stt: i + 1,
+    }));
+
+    setStudentData(prev => ({ ...prev, [cacheKey]: finalList }));
+    setStudents(finalList);
+    setLoadingProgress(100);
+    setTimeout(() => setLoadingMessage(""), 1200);
+
+  } catch (err) {
+    console.error("❌ Lỗi khi tải DATA:", err);
+    setStudents([]);
+    setLoadingMessage("❌ Không thể tải dữ liệu");
+  }
+};*/}
+
+{/*const fetchStudentsDGTX = async () => {
+  if (!selectedClass || !selectedSubject) return;
+
+  try {
+    setLoadingProgress(0);
+    setLoadingMessage("Đang làm mới dữ liệu ĐGTX...");
+
+    // 🔹 MAP HỌC KỲ (ĐÚNG DẤU)
+    const mapTerm = {
+      "Giữa kỳ I": "GKI",
+      "Cuối kỳ I": "CKI",
+      "Giữa kỳ II": "GKII",
+      "Cả năm": "CN",
+    };
+
+    const semester = selectedSemester || config.hocKy;
+    if (!semester || !mapTerm[semester]) {
+      console.error("❌ Học kỳ không hợp lệ:", semester);
+      return;
+    }
+
+    const termDoc = mapTerm[semester];
+    const classKey = selectedClass.replace(".", "_");
+    const cacheKey = `${classKey}_${selectedSubject}_${termDoc}`;
+
+    // 🔹 LẤY DATA TỪ NGUỒN DUY NHẤT
+    const hsSnap = await getDocs(
+      collection(db, "DATA", classKey, "HOCSINH")
+    );
+
+    if (hsSnap.empty) {
+      setStudents([]);
+      return;
+    }
+
+    const { from: weekFrom, to: weekTo } =
+      hocKyMap[semester] || { from: 1, to: 35 };
+
+    let studentList = [];
+
+    hsSnap.forEach(docSnap => {
+      const data = docSnap.data();
+
+      // 🔹 CHỌN MÔN
+      const monData =
+        selectedSubject === "Công nghệ"
+          ? data.CongNghe || {}
+          : data.TinHoc || {};
+
+      const hoVaTen = monData.hoVaTen || data.hoVaTen || "";
+
+      // 🔹 TUẦN: LẤY TỪ dgtx
+      const dgtxData = monData.dgtx || {};
+      const statusByWeek = {};
+
+      Object.entries(dgtxData).forEach(([key, value]) => {
+        if (!key.startsWith("tuan_")) return;
+
+        const weekNum = parseInt(key.replace(/\D/g, ""), 10);
+        if (weekNum >= weekFrom && weekNum <= weekTo) {
+          statusByWeek[key] = {
+            hs: value?.status ?? "",
+            gv: value?.diemTracNghiem ?? "",
+            diemTN: value?.diemTN ?? null,
+          };
+        }
+      });
+
+      // 🔹 KTDK THEO HỌC KỲ
+      const termData = monData.ktdk?.[termDoc] || {};
+
+      studentList.push({
+        maDinhDanh: docSnap.id,
+        hoVaTen,
+        statusByWeek,
+
+        // 🔹 CỘT TỔNG HỢP
+        dgtx_gv: termData.dgtx_gv ?? "",
+        dgtx_mucdat: termData.dgtx_mucdat ?? "",
+        nhanXet: termData.dgtx_nx?.trim() || "",
+      });
+    });
+
+    // 🔹 SẮP XẾP TUẦN
+    const sortedWeekIds = Array.from(
+      new Set(studentList.flatMap(s => Object.keys(s.statusByWeek)))
+    ).sort((a, b) => {
+      const nA = parseInt(a.replace(/\D/g, ""), 10);
+      const nB = parseInt(b.replace(/\D/g, ""), 10);
+      return nA - nB;
+    });
+
+    // 🔹 MAP CỘT TUẦN + ĐÁNH GIÁ
+    const evaluatedList = studentList.map(s => {
+      const { xepLoai: dgtx } = danhGiaHocSinh(
+        s,
+        weekFrom,
+        weekTo
+      );
+
+      const weekCols = sortedWeekIds.reduce((acc, weekId) => {
+        const weekNum = parseInt(weekId.replace(/\D/g, ""), 10);
+        const raw = s.statusByWeek[weekId] || {};
+
+        acc[`Tuan_${weekNum}_HS`] = raw.hs || "-";
+        acc[`Tuan_${weekNum}_GV`] = raw.gv || "-";
+        acc[`Tuan_${weekNum}_TN`] =
+          raw.diemTN !== null ? raw.diemTN : "-";
+
+        return acc;
+      }, {});
+
+      return {
+        ...s,
+        ...weekCols,
+        dgtx,
+        xepLoai: dgtx,
+      };
+    });
+
+    // 🔹 SẮP XẾP THEO TÊN
+    evaluatedList.sort((a, b) => {
+      const lastA = a.hoVaTen.trim().split(" ").slice(-1)[0];
+      const lastB = b.hoVaTen.trim().split(" ").slice(-1)[0];
+      return lastA.localeCompare(lastB, "vi", { sensitivity: "base" });
+    });
+
+    const finalList = evaluatedList.map((s, i) => ({
+      ...s,
+      stt: i + 1,
+    }));
+
+    setStudentData(prev => ({ ...prev, [cacheKey]: finalList }));
+    setStudents(finalList);
+
+    setLoadingProgress(100);
+    setTimeout(() => setLoadingMessage(""), 1200);
+
+  } catch (err) {
+    console.error("❌ Lỗi khi làm mới DATA:", err);
+    setStudents([]);
+    setLoadingMessage("❌ Không thể làm mới dữ liệu");
+  }
+};*/}
+
+
+{/*useEffect(() => {
+  if (!selectedClass || !selectedSubject) return;
+
+  const fetchData = async () => {
+    await fetchStudentsAndStatus();
+  };
+
+  fetchData();
+}, [selectedClass, selectedSubject, weekFrom, weekTo]);*/}
 
 useEffect(() => {
   if (!selectedClass || !selectedSubject) return;
