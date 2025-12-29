@@ -57,85 +57,94 @@ export default function ThongKe() {
   // 🔹 Hàm lấy dữ liệu thống kê
   const fetchThongKeData = async (hocKy, mon) => {
     if (!hocKy || !mon) return;
+
     const selectedTerm = mapTerm[hocKy];
+    const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
     try {
-      const snap = await getDocs(collection(db, "DANHSACH"));
-      const classes = snap.docs
+      // 1️⃣ Lấy danh sách lớp
+      const classSnap = await getDocs(collection(db, "DANHSACH"));
+      const classes = classSnap.docs
         .map((d) => d.data()?.lop || d.id)
         .filter(Boolean)
         .sort((a, b) => {
           const [aMajor, aMinor = "0"] = String(a).split(".");
           const [bMajor, bMinor = "0"] = String(b).split(".");
-          const ai = parseInt(aMajor, 10) || 0;
-          const bi = parseInt(bMajor, 10) || 0;
-          if (ai !== bi) return ai - bi;
-          return aMinor.localeCompare(bMinor, undefined, { numeric: true });
+          return parseInt(aMajor) - parseInt(bMajor) ||
+            aMinor.localeCompare(bMinor, undefined, { numeric: true });
         });
 
-      const scoreDocRef = doc(db, "KTDK", selectedTerm);
-      const scoreSnap = await getDoc(scoreDocRef);
-      const scoreData = scoreSnap.exists() ? scoreSnap.data() : {};
+      // 2️⃣ Đọc DATA TẤT CẢ CÁC LỚP SONG SONG
+      const classResults = await Promise.all(
+        classes.map(async (lop) => {
+          const classKey = lop.replace(".", "_");
+          const hsSnap = await getDocs(
+            collection(db, "DATA", classKey, "HOCSINH")
+          );
 
-      const dataByClass = {};
-      classes.forEach((lop) => {
-        const classKey = `${lop}${mon === "Công nghệ" ? "_CN" : ""}`;
-        const classScores = scoreData[classKey] || {};
-        let tot = 0,
-          hoanThanh = 0,
-          chuaHoanThanh = 0;
-        Object.values(classScores).forEach((s) => {
-          let mucDat = "";
+          let tot = 0, hoanThanh = 0, chuaHoanThanh = 0;
 
-          // 🔹 Nếu là Giữa kỳ → dùng dgtx
-          if (selectedTerm === "GKI" || selectedTerm === "GKII") {
-            mucDat = s?.dgtx?.trim() || "";
-          } 
-          // 🔹 Còn lại (Cuối kỳ I, Cả năm) → dùng mucDat
-          else {
-            mucDat = s?.mucDat?.trim() || "";
-          }
+          hsSnap.forEach((docSnap) => {
+            const hs = docSnap.data();
+            const ktdk = hs?.[subjectKey]?.ktdk?.[selectedTerm];
+            if (!ktdk) return;
 
-          if (mucDat === "T") tot++;
-          else if (mucDat === "H") hoanThanh++;
-          else chuaHoanThanh++;
-        });
+            let mucDat = "";
 
-        const tong = tot + hoanThanh + chuaHoanThanh;
-        dataByClass[lop] = {
-          tot,
-          hoanThanh,
-          chuaHoanThanh,
-          totTL: tong ? ((tot / tong) * 100).toFixed(1) : "",
-          hoanThanhTL: tong ? ((hoanThanh / tong) * 100).toFixed(1) : "",
-          chuaHoanThanhTL: tong ? ((chuaHoanThanh / tong) * 100).toFixed(1) : "",
-        };
-      });
+            if (selectedTerm === "GKI" || selectedTerm === "GKII") {
+              mucDat = (ktdk.dgtx_mucdat || "").trim();
+            } else {
+              mucDat = (ktdk.mucDat || "").trim();
+            }
 
+            if (mucDat === "T") tot++;
+            else if (mucDat === "H") hoanThanh++;
+            else if (mucDat) chuaHoanThanh++;
+          });
+
+          const tong = tot + hoanThanh + chuaHoanThanh;
+
+          return {
+            lop,
+            khoi: lop.split(".")[0],
+            tot,
+            hoanThanh,
+            chuaHoanThanh,
+            totTL: tong ? ((tot / tong) * 100).toFixed(1) : "",
+            hoanThanhTL: tong ? ((hoanThanh / tong) * 100).toFixed(1) : "",
+            chuaHoanThanhTL: tong ? ((chuaHoanThanh / tong) * 100).toFixed(1) : "",
+          };
+        })
+      );
+
+      // 3️⃣ Gom theo khối
       const grouped = {};
-      classes.forEach((lop) => {
-        const khoi = String(lop).split(".")[0];
-        if (!grouped[khoi]) grouped[khoi] = [];
-        grouped[khoi].push(lop);
+      classResults.forEach((c) => {
+        if (!grouped[c.khoi]) grouped[c.khoi] = [];
+        grouped[c.khoi].push(c);
       });
 
       const rows = [];
-      Object.keys(grouped)
-        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-        .forEach((khoi) => {
-          let kTot = 0,
-            kH = 0,
-            kC = 0,
-            kTong = 0;
-          grouped[khoi].forEach((lop) => {
-            const d = dataByClass[lop] || {};
-            kTot += d.tot || 0;
-            kH += d.hoanThanh || 0;
-            kC += d.chuaHoanThanh || 0;
-            kTong += (d.tot || 0) + (d.hoanThanh || 0) + (d.chuaHoanThanh || 0);
 
-            rows.push({ type: "class", label: lop, khoi, ...d });
+      Object.keys(grouped)
+        .sort((a, b) => parseInt(a) - parseInt(b))
+        .forEach((khoi) => {
+          let kTot = 0, kH = 0, kC = 0, kTong = 0;
+
+          grouped[khoi].forEach((c) => {
+            kTot += c.tot;
+            kH += c.hoanThanh;
+            kC += c.chuaHoanThanh;
+            kTong += c.tot + c.hoanThanh + c.chuaHoanThanh;
+
+            rows.push({
+              type: "class",
+              label: c.lop,
+              khoi,
+              ...c,
+            });
           });
+
           rows.push({
             type: "khoi",
             label: `KHỐI ${khoi}`,
@@ -149,30 +158,35 @@ export default function ThongKe() {
           });
         });
 
+      // 4️⃣ Toàn trường
       const total = rows
         .filter((r) => r.type === "khoi")
         .reduce(
           (acc, r) => {
-            acc.tot += r.tot || 0;
-            acc.hoanThanh += r.hoanThanh || 0;
-            acc.chuaHoanThanh += r.chuaHoanThanh || 0;
+            acc.tot += r.tot;
+            acc.hoanThanh += r.hoanThanh;
+            acc.chuaHoanThanh += r.chuaHoanThanh;
             return acc;
           },
           { tot: 0, hoanThanh: 0, chuaHoanThanh: 0 }
         );
-      const tongAll = total.tot + total.hoanThanh + total.chuaHoanThanh;
+
+      const tongAll =
+        total.tot + total.hoanThanh + total.chuaHoanThanh;
 
       setRowsToRender([
         ...rows,
         {
           type: "truong",
           label: "TRƯỜNG",
-          tot: total.tot,
-          hoanThanh: total.hoanThanh,
-          chuaHoanThanh: total.chuaHoanThanh,
+          ...total,
           totTL: tongAll ? ((total.tot / tongAll) * 100).toFixed(1) : "",
-          hoanThanhTL: tongAll ? ((total.hoanThanh / tongAll) * 100).toFixed(1) : "",
-          chuaHoanThanhTL: tongAll ? ((total.chuaHoanThanh / tongAll) * 100).toFixed(1) : "",
+          hoanThanhTL: tongAll
+            ? ((total.hoanThanh / tongAll) * 100).toFixed(1)
+            : "",
+          chuaHoanThanhTL: tongAll
+            ? ((total.chuaHoanThanh / tongAll) * 100).toFixed(1)
+            : "",
         },
       ]);
     } catch (err) {

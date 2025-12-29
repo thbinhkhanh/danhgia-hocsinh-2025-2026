@@ -23,22 +23,19 @@ import {
 } from "@mui/material";
 
 import { db } from "../firebase";
+import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from "firebase/firestore";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentKTDKContext } from "../context/StudentKTDKContext";
-
-import { exportKTDK } from "../utils/exportKTDK";
-import { printKTDK } from "../utils/printKTDK";
-//import { nhanXetTinHoc, nhanXetCongNghe } from '../utils/nhanXet.js';
-import { nhanXetTinHoc, nhanXetCongNgheCuoiKy } from '../utils/nhanXet.js';
-
-
-import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from "firebase/firestore";
 
 import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import PrintIcon from "@mui/icons-material/Print";
+
+import { exportKTDK } from "../utils/exportKTDK";
+import { printKTDK } from "../utils/printKTDK";
+import { nhanXetTinHocCuoiKy, nhanXetCongNgheCuoiKy } from '../utils/nhanXet.js';
 
 export default function NhapdiemKTDK() {
   const { classData, setClassData, studentData, setStudentData } = useContext(StudentContext);
@@ -184,58 +181,67 @@ export default function NhapdiemKTDK() {
   };
 
   const fetchNhanXet = (cls, mon) => {
-  const subject = mon || selectedSubject; // ưu tiên tham số
-  if (!students || students.length === 0) return;
+    const subject = mon || selectedSubject;
+    if (!students || students.length === 0) return;
 
-  const updatedStudents = students.map((s) => {
-    if (subject === "Công nghệ") {
-      // ⭐ Lấy loại nhận xét LÝ THUYẾT từ điểm lyThuyet
-      const lyThuyetNum = parseFloat(s.lyThuyet);
-      let loaiLyThuyet = "yeu";
-      if (!isNaN(lyThuyetNum)) {
-        if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
-        else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
-        else loaiLyThuyet = "trungbinh";
+    const updatedStudents = students.map((s) => {
+      /* ===================== CÔNG NGHỆ (GIỮ NGUYÊN) ===================== */
+      if (subject === "Công nghệ") {
+        const lyThuyetNum = parseFloat(s.lyThuyet);
+        let loaiLyThuyet = "yeu";
+        if (!isNaN(lyThuyetNum)) {
+          if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
+          else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
+          else loaiLyThuyet = "trungbinh";
+        }
+
+        const thucHanhVal = s.thucHanh;
+        let loaiThucHanh = "yeu";
+        if (thucHanhVal === "T") loaiThucHanh = "tot";
+        else if (thucHanhVal === "H") loaiThucHanh = "kha";
+        else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
+
+        const arrLT = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
+        const arrTH = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
+
+        const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
+        const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
+
+        return { ...s, nhanXet: `${nxLT} và ${nxTH}`.trim() };
       }
 
-      // ⭐ Lấy loại nhận xét THỰC HÀNH từ điểm thucHanh (T/H/C)
-      const thucHanhVal = s.thucHanh;
-      let loaiThucHanh = "yeu";
-      if (thucHanhVal === "T") loaiThucHanh = "tot";
-      else if (thucHanhVal === "H") loaiThucHanh = "kha";
-      else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
+      /* ===================== TIN HỌC (TÁCH LT & TH) ===================== */
 
-      // ⭐ DÙNG NHẬN XÉT CUỐI KỲ
-      const arrLyThuyet = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
-      const arrThucHanh = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
+      // ⭐ LÝ THUYẾT
+      const ltNum = parseFloat(s.lyThuyet);
+      let loaiLT = "yeu";
+      if (!isNaN(ltNum)) {
+        if (ltNum > 4) loaiLT = "tot";
+        else if (ltNum > 3) loaiLT = "kha";
+        else if (ltNum >= 2.5) loaiLT = "trungbinh";
+      }
 
-      const nhanXetLyThuyet = arrLyThuyet.length
-        ? arrLyThuyet[Math.floor(Math.random() * arrLyThuyet.length)]
-        : "";
-      const nhanXetThucHanh = arrThucHanh.length
-        ? arrThucHanh[Math.floor(Math.random() * arrThucHanh.length)]
-        : "";
+      // ⭐ THỰC HÀNH
+      const thNum = parseFloat(s.thucHanh);
+      let loaiTH = "yeu";
+      if (!isNaN(thNum)) {
+        if (thNum > 4) loaiTH = "tot";
+        else if (thNum > 3) loaiTH = "kha";
+        else if (thNum >= 2.5) loaiTH = "trungbinh";
+      }
 
-      return { ...s, nhanXet: `${nhanXetLyThuyet} và ${nhanXetThucHanh}`.trim() };
-    } else {
-      // Tin học vẫn dùng mucDat
-      const loaiNhanXet = s.mucDat
-        ? s.mucDat === "T"
-          ? "tot"
-          : s.mucDat === "H"
-          ? "kha"
-          : "trungbinh"
-        : "yeu";
+      const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
+      const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
 
-      const arr = nhanXetTinHoc[loaiNhanXet] || [];
-      const nhanXet = arr.length ? arr[Math.floor(Math.random() * arr.length)] : "";
-      return { ...s, nhanXet };
-    }
-  });
+      const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
+      const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
 
-  setStudents(updatedStudents);
-};
+      return { ...s, nhanXet: `${nxLT}; ${nxTH}.`.trim() };
 
+    });
+
+    setStudents(updatedStudents);
+  };
 
 useEffect(() => {
     fetchStudentsAndStatus();
@@ -255,7 +261,7 @@ useEffect(() => {
     const arrNhanXet =
       selectedSubject === "Công nghệ"
         ? nhanXetCongNgheCuoiKy[loaiNhanXet].lyThuyet.concat(nhanXetCongNgheCuoiKy[loaiNhanXet].thucHanh)
-        : nhanXetTinHoc[loaiNhanXet];
+        : nhanXetTinHocCuoiKy[loaiNhanXet];
 
     return arrNhanXet[Math.floor(Math.random() * arrNhanXet.length)];
   };
@@ -421,7 +427,9 @@ useEffect(() => {
           dgtx_mucdat: s.dgtx_mucdat || "",
           dgtx_nx: s.nhanXet || "",
           lyThuyet: s.lyThuyet || null,
-          thucHanh: s.thucHanh || null,
+          thucHanh: isCongNghe
+            ? (s.thucHanh ?? "")
+            : (s.thucHanh !== undefined ? Number(s.thucHanh) : null),
           tongCong: s.tongCong || null,
           mucDat: s.mucDat || "",
           nhanXet: s.nhanXet || "",

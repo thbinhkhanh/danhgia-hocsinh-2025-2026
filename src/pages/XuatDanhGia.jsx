@@ -443,14 +443,14 @@ export default function XuatDanhGia() {
             Xuất kết quả
           </Button>
 
-          <Button
+          {/*<Button
             variant="contained"
             color="warning"
             onClick={handleChuyenDuLieu}
             disabled={loading}
           >
             🔁 Chuyển dữ liệu vào DATA
-          </Button>
+          </Button>*/}
 
           {loading && (
             <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>

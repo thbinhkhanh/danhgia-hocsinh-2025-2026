@@ -1,5 +1,6 @@
 // nhanXet.js
-export const nhanXetTinHoc = {
+//export const nhanXetTinHoc = {
+export const nhanXetTinHocGiuaKy = {
   tot: [
     "Em có ý thức học tập tốt, thao tác thành thạo và tích cực trong thực hành Tin học.",
     "Em chủ động, tự tin, biết vận dụng CNTT vào học tập và đời sống.",
@@ -58,6 +59,95 @@ export const nhanXetTinHoc = {
     "Em cần được củng cố lại kiến thức nền tảng và hướng dẫn thực hành cụ thể hơn."
   ]
 };
+
+export const nhanXetTinHocCuoiKy = {
+  tot: {
+    lyThuyet: [
+      "Em nắm vững kiến thức Tin học đã học",
+      "Em hiểu bài sâu, trình bày rõ ràng và logic",
+      "Em chủ động tham gia xây dựng bài",
+      "Em vận dụng tốt kiến thức vào giải quyết vấn đề",
+      "Em có tư duy logic tốt trong học tập Tin học",
+      "Em ghi nhớ và áp dụng kiến thức hiệu quả",
+      "Em có khả năng liên hệ kiến thức với thực tế",
+      "Em tự tin khi trả lời câu hỏi lý thuyết",
+      "Em học tập nghiêm túc, tiếp thu nhanh",
+      "Em có nền tảng kiến thức vững vàng"
+    ],
+    thucHanh: [
+      "thao tác thành thạo, nhanh và chính xác",
+      "sử dụng phần mềm đúng quy trình",
+      "hoàn thành tốt các bài thực hành",
+      "tạo được sản phẩm học tập chất lượng",
+      "vận dụng kiến thức vào thực hành hiệu quả",
+      "thao tác tự tin, ít sai sót",
+      "thực hành sáng tạo, có cải tiến",
+      "sử dụng máy tính an toàn và đúng quy định"
+    ]
+  },
+
+  kha: {
+    lyThuyet: [
+      "Em nắm được kiến thức cơ bản",
+      "Em hiểu bài nhưng cần tự tin hơn",
+      "Em tiếp thu bài khá",
+      "Em có tiến bộ trong học tập",
+      "Em cần luyện tập thêm để ghi nhớ lâu hơn",
+      "Em trình bày bài tương đối rõ",
+      "Em tham gia xây dựng bài nhưng chưa đều",
+      "Em cần chủ động hơn trong học tập"
+    ],
+    thucHanh: [
+      "thực hành đúng hướng dẫn",
+      "thao tác cơ bản tốt",
+      "hoàn thành sản phẩm đúng yêu cầu",
+      "còn chậm nhưng đảm bảo độ chính xác",
+      "cần luyện tập thêm để nâng cao kỹ năng",
+      "sử dụng được phần mềm đã học",
+      "cần tăng tốc độ khi thực hành"
+    ]
+  },
+
+  trungbinh: {
+    lyThuyet: [
+      "Em nắm được một phần kiến thức",
+      "Em cần ôn tập thêm để hiểu bài tốt hơn",
+      "Em tiếp thu bài còn chậm",
+      "Em chưa tự tin khi trình bày",
+      "Em cần được hỗ trợ thêm trong học tập",
+      "Em ghi nhớ kiến thức chưa bền",
+      "Em cần chủ động hơn trong giờ học"
+    ],
+    thucHanh: [
+      "thao tác còn chậm",
+      "thực hành chưa linh hoạt",
+      "hoàn thành nhiệm vụ ở mức cơ bản",
+      "còn lúng túng khi sử dụng phần mềm",
+      "cần luyện tập thường xuyên hơn",
+      "thao tác còn sai sót",
+      "cần được hướng dẫn thêm"
+    ]
+  },
+
+  yeu: {
+    lyThuyet: [
+      "Em chưa nắm chắc kiến thức Tin học",
+      "Em gặp khó khăn trong việc ghi nhớ bài",
+      "Em cần cố gắng hơn trong học tập",
+      "Em tiếp thu bài chậm",
+      "Em thiếu tự tin khi học lý thuyết"
+    ],
+    thucHanh: [
+      "thao tác chưa chính xác",
+      "gặp nhiều khó khăn khi thực hành",
+      "chưa hoàn thành bài thực hành",
+      "cần được hướng dẫn chi tiết hơn",
+      "cần luyện tập nhiều hơn",
+      "chưa sử dụng thành thạo máy tính"
+    ]
+  }
+};
+
 
 // Giữa kỳ
 export const nhanXetCongNgheGiuaKy = {
