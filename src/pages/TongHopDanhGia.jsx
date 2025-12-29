@@ -38,8 +38,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
-//import { nhanXetTinHoc, nhanXetCongNghe } from '../utils/nhanXet.js';
-import { nhanXetTinHoc, nhanXetCongNgheGiuaKy as nhanXetCongNghe } from '../utils/nhanXet.js';
+import { nhanXetTinHocGiuaKy, nhanXetCongNgheGiuaKy as nhanXetCongNghe } from '../utils/nhanXet.js';
 
 
 export default function TongHopDanhGia() {
@@ -166,7 +165,7 @@ export default function TongHopDanhGia() {
   }
 
   function getNhanXetMuc(subject) {
-    return subject === "Công nghệ" ? nhanXetCongNghe : nhanXetTinHoc;
+    return subject === "Công nghệ" ? nhanXetCongNgheGiuaKy : nhanXetTinHocGiuaKy;
   }
 
   // 🔹 Sinh nhận xét tự động dựa vào xếp loại rút gọn
