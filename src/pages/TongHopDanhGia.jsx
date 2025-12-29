@@ -38,7 +38,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
-import { nhanXetTinHocGiuaKy, nhanXetCongNgheGiuaKy as nhanXetCongNghe } from '../utils/nhanXet.js';
+import { nhanXetTinHocGiuaKy, nhanXetCongNgheGiuaKy } from '../utils/nhanXet.js';
 
 
 export default function TongHopDanhGia() {
@@ -126,8 +126,6 @@ export default function TongHopDanhGia() {
     return { diemTB };
   }
 
-
-
   // Đánh giá học sinh & sinh nhận xét
   function danhGiaHocSinh(student, from, to) {
     const { diemTB } = tinhDiemTrungBinhTheoKhoang(student.statusByWeek, from, to);
@@ -165,22 +163,26 @@ export default function TongHopDanhGia() {
   }
 
   function getNhanXetMuc(subject) {
-    return subject === "Công nghệ" ? nhanXetCongNgheGiuaKy : nhanXetTinHocGiuaKy;
+    // 🔒 KHÓA CỨNG: luôn lấy nhận xét GIỮA KỲ
+    if (subject === "Công nghệ") return nhanXetCongNgheGiuaKy;
+    return nhanXetTinHocGiuaKy; // mặc định Tin học
   }
+
 
   // 🔹 Sinh nhận xét tự động dựa vào xếp loại rút gọn
   function getNhanXetTuDong(xepLoai) {
-  if (!xepLoai) return "";
+    if (!xepLoai) return "";
 
-  const nhanXetMuc = getNhanXetMuc(selectedSubject); // truyền selectedSubject vào
-  let nhanXet = "";
+    const nhanXetMuc = getNhanXetMuc(selectedSubject);
+    if (!nhanXetMuc) return "";
 
-  if (xepLoai === "T") nhanXet = randomItem(nhanXetMuc.tot);
-  else if (xepLoai === "H") nhanXet = randomItem(nhanXetMuc.kha);
-  else if (xepLoai === "C") nhanXet = randomItem(nhanXetMuc.yeu);
+    if (xepLoai === "T") return randomItem(nhanXetMuc.tot);
+    if (xepLoai === "H") return randomItem(nhanXetMuc.kha);
+    if (xepLoai === "C") return randomItem(nhanXetMuc.yeu);
 
-  return nhanXet;
-}
+    return "";
+  }
+
 
 const [snackbar, setSnackbar] = useState({
   open: false,
@@ -457,13 +459,24 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
         return acc;
       }, {});
 
+      // ✅ MỨC ĐẠT CUỐI
+      const mucDat = s.dgtx_mucdat || xepLoai || "";
+
+      // ✅ CHỈ SINH NHẬN XÉT NẾU CHƯA CÓ (GKI chưa có dữ liệu)
+      const nhanXetAuto =
+        !s.nhanXet && mucDat
+          ? getNhanXetTuDong(mucDat)
+          : s.nhanXet;
+
       return {
         ...s,
         ...weekCols,
-        dgtx: s.dgtx_mucdat || xepLoai || "",
-        xepLoai: s.dgtx_mucdat || xepLoai || "",
+        dgtx: mucDat,
+        xepLoai: mucDat,
+        nhanXet: nhanXetAuto,
       };
     });
+
 
     // 🔹 SẮP XẾP THEO TÊN
     evaluatedList.sort((a, b) => {

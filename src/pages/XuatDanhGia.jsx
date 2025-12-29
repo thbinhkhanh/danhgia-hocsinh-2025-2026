@@ -81,12 +81,13 @@ export default function XuatDanhGia() {
       return;
     }
 
-    setMessage("");
     setLoading(true);
     setSuccess(false);
     setProgress(0);
+    setMessage("");
 
     try {
+      // 1️⃣ Lấy danh sách file Excel
       const files = [];
       for await (const entry of folderHandle.values()) {
         if (entry.kind === "file" && entry.name.endsWith(".xlsx")) {
@@ -96,37 +97,39 @@ export default function XuatDanhGia() {
 
       if (files.length === 0) {
         setMessage("⚠️ Không tìm thấy file .xlsx nào trong thư mục!");
-        setLoading(false);
         return;
       }
 
-      const ref = doc(db, "KTDK", term);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        setMessage(`⚠️ Không tìm thấy dữ liệu ${termText}.`);
-        setLoading(false);
-        return;
-      }
-
-      const data = snap.data();
       const openedFiles = [];
       const skipped = [];
       let done = 0;
 
+      // 2️⃣ Duyệt từng file (tương ứng 1 lớp)
       for (const fileEntry of files) {
         const className = fileEntry.name.replace(/\.xlsx$/i, "");
-        const classDataRaw = data[className];
-        if (!classDataRaw || Object.keys(classDataRaw).length === 0) {
-          skipped.push(`Không có dữ liệu lớp ${className}.`);
+        const lopKey = className.replace(".", "_");
+
+        // 🔹 Xác định môn
+        const isCongNghe = className.endsWith("_CN");
+        const monKey = isCongNghe ? "CongNghe" : "TinHoc";
+
+        // 3️⃣ Lấy DATA/{lopKey}/HOCSINH
+        const hsSnap = await getDocs(
+          collection(db, "DATA", lopKey, "HOCSINH")
+        );
+
+        if (hsSnap.empty) {
+          skipped.push(`Không có dữ liệu DATA lớp ${className}`);
           continue;
         }
 
+        // Map dữ liệu HS
         const classData = {};
-        Object.keys(classDataRaw).forEach((key) => {
-          const idText = String(key).trim().replace(/[\u200B-\u200D\uFEFF]/g, "");
-          classData[idText] = classDataRaw[key];
+        hsSnap.forEach(docSnap => {
+          classData[docSnap.id] = docSnap.data();
         });
 
+        // 4️⃣ Mở file Excel
         const file = await fileEntry.getFile();
         const buffer = await file.arrayBuffer();
         const workbook = new ExcelJS.Workbook();
@@ -134,67 +137,67 @@ export default function XuatDanhGia() {
         try {
           await workbook.xlsx.load(buffer);
         } catch {
-          skipped.push(`Không thể mở file ${fileEntry.name}.`);
+          skipped.push(`Không thể mở file ${fileEntry.name}`);
           continue;
         }
 
-        const sheetName = className.endsWith("_CN")
+        const sheetName = isCongNghe
           ? "TH-CN (Công nghệ)"
           : "TH-CN (Tin học)";
-        const sheet = workbook.worksheets.find((s) => s.name === sheetName);
+        const sheet = workbook.worksheets.find(s => s.name === sheetName);
+
         if (!sheet) {
           skipped.push(`Không có sheet "${sheetName}" trong ${fileEntry.name}`);
           continue;
         }
 
+        // 5️⃣ Xác định cột
         const headerRow = sheet.getRow(1).values;
         const colId = headerRow.indexOf("Mã học sinh");
         const colDgtx = headerRow.indexOf("Mức đạt được");
         const colNX = headerRow.indexOf("Nội dung nhận xét");
+
         if (colId === -1) {
           skipped.push(`File ${fileEntry.name} sai cấu trúc`);
           continue;
         }
 
         let matchCount = 0;
+
+        // 6️⃣ Ghi dữ liệu theo học sinh
         sheet.eachRow((row, rowNumber) => {
-          if (rowNumber < 2) return; // bỏ header
-          const idExcel = String(row.getCell(colId).value || "")
+          if (rowNumber < 2) return;
+
+          const maHS = String(row.getCell(colId).value || "")
             .trim()
             .replace(/[\u200B-\u200D\uFEFF]/g, "");
-          const hs = classData[idExcel];
-          if (!hs) return;
 
+          const hs = classData[maHS];
+          if (!hs || !hs[monKey]?.ktdk?.[term]) return;
+
+          const ktdk = hs[monKey].ktdk[term];
           matchCount++;
 
           if (term === "GKI" || term === "GKII") {
-            // Giữa kỳ I & II: xuất dgtx_mucdat + dgtx_nx
-            if (colDgtx > 0) row.getCell(colDgtx).value = hs.dgtx_mucdat || "";
-            if (colNX > 0) row.getCell(colNX).value = hs.dgtx_nx || "";
+            if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.dgtx_mucdat || "";
+            if (colNX > 0) row.getCell(colNX).value = ktdk.dgtx_nx || "";
           } else {
-            // Cuối kỳ hoặc cả năm: xuất dgtx_mucdat + nhanXet + tongCong (cột F)
-            if (colDgtx > 0) row.getCell(colDgtx).value = hs.mucDat || "";
-            if (colNX > 0) row.getCell(colNX).value = hs.nhanXet || "";
-            // Cột F (index 6 trong ExcelJS, 1-based) = tongCong
-            row.getCell(6).value = hs.tongCong ?? "";
+            if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.mucDat || "";
+            if (colNX > 0) row.getCell(colNX).value = ktdk.nhanXet || "";
+            row.getCell(6).value = ktdk.tongCong ?? "";
           }
         });
 
-
         if (matchCount === 0) {
-          skipped.push(`Lớp ${className}: Không có học sinh nào khớp trong Excel`);
+          skipped.push(`Lớp ${className}: Không khớp học sinh`);
           continue;
         }
 
-        try {
-          const writable = await fileEntry.createWritable();
-          const bufferOut = await workbook.xlsx.writeBuffer();
-          await writable.write(bufferOut);
-          await writable.close();
-        } catch {
-          skipped.push(`Không thể ghi dữ liệu vào file ${fileEntry.name}`);
-          continue;
-        }
+        // 7️⃣ Ghi lại file
+        const writable = await fileEntry.createWritable();
+        const bufferOut = await workbook.xlsx.writeBuffer();
+        await writable.write(bufferOut);
+        await writable.close();
 
         openedFiles.push(className);
         done++;
@@ -202,210 +205,148 @@ export default function XuatDanhGia() {
       }
 
       setSuccess(true);
+      setMessage(`✅ Đã xuất dữ liệu ${termText} từ DATA`);
 
-      if (openedFiles.length > 0) {
-        const tinHoc = openedFiles.filter((n) => !n.endsWith("_CN")).sort();
-        const congNghe = openedFiles
-          .filter((n) => n.endsWith("_CN"))
-          .map((n) => n.replace("_CN", ""))
-          .sort();
-
-        const groupClassesByGrade = (classes) => {
-          if (classes.length === 0) return ["Không có"];
-          const groups = {};
-          classes.forEach((cls) => {
-            const grade = cls.split(".")[0];
-            if (!groups[grade]) groups[grade] = [];
-            groups[grade].push(cls);
-          });
-          return Object.keys(groups)
-            .sort()
-            .map((grade) => groups[grade].join(", "));
-        };
-
-        setMessage(
-          <div style={{ lineHeight: 1.6, fontSize: "0.95rem" }}>
-            ✅ <strong>Đã xuất kết quả {termText}:</strong>
-
-            <div style={{ marginTop: 8, marginLeft: 20 }}>
-              • <strong>Tin học:</strong>
-              <div style={{ marginLeft: 24, whiteSpace: "pre-line", lineHeight: 1.6 }}>
-                {groupClassesByGrade(tinHoc).join("\n")}
-              </div>
-            </div>
-
-            <div style={{ marginTop: 8, marginLeft: 20 }}>
-              • <strong>Công nghệ:</strong>
-              <div style={{ marginLeft: 24, whiteSpace: "pre-line", lineHeight: 1.6 }}>
-                {groupClassesByGrade(congNghe).join("\n")}
-              </div>
-            </div>
-
-            {skipped.length > 0 && (
-              <div style={{ marginTop: 10, marginLeft: 20 }}>
-                ⚠️ <strong>Các lớp bị bỏ qua:</strong>
-                <ul style={{ marginTop: 6, marginLeft: 24, lineHeight: 1.6, listStyleType: "none", padding: 0 }}>
-                  {skipped.map((msg, idx) => (
-                    <li key={idx}>❌ {msg}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        );
-      } else {
-        setMessage(
-          <div>
-            ⚠️ Không có lớp nào được xuất.
-            {skipped.length > 0 && (
-              <ul style={{ marginTop: 6, marginLeft: 24, lineHeight: 1.6 }}>
-                {skipped.map((msg, idx) => (
-                  <li key={idx}>❌ {msg}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        );
-      }
     } catch (err) {
-      console.error("❌ Lỗi tổng:", err);
-      setMessage("❌ Có lỗi xảy ra khi ghi dữ liệu.");
+      console.error("❌ Lỗi:", err);
+      setMessage("❌ Có lỗi xảy ra khi xuất dữ liệu");
       setSuccess(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChuyenDuLieu = async () => {
-  try {
-    setLoading(true);
-    setMessage("🔄 Đang chuyển đổi dữ liệu...");
-    setProgress(0);
 
-    const TERM_LIST = ["GKI", "CKI", "GKII", "CN"];
-    const CLASS_LIST = [
-      "4.1", "4.2", "4.3", "4.4", "4.5", "4.6",
-      "5.1", "5.1_CN", "5.2", "5.3", "5.4", "5.4_CN"
-    ];
+  /*const handleChuyenDuLieu = async () => {
+    try {
+      setLoading(true);
+      setMessage("🔄 Đang chuyển đổi dữ liệu...");
+      setProgress(0);
 
-    // 1️⃣ Lấy toàn bộ KTDK theo học kỳ
-    const ktdkByTerm = {};
-    for (const term of TERM_LIST) {
-      const snap = await getDoc(doc(db, "KTDK", term));
-      if (snap.exists()) ktdkByTerm[term] = snap.data();
-    }
+      const TERM_LIST = ["GKI", "CKI", "GKII", "CN"];
+      const CLASS_LIST = [
+        "4.1", "4.2", "4.3", "4.4", "4.5", "4.6",
+        "5.1", "5.1_CN", "5.2", "5.3", "5.4", "5.4_CN"
+      ];
 
-    let done = 0;
-
-    // 2️⃣ Duyệt qua tất cả lớp
-    for (const lop of CLASS_LIST) {
-      const lopKey = lop.replace(".", "_");
-      const batch = writeBatch(db);
-
-      // Lấy danh sách học sinh
-      const dsSnap = await getDoc(doc(db, "DANHSACH", lop));
-      if (!dsSnap.exists()) continue;
-      const danhSach = dsSnap.data();
-
-      // Lấy DGTX theo tuần
-      const tuanSnap = await getDocs(collection(db, `DGTX/${lop}/tuan`));
-      const dgtxTuanMap = {};
-
-      tuanSnap.forEach(tuanDoc => {
-        const tuanId = tuanDoc.id;
-        const tuanData = tuanDoc.data();
-
-        Object.entries(tuanData).forEach(([maHS, info]) => {
-          if (!dgtxTuanMap[maHS]) dgtxTuanMap[maHS] = {};
-
-          const { hoVaTen, diemTN, diemTracNghiem, ...rest } = info || {};
-
-          // Gán dữ liệu với field mới
-          dgtxTuanMap[maHS][tuanId] = {
-            ...rest,
-            ...(diemTN !== undefined ? { TN_diem: diemTN } : {}),
-            ...(diemTracNghiem !== undefined ? { TN_status: diemTracNghiem } : {})
-          };
-        });
-      });
-
-
-      let stt = 1;
-
-      for (const [maHS, hs] of Object.entries(danhSach)) {
-        const hsRef = doc(db, "DATA", lopKey, "HOCSINH", maHS);
-
-        // Chuẩn bị KTDK cho TinHoc & CongNghe
-        const tinHocKtdk = {};
-        const congNgheKtdk = {};
-
-        for (const term of TERM_LIST) {
-          const tin = ktdkByTerm[term]?.[lop]?.[maHS] || {};
-          const cn = ktdkByTerm[term]?.[`${lop}_CN`]?.[maHS] || {};
-
-          tinHocKtdk[term] = {
-            dgtx_gv: tin.dgtx_gv || "",
-            dgtx_mucdat: tin.dgtx_mucdat || "",
-            dgtx_nx: tin.dgtx_nx || "",
-            mucDat: tin.mucDat || "",
-            nhanXet: tin.nhanXet || "",
-            tongCong: tin.tongCong ?? null,
-            lyThuyet: tin.lyThuyet ?? null,
-            thucHanh: tin.thucHanh ?? null
-          };
-
-          congNgheKtdk[term] = {
-            dgtx_gv: cn.dgtx_gv || "",
-            dgtx_mucdat: cn.dgtx_mucdat || "",
-            dgtx_nx: cn.dgtx_nx || "",
-            mucDat: cn.mucDat || "",
-            nhanXet: cn.nhanXet || "",
-            tongCong: cn.tongCong ?? null,
-            lyThuyet: cn.lyThuyet ?? null,
-            thucHanh: cn.thucHanh ?? "" // luôn chuỗi T/H/C
-          };
-        }
-
-        let congNgheData = {};
-        let tinHocData = {};
-
-        if (!lop.includes("_CN") && CLASS_LIST.includes(`${lop}_CN`)) {
-          // Lớp thường có CN
-          tinHocData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: tinHocKtdk };
-          congNgheData = { dgtx: {}, ktdk: congNgheKtdk };
-        } else if (lop.includes("_CN")) {
-          // Lớp CN chỉ CongNghe
-          congNgheData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: congNgheKtdk };
-        } else {
-          // Lớp bình thường chỉ TinHoc
-          tinHocData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: tinHocKtdk };
-        }
-
-        const hsData = {
-          hoVaTen: hs.hoVaTen || "",
-          stt: stt++,
-          ...(Object.keys(congNgheData).length ? { CongNghe: congNgheData } : {}),
-          ...(Object.keys(tinHocData).length ? { TinHoc: tinHocData } : {})
-        };
-
-        batch.set(hsRef, hsData, { merge: true });
+      // 1️⃣ Lấy toàn bộ KTDK theo học kỳ
+      const ktdkByTerm = {};
+      for (const term of TERM_LIST) {
+        const snap = await getDoc(doc(db, "KTDK", term));
+        if (snap.exists()) ktdkByTerm[term] = snap.data();
       }
 
-      await batch.commit();
-      done++;
-      setProgress(Math.round((done / CLASS_LIST.length) * 100));
-    }
+      let done = 0;
 
-    setMessage("✅ Chuyển đổi toàn bộ dữ liệu TẤT CẢ lớp, bao gồm CN!");
-    setSuccess(true);
-  } catch (err) {
-    console.error("❌ Lỗi chuyển đổi:", err);
-    setMessage("❌ Lỗi khi chuyển dữ liệu");
-    setSuccess(false);
-  } finally {
-    setLoading(false);
-  }
-};
+      // 2️⃣ Duyệt qua tất cả lớp
+      for (const lop of CLASS_LIST) {
+        const lopKey = lop.replace(".", "_");
+        const batch = writeBatch(db);
+
+        // Lấy danh sách học sinh
+        const dsSnap = await getDoc(doc(db, "DANHSACH", lop));
+        if (!dsSnap.exists()) continue;
+        const danhSach = dsSnap.data();
+
+        // Lấy DGTX theo tuần
+        const tuanSnap = await getDocs(collection(db, `DGTX/${lop}/tuan`));
+        const dgtxTuanMap = {};
+
+        tuanSnap.forEach(tuanDoc => {
+          const tuanId = tuanDoc.id;
+          const tuanData = tuanDoc.data();
+
+          Object.entries(tuanData).forEach(([maHS, info]) => {
+            if (!dgtxTuanMap[maHS]) dgtxTuanMap[maHS] = {};
+
+            const { hoVaTen, diemTN, diemTracNghiem, ...rest } = info || {};
+
+            // Gán dữ liệu với field mới
+            dgtxTuanMap[maHS][tuanId] = {
+              ...rest,
+              ...(diemTN !== undefined ? { TN_diem: diemTN } : {}),
+              ...(diemTracNghiem !== undefined ? { TN_status: diemTracNghiem } : {})
+            };
+          });
+        });
+
+
+        let stt = 1;
+
+        for (const [maHS, hs] of Object.entries(danhSach)) {
+          const hsRef = doc(db, "DATA", lopKey, "HOCSINH", maHS);
+
+          // Chuẩn bị KTDK cho TinHoc & CongNghe
+          const tinHocKtdk = {};
+          const congNgheKtdk = {};
+
+          for (const term of TERM_LIST) {
+            const tin = ktdkByTerm[term]?.[lop]?.[maHS] || {};
+            const cn = ktdkByTerm[term]?.[`${lop}_CN`]?.[maHS] || {};
+
+            tinHocKtdk[term] = {
+              dgtx_gv: tin.dgtx_gv || "",
+              dgtx_mucdat: tin.dgtx_mucdat || "",
+              dgtx_nx: tin.dgtx_nx || "",
+              mucDat: tin.mucDat || "",
+              nhanXet: tin.nhanXet || "",
+              tongCong: tin.tongCong ?? null,
+              lyThuyet: tin.lyThuyet ?? null,
+              thucHanh: tin.thucHanh ?? null
+            };
+
+            congNgheKtdk[term] = {
+              dgtx_gv: cn.dgtx_gv || "",
+              dgtx_mucdat: cn.dgtx_mucdat || "",
+              dgtx_nx: cn.dgtx_nx || "",
+              mucDat: cn.mucDat || "",
+              nhanXet: cn.nhanXet || "",
+              tongCong: cn.tongCong ?? null,
+              lyThuyet: cn.lyThuyet ?? null,
+              thucHanh: cn.thucHanh ?? "" // luôn chuỗi T/H/C
+            };
+          }
+
+          let congNgheData = {};
+          let tinHocData = {};
+
+          if (!lop.includes("_CN") && CLASS_LIST.includes(`${lop}_CN`)) {
+            // Lớp thường có CN
+            tinHocData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: tinHocKtdk };
+            congNgheData = { dgtx: {}, ktdk: congNgheKtdk };
+          } else if (lop.includes("_CN")) {
+            // Lớp CN chỉ CongNghe
+            congNgheData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: congNgheKtdk };
+          } else {
+            // Lớp bình thường chỉ TinHoc
+            tinHocData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: tinHocKtdk };
+          }
+
+          const hsData = {
+            hoVaTen: hs.hoVaTen || "",
+            stt: stt++,
+            ...(Object.keys(congNgheData).length ? { CongNghe: congNgheData } : {}),
+            ...(Object.keys(tinHocData).length ? { TinHoc: tinHocData } : {})
+          };
+
+          batch.set(hsRef, hsData, { merge: true });
+        }
+
+        await batch.commit();
+        done++;
+        setProgress(Math.round((done / CLASS_LIST.length) * 100));
+      }
+
+      setMessage("✅ Chuyển đổi toàn bộ dữ liệu TẤT CẢ lớp, bao gồm CN!");
+      setSuccess(true);
+    } catch (err) {
+      console.error("❌ Lỗi chuyển đổi:", err);
+      setMessage("❌ Lỗi khi chuyển dữ liệu");
+      setSuccess(false);
+    } finally {
+      setLoading(false);
+    }
+  };*/
 
 
   return (
