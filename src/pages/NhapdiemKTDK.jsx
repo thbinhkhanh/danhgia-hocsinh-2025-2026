@@ -97,6 +97,7 @@ export default function NhapdiemKTDK() {
         default: termDoc = "CN";
       }
 
+      const isGiuaKy = termDoc === "GKI" || termDoc === "GKII";
       const classKey = currentClass.replace(".", "_");
 
       const hsCollection = collection(db, "DATA", classKey, "HOCSINH");
@@ -112,28 +113,31 @@ export default function NhapdiemKTDK() {
         const maHS = docSnap.id;
         const data = docSnap.data();
 
-        // Chọn nhánh môn hiện tại
         let termData = {};
         let dgtx_mucdat = "";
+        let dgtx_nx = "";
         let nhanXet = "";
         let lyThuyet = null;
-        let thucHanh = "";
+        let thucHanh = null;
         let tongCong = null;
         let mucDat = "";
 
+        // ===== CHỌN MÔN =====
         if (selectedSubject === "Công nghệ") {
           const congNghe = data.CongNghe || data.dgtx?.CongNghe || {};
           termData = congNghe.ktdk?.[termDoc] || {};
           dgtx_mucdat = termData.dgtx_mucdat || "";
+          dgtx_nx = termData.dgtx_nx || "";
           nhanXet = termData.nhanXet || "";
           lyThuyet = termData.lyThuyet ?? null;
-          thucHanh = termData.thucHanh || "";
+          thucHanh = termData.thucHanh ?? null;
           tongCong = termData.tongCong ?? null;
           mucDat = termData.mucDat || "";
         } else {
           const tinHoc = data.TinHoc || data.dgtx?.TinHoc || {};
           termData = tinHoc.ktdk?.[termDoc] || {};
           dgtx_mucdat = termData.dgtx_mucdat || "";
+          dgtx_nx = termData.dgtx_nx || "";
           nhanXet = termData.nhanXet || "";
           lyThuyet = termData.lyThuyet ?? null;
           thucHanh = termData.thucHanh ?? null;
@@ -141,35 +145,51 @@ export default function NhapdiemKTDK() {
           mucDat = termData.mucDat || "";
         }
 
-        // Giữ nguyên cấu trúc dgtx
+        // ===== GIỮ NGUYÊN CẤU TRÚC DGTX =====
         const tinHocData = data.TinHoc || {};
         const congNgheData = data.CongNghe || {};
+
+        // ===== ÁP DỤNG LOGIC GIỮA KỲ =====
+        const mucDatFinal = isGiuaKy ? (dgtx_mucdat || "") : (mucDat || "");
+        const nhanXetFinal = isGiuaKy ? (dgtx_nx || "") : (nhanXet || "");
 
         studentList.push({
           maDinhDanh: maHS,
           hoVaTen: data.hoVaTen || "",
           stt: data.stt || null,
+
           dgtx_mucdat,
-          nhanXet,
+          mucDat: mucDatFinal,
+          nhanXet: nhanXetFinal,
+
           lyThuyet,
           thucHanh,
           tongCong,
-          mucDat,
+
           dgtx: {
-            TinHoc: { ktdk: tinHocData.ktdk || {}, tuan: tinHocData.tuan || {} },
-            CongNghe: { ktdk: congNgheData.ktdk || {}, tuan: congNgheData.tuan || {} },
+            TinHoc: {
+              ktdk: tinHocData.ktdk || {},
+              tuan: tinHocData.tuan || {},
+            },
+            CongNghe: {
+              ktdk: congNgheData.ktdk || {},
+              tuan: congNgheData.tuan || {},
+            },
           },
         });
       });
 
-      // Sắp xếp theo tên
+      // ===== SẮP XẾP THEO TÊN =====
       studentList.sort((a, b) => {
         const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
         const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-        return nameA.localeCompare(nameB);
+        return nameA.localeCompare(nameB, "vi", { sensitivity: "base" });
       });
 
-      const finalList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+      const finalList = studentList.map((s, idx) => ({
+        ...s,
+        stt: idx + 1,
+      }));
 
       setStudents(finalList);
       setStudentsForClass(termDoc, classKey, finalList);
@@ -180,68 +200,93 @@ export default function NhapdiemKTDK() {
     }
   };
 
+
   const fetchNhanXet = (cls, mon) => {
-    const subject = mon || selectedSubject;
-    if (!students || students.length === 0) return;
+  const subject = mon || selectedSubject;
+  if (!students || students.length === 0) return;
 
-    const updatedStudents = students.map((s) => {
-      /* ===================== CÔNG NGHỆ (GIỮ NGUYÊN) ===================== */
-      if (subject === "Công nghệ") {
-        const lyThuyetNum = parseFloat(s.lyThuyet);
-        let loaiLyThuyet = "yeu";
-        if (!isNaN(lyThuyetNum)) {
-          if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
-          else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
-          else loaiLyThuyet = "trungbinh";
-        }
+  // 🔑 Xác định GIỮA KỲ
+  const isGiuaKy =
+    config.hocKy === "Giữa kỳ I" || config.hocKy === "Giữa kỳ II";
 
-        const thucHanhVal = s.thucHanh;
-        let loaiThucHanh = "yeu";
-        if (thucHanhVal === "T") loaiThucHanh = "tot";
-        else if (thucHanhVal === "H") loaiThucHanh = "kha";
-        else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
+  /* =====================================================
+     ========== GIỮA KỲ: KHÔNG SINH NHẬN XÉT ==========
+     ===================================================== */
+  if (isGiuaKy) {
+    const updatedStudents = students.map((s) => ({
+      ...s,
+      // giữ nguyên nhận xét đã lấy từ dgtx_nx
+      nhanXet: s.nhanXet || "",
+      // mức đạt đã được set = dgtx_mucdat khi fetch
+      mucDat: s.mucDat || s.dgtx_mucdat || "",
+    }));
 
-        const arrLT = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
-        const arrTH = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
+    setStudents(updatedStudents);
+    return;
+  }
 
-        const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
-        const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
+  /* =====================================================
+     ========== CUỐI KỲ / CẢ NĂM (GIỮ NGUYÊN) ==========
+     ===================================================== */
 
-        return { ...s, nhanXet: `${nxLT} và ${nxTH}`.trim() };
+  const updatedStudents = students.map((s) => {
+    /* ===================== CÔNG NGHỆ ===================== */
+    if (subject === "Công nghệ") {
+      const lyThuyetNum = parseFloat(s.lyThuyet);
+      let loaiLyThuyet = "yeu";
+      if (!isNaN(lyThuyetNum)) {
+        if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
+        else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
+        else loaiLyThuyet = "trungbinh";
       }
 
-      /* ===================== TIN HỌC (TÁCH LT & TH) ===================== */
+      const thucHanhVal = s.thucHanh;
+      let loaiThucHanh = "yeu";
+      if (thucHanhVal === "T") loaiThucHanh = "tot";
+      else if (thucHanhVal === "H") loaiThucHanh = "kha";
+      else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
 
-      // ⭐ LÝ THUYẾT
-      const ltNum = parseFloat(s.lyThuyet);
-      let loaiLT = "yeu";
-      if (!isNaN(ltNum)) {
-        if (ltNum > 4) loaiLT = "tot";
-        else if (ltNum > 3) loaiLT = "kha";
-        else if (ltNum >= 2.5) loaiLT = "trungbinh";
-      }
-
-      // ⭐ THỰC HÀNH
-      const thNum = parseFloat(s.thucHanh);
-      let loaiTH = "yeu";
-      if (!isNaN(thNum)) {
-        if (thNum > 4) loaiTH = "tot";
-        else if (thNum > 3) loaiTH = "kha";
-        else if (thNum >= 2.5) loaiTH = "trungbinh";
-      }
-
-      const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
-      const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
+      const arrLT = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
+      const arrTH = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
 
       const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
       const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
 
-      return { ...s, nhanXet: `${nxLT}; ${nxTH}.`.trim() };
+      return { ...s, nhanXet: `${nxLT} và ${nxTH}`.trim() };
+    }
 
-    });
+    /* ===================== TIN HỌC ===================== */
 
-    setStudents(updatedStudents);
-  };
+    // ⭐ LÝ THUYẾT
+    const ltNum = parseFloat(s.lyThuyet);
+    let loaiLT = "yeu";
+    if (!isNaN(ltNum)) {
+      if (ltNum > 4) loaiLT = "tot";
+      else if (ltNum > 3) loaiLT = "kha";
+      else if (ltNum >= 2.5) loaiLT = "trungbinh";
+    }
+
+    // ⭐ THỰC HÀNH
+    const thNum = parseFloat(s.thucHanh);
+    let loaiTH = "yeu";
+    if (!isNaN(thNum)) {
+      if (thNum > 4) loaiTH = "tot";
+      else if (thNum > 3) loaiTH = "kha";
+      else if (thNum >= 2.5) loaiTH = "trungbinh";
+    }
+
+    const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
+    const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
+
+    const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
+    const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
+
+    return { ...s, nhanXet: `${nxLT}; ${nxTH}.`.trim() };
+  });
+
+  setStudents(updatedStudents);
+};
+
 
 useEffect(() => {
     fetchStudentsAndStatus();
@@ -393,14 +438,30 @@ useEffect(() => {
     if (!students || students.length === 0) return;
 
     const selectedSemester = config.hocKy || "Giữa kỳ I";
-    const selectedMon = config.mon || "Công nghệ"; // Môn hiện tại
+
+    // 🔑 GIỮA KỲ → KHÔNG LƯU
+    const isGiuaKy =
+      selectedSemester === "Giữa kỳ I" ||
+      selectedSemester === "Giữa kỳ II";
+
+    if (isGiuaKy) {
+      setSnackbar({
+        open: true,
+        message: "✅ Lưu thành công!",
+        severity: "success",
+      });
+      return;
+    }
+
+    /* =====================================================
+      ========== CUỐI KỲ / CẢ NĂM (GIỮ NGUYÊN) ==========
+      ===================================================== */
+
+    const selectedMon = config.mon || "Công nghệ";
     const isCongNghe = selectedMon === "Công nghệ";
 
     let termDoc;
     switch (selectedSemester) {
-      case "Giữa kỳ I":
-        termDoc = "GKI";
-        break;
       case "Cuối kỳ I":
         termDoc = "CKI";
         break;
@@ -412,15 +473,12 @@ useEffect(() => {
         break;
     }
 
-    // Chuyển tên lớp dropdown sang format Firestore
     const classKey = (selectedClass || "").replace(".", "_");
-
     const batch = writeBatch(db);
 
     students.forEach((s) => {
       const hsRef = doc(db, "DATA", classKey, "HOCSINH", s.maDinhDanh);
 
-      // Dữ liệu chỉ cho nhánh ktdk của môn hiện tại
       const ktdkData = {
         [termDoc]: {
           dgtx_gv: s.dgtx_mucdat || "",
@@ -471,6 +529,7 @@ useEffect(() => {
       });
     }
   };
+
 
   const handleDownload = async () => {
     try {

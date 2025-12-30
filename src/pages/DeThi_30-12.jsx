@@ -228,7 +228,7 @@ export default function DeThi() {
     }
   };
 
-  /*const handleCombineExams = async () => {
+  const handleCombineExams = async () => {
     if (selectedExamsToCombine.length === 0) {
       setSnackbar({
         open: true,
@@ -323,7 +323,7 @@ export default function DeThi() {
         severity: "error",
       });
     }
-  };*/
+  };
 
   const handleDeleteCombinedExam = async () => {
     if (!examToDelete) return;
@@ -512,14 +512,14 @@ export default function DeThi() {
               Xuất đề
             </Button>
 
-            {/*<Button
+            <Button
               variant="contained"
               color="success"
               sx={{ flex: 1 }}
               onClick={handleCombineExams}
             >
               Kết hợp đề
-            </Button>*/}
+            </Button>
           </Stack>
         </Box>
 
@@ -575,11 +575,11 @@ export default function DeThi() {
           </Box>
 
           {/* ===== Khung Đề kết hợp ===== */}
-          {/*<Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 4, mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 4, mb: 1 }}>
             Đề ôn tập
-          </Typography>*/}
+          </Typography>
 
-          {/*<Box
+          <Box
             sx={{
               maxHeight: { xs: 120, sm: 200 },
               overflowY: "auto",
@@ -617,7 +617,7 @@ export default function DeThi() {
             ) : (
               <Typography sx={{ p: 2 }}>Chưa có đề kết hợp</Typography>
             )}
-          </Box>*/}
+          </Box>
         </Box>
       </Stack>
     </Card>

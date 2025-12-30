@@ -38,7 +38,6 @@ export default function TongHopKQ() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [hocKi, setHocKi] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
@@ -51,24 +50,6 @@ export default function TongHopKQ() {
   const [dialogContent, setDialogContent] = useState("");
   const [dialogAction, setDialogAction] = useState(null);
   const { config } = useContext(ConfigContext);
-
-  const folder = "BINHKHANH";
-
-  // Lấy học kỳ
-  useEffect(() => {
-    const fetchHocKi = async () => {
-      try {
-        const configRef = doc(db, folder, "config");
-        const configSnap = await getDoc(configRef);
-        const hocKiValue = configSnap.exists() ? configSnap.data().hocKy : "GKI";
-        setHocKi(hocKiValue);
-      } catch (err) {
-        console.error("❌ Lỗi khi lấy học kỳ:", err);
-        setHocKi("GKI");
-      }
-    };
-    fetchHocKi();
-  }, []);
 
   // Lấy danh sách lớp
   useEffect(() => {
@@ -94,89 +75,91 @@ export default function TongHopKQ() {
   };
 
   const loadResults = async () => {
-  if (!selectedLop || !selectedMon || !config?.hocKy) return;
-  setLoading(true);
+    if (!selectedLop || !selectedMon || !config?.hocKy) return;
+    setLoading(true);
 
-  try {
-    const classKey = selectedLop.replace(".", "_");
-    const colRef = collection(db, "DATA", classKey, "HOCSINH");
-    const snapshot = await getDocs(colRef);
+    try {
+      const classKey = selectedLop.replace(".", "_");
+      const colRef = collection(db, "DATA", classKey, "HOCSINH");
+      const snapshot = await getDocs(colRef);
 
-    if (snapshot.empty) {
+      if (snapshot.empty) {
+        setResults([]);
+        setSnackbarSeverity("warning");
+        setSnackbarMessage(`Không tìm thấy học sinh trong lớp ${selectedLop}`);
+        setSnackbarOpen(true);
+        setLoading(false);
+        return;
+      }
+
+      const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
+      const hocKyCode = hocKyMap[config.hocKy];
+
+      const data = snapshot.docs.map(docSnap => {
+        const studentData = docSnap.data();
+        const studentId = docSnap.id;
+
+        let diem, diemTN, ngayHienThi, thoiGianLamBai, nhanXet;
+
+        if (kieuHienThi === "KTĐK") {
+          const ktdkData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
+          diem = ktdkData.lyThuyet ?? "";
+          ngayHienThi = ktdkData.ngayKiemTra ?? "";
+          thoiGianLamBai = ktdkData.thoiGianLamBai ?? "";
+        } else if (kieuHienThi === "ONTAP") {
+          const onTapData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
+          diem = onTapData.lyThuyet_onTap ?? "";
+          ngayHienThi = onTapData.ngayKiemTra_onTap ?? "";
+          thoiGianLamBai = onTapData.thoiGianLamBai_onTap ?? "";
+        }
+
+        return {
+          docId: studentId,
+          hoVaTen: studentData.hoVaTen || "",
+          diem,
+          diemTN,
+          ngayHienThi,
+          thoiGianLamBai,
+          nhanXet,
+        };
+      });
+
+      // Sắp xếp tên chuẩn Việt Nam: tên → tên đệm → họ
+      const compareVietnameseName = (a, b) => {
+        const namePartsA = (a.hoVaTen || "").trim().split(" ").reverse();
+        const namePartsB = (b.hoVaTen || "").trim().split(" ").reverse();
+        const len = Math.max(namePartsA.length, namePartsB.length);
+        for (let i = 0; i < len; i++) {
+          const partA = (namePartsA[i] || "").toLowerCase();
+          const partB = (namePartsB[i] || "").toLowerCase();
+          const cmp = partA.localeCompare(partB);
+          if (cmp !== 0) return cmp;
+        }
+        return 0;
+      };
+
+      data.sort(compareVietnameseName);
+
+      const numberedData = data.map((item, idx) => ({ stt: idx + 1, ...item }));
+      setResults(numberedData);
+
+    } catch (err) {
+      console.error("❌ Lỗi khi load kết quả:", err);
       setResults([]);
-      setSnackbarSeverity("warning");
-      setSnackbarMessage(`Không tìm thấy học sinh trong lớp ${selectedLop}`);
+      setSnackbarSeverity("error");
+      setSnackbarMessage("❌ Lỗi khi load kết quả!");
       setSnackbarOpen(true);
-      setLoading(false);
-      return;
     }
 
-    const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
-    const hocKyCode = hocKyMap[config.hocKy];
-
-    const data = snapshot.docs.map(docSnap => {
-      const studentData = docSnap.data();
-      const studentId = docSnap.id;
-
-      let diem, diemTN, ngayHienThi, thoiGianLamBai, nhanXet;
-
-      if (kieuHienThi === "KTĐK") {
-        const ktdkData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
-        diem = ktdkData.lyThuyet ?? "";
-        ngayHienThi = ktdkData.ngayKiemTra ?? "";
-        thoiGianLamBai = ktdkData.thoiGianLamBai ?? "";
-      } else if (kieuHienThi === "ONTAP") {
-        const onTapData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
-        diem = onTapData.lyThuyet_onTap ?? "";
-        ngayHienThi = onTapData.ngayKiemTra_onTap ?? "";
-        thoiGianLamBai = onTapData.thoiGianLamBai_onTap ?? "";
-      }
-
-      return {
-        docId: studentId,
-        hoVaTen: studentData.hoVaTen || "",
-        diem,
-        diemTN,
-        ngayHienThi,
-        thoiGianLamBai,
-        nhanXet,
-      };
-    });
-
-    // Sắp xếp tên chuẩn Việt Nam: tên → tên đệm → họ
-    const compareVietnameseName = (a, b) => {
-      const namePartsA = (a.hoVaTen || "").trim().split(" ").reverse();
-      const namePartsB = (b.hoVaTen || "").trim().split(" ").reverse();
-      const len = Math.max(namePartsA.length, namePartsB.length);
-      for (let i = 0; i < len; i++) {
-        const partA = (namePartsA[i] || "").toLowerCase();
-        const partB = (namePartsB[i] || "").toLowerCase();
-        const cmp = partA.localeCompare(partB);
-        if (cmp !== 0) return cmp;
-      }
-      return 0;
-    };
-
-    data.sort(compareVietnameseName);
-
-    const numberedData = data.map((item, idx) => ({ stt: idx + 1, ...item }));
-    setResults(numberedData);
-
-  } catch (err) {
-    console.error("❌ Lỗi khi load kết quả:", err);
-    setResults([]);
-    setSnackbarSeverity("error");
-    setSnackbarMessage("❌ Lỗi khi load kết quả!");
-    setSnackbarOpen(true);
-  }
-
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
 
   useEffect(() => {
+    if (!config?.hocKy) return;
     loadResults();
-  }, [selectedLop, selectedMon, hocKi, kieuHienThi]);
+  }, [selectedLop, selectedMon, config?.hocKy, kieuHienThi]);
+
 
   // Xóa toàn bộ lớp
   const handleDeleteClass = () => {
@@ -347,7 +330,8 @@ export default function TongHopKQ() {
           return;
         }
 
-        exportKetQuaExcel(results, selectedLop, selectedMon, hocKi);
+        exportKetQuaExcel(results, selectedLop, selectedMon, config.hocKy);
+
         setSnackbarSeverity("success");
         setSnackbarMessage("✅ Xuất file Excel thành công!");
         setSnackbarOpen(true);

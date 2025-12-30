@@ -266,8 +266,6 @@ const handleSaveAll = async () => {
   }
 };
 
-
-
  // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
   useEffect(() => {
     if (config?.lop) {
@@ -460,7 +458,9 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
       }, {});
 
       // ✅ MỨC ĐẠT CUỐI
-      const mucDat = s.dgtx_mucdat || xepLoai || "";
+      const mucDat = s.dgtx_gv?.trim()
+        ? s.dgtx_gv.trim()
+        : xepLoai || "";
 
       // ✅ CHỈ SINH NHẬN XÉT NẾU CHƯA CÓ (GKI chưa có dữ liệu)
       const nhanXetAuto =
@@ -506,6 +506,23 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
     setLoadingMessage("❌ Không thể tải dữ liệu");
   }
 };
+
+const recalcMucDat = () => {
+  setStudents(prev =>
+    prev.map(s => {
+      const gv = s.dgtx_gv?.trim();
+      const hs = s.xepLoai?.trim();
+
+      const mucDat = gv ? gv : hs;
+
+      return {
+        ...s,
+        dgtx: mucDat || "",
+      };
+    })
+  );
+};
+
 
 useEffect(() => {
   if (!selectedClass || !selectedSubject) return;
@@ -612,7 +629,10 @@ return (
 
         <Tooltip title="Làm mới dữ liệu" arrow>
           <IconButton
-            onClick={() => fetchStudents({ forceReload: true })}
+            onClick={() => {
+              fetchStudents({ forceReload: true });
+              recalcMucDat();
+            }}
             sx={{
               color: "primary.main",
               bgcolor: "white",

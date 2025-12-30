@@ -670,24 +670,6 @@ export default function TracNghiem_Test() {
       });
       setOpenResultDialog(true);
 
-            // --- LƯU FIRESTORE ---
-      /*const lop = studentClass;
-      const docId = normalizeName(studentName);
-
-      const collectionRoot = school === "TH Lâm Văn Bền" ? "LAMVANBEN" : "BINHKHANH";
-
-      const docRef = doc(db, `${collectionRoot}/${hocKi}/${lop}/${docId}`);
-      await setDoc(docRef, {
-        hoVaTen: capitalizeName(studentName),
-        lop: lop,
-        mon: monHoc,
-        diem: total,
-        ngayKiemTra,
-        thoiGianLamBai: durationStr,
-      }, { merge: true });
-
-      console.log(`✔ LƯU VÀO ${collectionRoot}:`, hocKi, lop, docId);*/
-
     } catch (err) {
       console.error("❌ Lỗi khi lưu điểm:", err);
     } finally {
@@ -812,24 +794,6 @@ export default function TracNghiem_Test() {
         diem: total,
       });
       setOpenResultDialog(true);
-
-            // --- LƯU FIRESTORE ---
-      /*const lop = studentClass;
-      const docId = normalizeName(studentName);
-
-      const collectionRoot = school === "TH Lâm Văn Bền" ? "LAMVANBEN" : "BINHKHANH";
-
-      const docRef = doc(db, `${collectionRoot}/${hocKi}/${lop}/${docId}`);
-      await setDoc(docRef, {
-        hoVaTen: capitalizeName(studentName),
-        lop: lop,
-        mon: monHoc,
-        diem: total,
-        ngayKiemTra,
-        thoiGianLamBai: durationStr,
-      }, { merge: true });
-
-      console.log(`✔ LƯU VÀO ${collectionRoot}:`, hocKi, lop, docId);*/
 
     } catch (err) {
       console.error("❌ Lỗi khi lưu điểm:", err);
