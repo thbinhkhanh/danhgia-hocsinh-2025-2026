@@ -430,7 +430,8 @@ return (
               ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
               : config?.danhGiaTuan
               ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
-              : `KIỂM TRA ĐỊNH KỲ - ${config?.hocKy?.toUpperCase() || ""}`}
+              //: `KIỂM TRA ĐỊNH KỲ - ${config?.hocKy?.toUpperCase() || ""}`}
+              : `KIỂM TRA ĐỊNH KỲ`}
           </Typography>
         </Box>
 
