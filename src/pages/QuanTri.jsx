@@ -237,6 +237,7 @@ export default function QuanTri() {
       const mon = data.mon || "Tin học";
       const hocKy = data.hocKy || "Giữa kỳ I";
       const deTracNghiem = data.deTracNghiem || "";
+      const khoaHeThong = data.khoaHeThong ?? false;
 
       // ✅ KHÔNG overwrite – MERGE config
       setConfig(prev => ({
@@ -246,6 +247,7 @@ export default function QuanTri() {
         mon,
         hocKy,
         deTracNghiem,
+        khoaHeThong,
       }));
 
       // local state
