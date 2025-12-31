@@ -244,6 +244,7 @@ export default function QuanTri() {
       setSelectedWeek(tuan);
       setSelectedClass(lop);
       if (data.mon !== undefined) setSubject(mon);
+      if (data.hocKy !== undefined) setSelectedSemester(hocKy);
     });
 
     return () => unsubscribe();
