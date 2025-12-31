@@ -350,6 +350,19 @@ export default function QuanTri() {
 
               {/* Các checkbox */}
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {/* 🔒 Khóa hệ thống */}
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={config.khoaHeThong || false}
+                      onChange={(e) =>
+                        updateFirestoreAndContext("khoaHeThong", e.target.checked)
+                      }
+                      color="error"
+                    />
+                  }
+                  label="Khóa hệ thống"
+                />
                 <FormControlLabel
                   control={
                     <Checkbox

@@ -1,4 +1,3 @@
-//import React, { useState, useEffect, useContext } from "react";
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { 
   Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, 
@@ -27,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 
 import DoneDialog from "../dialog/DoneDialog";
 import StudentStatusDialog from "../dialog/StudentStatusDialog";
+import SystemLockedDialog from "../dialog/SystemLockedDialog";
 
 import GroupIcon from '@mui/icons-material/Group';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -59,8 +59,8 @@ export default function HocSinh() {
   const choXemDiem = config?.choXemDiem; // lấy từ config
   const [recentStudents, setRecentStudents] = useState([]); // học sinh gần đây trên máy
   const [showAll, setShowAll] = useState(false); // nút mở rộng
+  const [openSystemLocked, setOpenSystemLocked] = useState(false);
   
-
   // Khi tải trang
   useEffect(() => {
     const fetchConfig = async () => {
@@ -526,7 +526,12 @@ return (
                     },
                   }}
                   onClick={async () => {
-                    if (!selectedClass || !student.maDinhDanh) return;
+                    if (config?.khoaHeThong) {
+                      setOpenSystemLocked(true); // nếu có dialog
+                      return;
+                    }
+
+                    if (!selectedClass || !student.maDinhDanh) return;                                    
 
                     const subjectKey = config.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
                     const classKey = selectedClass.replace(".", "_");
@@ -722,180 +727,184 @@ return (
                           transition: "0.2s",
                           "&:hover": { transform: "scale(1.03)", boxShadow: 4, bgcolor: "#f5f5f5" },
                         }}
-                          onClick={async () => {
-  try {
-    const mode = getMode(config);
-    if (!selectedClass || !student.maDinhDanh) return;
+                          onClick={async () => {      
+                            if (config?.khoaHeThong) {
+                              setOpenSystemLocked(true);
+                              return;
+                            }                    
+                            try {
+                              const mode = getMode(config);
+                              if (!selectedClass || !student.maDinhDanh) return;
 
-    const classKey = selectedClass.replace(".", "_");
-    const subjectKey = config.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
+                              const classKey = selectedClass.replace(".", "_");
+                              const subjectKey = config.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-    // 🔹 BÀI TẬP TUẦN
-    if (mode === "btt") {
-      if (!selectedWeek) {
-        setDoneMessage("⚠️ Chưa chọn tuần.");
-        setOpenDoneDialog(true);
-        return;
-      }
-      const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
-      const hsSnap = await getDoc(hsRef);
-      const data = hsSnap.exists() ? hsSnap.data() : {};
-      const dgtxData = data?.[subjectKey]?.dgtx || {};
-      const weekInfo = dgtxData[`tuan_${selectedWeek}`] || {};
-      const daLamBai = weekInfo?.TN_diem !== undefined && weekInfo?.TN_diem !== null;
+                              // 🔹 BÀI TẬP TUẦN
+                              if (mode === "btt") {
+                                if (!selectedWeek) {
+                                  setDoneMessage("⚠️ Chưa chọn tuần.");
+                                  setOpenDoneDialog(true);
+                                  return;
+                                }
+                                const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
+                                const hsSnap = await getDoc(hsRef);
+                                const data = hsSnap.exists() ? hsSnap.data() : {};
+                                const dgtxData = data?.[subjectKey]?.dgtx || {};
+                                const weekInfo = dgtxData[`tuan_${selectedWeek}`] || {};
+                                const daLamBai = weekInfo?.TN_diem !== undefined && weekInfo?.TN_diem !== null;
 
-      if (daLamBai) {
-        setDoneStudent({
-          hoVaTen: student.hoVaTen,
-          diemTN: weekInfo?.TN_diem ?? weekInfo?.TN_status,
-        });
-        setOpenDoneDialog(true);
-      } else {
-        navigate("/tracnghiem", {
-          state: { studentId: student.maDinhDanh, fullname: student.hoVaTen, lop: selectedClass, selectedWeek, mon: config.mon },
-        });
-      }
+                                if (daLamBai) {
+                                  setDoneStudent({
+                                    hoVaTen: student.hoVaTen,
+                                    diemTN: weekInfo?.TN_diem ?? weekInfo?.TN_status,
+                                  });
+                                  setOpenDoneDialog(true);
+                                } else {
+                                  navigate("/tracnghiem", {
+                                    state: { studentId: student.maDinhDanh, fullname: student.hoVaTen, lop: selectedClass, selectedWeek, mon: config.mon },
+                                  });
+                                }
 
-      // Lưu gần đây
-      if (config.hienThiTenGanDay) {
-        const key = `recent_${selectedClass}`;
-        const updated = [
-          student,
-          ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
-        ];
-        if (updated.length > 10) updated.pop();
-        localStorage.setItem(key, JSON.stringify(updated));
-        setRecentStudents(updated);
-      }
-      return;
-    }
+                                // Lưu gần đây
+                                if (config.hienThiTenGanDay) {
+                                  const key = `recent_${selectedClass}`;
+                                  const updated = [
+                                    student,
+                                    ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
+                                  ];
+                                  if (updated.length > 10) updated.pop();
+                                  localStorage.setItem(key, JSON.stringify(updated));
+                                  setRecentStudents(updated);
+                                }
+                                return;
+                              }
 
-    // 🔹 KIỂM TRA ĐỊNH KỲ
-    if (mode === "ktdk") {
-      const hocKyMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cả năm": "CN" };
-      const hocKyCode = hocKyMap[config.hocKy];
-      if (!hocKyCode) {
-        setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
-        setOpenDoneDialog(true);
-        return;
-      }
+                              // 🔹 KIỂM TRA ĐỊNH KỲ
+                              if (mode === "ktdk") {
+                                const hocKyMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cả năm": "CN" };
+                                const hocKyCode = hocKyMap[config.hocKy];
+                                if (!hocKyCode) {
+                                  setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
+                                  setOpenDoneDialog(true);
+                                  return;
+                                }
 
-      const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
-      const hsSnap = await getDoc(hsRef);
-      const data = hsSnap.exists() ? hsSnap.data() : {};
-      const ktdkData = data?.[subjectKey]?.ktdk?.[hocKyCode] || {};
-      const lyThuyet = ktdkData?.lyThuyet ?? ktdkData?.LyThuyet ?? null;
+                                const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
+                                const hsSnap = await getDoc(hsRef);
+                                const data = hsSnap.exists() ? hsSnap.data() : {};
+                                const ktdkData = data?.[subjectKey]?.ktdk?.[hocKyCode] || {};
+                                const lyThuyet = ktdkData?.lyThuyet ?? ktdkData?.LyThuyet ?? null;
 
-      if (lyThuyet != null) {
-        setDoneStudent({
-          hoVaTen: ktdkData?.hoVaTen ?? student.hoVaTen,
-          diemTN: lyThuyet,
-          nhanXet: ktdkData?.nhanXet || "",
-        });
-        setOpenDoneDialog(true);
-      } else {
-        navigate("/tracnghiem", {
-          state: { studentId: student.maDinhDanh, fullname: student.hoVaTen, lop: selectedClass, selectedWeek, mon: config.mon },
-        });
-      }
+                                if (lyThuyet != null) {
+                                  setDoneStudent({
+                                    hoVaTen: ktdkData?.hoVaTen ?? student.hoVaTen,
+                                    diemTN: lyThuyet,
+                                    nhanXet: ktdkData?.nhanXet || "",
+                                  });
+                                  setOpenDoneDialog(true);
+                                } else {
+                                  navigate("/tracnghiem", {
+                                    state: { studentId: student.maDinhDanh, fullname: student.hoVaTen, lop: selectedClass, selectedWeek, mon: config.mon },
+                                  });
+                                }
 
-      // Lưu gần đây
-      if (config.hienThiTenGanDay) {
-        const key = `recent_${selectedClass}`;
-        const updated = [
-          student,
-          ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
-        ];
-        if (updated.length > 10) updated.pop();
-        localStorage.setItem(key, JSON.stringify(updated));
-        setRecentStudents(updated);
-      }
-      return;
-    }
+                                // Lưu gần đây
+                                if (config.hienThiTenGanDay) {
+                                  const key = `recent_${selectedClass}`;
+                                  const updated = [
+                                    student,
+                                    ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
+                                  ];
+                                  if (updated.length > 10) updated.pop();
+                                  localStorage.setItem(key, JSON.stringify(updated));
+                                  setRecentStudents(updated);
+                                }
+                                return;
+                              }
 
-    // 🔹 ÔN TẬP
-    if (mode === "ontap") {
-      navigate("/tracnghiem", {
-        state: {
-          studentId: student.maDinhDanh,
-          fullname: student.hoVaTen,
-          lop: selectedClass,
-          selectedWeek,
-          mon: config.mon,
-          collectionName: "TRACNGHIEM_ONTAP",
-          docId: `${selectedClass}_ONTAP_${config.mon}_${config.hocKy}`,
-        },
-      });
+                              // 🔹 ÔN TẬP
+                              if (mode === "ontap") {
+                                navigate("/tracnghiem", {
+                                  state: {
+                                    studentId: student.maDinhDanh,
+                                    fullname: student.hoVaTen,
+                                    lop: selectedClass,
+                                    selectedWeek,
+                                    mon: config.mon,
+                                    collectionName: "TRACNGHIEM_ONTAP",
+                                    docId: `${selectedClass}_ONTAP_${config.mon}_${config.hocKy}`,
+                                  },
+                                });
 
-      if (config.hienThiTenGanDay) {
-        const key = `recent_${selectedClass}`;
-        const updated = [
-          student,
-          ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
-        ];
-        if (updated.length > 10) updated.pop();
-        localStorage.setItem(key, JSON.stringify(updated));
-        setRecentStudents(updated);
-      }
-      return;
-    }
+                                if (config.hienThiTenGanDay) {
+                                  const key = `recent_${selectedClass}`;
+                                  const updated = [
+                                    student,
+                                    ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
+                                  ];
+                                  if (updated.length > 10) updated.pop();
+                                  localStorage.setItem(key, JSON.stringify(updated));
+                                  setRecentStudents(updated);
+                                }
+                                return;
+                              }
 
-    // 🔹 ĐÁNH GIÁ TUẦN — CẬP NHẬT TRỰC TIẾP VÀ ĐỒNG BỘ studentStatus
-    if (mode === "dgt") {
-      if (!selectedWeek) {
-        setDoneMessage("⚠️ Chưa chọn tuần.");
-        setOpenDoneDialog(true);
-        return;
-      }
+                              // 🔹 ĐÁNH GIÁ TUẦN — CẬP NHẬT TRỰC TIẾP VÀ ĐỒNG BỘ studentStatus
+                              if (mode === "dgt") {
+                                if (!selectedWeek) {
+                                  setDoneMessage("⚠️ Chưa chọn tuần.");
+                                  setOpenDoneDialog(true);
+                                  return;
+                                }
 
-      const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
-      const hsSnap = await getDoc(hsRef);
-      const data = hsSnap.exists() ? hsSnap.data() : {};
-      const dgtxData = data?.[subjectKey]?.dgtx || {};
-      const weekInfo = dgtxData[`tuan_${selectedWeek}`] || {};
-      const currentStatus = weekInfo?.status ?? weekInfo?.TN_status ?? "";
+                                const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
+                                const hsSnap = await getDoc(hsRef);
+                                const data = hsSnap.exists() ? hsSnap.data() : {};
+                                const dgtxData = data?.[subjectKey]?.dgtx || {};
+                                const weekInfo = dgtxData[`tuan_${selectedWeek}`] || {};
+                                const currentStatus = weekInfo?.status ?? weekInfo?.TN_status ?? "";
 
-      // Cập nhật UI: dialog và list map
-      setExpandedStudent({ ...student, status: currentStatus });
-      setStudentStatus(prev => ({ ...prev, [student.maDinhDanh]: currentStatus }));
+                                // Cập nhật UI: dialog và list map
+                                setExpandedStudent({ ...student, status: currentStatus });
+                                setStudentStatus(prev => ({ ...prev, [student.maDinhDanh]: currentStatus }));
 
-      // Lưu gần đây
-      if (config.hienThiTenGanDay) {
-        const key = `recent_${selectedClass}`;
-        const updated = [
-          student,
-          ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
-        ];
-        if (updated.length > 10) updated.pop();
-        localStorage.setItem(key, JSON.stringify(updated));
-        setRecentStudents(updated);
-      }
-      return;
-    }
+                                // Lưu gần đây
+                                if (config.hienThiTenGanDay) {
+                                  const key = `recent_${selectedClass}`;
+                                  const updated = [
+                                    student,
+                                    ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
+                                  ];
+                                  if (updated.length > 10) updated.pop();
+                                  localStorage.setItem(key, JSON.stringify(updated));
+                                  setRecentStudents(updated);
+                                }
+                                return;
+                              }
 
-    // 🔹 FALLBACK
-    navigate("/tracnghiem", {
-      state: { studentId: student.maDinhDanh, fullname: student.hoVaTen, lop: selectedClass, selectedWeek, mon: config.mon },
-    });
+                              // 🔹 FALLBACK
+                              navigate("/tracnghiem", {
+                                state: { studentId: student.maDinhDanh, fullname: student.hoVaTen, lop: selectedClass, selectedWeek, mon: config.mon },
+                              });
 
-    if (config.hienThiTenGanDay) {
-      const key = `recent_${selectedClass}`;
-      const updated = [
-        student,
-        ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
-      ];
-      if (updated.length > 10) updated.pop();
-      localStorage.setItem(key, JSON.stringify(updated));
-      setRecentStudents(updated);
-    }
-    return;
+                              if (config.hienThiTenGanDay) {
+                                const key = `recent_${selectedClass}`;
+                                const updated = [
+                                  student,
+                                  ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
+                                ];
+                                if (updated.length > 10) updated.pop();
+                                localStorage.setItem(key, JSON.stringify(updated));
+                                setRecentStudents(updated);
+                              }
+                              return;
 
-  } catch (err) {
-    console.error("❌ Lỗi khi click học sinh:", err);
-    setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài.");
-    setOpenDoneDialog(true);
-  }
-}}
+                            } catch (err) {
+                              console.error("❌ Lỗi khi click học sinh:", err);
+                              setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài.");
+                              setOpenDoneDialog(true);
+                            }
+                          }}
 
                       >
                         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -962,6 +971,11 @@ return (
         config={config}
         choXemDiem={choXemDiem}
         convertPercentToScore={convertPercentToScore}
+      />
+
+      <SystemLockedDialog
+        open={openSystemLocked}
+        onClose={() => setOpenSystemLocked(false)}
       />
     </Box>
   );
