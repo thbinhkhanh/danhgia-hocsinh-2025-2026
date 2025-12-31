@@ -20,8 +20,8 @@ import {
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { collection, getDocs, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
-
 import { db } from "../firebase";
+import { exportThongKeExcel } from "../utils/exportThongKeExcel";
 
 export default function ThongKe() {
   const [config, setConfig] = useState({ hocKy: "", mon: "" });
@@ -297,7 +297,7 @@ export default function ThongKe() {
         <Box sx={{ position: "absolute", top: 12, left: 12 }}>
           <Tooltip title="Tải xuống Excel" arrow>
             <IconButton
-              onClick={() => console.log("TODO: xuất Excel")}
+              onClick={() => exportThongKeExcel(rowsToRender, config)}
               sx={{
                 color: "primary.main",
                 bgcolor: "white",

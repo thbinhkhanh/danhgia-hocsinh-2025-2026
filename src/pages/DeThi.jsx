@@ -393,7 +393,7 @@ export default function DeThi() {
           sx={{ height: "45px" }}
         >
           <MenuItem value="TH Bình Khánh">TH Bình Khánh</MenuItem>
-          <MenuItem value="TH Lâm Văn Bền">TH Lâm Văn Bền</MenuItem>
+          {/*<MenuItem value="TH Lâm Văn Bền">TH Lâm Văn Bền</MenuItem>*/}
         </Select>
       </FormControl>
 

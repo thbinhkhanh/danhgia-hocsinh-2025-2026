@@ -328,10 +328,11 @@ useEffect(() => {
         if (selectedSubject === "Tin học") {
           // ✅ Nếu chỉnh cột Lí thuyết / Thực hành / GV đánh giá → tính lại
           if (["lyThuyet", "thucHanh", "dgtx_gv"].includes(field)) {
-            const lt = parseFloat(updated.lyThuyet) || 0;
-            const th = parseFloat(updated.thucHanh) || 0;
+            const lt = parseFloat(updated.lyThuyet);
+            const th = parseFloat(updated.thucHanh);
 
-            if (updated.lyThuyet !== "" && updated.thucHanh !== "") {
+            // Nếu cả hai đều có giá trị hợp lệ
+            if (!isNaN(lt) && !isNaN(th)) {
               updated.tongCong = Math.round(lt + th);
 
               const gv = updated.dgtx_gv;
@@ -344,9 +345,26 @@ useEffect(() => {
                 updated.mucDat = gv;
               }
 
-              // ✅ Cập nhật nhận xét tự động
-              updated.nhanXet = getNhanXetTuDong(updated.mucDat);
+              // ✅ Cập nhật nhận xét tự động dựa trên LT/TH
+              let loaiLT = "yeu";
+              if (lt > 4) loaiLT = "tot";
+              else if (lt > 3) loaiLT = "kha";
+              else if (lt >= 2.5) loaiLT = "trungbinh";
+
+              let loaiTH = "yeu";
+              if (th > 4) loaiTH = "tot";
+              else if (th > 3) loaiTH = "kha";
+              else if (th >= 2.5) loaiTH = "trungbinh";
+
+              const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
+              const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
+
+              const nxLT = arrLT.length ? arrLT[Math.floor(Math.random() * arrLT.length)] : "";
+              const nxTH = arrTH.length ? arrTH[Math.floor(Math.random() * arrTH.length)] : "";
+
+              updated.nhanXet = `${nxLT}; ${nxTH}`.trim();
             } else {
+              // Nếu thiếu một trong hai → xóa tổng, mức đạt, nhận xét
               updated.tongCong = null;
               updated.mucDat = "";
               updated.nhanXet = "";
@@ -361,7 +379,6 @@ useEffect(() => {
               updated.nhanXet = getNhanXetTuDong(updated.mucDat);
             }
           }
-
         } else if (selectedSubject === "Công nghệ") {
             // LY THUYET
             if (field === "lyThuyet") {

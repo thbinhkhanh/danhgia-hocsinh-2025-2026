@@ -34,7 +34,7 @@ import TracNghiem_OnTap from "./pages/TracNghiem_OnTap"; // Thêm vào các impo
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
 import { ConfigProvider, ConfigContext } from "./context/ConfigContext";
-import { LamVanBenConfigProvider } from "./context/LamVanBenConfigContext"; // 👈 thêm
+//import { LamVanBenConfigProvider } from "./context/LamVanBenConfigContext"; // 👈 thêm
 import { TracNghiemProvider } from "./context/TracNghiemContext";
 import { StudentDataProvider } from "./context/StudentDataContext";
 import { StudentKTDKProvider } from "./context/StudentKTDKContext";
@@ -326,7 +326,7 @@ export default function App() {
   return (
     <ConfigProvider>
       <AdminProvider>
-        <LamVanBenConfigProvider>
+        
           <TracNghiemProvider>
             <StudentProvider>
               <StudentDataProvider>
@@ -338,7 +338,7 @@ export default function App() {
               </StudentDataProvider>
             </StudentProvider>
           </TracNghiemProvider>
-        </LamVanBenConfigProvider>
+        
       </AdminProvider>
     </ConfigProvider>
   );
