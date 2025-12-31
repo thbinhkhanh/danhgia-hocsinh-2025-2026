@@ -138,7 +138,11 @@ export default function NhapdiemKTDK() {
           nhanXet = termData.nhanXet || "";
           lyThuyet = termData.lyThuyet ?? null;
           thucHanh = termData.thucHanh ?? null;
-          tongCong = termData.tongCong ?? null;
+          tongCong =
+            typeof termData.tongCong === "number"
+              ? Math.round(termData.tongCong)
+              : termData.tongCong ?? null;
+
           mucDat = termData.mucDat || "";
         } else {
           const tinHoc = data.TinHoc || data.dgtx?.TinHoc || {};
@@ -395,12 +399,29 @@ useEffect(() => {
               } else {
                 const num = parseFloat(value);
                 if (num < 0 || num > 10) return s;
-                updated.tongCong = num;
 
-                const mucDatTuDong = num >= 9 ? "T" : num >= 5 ? "H" : "C";
-                if (!s.mucDat || s.mucDat === (s.tongCong != null ? (s.tongCong >= 9 ? "T" : s.tongCong >= 5 ? "H" : "C") : "")) {
+                // ✅ LÀM TRÒN .5 LÊN
+                const tongCongLamTron = Math.round(num);
+                updated.tongCong = tongCongLamTron;
+
+                updated.mucDat =
+                  tongCongLamTron >= 9 ? "T"
+                  : tongCongLamTron >= 5 ? "H"
+                  : "C";
+
+                /*if (
+                  !s.mucDat ||
+                  s.mucDat ===
+                    (s.tongCong != null
+                      ? s.tongCong >= 9
+                        ? "T"
+                        : s.tongCong >= 5
+                        ? "H"
+                        : "C"
+                      : "")
+                ) {
                   updated.mucDat = mucDatTuDong;
-                }
+                }*/
               }
             }
 
@@ -508,11 +529,17 @@ useEffect(() => {
           dgtx_gv: s.dgtx_mucdat || "",
           dgtx_mucdat: s.dgtx_mucdat || "",
           dgtx_nx: s.nhanXet || "",
-          lyThuyet: s.lyThuyet || null,
+          lyThuyet: s.lyThuyet !== "" && s.lyThuyet !== null && s.lyThuyet !== undefined
+            ? Number(s.lyThuyet)
+            : null,
+
           thucHanh: isCongNghe
             ? (s.thucHanh ?? "")
             : (s.thucHanh !== undefined ? Number(s.thucHanh) : null),
-          tongCong: s.tongCong || null,
+          tongCong: s.tongCong !== null && s.tongCong !== undefined
+            ? Number(s.tongCong)
+            : null,
+
           mucDat: s.mucDat || "",
           nhanXet: s.nhanXet || "",
         },

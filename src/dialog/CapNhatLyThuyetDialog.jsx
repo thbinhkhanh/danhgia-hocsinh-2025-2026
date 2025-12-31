@@ -235,6 +235,7 @@ const CapNhatLyThuyetDialog = ({
             maxRows={3}
             InputProps={{ readOnly: true }}
             sx={{
+                mt: 3,
               "& .MuiInputBase-root": { height: 60, alignItems: "flex-start", paddingTop: "8px", paddingBottom: "8px" },
               "& .MuiInputBase-input": { height: "100%", overflow: "auto" },
             }}
