@@ -23,22 +23,19 @@ import {
 } from "@mui/material";
 
 import { db } from "../firebase";
+import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from "firebase/firestore";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentKTDKContext } from "../context/StudentKTDKContext";
-
-import { exportKTDK } from "../utils/exportKTDK";
-import { printKTDK } from "../utils/printKTDK";
-//import { nhanXetTinHoc, nhanXetCongNghe } from '../utils/nhanXet.js';
-import { nhanXetTinHoc, nhanXetCongNgheCuoiKy } from '../utils/nhanXet.js';
-
-
-import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from "firebase/firestore";
 
 import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import PrintIcon from "@mui/icons-material/Print";
+
+import { exportKTDK } from "../utils/exportKTDK";
+import { printKTDK } from "../utils/printKTDK";
+import { nhanXetTinHocCuoiKy, nhanXetCongNgheCuoiKy } from '../utils/nhanXet.js';
 
 export default function NhapdiemKTDK() {
   const { classData, setClassData, studentData, setStudentData } = useContext(StudentContext);
@@ -88,92 +85,153 @@ export default function NhapdiemKTDK() {
   }, [classData, setClassData]);
 
   const fetchStudentsAndStatus = async (cls) => {
-  const currentClass = cls || selectedClass;
-  if (!currentClass) return;
+    const currentClass = cls || selectedClass;
+    if (!currentClass) return;
 
-  try {
-    const selectedSemester = config.hocKy || "Giữa kỳ I";
+    try {
+      let termDoc;
+      switch (config.hocKy) {
+        case "Giữa kỳ I": termDoc = "GKI"; break;
+        case "Cuối kỳ I": termDoc = "CKI"; break;
+        case "Giữa kỳ II": termDoc = "GKII"; break;
+        default: termDoc = "CN";
+      }
 
-    let termDoc;
-    switch (selectedSemester) {
-      case "Giữa kỳ I": termDoc = "GKI"; break;
-      case "Cuối kỳ I": termDoc = "CKI"; break;
-      case "Giữa kỳ II": termDoc = "GKII"; break;
-      default: termDoc = "CN";
+      const isGiuaKy = termDoc === "GKI" || termDoc === "GKII";
+      const classKey = currentClass.replace(".", "_");
+
+      const hsCollection = collection(db, "DATA", classKey, "HOCSINH");
+      const snap = await getDocs(hsCollection);
+      if (snap.empty) {
+        setStudents([]);
+        return;
+      }
+
+      const studentList = [];
+
+      snap.forEach((docSnap) => {
+        const maHS = docSnap.id;
+        const data = docSnap.data();
+
+        let termData = {};
+        let dgtx_mucdat = "";
+        let dgtx_nx = "";
+        let nhanXet = "";
+        let lyThuyet = null;
+        let thucHanh = null;
+        let tongCong = null;
+        let mucDat = "";
+
+        // ===== CHỌN MÔN =====
+        if (selectedSubject === "Công nghệ") {
+          const congNghe = data.CongNghe || data.dgtx?.CongNghe || {};
+          termData = congNghe.ktdk?.[termDoc] || {};
+          dgtx_mucdat = termData.dgtx_mucdat || "";
+          dgtx_nx = termData.dgtx_nx || "";
+          nhanXet = termData.nhanXet || "";
+          lyThuyet = termData.lyThuyet ?? null;
+          thucHanh = termData.thucHanh ?? null;
+          tongCong = termData.tongCong ?? null;
+          mucDat = termData.mucDat || "";
+        } else {
+          const tinHoc = data.TinHoc || data.dgtx?.TinHoc || {};
+          termData = tinHoc.ktdk?.[termDoc] || {};
+          dgtx_mucdat = termData.dgtx_mucdat || "";
+          dgtx_nx = termData.dgtx_nx || "";
+          nhanXet = termData.nhanXet || "";
+          lyThuyet = termData.lyThuyet ?? null;
+          thucHanh = termData.thucHanh ?? null;
+          tongCong = termData.tongCong ?? null;
+          mucDat = termData.mucDat || "";
+        }
+
+        // ===== GIỮ NGUYÊN CẤU TRÚC DGTX =====
+        const tinHocData = data.TinHoc || {};
+        const congNgheData = data.CongNghe || {};
+
+        // ===== ÁP DỤNG LOGIC GIỮA KỲ =====
+        const mucDatFinal = isGiuaKy ? (dgtx_mucdat || "") : (mucDat || "");
+        const nhanXetFinal = isGiuaKy ? (dgtx_nx || "") : (nhanXet || "");
+
+        studentList.push({
+          maDinhDanh: maHS,
+          hoVaTen: data.hoVaTen || "",
+          stt: data.stt || null,
+
+          dgtx_mucdat,
+          mucDat: mucDatFinal,
+          nhanXet: nhanXetFinal,
+
+          lyThuyet,
+          thucHanh,
+          tongCong,
+
+          dgtx: {
+            TinHoc: {
+              ktdk: tinHocData.ktdk || {},
+              tuan: tinHocData.tuan || {},
+            },
+            CongNghe: {
+              ktdk: congNgheData.ktdk || {},
+              tuan: congNgheData.tuan || {},
+            },
+          },
+        });
+      });
+
+      // ===== SẮP XẾP THEO TÊN =====
+      studentList.sort((a, b) => {
+        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+        return nameA.localeCompare(nameB, "vi", { sensitivity: "base" });
+      });
+
+      const finalList = studentList.map((s, idx) => ({
+        ...s,
+        stt: idx + 1,
+      }));
+
+      setStudents(finalList);
+      setStudentsForClass(termDoc, classKey, finalList);
+
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy dữ liệu từ DATA:", err);
+      setStudents([]);
     }
-
-    const classKey =
-      config?.mon === "Công nghệ" ? `${currentClass}_CN` : currentClass;
-
-    // 🔹 LẤY KTDK
-    const docRef = doc(db, "KTDK", termDoc);
-    const snap = await getDoc(docRef);
-    const termData = snap.exists() ? snap.data() : {};
-    const ktData = termData[classKey] || {};
-
-    // 🔹 LẤY DANHSACH
-    const docRefList = doc(db, "DANHSACH", currentClass);
-    const snapList = await getDoc(docRefList);
-    const listData = snapList.exists() ? snapList.data() : {};
-
-    // 🔹 MERGE: DANHSACH là gốc
-    const mergedData = {};
-
-    Object.entries(listData).forEach(([maDinhDanh, info]) => {
-      const dgtxMucDat = ktData[maDinhDanh]?.dgtx_mucdat || "";
-      const nhanXet = ktData[maDinhDanh]?.nhanXet || "";
-
-      mergedData[maDinhDanh] = {
-        hoVaTen: info.hoVaTen || "",
-
-        dgtx_mucdat: dgtxMucDat,
-        nhanXet: nhanXet, // ⭐ CHỈ FIELD NÀY
-
-        lyThuyet: ktData[maDinhDanh]?.lyThuyet ?? null,
-        thucHanh: ktData[maDinhDanh]?.thucHanh ?? null,
-        tongCong: ktData[maDinhDanh]?.tongCong ?? null,
-        mucDat: ktData[maDinhDanh]?.mucDat || "",
-      };
-    });
-
-
-    // 🔹 TẠO LIST
-    let studentList = Object.entries(mergedData).map(([maDinhDanh, info]) => ({
-      maDinhDanh,
-      ...info,
-    }));
-
-    // 🔹 SORT THEO TÊN
-    studentList.sort((a, b) => {
-      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-
-    // 🔹 GÁN STT
-    studentList = studentList.map((s, idx) => ({
-      ...s,
-      stt: idx + 1,
-    }));
-
-    // 🔹 SET + CACHE
-    setStudents(studentList);
-    setStudentsForClass(termDoc, classKey, studentList);
-
-  } catch (err) {
-    console.error("❌ Lỗi khi lấy dữ liệu:", err);
-    setStudents([]);
-  }
-};
+  };
 
 
   const fetchNhanXet = (cls, mon) => {
-  const subject = mon || selectedSubject; // ưu tiên tham số
+  const subject = mon || selectedSubject;
   if (!students || students.length === 0) return;
 
+  // 🔑 Xác định GIỮA KỲ
+  const isGiuaKy =
+    config.hocKy === "Giữa kỳ I" || config.hocKy === "Giữa kỳ II";
+
+  /* =====================================================
+     ========== GIỮA KỲ: KHÔNG SINH NHẬN XÉT ==========
+     ===================================================== */
+  if (isGiuaKy) {
+    const updatedStudents = students.map((s) => ({
+      ...s,
+      // giữ nguyên nhận xét đã lấy từ dgtx_nx
+      nhanXet: s.nhanXet || "",
+      // mức đạt đã được set = dgtx_mucdat khi fetch
+      mucDat: s.mucDat || s.dgtx_mucdat || "",
+    }));
+
+    setStudents(updatedStudents);
+    return;
+  }
+
+  /* =====================================================
+     ========== CUỐI KỲ / CẢ NĂM (GIỮ NGUYÊN) ==========
+     ===================================================== */
+
   const updatedStudents = students.map((s) => {
+    /* ===================== CÔNG NGHỆ ===================== */
     if (subject === "Công nghệ") {
-      // ⭐ Lấy loại nhận xét LÝ THUYẾT từ điểm lyThuyet
       const lyThuyetNum = parseFloat(s.lyThuyet);
       let loaiLyThuyet = "yeu";
       if (!isNaN(lyThuyetNum)) {
@@ -182,39 +240,48 @@ export default function NhapdiemKTDK() {
         else loaiLyThuyet = "trungbinh";
       }
 
-      // ⭐ Lấy loại nhận xét THỰC HÀNH từ điểm thucHanh (T/H/C)
       const thucHanhVal = s.thucHanh;
       let loaiThucHanh = "yeu";
       if (thucHanhVal === "T") loaiThucHanh = "tot";
       else if (thucHanhVal === "H") loaiThucHanh = "kha";
       else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
 
-      // ⭐ DÙNG NHẬN XÉT CUỐI KỲ
-      const arrLyThuyet = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
-      const arrThucHanh = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
+      const arrLT = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
+      const arrTH = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
 
-      const nhanXetLyThuyet = arrLyThuyet.length
-        ? arrLyThuyet[Math.floor(Math.random() * arrLyThuyet.length)]
-        : "";
-      const nhanXetThucHanh = arrThucHanh.length
-        ? arrThucHanh[Math.floor(Math.random() * arrThucHanh.length)]
-        : "";
+      const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
+      const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
 
-      return { ...s, nhanXet: `${nhanXetLyThuyet} và ${nhanXetThucHanh}`.trim() };
-    } else {
-      // Tin học vẫn dùng mucDat
-      const loaiNhanXet = s.mucDat
-        ? s.mucDat === "T"
-          ? "tot"
-          : s.mucDat === "H"
-          ? "kha"
-          : "trungbinh"
-        : "yeu";
-
-      const arr = nhanXetTinHoc[loaiNhanXet] || [];
-      const nhanXet = arr.length ? arr[Math.floor(Math.random() * arr.length)] : "";
-      return { ...s, nhanXet };
+      return { ...s, nhanXet: `${nxLT} và ${nxTH}`.trim() };
     }
+
+    /* ===================== TIN HỌC ===================== */
+
+    // ⭐ LÝ THUYẾT
+    const ltNum = parseFloat(s.lyThuyet);
+    let loaiLT = "yeu";
+    if (!isNaN(ltNum)) {
+      if (ltNum > 4) loaiLT = "tot";
+      else if (ltNum > 3) loaiLT = "kha";
+      else if (ltNum >= 2.5) loaiLT = "trungbinh";
+    }
+
+    // ⭐ THỰC HÀNH
+    const thNum = parseFloat(s.thucHanh);
+    let loaiTH = "yeu";
+    if (!isNaN(thNum)) {
+      if (thNum > 4) loaiTH = "tot";
+      else if (thNum > 3) loaiTH = "kha";
+      else if (thNum >= 2.5) loaiTH = "trungbinh";
+    }
+
+    const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
+    const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
+
+    const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
+    const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
+
+    return { ...s, nhanXet: `${nxLT}; ${nxTH}.`.trim() };
   });
 
   setStudents(updatedStudents);
@@ -239,7 +306,7 @@ useEffect(() => {
     const arrNhanXet =
       selectedSubject === "Công nghệ"
         ? nhanXetCongNgheCuoiKy[loaiNhanXet].lyThuyet.concat(nhanXetCongNgheCuoiKy[loaiNhanXet].thucHanh)
-        : nhanXetTinHoc[loaiNhanXet];
+        : nhanXetTinHocCuoiKy[loaiNhanXet];
 
     return arrNhanXet[Math.floor(Math.random() * arrNhanXet.length)];
   };
@@ -296,53 +363,59 @@ useEffect(() => {
           }
 
         } else if (selectedSubject === "Công nghệ") {
-          // LY THUYET
-          if (field === "lyThuyet") {
-            if (value === "" || isNaN(parseFloat(value))) {
-              updated.tongCong = null;
-              updated.mucDat = "";
-            } else {
-              const num = parseFloat(value);
-              if (num < 0 || num > 10) return s;
-              updated.tongCong = num;
+            // LY THUYET
+            if (field === "lyThuyet") {
+              if (value === "" || isNaN(parseFloat(value))) {
+                updated.tongCong = null;
+                updated.mucDat = "";
+              } else {
+                const num = parseFloat(value);
+                if (num < 0 || num > 10) return s;
+                updated.tongCong = num;
 
-              const mucDatTuDong = num >= 9 ? "T" : num >= 5 ? "H" : "C";
-              if (!s.mucDat || s.mucDat === (s.tongCong != null ? (s.tongCong >= 9 ? "T" : s.tongCong >= 5 ? "H" : "C") : "")) {
-                updated.mucDat = mucDatTuDong;
+                const mucDatTuDong = num >= 9 ? "T" : num >= 5 ? "H" : "C";
+                if (!s.mucDat || s.mucDat === (s.tongCong != null ? (s.tongCong >= 9 ? "T" : s.tongCong >= 5 ? "H" : "C") : "")) {
+                  updated.mucDat = mucDatTuDong;
+                }
               }
+            }
+
+            // THUC HANH
+            if (field === "thucHanh") {
+              if (!["T", "H", "C", ""].includes(value)) return s;
+            }
+
+            // GV nhập thủ công Mức đạt (không thay đổi gì)
+
+            // ⭐ Cập nhật nhận xét: tách riêng lý thuyết và thực hành
+            if (!updated.mucDat) {
+              // Nếu chưa có mức đạt → nhận xét rỗng
+              updated.nhanXet = "";
+            } else {
+              const lyThuyetNum = parseFloat(updated.lyThuyet);
+              let loaiLyThuyet = "yeu";
+              if (!isNaN(lyThuyetNum)) {
+                if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
+                else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
+                else loaiLyThuyet = "trungbinh";
+              }
+
+              const thucHanhVal = updated.thucHanh;
+              let loaiThucHanh = "yeu";
+              if (thucHanhVal === "T") loaiThucHanh = "tot";
+              else if (thucHanhVal === "H") loaiThucHanh = "kha";
+              else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
+
+              const arrLyThuyet = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
+              const arrThucHanh = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
+
+              const nhanXetLyThuyet = arrLyThuyet.length ? arrLyThuyet[Math.floor(Math.random() * arrLyThuyet.length)] : "";
+              const nhanXetThucHanh = arrThucHanh.length ? arrThucHanh[Math.floor(Math.random() * arrThucHanh.length)] : "";
+
+              updated.nhanXet = `${nhanXetLyThuyet}; ${nhanXetThucHanh}`.trim();
             }
           }
 
-          // THUC HANH
-          if (field === "thucHanh") {
-            if (!["T", "H", "C", ""].includes(value)) return s;
-          }
-
-          // GV nhập thủ công Mức đạt (không thay đổi gì)
-
-          // ⭐ Cập nhật nhận xét: tách riêng lý thuyết và thực hành
-          const lyThuyetNum = parseFloat(updated.lyThuyet);
-          let loaiLyThuyet = "yeu";
-          if (!isNaN(lyThuyetNum)) {
-            if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
-            else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
-            else loaiLyThuyet = "trungbinh";
-          }
-
-          const thucHanhVal = updated.thucHanh;
-          let loaiThucHanh = "yeu";
-          if (thucHanhVal === "T") loaiThucHanh = "tot";
-          else if (thucHanhVal === "H") loaiThucHanh = "kha";
-          else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
-
-          const arrLyThuyet = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
-          const arrThucHanh = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
-
-          const nhanXetLyThuyet = arrLyThuyet.length ? arrLyThuyet[Math.floor(Math.random() * arrLyThuyet.length)] : "";
-          const nhanXetThucHanh = arrThucHanh.length ? arrThucHanh[Math.floor(Math.random() * arrThucHanh.length)] : "";
-
-          updated.nhanXet = `${nhanXetLyThuyet}; ${nhanXetThucHanh}`.trim();
-        }
 
         return updated;
       })
@@ -365,13 +438,30 @@ useEffect(() => {
     if (!students || students.length === 0) return;
 
     const selectedSemester = config.hocKy || "Giữa kỳ I";
-    const isCongNghe = config.mon === "Công nghệ";
+
+    // 🔑 GIỮA KỲ → KHÔNG LƯU
+    const isGiuaKy =
+      selectedSemester === "Giữa kỳ I" ||
+      selectedSemester === "Giữa kỳ II";
+
+    if (isGiuaKy) {
+      setSnackbar({
+        open: true,
+        message: "✅ Lưu thành công!",
+        severity: "success",
+      });
+      return;
+    }
+
+    /* =====================================================
+      ========== CUỐI KỲ / CẢ NĂM (GIỮ NGUYÊN) ==========
+      ===================================================== */
+
+    const selectedMon = config.mon || "Công nghệ";
+    const isCongNghe = selectedMon === "Công nghệ";
 
     let termDoc;
     switch (selectedSemester) {
-      case "Giữa kỳ I":
-        termDoc = "GKI";
-        break;
       case "Cuối kỳ I":
         termDoc = "CKI";
         break;
@@ -383,31 +473,34 @@ useEffect(() => {
         break;
     }
 
-    const classKey =
-      config.mon === "Công nghệ" ? `${selectedClass}_CN` : selectedClass;
-
-    const docRef = doc(db, "KTDK", termDoc);
+    const classKey = (selectedClass || "").replace(".", "_");
     const batch = writeBatch(db);
 
     students.forEach((s) => {
+      const hsRef = doc(db, "DATA", classKey, "HOCSINH", s.maDinhDanh);
+
+      const ktdkData = {
+        [termDoc]: {
+          dgtx_gv: s.dgtx_mucdat || "",
+          dgtx_mucdat: s.dgtx_mucdat || "",
+          dgtx_nx: s.nhanXet || "",
+          lyThuyet: s.lyThuyet || null,
+          thucHanh: isCongNghe
+            ? (s.thucHanh ?? "")
+            : (s.thucHanh !== undefined ? Number(s.thucHanh) : null),
+          tongCong: s.tongCong || null,
+          mucDat: s.mucDat || "",
+          nhanXet: s.nhanXet || "",
+        },
+      };
+
       batch.set(
-        docRef,
+        hsRef,
         {
-          [classKey]: {
-            [s.maDinhDanh]: {
-              hoVaTen: s.hoVaTen || "",
-              lyThuyet: parseOrNull(s.lyThuyet),
-              //thucHanh: parseOrNull(s.thucHanh),
-              thucHanh: isCongNghe
-                ? (s.thucHanh || "")
-                : parseOrNull(s.thucHanh),
-
-              tongCong: parseOrNull(s.tongCong),
-              mucDat: s.mucDat || "",
-
-              // ⭐ FIELD DUY NHẤT
-              nhanXet: s.nhanXet || "",
-            },
+          hoVaTen: s.hoVaTen || "",
+          stt: s.stt || null,
+          [isCongNghe ? "CongNghe" : "TinHoc"]: {
+            ktdk: ktdkData,
           },
         },
         { merge: true }
@@ -436,7 +529,6 @@ useEffect(() => {
       });
     }
   };
-
 
 
   const handleDownload = async () => {
@@ -637,7 +729,15 @@ useEffect(() => {
         </Box>
 
         {/* 🧾 Bảng học sinh (giữ nguyên định dạng gốc) */}
-        <TableContainer component={Paper} sx={{ maxHeight: "70vh", overflow: "auto" }}>
+        <TableContainer
+          component={Paper}
+          sx={{
+            maxHeight: "none",
+            overflowY: "visible",
+            overflowX: "auto",
+          }}
+        >
+
           <Table
             stickyHeader
             size="small"

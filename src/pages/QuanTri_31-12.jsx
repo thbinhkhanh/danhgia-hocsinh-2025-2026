@@ -243,7 +243,6 @@ export default function QuanTri() {
       // đưa vào local state
       setSelectedWeek(tuan);
       setSelectedClass(lop);
-      if (data.mon !== undefined) setSubject(mon);
     });
 
     return () => unsubscribe();

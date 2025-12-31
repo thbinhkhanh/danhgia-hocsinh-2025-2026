@@ -32,6 +32,8 @@ import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import PrintIcon from "@mui/icons-material/Print";
+import CapNhatLyThuyetDialog from "../dialog/CapNhatLyThuyetDialog";
+import EditIcon from "@mui/icons-material/Edit";
 
 import { exportKTDK } from "../utils/exportKTDK";
 import { printKTDK } from "../utils/printKTDK";
@@ -49,6 +51,11 @@ export default function NhapdiemKTDK() {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const [selectedSubject, setSelectedSubject] = useState(() => config?.mon || "Tin học");
+
+  const [openLTDialog, setOpenLTDialog] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [ltValue, setLtValue] = useState("");
+
 
   useEffect(() => {
     if (config?.mon && config.mon !== selectedSubject) {
@@ -547,6 +554,83 @@ useEffect(() => {
     }
   };
 
+  // Hàm lưu 1 học sinh
+  const handleSaveOne = async (student) => {
+    if (!student) return;
+
+    const selectedSemester = config.hocKy || "Giữa kỳ I";
+
+    // ❌ Giữa kỳ thì không lưu
+    if (selectedSemester === "Giữa kỳ I" || selectedSemester === "Giữa kỳ II") {
+      setSnackbar({
+        open: true,
+        message: "⚠️ Giữa kỳ không lưu vào hệ thống!",
+        severity: "warning",
+      });
+      return;
+    }
+
+    // ✅ Chỉ lưu Cuối kỳ I / Cuối kỳ II / Cả năm
+    let termDoc;
+    switch (selectedSemester) {
+      case "Cuối kỳ I":
+        termDoc = "CKI";
+        break;
+      case "Cuối kỳ II":
+        termDoc = "CKII";
+        break;
+      default: // Cả năm
+        termDoc = "CN";
+        break;
+    }
+
+    const selectedMon = config.mon || "Công nghệ";
+    const isCongNghe = selectedMon === "Công nghệ";
+    const classKey = (selectedClass || "").replace(".", "_");
+
+    const batch = writeBatch(db);
+    const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
+
+    // Không tính lyThuyetPhanTram ở đây nữa, đã tính trong handleSave
+    const ktdkData = {
+      [termDoc]: {
+        lyThuyet: student.lyThuyet ?? null,
+        thucHanh: isCongNghe
+          ? (student.thucHanh ?? "")
+          : (student.thucHanh !== undefined ? Number(student.thucHanh) : null),
+        tongCong: student.tongCong ?? null,
+        mucDat: student.mucDat ?? "",
+        nhanXet: student.nhanXet ?? "",
+        lyThuyetPhanTram: student.lyThuyetPhanTram ?? null, // giữ giá trị từ handleSave
+      },
+    };
+
+    batch.set(
+      hsRef,
+      {
+        [isCongNghe ? "CongNghe" : "TinHoc"]: {
+          ktdk: ktdkData,
+        },
+      },
+      { merge: true }
+    );
+
+    try {
+      await batch.commit();
+      setSnackbar({
+        open: true,
+        message: "✅ Cập nhật thành công!",
+        severity: "success",
+      });
+    } catch (err) {
+      console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
+      setSnackbar({
+        open: true,
+        message: "❌ Lỗi khi lưu dữ liệu học sinh!",
+        severity: "error",
+      });
+    }
+  };
 
   const handleDownload = async () => {
     try {
@@ -555,7 +639,6 @@ useEffect(() => {
       console.error("❌ Lỗi khi xuất Excel:", error);
     }
   };
-
 
   const columns = ["lyThuyet", "thucHanh", "mucDat", "nhanXet"];
   const handleKeyNavigation = (e, rowIndex, col) => {
@@ -601,6 +684,31 @@ useEffect(() => {
       console.error("❌ Lỗi khi in:", err);
       alert("Lỗi khi in danh sách. Vui lòng thử lại!");
     }
+  };
+
+  const handleOpenLTDialog = (student) => {
+    setEditingStudent(student);
+    setLtValue(student.lyThuyet ?? "");
+    setOpenLTDialog(true);
+  };
+
+  const handleCloseLTDialog = () => {
+    setOpenLTDialog(false);
+  };
+
+  const handleUpdateLyThuyet = () => {
+    const num = parseFloat(ltValue);
+    if (isNaN(num) || num < 0 || num > 5) return;
+
+    setStudents(prev =>
+      prev.map(s =>
+        s.maDinhDanh === editingStudent.maDinhDanh
+          ? { ...s, lyThuyet: num }
+          : s
+      )
+    );
+
+    handleCloseLTDialog();
   };
 
 
@@ -799,18 +907,65 @@ useEffect(() => {
 
                   {/* 🟨 Cột Lí thuyết */}
                   <TableCell align="center" sx={{ px: 1 }}>
-                    <TextField
-                      variant="standard"
-                      value={student.lyThuyet || ""} // ✅ dùng lyThuyet
-                      onChange={(e) =>
-                        handleCellChange(student.maDinhDanh, "lyThuyet", e.target.value) // ✅ field lyThuyet
-                      }
-                      inputProps={{ style: { textAlign: "center", paddingLeft: 2, paddingRight: 2 } }}
-                      id={`lyThuyet-${idx}`}
-                      onKeyDown={(e) => handleKeyNavigation(e, idx, "lyThuyet")}
-                      InputProps={{ disableUnderline: true }}
-                    />
+                    {selectedSubject === "Tin học" ? (
+                      <Box
+                        sx={{
+                          position: "relative",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+
+                          "& .edit-icon": {
+                            position: "absolute",
+                            right: 4,
+                            opacity: 0,
+                            transition: "opacity 0.2s ease",
+                          },
+
+                          "&:hover .edit-icon": {
+                            opacity: 1,
+                          },
+                        }}
+                      >
+                        {/* 👉 Điểm luôn căn giữa */}
+                        <Typography fontSize={14} textAlign="center">
+                          {student.lyThuyet ?? "-"}
+                        </Typography>
+
+                        {/* 👉 Icon không chiếm layout */}
+                        <IconButton
+                          size="small"
+                          className="edit-icon"
+                          onClick={() => handleOpenLTDialog(student)}
+                          sx={{ p: 0.5 }}
+                        >
+                          <EditIcon fontSize="inherit" />
+                        </IconButton>
+                      </Box>
+                    ) : (
+                      <TextField
+                        variant="standard"
+                        value={student.lyThuyet || ""}
+                        onChange={(e) =>
+                          handleCellChange(student.maDinhDanh, "lyThuyet", e.target.value)
+                        }
+                        inputProps={{
+                          style: {
+                            textAlign: "center",
+                            paddingLeft: 2,
+                            paddingRight: 2,
+                          },
+                        }}
+                        id={`lyThuyet-${idx}`}
+                        onKeyDown={(e) =>
+                          handleKeyNavigation(e, idx, "lyThuyet")
+                        }
+                        InputProps={{ disableUnderline: true }}
+                      />
+                    )}
                   </TableCell>
+
+
 
                   {/* 🟨 Cột Thực hành */}
                   <TableCell align="center" sx={{ px: 1 }}>
@@ -963,6 +1118,17 @@ useEffect(() => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <CapNhatLyThuyetDialog
+        open={openLTDialog}
+        onClose={handleCloseLTDialog}
+        student={editingStudent}
+        lop={selectedClass}
+        value={ltValue}
+        setValue={setLtValue}
+        handleCellChange={handleCellChange}
+        onSaveOne={handleSaveOne} 
+      />
     </Box>
   );
 
