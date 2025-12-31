@@ -62,15 +62,15 @@ const SystemLockedDialog = ({ open, onClose }) => {
           HỆ THỐNG ĐÃ BỊ KHÓA
         </Typography>
 
-        <Typography sx={{ fontSize: 16, color: "#37474f", mt: 2 }}>
+        {/*<Typography sx={{ fontSize: 16, color: "#37474f", mt: 2 }}>
           Hiện tại hệ thống đang được khóa.
-        </Typography>
+        </Typography>*/}
 
         <Typography
           sx={{
             fontSize: 15,
             color: "#546e7a",
-            mt: 1,
+            mt: 3,
           }}
         >
           Vui lòng chờ giáo viên mở khóa để tiếp tục sử dụng.
