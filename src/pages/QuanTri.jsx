@@ -235,20 +235,30 @@ export default function QuanTri() {
       const tuan = data.tuan || 1;
       const lop = data.lop || "";
       const mon = data.mon || "Tin học";
+      const hocKy = data.hocKy || "Giữa kỳ I";
       const deTracNghiem = data.deTracNghiem || "";
 
-      // đưa vào context
-      setConfig({ tuan, lop, mon, deTracNghiem });
+      // ✅ KHÔNG overwrite – MERGE config
+      setConfig(prev => ({
+        ...prev,
+        tuan,
+        lop,
+        mon,
+        hocKy,
+        deTracNghiem,
+      }));
 
-      // đưa vào local state
+      // local state
       setSelectedWeek(tuan);
       setSelectedClass(lop);
+
       if (data.mon !== undefined) setSubject(mon);
       if (data.hocKy !== undefined) setSelectedSemester(hocKy);
     });
 
     return () => unsubscribe();
   }, []);
+
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
