@@ -109,10 +109,6 @@ export default function XuatDanhGia() {
         const className = fileEntry.name.replace(/\.xlsx$/i, "");
         const lopKey = className.replace(".", "_");
 
-        // 🔹 Xác định môn
-        const isCongNghe = className.endsWith("_CN");
-        const monKey = isCongNghe ? "CongNghe" : "TinHoc";
-
         // 3️⃣ Lấy DATA/{lopKey}/HOCSINH
         const hsSnap = await getDocs(
           collection(db, "DATA", lopKey, "HOCSINH")
@@ -141,52 +137,52 @@ export default function XuatDanhGia() {
           continue;
         }
 
-        const sheetName = isCongNghe
-          ? "TH-CN (Công nghệ)"
-          : "TH-CN (Tin học)";
-        const sheet = workbook.worksheets.find(s => s.name === sheetName);
+        // 🔹 Duyệt từng sheet quan tâm
+        const sheetNames = ["TH-CN (Tin học)", "TH-CN (Công nghệ)"];
+        let matchCount = 0; // khai báo ở đây cho toàn file
 
-        if (!sheet) {
-          skipped.push(`Không có sheet "${sheetName}" trong ${fileEntry.name}`);
-          continue;
-        }
+        for (const sheetName of sheetNames) {
+          const sheet = workbook.worksheets.find(s => s.name === sheetName);
+          if (!sheet) continue;
 
-        // 5️⃣ Xác định cột
-        const headerRow = sheet.getRow(1).values;
-        const colId = headerRow.indexOf("Mã học sinh");
-        const colDgtx = headerRow.indexOf("Mức đạt được");
-        const colNX = headerRow.indexOf("Nội dung nhận xét");
+          // Xác định môn dựa vào sheet
+          const monKey = sheetName === "TH-CN (Tin học)" ? "TinHoc" : "CongNghe";
 
-        if (colId === -1) {
-          skipped.push(`File ${fileEntry.name} sai cấu trúc`);
-          continue;
-        }
+          // 5️⃣ Xác định cột
+          const headerRow = sheet.getRow(1).values;
+          const colId = headerRow.indexOf("Mã học sinh");
+          const colDgtx = headerRow.indexOf("Mức đạt được");
+          const colNX = headerRow.indexOf("Nội dung nhận xét");
 
-        let matchCount = 0;
-
-        // 6️⃣ Ghi dữ liệu theo học sinh
-        sheet.eachRow((row, rowNumber) => {
-          if (rowNumber < 2) return;
-
-          const maHS = String(row.getCell(colId).value || "")
-            .trim()
-            .replace(/[\u200B-\u200D\uFEFF]/g, "");
-
-          const hs = classData[maHS];
-          if (!hs || !hs[monKey]?.ktdk?.[term]) return;
-
-          const ktdk = hs[monKey].ktdk[term];
-          matchCount++;
-
-          if (term === "GKI" || term === "GKII") {
-            if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.dgtx_mucdat || "";
-            if (colNX > 0) row.getCell(colNX).value = ktdk.dgtx_nx || "";
-          } else {
-            if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.mucDat || "";
-            if (colNX > 0) row.getCell(colNX).value = ktdk.nhanXet || "";
-            row.getCell(6).value = ktdk.tongCong ?? "";
+          if (colId === -1) {
+            skipped.push(`File ${fileEntry.name} sheet ${sheetName} sai cấu trúc`);
+            continue;
           }
-        });
+
+          // 6️⃣ Ghi dữ liệu theo học sinh
+          sheet.eachRow((row, rowNumber) => {
+            if (rowNumber < 2) return;
+
+            const maHS = String(row.getCell(colId).value || "")
+              .trim()
+              .replace(/[\u200B-\u200D\uFEFF]/g, "");
+
+            const hs = classData[maHS];
+            if (!hs || !hs[monKey]?.ktdk?.[term]) return;
+
+            const ktdk = hs[monKey].ktdk[term];
+            matchCount++;
+
+            if (term === "GKI" || term === "GKII") {
+              if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.dgtx_mucdat || "";
+              if (colNX > 0) row.getCell(colNX).value = ktdk.dgtx_nx || "";
+            } else {
+              if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.mucDat || "";
+              if (colNX > 0) row.getCell(colNX).value = ktdk.nhanXet || "";
+              row.getCell(6).value = ktdk.tongCong ?? "";
+            }
+          });
+        }
 
         if (matchCount === 0) {
           skipped.push(`Lớp ${className}: Không khớp học sinh`);
@@ -207,6 +203,9 @@ export default function XuatDanhGia() {
       setSuccess(true);
       setMessage(`✅ Đã xuất dữ liệu ${termText} từ DATA`);
 
+      if (skipped.length > 0) {
+        console.warn("Các file/sheet bị bỏ qua:", skipped);
+      }
     } catch (err) {
       console.error("❌ Lỗi:", err);
       setMessage("❌ Có lỗi xảy ra khi xuất dữ liệu");
@@ -216,7 +215,8 @@ export default function XuatDanhGia() {
     }
   };
 
-
+  //Hàm chuyển dữ liệu sang DATA
+  
   /*const handleChuyenDuLieu = async () => {
     try {
       setLoading(true);
