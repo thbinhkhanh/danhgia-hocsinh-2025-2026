@@ -271,7 +271,7 @@ export default function QuanTri() {
     return () => unsubscribe();
   }, []);
 
-  const handleTaoDATA_NEW = async () => {
+  /*const handleTaoDATA_NEW = async () => {
       try {
         setLoading(true);
         setMessage("🔄 Đang tạo dữ liệu mới...");
@@ -321,7 +321,7 @@ export default function QuanTri() {
       } finally {
         setLoading(false);
       }
-    };
+    };*/
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
@@ -556,12 +556,11 @@ export default function QuanTri() {
                 color="success"
                 startIcon={<AutorenewIcon />}
                 onClick={() => setOpenCreateDataDialog(true)}
-                disabled={loading}
               >
                 KHỞI TẠO DỮ LIỆU NĂM MỚI
               </Button>
 
-              {/* Thanh tiến trình */}
+              {/* Thanh tiến trình
               {loading && (
                 <Box sx={{ mt: 1 }}>
                   <LinearProgress variant="determinate" value={progress} />
@@ -572,7 +571,7 @@ export default function QuanTri() {
                     {message} ({progress}%)
                   </Typography>
                 </Box>
-              )}
+              )}*/}
 
               <Divider sx={{ mt: 1, mb: 1 }} />  
 
@@ -664,14 +663,9 @@ export default function QuanTri() {
       </Card>
 
       <CreateDataConfirmDialog
-        open={openCreateDataDialog}
+        open={openCreateDataDialog} // chỉ cần open
         onClose={() => setOpenCreateDataDialog(false)}
-        onConfirm={() => {
-          setOpenCreateDataDialog(false);
-          handleTaoDATA_NEW();
-        }}
       />
-
     </Box>
   );
 
