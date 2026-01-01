@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-
 import {
   Dialog,
   DialogTitle,
@@ -9,6 +8,11 @@ import {
   Typography,
   Box,
   LinearProgress,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from "@mui/material";
 import { db } from "../firebase";
 import { getDocs, getDoc, collection, writeBatch, doc } from "firebase/firestore";
@@ -18,6 +22,7 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
+  const [mode, setMode] = useState("update"); // "update" hoặc "new"
 
   useEffect(() => {
     if (open) {
@@ -25,66 +30,93 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
       setProgress(0);
       setMessage("");
       setSuccess(false);
+      setMode("update");
     }
   }, [open]);
 
-  const handleTaoDATA_NEW = async () => {
-    try {
-      setLoading(true);
-      setMessage("🔄 Đang tạo dữ liệu mới...");
-      setProgress(0);
+  const handleCreateDATA = async () => {
+  try {
+    setLoading(true);
+    setMessage(mode === "new" ? "🔄 Đang tạo dữ liệu mới..." : "🔄 Đang cập nhật dữ liệu...");
+    setProgress(0);
 
-      const classSnap = await getDocs(collection(db, "DANHSACH"));
-      const CLASS_LIST = classSnap.docs.map(doc => doc.id);
+    const classSnap = await getDocs(collection(db, "DANHSACH"));
+    const CLASS_LIST = classSnap.docs.map(doc => doc.id);
 
-      let done = 0;
+    let done = 0;
 
-      for (const lop of CLASS_LIST) {
-        const lopKey = lop.replace(".", "_");
-        const dsSnap = await getDoc(doc(db, "DANHSACH", lop));
-        if (!dsSnap.exists()) continue;
-        const danhSach = dsSnap.data();
+    for (const lop of CLASS_LIST) {
+      const lopKey = lop.replace(".", "_");
+      const dsSnap = await getDoc(doc(db, "DANHSACH", lop));
+      if (!dsSnap.exists()) continue;
+      const danhSach = dsSnap.data();
 
-        const batch = writeBatch(db);
-        for (const [maHS, hs] of Object.entries(danhSach)) {
-          const hsRef = doc(db, "DATA_NEW", lopKey, "HOCSINH", maHS);
-          const hsData = {
+      // Lấy toàn bộ học sinh hiện có trong lớp nếu mode = "update"
+      let existingHS = {};
+      if (mode === "update") {
+        const hsSnap = await getDocs(collection(db, "DATA", lopKey, "HOCSINH"));
+        hsSnap.forEach(docSnap => {
+          existingHS[docSnap.id] = docSnap.data();
+        });
+      }
+
+      const batch = writeBatch(db);
+
+      for (const [maHS, hs] of Object.entries(danhSach)) {
+        const hsRef = doc(db, "DATA", lopKey, "HOCSINH", maHS);
+
+        let hsData = {};
+        if (mode === "update") {
+          const existingData = existingHS[maHS] || {};
+          hsData = {
+            hoVaTen: hs.hoVaTen || existingData.hoVaTen || "",
+            stt: hs.stt ?? existingData.stt ?? null,
+            TinHoc: {
+              dgtx: existingData.TinHoc?.dgtx || {},
+              ktdk: existingData.TinHoc?.ktdk || {},
+            },
+            CongNghe: {
+              dgtx: existingData.CongNghe?.dgtx || {},
+              ktdk: existingData.CongNghe?.ktdk || {},
+            },
+          };
+        } else {
+          hsData = {
             hoVaTen: hs.hoVaTen || "",
             stt: hs.stt || null,
             TinHoc: { dgtx: {}, ktdk: {} },
             CongNghe: { dgtx: {}, ktdk: {} },
           };
-          batch.set(hsRef, hsData, { merge: true });
         }
-        await batch.commit();
-        done++;
-        setProgress(Math.round((done / CLASS_LIST.length) * 100));
+
+        batch.set(hsRef, hsData, { merge: true });
       }
 
-      setMessage("✅ Tạo dữ liệu mới thành công!");
-      setSuccess(true);
-    } catch (err) {
-      console.error("❌ Lỗi khi tạo dữ liệu mới:", err);
-      setMessage("❌ Lỗi khi tạo dữ liệu mới");
-      setSuccess(false);
-    } finally {
-      setLoading(false);
+      await batch.commit();
+      done++;
+      setProgress(Math.round((done / CLASS_LIST.length) * 100));
     }
-  };
+
+    setMessage(mode === "new" ? "✅ Tạo dữ liệu mới thành công!" : "✅ Cập nhật dữ liệu thành công!");
+    setSuccess(true);
+  } catch (err) {
+    console.error("❌ Lỗi khi tạo/cập nhật dữ liệu:", err);
+    setMessage("❌ Lỗi khi tạo/cập nhật dữ liệu");
+    setSuccess(false);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <Dialog
       open={open}
-      onClose={loading ? null : onClose} 
+      onClose={loading ? null : onClose}
       maxWidth="xs"
       fullWidth
       PaperProps={{
-        sx: {
-          borderRadius: 3,
-          p: 3,
-          bgcolor: "#e3f2fd",
-          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
-        },
+        sx: { borderRadius: 3, p: 3, bgcolor: "#e3f2fd", boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)" },
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -105,19 +137,31 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
         >
           {success ? "✅" : "⚠️"}
         </Box>
-        <DialogTitle
-          sx={{ p: 0, fontWeight: "bold", color: success ? "#2e7d32" : "#d32f2f" }}
-        >
-          Tạo DATA mới
+        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: success ? "#2e7d32" : "#d32f2f" }}>
+          {mode === "new" ? "Tạo DATA mới" : "Cập nhật DATA"}
         </DialogTitle>
       </Box>
 
       <DialogContent>
         {!loading && !success && (
-          <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
-            Bạn chắc chắn muốn xóa toàn bộ dữ liệu cũ và tạo dữ liệu mới?<br />
-            Hành động này <strong>không thể hoàn tác</strong>.
-          </Typography>
+          <>
+            <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
+              Bạn chắc chắn muốn {mode === "new" ? "xóa dữ liệu cũ và tạo DATA mới" : "cập nhật DATA, giữ dữ liệu hiện có"}?<br />
+              Hành động này <strong>không thể hoàn tác</strong>.
+            </Typography>
+
+            <FormControl component="fieldset" sx={{ mt: 4 }}>
+              <FormLabel component="legend">Chọn chế độ</FormLabel>
+              <RadioGroup
+                row
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+              >
+                <FormControlLabel value="new" control={<Radio />} label="Tạo mới" />
+                <FormControlLabel value="update" control={<Radio />} label="Cập nhật" />
+              </RadioGroup>
+            </FormControl>
+          </>
         )}
 
         {loading && (
@@ -126,20 +170,15 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
               variant="determinate"
               value={progress}
               sx={{
-                width: "80%",          // thanh tiến trình chiếm 80% chiều rộng dialog
-                borderRadius: 2,       // bo tròn
-                height: 4,            // chiều cao thanh
+                width: "80%",
+                borderRadius: 2,
+                height: 4,
                 backgroundColor: "#cfe8fc",
-                "& .MuiLinearProgress-bar": {
-                  backgroundColor: "#1976d2",
-                },
-                mb: 1,
+                "& .MuiLinearProgress-bar": { backgroundColor: "#1976d2" },
+                mb: 0.5,
               }}
             />
-            <Typography
-              variant="body2"
-              sx={{ textAlign: "center", fontWeight: 500 }}
-            >
+            <Typography variant="body2" sx={{ textAlign: "center", fontWeight: 500 }}>
               {message} ({progress}%)
             </Typography>
           </Box>
@@ -147,7 +186,7 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
 
         {success && !loading && (
           <Typography sx={{ fontSize: 16, color: "#0d47a1", textAlign: "center" }}>
-            ✅ Dữ liệu mới đã được tạo thành công!
+            ✅ {mode === "new" ? "Dữ liệu mới đã được tạo thành công!" : "Cập nhật dữ liệu thành công!"}
           </Typography>
         )}
       </DialogContent>
@@ -155,30 +194,16 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
       <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
         {!loading && !success && (
           <>
-            <Button
-              variant="outlined"
-              onClick={onClose}
-              sx={{ borderRadius: 1, px: 3 }}
-            >
+            <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 1, px: 3 }}>
               Hủy
             </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleTaoDATA_NEW}
-              sx={{ borderRadius: 1, px: 3 }}
-            >
+            <Button variant="contained" color="error" onClick={handleCreateDATA} sx={{ borderRadius: 1, px: 3 }}>
               Xác nhận
             </Button>
           </>
         )}
         {!loading && success && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={onClose}
-            sx={{ borderRadius: 1, px: 4 }}
-          >
+          <Button variant="contained" color="primary" onClick={onClose} sx={{ borderRadius: 1, px: 4 }}>
             OK
           </Button>
         )}

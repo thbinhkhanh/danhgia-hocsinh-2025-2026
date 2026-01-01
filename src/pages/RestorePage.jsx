@@ -19,7 +19,8 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import RestoreIcon from "@mui/icons-material/Restore";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, writeBatch } from "firebase/firestore";
+
 import { db } from "../firebase";
 
 const BACKUP_KEYS = [
@@ -101,28 +102,48 @@ export default function RestorePage({ open, onClose }) {
       const text = await selectedFile.text();
       const jsonData = JSON.parse(text);
 
-      let progressCount = 0;
-      const progressStep = Math.floor(100 / selectedKeys.length);
-
+      // Tính tổng số document
+      let totalDocs = 0;
       for (const key of selectedKeys) {
-        if (!jsonData[key]) continue;
-
         const docs = jsonData[key];
+        if (!docs) continue;
         if (key === "DATA") {
           for (const classId of Object.keys(docs)) {
-            const hsObj = docs[classId].HOCSINH || {};
-            for (const studentId of Object.keys(hsObj)) {
-              await setDoc(doc(db, "DATA", classId, "HOCSINH", studentId), hsObj[studentId], { merge: true });
-            }
+            totalDocs += Object.keys(docs[classId]?.HOCSINH || {}).length;
           }
         } else {
-          for (const docId of Object.keys(docs)) {
-            await setDoc(doc(db, key, docId), docs[docId], { merge: true });
-          }
+          totalDocs += Object.keys(docs).length;
         }
+      }
 
-        progressCount += progressStep;
-        setProgress(Math.min(progressCount, 99));
+      let done = 0;
+
+      for (const key of selectedKeys) {
+        const docs = jsonData[key];
+        if (!docs) continue;
+
+        if (key === "DATA") {
+          for (const classId of Object.keys(docs)) {
+            const hsObj = docs[classId]?.HOCSINH || {};
+            
+            // Set nhiều document song song, nhưng vẫn update progress từng document
+            await Promise.all(
+              Object.keys(hsObj).map(async (studentId) => {
+                await setDoc(doc(db, "DATA", classId, "HOCSINH", studentId), hsObj[studentId], { merge: true });
+                done++;
+                setProgress(Math.round((done / totalDocs) * 100));
+              })
+            );
+          }
+        } else {
+          await Promise.all(
+            Object.keys(docs).map(async (docId) => {
+              await setDoc(doc(db, key, docId), docs[docId], { merge: true });
+              done++;
+              setProgress(Math.round((done / totalDocs) * 100));
+            })
+          );
+        }
       }
 
       setProgress(100);
@@ -133,7 +154,6 @@ export default function RestorePage({ open, onClose }) {
       setSnackbar({ open: true, severity: "error", message: "❌ Lỗi khi phục hồi dữ liệu" });
     } finally {
       setLoading(false);
-      setProgress(0);
     }
   };
 
