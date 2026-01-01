@@ -246,16 +246,22 @@ export default function NhapdiemKTDK() {
       const lyThuyetNum = parseFloat(s.lyThuyet);
       let loaiLyThuyet = "yeu";
       if (!isNaN(lyThuyetNum)) {
-        if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
-        else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
-        else loaiLyThuyet = "trungbinh";
+        if (lyThuyetNum >= 9) {
+          loaiLyThuyet = "tot";
+        } else if (lyThuyetNum >= 7) {
+          loaiLyThuyet = "kha";
+        } else if (lyThuyetNum >= 5) {
+          loaiLyThuyet = "trungbinh";
+        } else {
+          loaiLyThuyet = "yeu";
+        }
       }
 
       const thucHanhVal = s.thucHanh;
       let loaiThucHanh = "yeu";
       if (thucHanhVal === "T") loaiThucHanh = "tot";
       else if (thucHanhVal === "H") loaiThucHanh = "kha";
-      else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
+      else if (thucHanhVal === "C") loaiThucHanh = "yeu";
 
       const arrLT = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
       const arrTH = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
@@ -263,7 +269,7 @@ export default function NhapdiemKTDK() {
       const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
       const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
 
-      return { ...s, nhanXet: `${nxLT} và ${nxTH}`.trim() };
+      return { ...s, nhanXet: `${nxLT}; ${nxTH}`.trim() };
     }
 
     /* ===================== TIN HỌC ===================== */
@@ -449,7 +455,7 @@ useEffect(() => {
               let loaiThucHanh = "yeu";
               if (thucHanhVal === "T") loaiThucHanh = "tot";
               else if (thucHanhVal === "H") loaiThucHanh = "kha";
-              else if (thucHanhVal === "C") loaiThucHanh = "trungbinh";
+              else if (thucHanhVal === "C") loaiThucHanh = "yeu";
 
               const arrLyThuyet = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
               const arrThucHanh = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];

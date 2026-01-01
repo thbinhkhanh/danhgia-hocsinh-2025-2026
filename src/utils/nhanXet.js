@@ -233,31 +233,44 @@ export const nhanXetCongNgheCuoiKy = {
       "biết vận dụng kiến thức giải quyết tình huống.",
       "hoàn thành sản phẩm đúng quy trình, sáng tạo.",
       "sản phẩm đẹp mắt, áp dụng tốt kỹ thuật học.",
-      "thực hiện thí nghiệm chính xác, chú ý từng bước."
+      "thực hành chính xác, chú ý từng bước."
     ]
   },
+
   kha: {
     lyThuyet: [
       "Em học tập tốt, hoàn thành nhiệm vụ",
       "Em cần mạnh dạn hơn khi trình bày ý tưởng",
       "Em nắm kiến thức cơ bản, cần luyện tập thêm",
-      "Em có tiến bộ, cần phát huy chủ động",
-      "Em biết trao đổi và hợp tác nhóm",
-      "Em trình bày bài học logic, cần sáng tạo hơn",
-      "Em tích cực hỏi đáp trong lý thuyết",
-      "Em tham gia thảo luận nhóm nhưng cần mạch lạc hơn"
+      "Em có tiến bộ, cần phát huy tính chủ động",
+      "Em trình bày bài học logic, nên sáng tạo hơn",
+      "Em hoàn thành bài học cơ bản, cần cải thiện tự tin",
+      "Em nên luyện tập thêm để nắm chắc kiến thức trọng tâm",
+      "Em cần chủ động hơn khi làm bài và tham khảo thêm tài liệu",
+      "Em học đúng nhưng cần tự tin hơn khi trình bày",
+      "Em cần hỗ trợ để áp dụng kiến thức tốt hơn",
+      "Em nên luyện tập thường xuyên để nắm chắc kiến thức"
     ],
     thucHanh: [
-      "thực hành đúng hướng dẫn, cần rèn kỹ năng.",
-      "làm việc cẩn thận, sản phẩm tốt nhưng cần cố gắng.",
-      "sử dụng dụng cụ đúng cách, cần tập trung hơn.",
-      "hoàn thành sản phẩm nhưng cần cải thiện thẩm mỹ.",
-      "thao tác cơ bản tốt, cần nâng cao tốc độ và chính xác.",
-      "tham gia tích cực, cần chủ động hơn trong nhóm.",
-      "sản phẩm đầy đủ nhưng cần thêm sáng tạo.",
-      "cần luyện tập để hoàn thiện kỹ năng."
+      "thực hành đúng hướng dẫn, cần rèn kỹ năng thêm",
+      "làm việc cẩn thận, sản phẩm tốt nhưng cần cố gắng hơn",
+      "sử dụng dụng cụ đúng cách, nên tập trung hơn",
+      "hoàn thành sản phẩm nhưng cần cải thiện thẩm mỹ",
+      "thao tác cơ bản tốt, nên nâng cao tốc độ và chính xác",
+      "tham gia tích cực, cần chủ động hơn trong nhóm",
+      "sản phẩm đầy đủ nhưng có thể thêm sáng tạo",
+      "cần luyện tập để hoàn thiện kỹ năng",
+      "thực hành đúng nhưng sản phẩm chưa thật đẹp, cần cải thiện",
+      "còn lúng túng, nên nhờ thầy cô và bạn bè hỗ trợ",
+      "thao tác chậm, cần luyện kỹ năng cơ bản thêm",
+      "một số nhiệm vụ chưa hoàn thành, cần chú ý hơn",
+      "làm việc vội vàng, cần rèn tính tỉ mỉ hơn",
+      "cần luyện tập nâng cao kỹ năng để đạt chuẩn",
+      "cần cải thiện thao tác, sản phẩm chưa đạt yêu cầu",
+      "cần chú ý kỹ thuật để nâng cao chất lượng"
     ]
   },
+
   trungbinh: {
     lyThuyet: [
       "Em hoàn thành cơ bản, cần cố gắng hơn",
@@ -269,17 +282,9 @@ export const nhanXetCongNgheCuoiKy = {
       "Em nên tham khảo thêm tài liệu",
       "Em nên luyện tập thường xuyên"
     ],
-    thucHanh: [
-      "thực hành đúng nhưng sản phẩm chưa đẹp.",
-      "còn lúng túng, cần hỗ trợ thầy cô và bạn bè.",
-      "thao tác chậm, cần luyện kỹ năng cơ bản.",
-      "chưa hoàn thành một số nhiệm vụ.",
-      "làm việc vội vàng, cần rèn tính tỉ mỉ.",
-      "cần luyện tập thêm nâng cao kỹ năng.",
-      "cần cải thiện thao tác, sản phẩm chưa đạt.",
-      "cần chú ý kỹ thuật để nâng cao chất lượng."
-    ]
+    thucHanh: [] // ❌ không dùng nữa
   },
+
   yeu: {
     lyThuyet: [
       "Em cần cố gắng hơn",
@@ -297,12 +302,13 @@ export const nhanXetCongNgheCuoiKy = {
       "chưa hoàn thành nhiệm vụ, cần chăm chỉ và cẩn thận.",
       "thao tác chưa chính xác, cần luyện tập nhiều hơn.",
       "thiếu chủ động, cần nhắc nhở và hướng dẫn thêm.",
-      "chưa áp dụng kiến thức vào thực hành, cần hỗ trợ sát sao.",
+      "chưa áp dụng kiến thức vào thực hành.",
       "cần luyện tập đều đặn để nâng cao kỹ năng.",
       "cần tham khảo hướng dẫn chi tiết để hoàn thành sản phẩm."
     ]
   }
 };
+
 
 
 
