@@ -18,22 +18,26 @@ import {
   RadioGroup,
   Radio,
 } from "@mui/material";
-import TextField from "@mui/material/TextField";
-//import UploadFileIcon from "@mui/icons-material/UploadFile";
+
+import { doc, getDoc, getDocs, collection, setDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
+import { writeBatch } from "firebase/firestore";
+
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import BackupIcon from "@mui/icons-material/Backup";
 import RestoreIcon from "@mui/icons-material/Restore";
-//import * as XLSX from "xlsx";
-import { doc, getDoc, getDocs, collection, setDoc, updateDoc, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+
 import { useNavigate } from "react-router-dom";
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentContext } from "../context/StudentContext";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import ChangePasswordDialog from "../dialog/ChangePasswordDialog";
+import CreateDataConfirmDialog from "../dialog/CreateDataConfirmDialog";
 import BackupPage from "./BackupPage";
 import RestorePage from "./RestorePage";
 import UploadPage from "./UploadPage";
+import TextField from "@mui/material/TextField";
 
 export default function QuanTri() {
   const [openBackupDialog, setOpenBackupDialog] = useState(false);
@@ -57,6 +61,12 @@ export default function QuanTri() {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [pwError, setPwError] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [success, setSuccess] = useState(false);
+  const [openCreateDataDialog, setOpenCreateDataDialog] = useState(false);
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -261,6 +271,57 @@ export default function QuanTri() {
     return () => unsubscribe();
   }, []);
 
+  const handleTaoDATA_NEW = async () => {
+      try {
+        setLoading(true);
+        setMessage("🔄 Đang tạo dữ liệu mới...");
+        setProgress(0);
+  
+        // 1️⃣ Lấy tất cả document trong DANHSACH để ra danh sách lớp
+        const classSnap = await getDocs(collection(db, "DANHSACH"));
+        const CLASS_LIST = classSnap.docs.map(doc => doc.id); // ['4.1', '4.2', '5.1', '5.1_CN', ...]
+  
+        let done = 0;
+  
+        for (const lop of CLASS_LIST) {
+          const lopKey = lop.replace(".", "_"); // 5.1 → 5_1
+  
+          // 2️⃣ Lấy danh sách học sinh của lớp
+          const dsSnap = await getDoc(doc(db, "DANHSACH", lop));
+          if (!dsSnap.exists()) continue;
+          const danhSach = dsSnap.data();
+  
+          // 3️⃣ Tạo batch để ghi dữ liệu
+          const batch = writeBatch(db);
+  
+          for (const [maHS, hs] of Object.entries(danhSach)) {
+            const hsRef = doc(db, "DATA_NEW", lopKey, "HOCSINH", maHS);
+  
+            const hsData = {
+              hoVaTen: hs.hoVaTen || "",
+              stt: hs.stt || null,
+              TinHoc: { dgtx: {}, ktdk: {} },
+              CongNghe: { dgtx: {}, ktdk: {} }
+            };
+  
+            batch.set(hsRef, hsData, { merge: true });
+          }
+  
+          await batch.commit();
+          done++;
+          setProgress(Math.round((done / CLASS_LIST.length) * 100));
+        }
+  
+        setMessage("✅ Tạo dữ liệu mới thành công!");
+        setSuccess(true);
+      } catch (err) {
+        console.error("❌ Lỗi khi tạo dữ liệu mới:", err);
+        setMessage("❌ Lỗi khi tạo dữ liệu mới");
+        setSuccess(false);
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
@@ -487,8 +548,33 @@ export default function QuanTri() {
                 startIcon={<CloudUploadIcon />}
                 onClick={() => setOpenUploadPage(true)}
               >
-                Tải danh sách
+                Tải danh sách năm mới
               </Button>
+
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<AutorenewIcon />}
+                onClick={() => setOpenCreateDataDialog(true)}
+                disabled={loading}
+              >
+                KHỞI TẠO DỮ LIỆU NĂM MỚI
+              </Button>
+
+              {/* Thanh tiến trình */}
+              {loading && (
+                <Box sx={{ mt: 1 }}>
+                  <LinearProgress variant="determinate" value={progress} />
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 0.5, textAlign: "center", fontWeight: 500 }}
+                  >
+                    {message} ({progress}%)
+                  </Typography>
+                </Box>
+              )}
+
+              <Divider sx={{ mt: 1, mb: 1 }} />  
 
               {/* 💾 SAO LƯU / PHỤC HỒI */}
               <Button
@@ -514,6 +600,8 @@ export default function QuanTri() {
               >
                 Phục hồi dữ liệu
               </Button>
+              
+              <Divider sx={{ mt: 1, mb: 1 }} />  
 
               {/* Nút Đổi mật khẩu */}
               <Button
@@ -574,6 +662,16 @@ export default function QuanTri() {
           selectedClass={selectedClass}
         />
       </Card>
+
+      <CreateDataConfirmDialog
+        open={openCreateDataDialog}
+        onClose={() => setOpenCreateDataDialog(false)}
+        onConfirm={() => {
+          setOpenCreateDataDialog(false);
+          handleTaoDATA_NEW();
+        }}
+      />
+
     </Box>
   );
 

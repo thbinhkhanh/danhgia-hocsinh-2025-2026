@@ -11,32 +11,25 @@ import {
 
 import ExcelJS from "exceljs";
 
-import {
-  doc,
-  getDoc,
-  getDocs,
-  collection,
-  writeBatch,
-} from "firebase/firestore";
-
-import { getDatabase, ref, get, set } from "firebase/database";
+import { doc, getDocs, collection } from "firebase/firestore";
+import { getDatabase } from "firebase/database";
 
 import { db } from "../firebase";
 import { useConfig } from "../context/ConfigContext";
 
-
-
 export default function XuatDanhGia() {
-  const { config } = useConfig(); // ✅ Lấy học kỳ từ context
+  const { config } = useConfig();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(false);
   const [folderHandle, setFolderHandle] = useState(null);
 
-  const rtdb = getDatabase(); // ✅ BẮT BUỘC PHẢI CÓ
+  const [openedFiles, setOpenedFiles] = useState([]);
+  const [skipped, setSkipped] = useState([]);
 
-  // 🔹 Map học kỳ hiển thị → mã Firestore
+  const rtdb = getDatabase();
+
   const mapTerm = (text) => {
     switch (text) {
       case "Giữa kỳ I":
@@ -52,7 +45,6 @@ export default function XuatDanhGia() {
     }
   };
 
-  // 🔹 Khi học kỳ trong context thay đổi → cập nhật mã Firestore
   const [termText, setTermText] = useState(config.hocKy || "Giữa kỳ I");
   const [term, setTerm] = useState(mapTerm(termText));
 
@@ -63,7 +55,6 @@ export default function XuatDanhGia() {
     }
   }, [config.hocKy]);
 
-  // 🔹 Chọn thư mục xuất
   const handleSelectFolder = async () => {
     setMessage("");
     try {
@@ -74,7 +65,6 @@ export default function XuatDanhGia() {
     }
   };
 
-  // 🔹 Hàm xuất dữ liệu
   const handleExportAll = async () => {
     if (!folderHandle) {
       setMessage("⚠️ Vui lòng chọn thư mục trước khi xuất!");
@@ -85,9 +75,10 @@ export default function XuatDanhGia() {
     setSuccess(false);
     setProgress(0);
     setMessage("");
+    setOpenedFiles([]);
+    setSkipped([]);
 
     try {
-      // 1️⃣ Lấy danh sách file Excel
       const files = [];
       for await (const entry of folderHandle.values()) {
         if (entry.kind === "file" && entry.name.endsWith(".xlsx")) {
@@ -100,32 +91,25 @@ export default function XuatDanhGia() {
         return;
       }
 
-      const openedFiles = [];
-      const skipped = [];
+      const opened = [];
+      const skip = [];
       let done = 0;
 
-      // 2️⃣ Duyệt từng file (tương ứng 1 lớp)
       for (const fileEntry of files) {
         const className = fileEntry.name.replace(/\.xlsx$/i, "");
         const lopKey = className.replace(".", "_");
 
-        // 3️⃣ Lấy DATA/{lopKey}/HOCSINH
-        const hsSnap = await getDocs(
-          collection(db, "DATA", lopKey, "HOCSINH")
-        );
-
+        const hsSnap = await getDocs(collection(db, "DATA", lopKey, "HOCSINH"));
         if (hsSnap.empty) {
-          skipped.push(`Không có dữ liệu DATA lớp ${className}`);
+          skip.push(`Không có dữ liệu DATA lớp ${className}`);
           continue;
         }
 
-        // Map dữ liệu HS
         const classData = {};
         hsSnap.forEach(docSnap => {
           classData[docSnap.id] = docSnap.data();
         });
 
-        // 4️⃣ Mở file Excel
         const file = await fileEntry.getFile();
         const buffer = await file.arrayBuffer();
         const workbook = new ExcelJS.Workbook();
@@ -133,40 +117,34 @@ export default function XuatDanhGia() {
         try {
           await workbook.xlsx.load(buffer);
         } catch {
-          skipped.push(`Không thể mở file ${fileEntry.name}`);
+          skip.push(`Không thể mở file ${fileEntry.name}`);
           continue;
         }
 
-        // 🔹 Duyệt từng sheet quan tâm
         const sheetNames = ["TH-CN (Tin học)", "TH-CN (Công nghệ)"];
-        let matchCount = 0; // khai báo ở đây cho toàn file
+        let matchCount = 0;
 
         for (const sheetName of sheetNames) {
           const sheet = workbook.worksheets.find(s => s.name === sheetName);
           if (!sheet) continue;
 
-          // Xác định môn dựa vào sheet
           const monKey = sheetName === "TH-CN (Tin học)" ? "TinHoc" : "CongNghe";
-
-          // 5️⃣ Xác định cột
           const headerRow = sheet.getRow(1).values;
           const colId = headerRow.indexOf("Mã học sinh");
           const colDgtx = headerRow.indexOf("Mức đạt được");
           const colNX = headerRow.indexOf("Nội dung nhận xét");
 
           if (colId === -1) {
-            skipped.push(`File ${fileEntry.name} sheet ${sheetName} sai cấu trúc`);
+            skip.push(`File ${fileEntry.name} sheet ${sheetName} sai cấu trúc`);
             continue;
           }
 
-          // 6️⃣ Ghi dữ liệu theo học sinh
           sheet.eachRow((row, rowNumber) => {
             if (rowNumber < 2) return;
 
             const maHS = String(row.getCell(colId).value || "")
               .trim()
               .replace(/[\u200B-\u200D\uFEFF]/g, "");
-
             const hs = classData[maHS];
             if (!hs || !hs[monKey]?.ktdk?.[term]) return;
 
@@ -185,27 +163,26 @@ export default function XuatDanhGia() {
         }
 
         if (matchCount === 0) {
-          skipped.push(`Lớp ${className}: Không khớp học sinh`);
+          skip.push(`Lớp ${className}: Không khớp học sinh`);
           continue;
         }
 
-        // 7️⃣ Ghi lại file
         const writable = await fileEntry.createWritable();
         const bufferOut = await workbook.xlsx.writeBuffer();
         await writable.write(bufferOut);
         await writable.close();
 
-        openedFiles.push(className);
+        opened.push(className);
         done++;
         setProgress(Math.round((done / files.length) * 100));
       }
 
+      setOpenedFiles(opened);
+      setSkipped(skip);
       setSuccess(true);
-      setMessage(`✅ Đã xuất dữ liệu ${termText} từ DATA`);
+      setMessage(`✅ Hoàn tất xuất dữ liệu ${termText} từ DATA`);
 
-      if (skipped.length > 0) {
-        console.warn("Các file/sheet bị bỏ qua:", skipped);
-      }
+      if (skip.length > 0) console.warn("Các file/sheet bị bỏ qua:", skip);
     } catch (err) {
       console.error("❌ Lỗi:", err);
       setMessage("❌ Có lỗi xảy ra khi xuất dữ liệu");
@@ -215,200 +192,101 @@ export default function XuatDanhGia() {
     }
   };
 
-  //Hàm chuyển dữ liệu sang DATA
-  
-  /*const handleChuyenDuLieu = async () => {
-    try {
-      setLoading(true);
-      setMessage("🔄 Đang chuyển đổi dữ liệu...");
-      setProgress(0);
-
-      const TERM_LIST = ["GKI", "CKI", "GKII", "CN"];
-      const CLASS_LIST = [
-        "4.1", "4.2", "4.3", "4.4", "4.5", "4.6",
-        "5.1", "5.1_CN", "5.2", "5.3", "5.4", "5.4_CN"
-      ];
-
-      // 1️⃣ Lấy toàn bộ KTDK theo học kỳ
-      const ktdkByTerm = {};
-      for (const term of TERM_LIST) {
-        const snap = await getDoc(doc(db, "KTDK", term));
-        if (snap.exists()) ktdkByTerm[term] = snap.data();
-      }
-
-      let done = 0;
-
-      // 2️⃣ Duyệt qua tất cả lớp
-      for (const lop of CLASS_LIST) {
-        const lopKey = lop.replace(".", "_");
-        const batch = writeBatch(db);
-
-        // Lấy danh sách học sinh
-        const dsSnap = await getDoc(doc(db, "DANHSACH", lop));
-        if (!dsSnap.exists()) continue;
-        const danhSach = dsSnap.data();
-
-        // Lấy DGTX theo tuần
-        const tuanSnap = await getDocs(collection(db, `DGTX/${lop}/tuan`));
-        const dgtxTuanMap = {};
-
-        tuanSnap.forEach(tuanDoc => {
-          const tuanId = tuanDoc.id;
-          const tuanData = tuanDoc.data();
-
-          Object.entries(tuanData).forEach(([maHS, info]) => {
-            if (!dgtxTuanMap[maHS]) dgtxTuanMap[maHS] = {};
-
-            const { hoVaTen, diemTN, diemTracNghiem, ...rest } = info || {};
-
-            // Gán dữ liệu với field mới
-            dgtxTuanMap[maHS][tuanId] = {
-              ...rest,
-              ...(diemTN !== undefined ? { TN_diem: diemTN } : {}),
-              ...(diemTracNghiem !== undefined ? { TN_status: diemTracNghiem } : {})
-            };
-          });
-        });
-
-
-        let stt = 1;
-
-        for (const [maHS, hs] of Object.entries(danhSach)) {
-          const hsRef = doc(db, "DATA", lopKey, "HOCSINH", maHS);
-
-          // Chuẩn bị KTDK cho TinHoc & CongNghe
-          const tinHocKtdk = {};
-          const congNgheKtdk = {};
-
-          for (const term of TERM_LIST) {
-            const tin = ktdkByTerm[term]?.[lop]?.[maHS] || {};
-            const cn = ktdkByTerm[term]?.[`${lop}_CN`]?.[maHS] || {};
-
-            tinHocKtdk[term] = {
-              dgtx_gv: tin.dgtx_gv || "",
-              dgtx_mucdat: tin.dgtx_mucdat || "",
-              dgtx_nx: tin.dgtx_nx || "",
-              mucDat: tin.mucDat || "",
-              nhanXet: tin.nhanXet || "",
-              tongCong: tin.tongCong ?? null,
-              lyThuyet: tin.lyThuyet ?? null,
-              thucHanh: tin.thucHanh ?? null
-            };
-
-            congNgheKtdk[term] = {
-              dgtx_gv: cn.dgtx_gv || "",
-              dgtx_mucdat: cn.dgtx_mucdat || "",
-              dgtx_nx: cn.dgtx_nx || "",
-              mucDat: cn.mucDat || "",
-              nhanXet: cn.nhanXet || "",
-              tongCong: cn.tongCong ?? null,
-              lyThuyet: cn.lyThuyet ?? null,
-              thucHanh: cn.thucHanh ?? "" // luôn chuỗi T/H/C
-            };
-          }
-
-          let congNgheData = {};
-          let tinHocData = {};
-
-          if (!lop.includes("_CN") && CLASS_LIST.includes(`${lop}_CN`)) {
-            // Lớp thường có CN
-            tinHocData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: tinHocKtdk };
-            congNgheData = { dgtx: {}, ktdk: congNgheKtdk };
-          } else if (lop.includes("_CN")) {
-            // Lớp CN chỉ CongNghe
-            congNgheData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: congNgheKtdk };
-          } else {
-            // Lớp bình thường chỉ TinHoc
-            tinHocData = { dgtx: dgtxTuanMap[maHS] || {}, ktdk: tinHocKtdk };
-          }
-
-          const hsData = {
-            hoVaTen: hs.hoVaTen || "",
-            stt: stt++,
-            ...(Object.keys(congNgheData).length ? { CongNghe: congNgheData } : {}),
-            ...(Object.keys(tinHocData).length ? { TinHoc: tinHocData } : {})
-          };
-
-          batch.set(hsRef, hsData, { merge: true });
-        }
-
-        await batch.commit();
-        done++;
-        setProgress(Math.round((done / CLASS_LIST.length) * 100));
-      }
-
-      setMessage("✅ Chuyển đổi toàn bộ dữ liệu TẤT CẢ lớp, bao gồm CN!");
-      setSuccess(true);
-    } catch (err) {
-      console.error("❌ Lỗi chuyển đổi:", err);
-      setMessage("❌ Lỗi khi chuyển dữ liệu");
-      setSuccess(false);
-    } finally {
-      setLoading(false);
-    }
-  };*/
-
-
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 5 }}>
-      <Card elevation={6} sx={{ p: 4, borderRadius: 3, maxWidth: 420, mx: "auto" }}>
-        <Typography
-          variant="h5"
+  <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 5 }}>
+    <Card elevation={6} sx={{ p: 4, borderRadius: 3, maxWidth: 380, mx: "auto" }}>
+      <Typography
+        variant="h5"
+        color="primary"
+        fontWeight="bold"
+        align="center"
+        sx={{ mb: 2 }}
+      >
+        {/*{`XUẤT KẾT QUẢ ${termText ? ` ${termText.toUpperCase()}` : ""}`}*/}
+        XUẤT KẾT QUẢ
+      </Typography>
+
+      <Stack spacing={3}>
+        <Button variant="outlined" color="primary" onClick={handleSelectFolder}>
+          📁 Chọn thư mục
+        </Button>
+
+        {folderHandle && (
+          <Typography variant="body2" sx={{ mt: 0.5 }}>
+            Thư mục đã chọn: <strong>{folderHandle.name}</strong>
+          </Typography>
+        )}
+
+        <Button
+          variant="contained"
           color="primary"
-          fontWeight="bold"
-          align="center"
-          sx={{ mb: 2 }}
+          onClick={handleExportAll}
+          disabled={loading || !folderHandle}
         >
-          {`XUẤT KẾT QUẢ ${termText ? ` ${termText.toUpperCase()}` : ""}`}
-        </Typography>
+          Xuất kết quả
+        </Button>
 
+        {loading && (
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+            <Box sx={{ width: "75%" }}>
+              <LinearProgress variant="determinate" value={progress} />
+              <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
+                🔄 Đang xuất kết quả... {progress}%
+              </Typography>
+            </Box>
+          </Box>
+        )}
 
-        <Stack spacing={3}>
-          {/* 🔹 Chọn thư mục */}
-          <Button variant="outlined" color="primary" onClick={handleSelectFolder}>
-            📁 Chọn thư mục
-          </Button>
+        {message && !loading && (
+          <Alert severity={success ? "success" : "error"}>{message}</Alert>
+        )}
 
-          {folderHandle && (
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              Thư mục đã chọn: <strong>{folderHandle.name}</strong>
-            </Typography>
-          )}
+        {/* Bảng tổng hợp */}
+        {!loading && (openedFiles.length > 0 || skipped.length > 0) && (
+          <Box sx={{ mt: 2 }}>
+            {/* Lớp xuất thành công */}
+            {openedFiles.length > 0 && (
+              <Box sx={{ mb: 2, ml: 3 }}> {/* tăng lùi đầu dòng cho cả block */}
+                <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>
+                  ✅ Lớp xuất thành công:
+                </Typography>
 
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleExportAll}
-            disabled={loading || !folderHandle}
-          >
-            Xuất kết quả
-          </Button>
+                {["4", "5"].map((grade) => {
+                  const filtered = openedFiles
+                    .filter((l) => l.startsWith(grade + "."))
+                    .sort((a, b) => parseFloat(a) - parseFloat(b));
+                  if (filtered.length === 0) return null;
+                  return (
+                    <Box key={grade} sx={{ ml: 3, mb: 0.5 }}> {/* lùi cấp 1 nhiều hơn */}
+                      <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                        Lớp {grade}:
+                      </Typography>
+                      <Typography variant="body2" sx={{ ml: 4 }}> {/* lùi danh sách thêm 1 cấp */}
+                        {filtered.join(", ")}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
 
-          {/*<Button
-            variant="contained"
-            color="warning"
-            onClick={handleChuyenDuLieu}
-            disabled={loading}
-          >
-            🔁 Chuyển dữ liệu vào DATA
-          </Button>*/}
-
-          {loading && (
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-              <Box sx={{ width: "75%" }}>
-                <LinearProgress variant="determinate" value={progress} />
-                <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
-                  🔄 Đang xuất kết quả... {progress}%
+            {/* Lớp chưa xuất / lỗi */}
+            {skipped.length > 0 && (
+              <Box sx={{ mt: 1, ml: 3 }}>
+                <Typography variant="subtitle2" color="error.main" sx={{ mb: 0.5 }}>
+                  ❌ Lớp chưa xuất / lỗi:
+                </Typography>
+                <Typography variant="body2" sx={{ ml: 4 }}>
+                  {skipped.join(", ")}
                 </Typography>
               </Box>
-            </Box>
-          )}
+            )}
+          </Box>
+        )}
 
-          {message && !loading && (
-            <Alert severity={success ? "success" : "error"}>{message}</Alert>
-          )}
-        </Stack>
-      </Card>
-    </Box>
-  );
+      </Stack>
+    </Card>
+  </Box>
+);
+
 }
