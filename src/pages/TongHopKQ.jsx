@@ -51,6 +51,21 @@ export default function TongHopKQ() {
   const [dialogAction, setDialogAction] = useState(null);
   const { config } = useContext(ConfigContext);
 
+  const circleIconStyle = {
+    bgcolor: "white",
+    boxShadow: 1,
+    p: 0.5,              // 🔴 giảm padding
+    width: 35,           // 🔴 kích thước vòng tròn
+    height: 35,
+    "& svg": {
+      fontSize: 20,      // 🔴 giảm kích thước icon
+    },
+    "&:hover": {
+      bgcolor: "primary.light",
+      color: "white",
+    },
+  };
+
   // Lấy danh sách lớp
   useEffect(() => {
     const fetchClasses = async () => {
@@ -390,11 +405,18 @@ export default function TongHopKQ() {
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-start",
+              mt: -2,
             }}
           >
             <Stack direction="row" spacing={1}>
               <Tooltip title="Xuất Excel">
-                <IconButton onClick={handleExportExcel} color="primary">
+                <IconButton
+                  onClick={handleExportExcel}
+                  sx={{
+                    ...circleIconStyle,
+                    color: "primary.main",
+                  }}
+                >
                   <FileDownload />
                 </IconButton>
               </Tooltip>
@@ -402,8 +424,15 @@ export default function TongHopKQ() {
               <Tooltip title="Xóa lớp">
                 <IconButton
                   onClick={handleDeleteClass}
-                  color="error"
                   disabled={deleting}
+                  sx={{
+                    ...circleIconStyle,
+                    color: "error.main",
+                    "&:hover": {
+                      bgcolor: "error.main",
+                      color: "white",
+                    },
+                  }}
                 >
                   <Delete />
                 </IconButton>
@@ -412,7 +441,14 @@ export default function TongHopKQ() {
               <Tooltip title="Xóa toàn trường">
                 <IconButton
                   onClick={handleDeleteSchool}
-                  sx={{ color: "#d32f2f" }}
+                  sx={{
+                    ...circleIconStyle,
+                    color: "#d32f2f",
+                    "&:hover": {
+                      bgcolor: "#d32f2f",
+                      color: "white",
+                    },
+                  }}
                 >
                   <DeleteForeverIcon />
                 </IconButton>
@@ -421,27 +457,26 @@ export default function TongHopKQ() {
           </Box>
 
           {/* TIÊU ĐỀ */}
-          <Typography
-            variant="h5"
-            fontWeight="bold"
+          <Box
             sx={{
-              color: "#1976d2",
-
-              // 📱 Mobile: xuống dòng, căn giữa
-              textAlign: "center",
-              mt: 1,
-
-              // 🖥 Desktop: căn giữa tuyệt đối
-              position: { md: "absolute" },
-              left: { md: "50%" },
-              transform: { md: "translateX(-50%)" },
-              top: { md: 0 },
+              display: "flex",
+              justifyContent: "center",
+              mb: 3,          
             }}
           >
-            KẾT QUẢ KIỂM TRA
-          </Typography>
+            <Typography
+              variant="h5"
+              fontWeight="bold"
+              sx={{
+                color: "#1976d2",
+                mt: 1,
+                textAlign: "center",
+              }}
+            >
+              KẾT QUẢ KIỂM TRA
+            </Typography>
+          </Box>
         </Box>
-
 
         <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap", justifyContent: "center" }}>
           <TextField

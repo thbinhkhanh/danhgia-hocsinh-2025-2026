@@ -818,7 +818,7 @@ useEffect(() => {
         </Box>
 
         {/* 🟨 Tiêu đề & Học kỳ hiện tại */}
-        <Box sx={{ textAlign: "center", mb: 3 }}>
+        <Box sx={{ textAlign: "center", mt: 3, mb: 3 }}>
           <Typography
             variant="h5"
             fontWeight="bold"

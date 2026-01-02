@@ -651,7 +651,7 @@ return (
         fontWeight="bold"
         color="primary"
         gutterBottom
-        sx={{ textAlign: "center", width: "100%", display: "block", mb: 2, textTransform: "uppercase" }}
+        sx={{ textAlign: "center", width: "100%", display: "block", mt: 3, mb: 2, textTransform: "uppercase" }}
       >
         NHẬN XÉT {selectedSemester ? `${selectedSemester}` : ""}
       </Typography>
