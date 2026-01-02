@@ -392,7 +392,18 @@ export default function TongHopKQ() {
 
   return (
     <Box sx={{ minHeight: "100vh", background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)", pt: 3, px: 2, display: "flex", justifyContent: "center" }}>
-      <Paper sx={{ p: 4, borderRadius: 3, width: "100%", maxWidth: 700, bgcolor: "white" }} elevation={6}>
+      <Paper
+        sx={{
+          p: 4,
+          borderRadius: 3,
+          width: "100%",
+          maxWidth: 700,
+          bgcolor: "white",
+          position: "relative", // ⭐ BẮT BUỘC
+        }}
+        elevation={6}
+      >
+
         <Box
           sx={{
             position: "relative",
@@ -400,14 +411,7 @@ export default function TongHopKQ() {
           }}
         >
           {/* ICONS – luôn căn trái */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-start",
-              mt: -2,
-            }}
-          >
+          <Box sx={{ display:"flex", alignItems:"center", mt:-2, ml:-2 }}>
             <Stack direction="row" spacing={1}>
               <Tooltip title="Xuất Excel">
                 <IconButton
