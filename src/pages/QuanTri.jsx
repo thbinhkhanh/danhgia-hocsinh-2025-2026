@@ -67,6 +67,7 @@ export default function QuanTri() {
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(false);
   const [openCreateDataDialog, setOpenCreateDataDialog] = useState(false);
+  const [selectedYear, setSelectedYear] = useState("2025-2026");
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -130,6 +131,7 @@ export default function QuanTri() {
         // ⚡ Khởi tạo đầy đủ các field từ defaultConfig
         setConfig({
           hocKy: data.hocKy || "Giữa kỳ I",
+          namHoc: data.namHoc || "2025-2026",
           mon: data.mon || "Tin học",
           lop: data.lop || "",
           tuan: data.tuan || 1,
@@ -173,6 +175,12 @@ export default function QuanTri() {
     initConfig();
   }, [classData, setClassData]);
 
+  useEffect(() => {
+    if (config?.namHoc) {
+      setSelectedYear(config.namHoc);
+    }
+  }, [config?.namHoc]);
+
   // 🔹 Cập nhật Firestore + Context
   const updateFirestoreAndContext = async (field, value) => {
     try {
@@ -197,6 +205,12 @@ export default function QuanTri() {
     const newSemester = e.target.value;
     setSelectedSemester(newSemester);
     setConfig({ hocKy: newSemester }); // ✅ Gọi updateConfig, update cả Firestore và context
+  };
+
+  const handleYearChange = (e) => {
+    const newYear = e.target.value;
+    setSelectedYear(newYear);
+    setConfig({ namHoc: newYear }); // ✅ cập nhật context + Firestore
   };
 
   const handleSubjectChange = (e) => {
@@ -246,6 +260,7 @@ export default function QuanTri() {
       const lop = data.lop || "";
       const mon = data.mon || "Tin học";
       const hocKy = data.hocKy || "Giữa kỳ I";
+      const namHoc = data.namHoc || "2025-2026";
       const deTracNghiem = data.deTracNghiem || "";
       const khoaHeThong = data.khoaHeThong ?? false;
 
@@ -256,6 +271,7 @@ export default function QuanTri() {
         lop,
         mon,
         hocKy,
+        namHoc, 
         deTracNghiem,
         khoaHeThong,
       }));
@@ -358,14 +374,27 @@ export default function QuanTri() {
 
             <Stack spacing={2} sx={{ mb: 4 }}>
               {/* Học kỳ */}
-              <FormControl size="small">
-                <Select value={selectedSemester} onChange={handleSemesterChange}>
-                  <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
-                  <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
-                  <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-                  <MenuItem value="Cả năm">Cả năm</MenuItem>
-                </Select>
-              </FormControl>
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <FormControl size="small" sx={{ flex: 1 }}>
+                  <Select value={selectedSemester} onChange={handleSemesterChange}>
+                    <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
+                    <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
+                    <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
+                    <MenuItem value="Cả năm">Cả năm</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ flex: 1 }}>
+                  <Select value={selectedYear} onChange={handleYearChange}>
+                    <MenuItem value="2025-2026">2025-2026</MenuItem>
+                    <MenuItem value="2026-2027">2026-2027</MenuItem>
+                    <MenuItem value="2027-2028">2027-2028</MenuItem>
+                    <MenuItem value="2028-2029">2028-2029</MenuItem>
+                    <MenuItem value="2029-2030">2029-2030</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+
 
               {/* Môn / Lớp cùng 1 hàng */}
               <Box sx={{ display: "flex", gap: 2 }}>

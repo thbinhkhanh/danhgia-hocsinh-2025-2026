@@ -86,7 +86,8 @@ export const saveAllQuestions = async ({
     let collectionName, docId;
 
     if (examType === "ktdk") {
-      collectionName = "TRACNGHIEM_BK";
+      //collectionName = "TRACNGHIEM_BK";
+      collectionName = "NGANHANG_DE";
       const semesterMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cả năm": "CN" };
       const shortSchoolYear = (year) => {
         const parts = year.split("-");

@@ -25,9 +25,9 @@ const BACKUP_KEYS = [
   { key: "DANHSACH", label: "Danh sách học sinh" },
   { key: "CONFIG", label: "Cấu hình hệ thống" },
   { key: "BAITAP_TUAN", label: "Bài tập tuần" },
-  { key: "TRACNGHIEM_BK", label: "Đề KTĐK Bình Khánh" },
+  { key: "NGANHANG_DE", label: "Đề KTĐK Bình Khánh" },
   { key: "MATKHAU", label: "Mật khẩu tài khoản" },
-  { key: "DETHI_BK", label: "Đề thi Bình Khánh" },
+  { key: "DETHI", label: "Đề thi Bình Khánh" },
   { key: "DATA", label: "Kết quả đánh giá" }, // Thay KETQUA_DANH_GIA
 ];
 
@@ -99,14 +99,14 @@ export default function BackupPage({ open, onClose }) {
     // Duyệt theo thứ tự: các collection khác trước, sau đó DATA (để thanh tiến trình tăng mượt hơn)
     for (const colName of otherCollections) {
       // 1️⃣ Quiz
-      if (["BAITAP_TUAN", "TRACNGHIEM_BK"].includes(colName)) {
+      if (["BAITAP_TUAN", "NGANHANG_DE"].includes(colName)) {
         const snap = await getDocs(collection(db, colName));
         if (!snap.empty) backupData[colName] = {};
         snap.forEach((d) => (backupData[colName][d.id] = d.data()));
       }
 
       // 2️⃣ Collection phẳng
-      else if (["DANHSACH", "CONFIG", "MATKHAU", "DETHI_BK"].includes(colName)) {
+      else if (["DANHSACH", "CONFIG", "MATKHAU", "DETHI"].includes(colName)) {
         const snap = await getDocs(collection(db, colName));
         if (!snap.empty) backupData[colName] = {};
         snap.forEach((d) => (backupData[colName][d.id] = d.data()));
@@ -309,8 +309,8 @@ export default function BackupPage({ open, onClose }) {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={backupOptions["TRACNGHIEM_BK"]}
-                    onChange={() => toggleOption("TRACNGHIEM_BK")}
+                    checked={backupOptions["NGANHANG_DE"]}
+                    onChange={() => toggleOption("NGANHANG_DE")}
                   />
                 }
                 label="Đề KTĐK"
@@ -318,8 +318,8 @@ export default function BackupPage({ open, onClose }) {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={backupOptions["DETHI_BK"]}
-                    onChange={() => toggleOption("DETHI_BK")}
+                    checked={backupOptions["DETHI"]}
+                    onChange={() => toggleOption("DETHI")}
                   />
                 }
                 label="Đề thi"

@@ -104,29 +104,6 @@ function AppContent() {
     localStorage.setItem("appConfig", JSON.stringify(newConfig));
   };
 
-
-  // ✅ Danh sách menu
-  /*const navItems1 = [
-    { path: "/hocsinh", label: "Học sinh", icon: <MenuBookIcon fontSize="small" /> },
-    ...(isLoggedIn
-      ? [          
-          { path: "/giaovien", label: "Đánh giá", icon: <SummarizeIcon fontSize="small" /> },
-          { path: "/tonghopdanhgia", label: "ĐGTX", icon: <SummarizeIcon fontSize="small" /> },
-          { path: "/nhapdiemktdk", label: "KTĐK", icon: <SummarizeIcon fontSize="small" /> },
-          { path: "/xuatdanhgia", label: "Xuất đánh giá", icon: <SummarizeIcon fontSize="small" /> },
-          { path: "/ketqua", label: "Kết quả", icon: <BarChartIcon fontSize="small" /> },
-          { path: "/thongke", label: "Thống kê", icon: <BarChartIcon fontSize="small" /> },
-          { path: "/danhsach", label: "Danh sách", icon: <SchoolIcon fontSize="small" /> },
-          { path: "/tracnghiem", label: "Trắc nghiệm", icon: <SchoolIcon fontSize="small" /> },  
-          { path: "/tracnghiem-gv", label: "Soạn đề", icon: <MenuBookIcon fontSize="small" /> },
-          { path: "/tracnghiem-test", label: "Test đề", icon: <MenuBookIcon fontSize="small" /> },
-          { path: "/de-thi", label: "Đề thi", icon: <MenuBookIcon fontSize="small" /> },
-          { path: "/quan-tri", label: "Hệ thống", icon: <SettingsIcon fontSize="small" /> },
-          { label: "Đăng xuất", onClick: handleLogout, icon: <LogoutIcon fontSize="small" /> },
-        ]
-      : [{ path: "/login", label: "Đăng nhập", icon: <LoginIcon fontSize="small" /> }]),
-  ];*/
-
   const navItems = [
     /*{ path: "/tracnghiem-ontap", label: "Ôn tập" }, // thêm vào đầu menu*/
     { path: "/hocsinh", label: "Học sinh" },
@@ -325,8 +302,7 @@ function AppContent() {
 export default function App() {
   return (
     <ConfigProvider>
-      <AdminProvider>
-        
+      <AdminProvider>        
           <TracNghiemProvider>
             <StudentProvider>
               <StudentDataProvider>
@@ -337,8 +313,7 @@ export default function App() {
                 </StudentKTDKProvider>
               </StudentDataProvider>
             </StudentProvider>
-          </TracNghiemProvider>
-        
+          </TracNghiemProvider>        
       </AdminProvider>
     </ConfigProvider>
   );

@@ -171,7 +171,7 @@ const hocKyMap = {
 
         // 🔹 Chọn collection theo loại đề
         const collectionName =
-          examType === "bt" ? "BAITAP_TUAN" : "TRACNGHIEM_BK";
+          examType === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
 
         // Lấy document đề thi
         const quizRef = doc(db, collectionName, docId);
@@ -443,7 +443,7 @@ useEffect(() => {
 
     try {
       // Chọn collection theo loại đề
-      const colName = type === "bt" ? "BAITAP_TUAN" : "TRACNGHIEM_BK";
+      const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
 
       // Lấy tất cả document trong collection
       const colRef = collection(db, colName);
@@ -491,7 +491,7 @@ useEffect(() => {
     try {
       // 🔹 Xác định loại đề hiện tại
       const collectionName =
-        dialogExamType === "ktdk" ? "TRACNGHIEM_BK" : "BAITAP_TUAN";
+        dialogExamType === "ktdk" ? "NGANHANG_DE" : "BAITAP_TUAN";
 
       const docRef = doc(db, collectionName, selectedDoc);
       const docSnap = await getDoc(docRef);
@@ -526,7 +526,7 @@ useEffect(() => {
 
       // 🔹 Cập nhật loại đề
       const examTypeFromCollection =
-        collectionName === "TRACNGHIEM_BK" ? "ktdk" : "bt";
+        collectionName === "NGANHANG_DE" ? "ktdk" : "bt";
       setDialogExamType(examTypeFromCollection);
       setExamType(examTypeFromCollection);
       localStorage.setItem("teacherExamType", examTypeFromCollection);

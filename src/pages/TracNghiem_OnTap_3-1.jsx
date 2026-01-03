@@ -24,19 +24,21 @@ import {
 import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
 // Thay cho react-beautiful-dnd
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useLocation, useNavigate } from "react-router-dom";
+
 
 import { db } from "../firebase";
 import { useContext } from "react";
 import { ConfigContext } from "../context/ConfigContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
 import { exportQuizPDF } from "../utils/exportQuizPDF"; 
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
-//import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-//import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
 
 
 import Dialog from "@mui/material/Dialog";
@@ -44,8 +46,9 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 
-import { useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
+import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
+import ResultDialog from "../dialog/ResultDialog";
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -60,7 +63,7 @@ function shuffleArray(array) {
   return arr;
 }
 
-export default function TracNghiem_Test() {
+export default function TracNghiem_OnTap() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -74,7 +77,8 @@ export default function TracNghiem_Test() {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const { config } = useContext(ConfigContext);
-  const [selectedYear, setSelectedYear] = useState(config?.namHoc || "2025-2026");
+  const monOnTap = config?.mon || "";
+
   const [saving, setSaving] = useState(false);
   const [openExitConfirm, setOpenExitConfirm] = useState(false);
 
@@ -86,7 +90,7 @@ export default function TracNghiem_Test() {
   const [startTime, setStartTime] = useState(null);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
 
-  const [hocKi, setHocKi] = useState(config?.hocKy || "Cuối kỳ I");
+  const [hocKi, setHocKi] = useState("");
   const [monHoc, setMonHoc] = useState("");
   const [choXemDiem, setChoXemDiem] = useState(false);
   const [choXemDapAn, setChoXemDapAn] = useState(false);
@@ -103,6 +107,7 @@ export default function TracNghiem_Test() {
   // Lấy trường từ tài khoản đăng nhập
   const account = localStorage.getItem("account") || "";
   const school = account === "TH Lâm Văn Bền" ? account : "TH Bình Khánh";
+  const { selectedClass } = useSelectedClass();
 
   // Lấy lớp từ tên đề
   const detectedClass = selectedExam?.match(/Lớp\s*(\d+)/)?.[1] || "Test";
@@ -155,39 +160,55 @@ export default function TracNghiem_Test() {
   useEffect(() => {
     const fetchExams = async () => {
       try {
-        const colName = "NGANHANG_DE";
-        const colRef = collection(db, colName);
-        const snap = await getDocs(colRef);
+        if (!selectedClass) return;
 
-        // Lấy key năm học từ selectedYear
-        // "2025-2026" -> "25-26"
-        const yearKey = selectedYear.slice(2, 4) + "-" + selectedYear.slice(7, 9);
+        const classNumber = selectedClass.split(".")[0];
+        const monFromConfig = config?.mon?.trim(); // Tin học / Công nghệ
 
-        // Học kỳ: "Cuối kỳ I" -> "CKI", "Cả năm" -> "CN"
-        const hocKyKey = hocKi === "Cả năm" ? "CN" : "CKI";
+        const colName =
+          school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "NGANHANG_DE";
 
-        // Lọc đề theo năm học + học kỳ
-        const exams = snap.docs
+        const snapshot = await getDocs(collection(db, colName));
+
+        const exams = snapshot.docs
           .map(d => d.id)
-          .filter(id => id.includes(yearKey) && id.includes(hocKyKey));
+          .filter(id => {
+            /*
+              id ví dụ:
+              quiz_Lớp 5_Tin học_CKI_25-26 (A)
+            */
+            const match = id.match(/quiz_Lớp\s*(\d+)_([^_]+)_/i);
+            if (!match) return false;
+
+            const lop = match[1];        // "5"
+            const mon = match[2];        // "Tin học"
+
+            // 🔹 Lọc theo lớp
+            if (lop !== classNumber) return false;
+
+            // 🔹 Lọc theo môn từ config
+            if (monFromConfig && mon !== monFromConfig) return false;
+
+            // 🔹 Bỏ đề (C)
+            if (/\(C\)\s*$/.test(id)) return false;
+
+            return true;
+          });
 
         setExamList(exams);
 
-        // Chọn mặc định đề đầu tiên nếu selectedExam không hợp lệ
         if (!selectedExam || !exams.includes(selectedExam)) {
-          if (exams.length > 0) setSelectedExam(exams[0]);
+          setSelectedExam("");
         }
-
-      } catch (err) {
-        console.error("Lỗi lấy danh sách đề:", err);
+      } catch (error) {
+        console.error("❌ Lỗi tải danh sách đề:", error);
         setExamList([]);
         setSelectedExam("");
       }
     };
 
     fetchExams();
-  }, [school, selectedYear, hocKi]);
-
+  }, [school, selectedClass, config?.mon]);
 
 
   // ⭐ RESET TOÀN BỘ SAU KHI CHỌN ĐỀ MỚI
@@ -302,6 +323,8 @@ export default function TracNghiem_Test() {
             }
 
             docId = selectedExam;
+            collectionName = school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "NGANHANG_DE";
+
 
         // 🔹 Set thời gian làm bài (giây)
         setTimeLeft(timeLimitMinutes * 60);
@@ -521,9 +544,12 @@ export default function TracNghiem_Test() {
     fetchQuestions();
  }, [selectedExam]);
 
-  const studentClass = studentInfo.class;
-  const studentName = studentInfo.name;
+  //const studentClass = studentInfo.class;
+  //const studentName = studentInfo.name;
 
+  const studentName = location.state?.fullname || "...";
+  const studentClass = location.state?.lop || "...";
+  
   // Hàm chuyển chữ đầu thành hoa
   const capitalizeName = (name = "") =>
     name
@@ -568,10 +594,13 @@ export default function TracNghiem_Test() {
     });
 
     if (unanswered.length > 0) {
-      setUnansweredQuestions(unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1));
+      setUnansweredQuestions(
+        unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1)
+      );
       setOpenAlertDialog(true);
       return;
     }
+
 
     try {
       setSaving(true);
@@ -660,11 +689,9 @@ export default function TracNghiem_Test() {
       const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
 
       // Gọi export PDF
-      //exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
-      // ⬅️ Chỉ xuất file nếu được bật
-      if (xuatFileBaiLam === true) {
+      /*if (xuatFileBaiLam === true) {
         exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
-      }
+      }*/
 
       // Ngày theo định dạng Việt Nam
       const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
@@ -784,12 +811,9 @@ export default function TracNghiem_Test() {
       const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
 
       // Gọi export PDF
-      //exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
-      // ⬅️ Chỉ xuất file nếu được bật
-      if (xuatFileBaiLam === true) {
+      /*if (xuatFileBaiLam === true) {
         exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
-      }
-
+      */
 
       // Ngày theo định dạng Việt Nam
       const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
@@ -896,50 +920,21 @@ const handleDragEnd = (result) => {
   });
 };
 
-// Hàm format tên đề
-const formatExamTitle = (examName = "") => {
-  if (!examName) return "";
+const formatExamName = (exam) => {
+  // Lấy A, B, C...
+  const match = exam.match(/\(([^)]+)\)$/);
+  const version = match ? match[1] : "";
 
-  // 1. Loại bỏ prefix "quiz_" nếu có
-  let name = examName.startsWith("quiz_") ? examName.slice(5) : examName;
+  // Bỏ quiz_ và phần _CKI_...
+  const cleaned = exam
+    .replace("quiz_", "")
+    .replace(/_CKI_.*/, "");
 
-  // 2. Tách các phần theo dấu "_"
-  const parts = name.split("_");
+  // cleaned: "Lớp 4_Tin học"
+  const parts = cleaned.split("_");
+  const subject = parts[1]; // Tin học / Công nghệ
 
-  // 3. Tìm lớp
-  const classPart = parts.find(p => p.toLowerCase().includes("lớp")) || "";
-  const classNumber = classPart.match(/\d+/)?.[0] || "";
-
-  // 4. Tìm chỉ số lớp trong mảng để lấy môn
-  const classIndex = parts.indexOf(classPart);
-
-  // 5. Tìm môn: phần ngay sau lớp (hoặc phần đầu nếu lớp là đầu)
-  let subjectPart = "";
-  for (let i = classIndex + 1; i < parts.length; i++) {
-    // bỏ qua CKI, CKII, CN, năm học cuối, chỉ lấy môn
-    const p = parts[i];
-    if (!p.toLowerCase().includes("cki") && !p.toLowerCase().includes("cn") && !/\d{2}-\d{2}/.test(p)) {
-      subjectPart = p;
-      break;
-    }
-  }
-
-  // 6. Tìm phần mở rộng (CKI/CKII/CN) sau môn và lớp
-  let extraPart = "";
-  for (let i = classIndex + 1; i < parts.length; i++) {
-    const p = parts[i];
-    if (p.toLowerCase().includes("cki") || p.toLowerCase() === "cn") {
-      extraPart = p.toUpperCase();
-      break;
-    }
-  }
-
-  // 7. Tìm ký hiệu đề (A, B, ...) trong ngoặc
-  const match = examName.match(/\(([^)]+)\)/);
-  const examLetter = match ? match[1] : "";
-
-  // 8. Kết hợp lại
-  return `${subjectPart} ${classNumber}${extraPart ? ` - ${extraPart}` : ""} ${examLetter ? `(${examLetter})` : ""}`.trim();
+  return `${subject} (Đề ${version})`;
 };
 
 return (
@@ -969,29 +964,65 @@ return (
         boxSizing: "border-box",
       }}
     >
+      {/* 🔹 Thông tin học sinh ở góc trên/trái */}
+      <Box
+        sx={{
+          p: 1.5,
+          border: "2px solid #1976d2",
+          borderRadius: 2,
+          color: "#1976d2",
+          width: "fit-content",
+          mb: 2,
+          position: { xs: "relative", sm: "absolute" },
+          top: { sm: 16 },
+          left: { sm: 16 },
+          alignSelf: { xs: "flex-start", sm: "auto" },
+          bgcolor: { xs: "#fff", sm: "transparent" },
+          zIndex: 2,
+        }}
+      >
+        <Typography variant="subtitle1" fontWeight="bold">
+          Tên: {studentName
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')}
+        </Typography>
+
+        <Typography variant="subtitle1" fontWeight="bold">
+          Lớp: {studentClass}
+        </Typography>
+      </Box>
 
       {/* Nút thoát */}
-      <Tooltip title="Thoát trắc nghiệm" arrow>
-        <IconButton
-          onClick={() => {
-            if (submitted) {
-              navigate(-1);
-            } else {
-              setOpenExitConfirm(true);
-            }
-          }}
-          sx={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            color: "#f44336",
-            bgcolor: "rgba(255,255,255,0.9)",
-            "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </Tooltip>
+      <>
+        <Tooltip title="Thoát trắc nghiệm" arrow>
+          <IconButton
+            onClick={() => {
+              if (submitted) {
+                navigate(-1);
+              } else {
+                setOpenExitConfirm(true);
+              }
+            }}
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              color: "#f44336",
+              bgcolor: "rgba(255,255,255,0.9)",
+              "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Tooltip>
+
+        <ExitConfirmDialog
+          open={openExitConfirm}
+          onClose={() => setOpenExitConfirm(false)}
+        />
+      </>
 
       {/* Tiêu đề */}
       <Box
@@ -1016,14 +1047,19 @@ return (
             fontSize: "20px",
             mb: 2,
             mt: -1,
-            color: "#1976d2", // màu xanh
+            color: "#1976d2",
           }}
         >
-          TEST ĐỀ KIỂM TRA
+          {monOnTap
+            ? `ÔN TẬP ${monOnTap.toUpperCase()}`
+            : "ÔN TẬP"}
         </Typography>
 
         {/* Ô chọn đề */}
-        <FormControl fullWidth size="small" sx={{ width: 250, mb: -2 }}>
+        <FormControl
+          size="small"
+          sx={{ width: 250, mb: -2 }}   // 👈 đặt độ rộng tại đây
+        >
           <InputLabel
             id="exam-select-label"
             sx={{ fontSize: "16px", fontWeight: "bold" }}
@@ -1037,10 +1073,11 @@ return (
             label="Chọn đề"
             onChange={(e) => setSelectedExam(e.target.value)}
             sx={{ fontSize: "16px", fontWeight: 500 }}
+            renderValue={(value) => formatExamName(value)}
           >
             {examList.map((exam) => (
               <MenuItem key={exam} value={exam} sx={{ fontSize: "16px" }}>
-                {formatExamTitle(exam)}
+                {formatExamName(exam)}
               </MenuItem>
             ))}
           </Select>
@@ -2065,93 +2102,10 @@ return (
     </Paper>
 
     {/* Dialog cảnh báo chưa làm hết */}
-    <Dialog
+    <IncompleteAnswersDialog
       open={openAlertDialog}
       onClose={() => setOpenAlertDialog(false)}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          p: 0,
-          bgcolor: "#e3f2fd",
-          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
-        },
-      }}
-    >
-      {/* Header với nền màu full width */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          p: 0.75, // chiều cao header
-          bgcolor: "#90caf9", // nền màu xanh nhạt
-          borderRadius: "12px 12px 0 0", // bo 2 góc trên
-          mb: 2,
-        }}
-      >
-        <Box
-          sx={{
-            bgcolor: "#42a5f5", // xanh đậm cho icon
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
-          }}
-        >
-          ⚠️
-        </Box>
-
-        <DialogTitle
-          sx={{
-            p: 0,
-            fontWeight: "bold",
-            color: "#0d47a1", // màu xanh tiêu đề
-            fontSize: 20,
-          }}
-        >
-          Chưa hoàn thành
-        </DialogTitle>
-      </Box>
-
-      {/* Nội dung */}
-      <DialogContent sx={{ px: 3, pb: 3 }}>
-        <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
-          Bạn chưa chọn đáp án cho câu: {unansweredQuestions.join(", ")}.<br />
-          Vui lòng trả lời tất cả câu hỏi trước khi nộp.
-        </Typography>
-      </DialogContent>
-
-      {/* Nút OK */}
-      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
-        <Button
-          variant="contained"
-          onClick={() => setOpenAlertDialog(false)}
-          sx={{
-            px: 4,
-            borderRadius: 2,
-            bgcolor: "#42a5f5", // xanh đậm giống mẫu
-            color: "#fff",
-            "&:hover": { bgcolor: "#1e88e5" },
-            fontWeight: "bold",
-            mb:2,
-          }}
-        >
-          OK
-        </Button>
-      </DialogActions>
-    </Dialog>
-
-    {/* Dialog xác nhận thoát */}
-    <ExitConfirmDialog
-      open={openExitConfirm}
-      onClose={() => setOpenExitConfirm(false)}
+      unansweredQuestions={unansweredQuestions}
     />
 
     <Dialog
@@ -2166,24 +2120,14 @@ return (
       PaperProps={{
         sx: {
           borderRadius: 3,
-          p: 0,
+          p: 3,
           bgcolor: "#e3f2fd",
           boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
         },
       }}
     >
-
-      {/* Header với nền màu full width */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          p: 0.75,
-          bgcolor: "#90caf9",
-          borderRadius: "12px 12px 0 0", // bo 2 góc trên
-          mb: 2,
-        }}
-      >
+      {/* Header */}
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
         <Box
           sx={{
             bgcolor: "#42a5f5",
@@ -2201,52 +2145,46 @@ return (
         >
           🎉
         </Box>
-
-        <DialogTitle
+        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
+          KẾT QUẢ
+        </DialogTitle>
+        <IconButton
+          onClick={() => setOpenResultDialog(false)}
           sx={{
-            p: 0,
-            fontWeight: "bold",
-            color: "#0d47a1",
-            fontSize: 20,
+            ml: "auto",
+            color: "#f44336",
+            "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
           }}
         >
-          Kết quả
-        </DialogTitle>
+          <CloseIcon />
+        </IconButton>
       </Box>
 
       {/* Nội dung */}
-      <DialogContent sx={{ textAlign: "center", px: 3, pb: 3 }}>
-        <Typography
-          sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}
-        >
-          {studentResult?.hoVaTen?.toUpperCase()}
+      <DialogContent sx={{ textAlign: "center" }}>
+        <Typography sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}>
+          {studentResult?.hoVaTen?.toUpperCase() || "HỌC SINH"}
         </Typography>
 
-        <Typography sx={{ fontSize: 17, color: "#1565c0", mb: 1 }}>
-          <strong>Lớp: </strong>
-          <span style={{ fontWeight: "bold" }}>{studentResult?.lop}</span>
+        <Typography sx={{ fontSize: 16, color: "#1565c0", mb: 1 }}>
+          Lớp: <span style={{ fontWeight: 600 }}>{studentResult?.lop}</span>
         </Typography>
 
-        {/* Nếu cho xem điểm */}
         {choXemDiem ? (
-          <Typography
-            sx={{
-              fontSize: 17,
-              fontWeight: 700,
-              mt: 1,
-            }}
-          >
-            <span style={{ color: "#1565c0" }}>Điểm:</span>&nbsp;
-            <span style={{ color: "red" }}>{studentResult?.diem}</span>
+          <Typography sx={{ fontSize: 16, color: "#0d47a1", mt: 2 }}>
+            Điểm:&nbsp;
+            <span style={{ fontWeight: 700, color: "red" }}>
+              {studentResult?.diem}
+            </span>
           </Typography>
         ) : (
           <Typography
             sx={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: "red",
+              fontSize: 16,
               mt: 2,
               textAlign: "center",
+              fontWeight: 700,
+              color: "red",
             }}
           >
             ĐÃ HOÀN THÀNH BÀI KIỂM TRA
@@ -2271,8 +2209,8 @@ return (
           OK
         </Button>
       </DialogActions>
-
     </Dialog>
+
     
     {/* Snackbar */}
     <Snackbar

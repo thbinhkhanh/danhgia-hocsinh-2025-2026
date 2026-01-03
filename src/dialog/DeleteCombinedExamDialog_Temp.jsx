@@ -45,7 +45,7 @@ const DeleteCombinedExamDialog = ({ open, onClose, onConfirm, examName }) => {
           🗑️
         </Box>
         <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#d32f2f" }}>
-          Xóa đề kết hợp
+          Xóa đề kết hợp abc
         </DialogTitle>
       </Box>
 

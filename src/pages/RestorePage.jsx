@@ -27,9 +27,9 @@ const BACKUP_KEYS = [
   { key: "DANHSACH", label: "Danh sách lớp" },
   { key: "CONFIG", label: "Cấu hình" },
   { key: "BAITAP_TUAN", label: "Bài tập tuần" },
-  { key: "TRACNGHIEM_BK", label: "Đề KTĐK" },
+  { key: "NGANHANG_DE", label: "Đề KTĐK" },
   { key: "MATKHAU", label: "Mật khẩu" },
-  { key: "DETHI_BK", label: "Đề thi" },
+  { key: "DETHI", label: "Đề thi" },
   { key: "DATA", label: "Kết quả đánh giá" },
 ];
 
@@ -195,7 +195,7 @@ export default function RestorePage({ open, onClose }) {
         <DialogContent dividers>
           <Stack spacing={1}>
             {renderGroup("Hệ thống", ["CONFIG", "MATKHAU", "DANHSACH"])}
-            {renderGroup("Ngân hàng đề", ["BAITAP_TUAN", "TRACNGHIEM_BK", "DETHI_BK"])}
+            {renderGroup("Ngân hàng đề", ["BAITAP_TUAN", "NGANHANG_DE", "DETHI"])}
             {renderGroup("Kết quả", ["DATA"])}
           </Stack>
         </DialogContent>

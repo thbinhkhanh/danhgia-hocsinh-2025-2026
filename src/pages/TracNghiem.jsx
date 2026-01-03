@@ -201,7 +201,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
         let prog = 0;
 
         let docId = null;
-          let collectionName = "TRACNGHIEM_BK"; // mặc định
+          let collectionName = "NGANHANG_DE"; // mặc định
           let hocKiFromConfig = "";
           let monHocFromConfig = "";
           let timeLimitMinutes = 0;
@@ -270,7 +270,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
               return;
             }
 
-            const onTapSnap = await getDocs(collection(db, "TRACNGHIEM_ONTAP"));
+            const onTapSnap = await getDocs(collection(db, "NGANHANG_DE"));
 
             // Tìm đề vừa khớp lớp, vừa khớp học kỳ
             const matchedDoc = onTapSnap.docs.find(d =>
@@ -283,7 +283,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
               return;
             }
 
-            collectionName = "TRACNGHIEM_ONTAP";
+            collectionName = "NGANHANG_DE";
             docId = matchedDoc.id;
 
           } else if (configData.kiemTraDinhKi === true) {
@@ -303,7 +303,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
               return;
             }
 
-            const deThiSnap = await getDocs(collection(db, "DETHI_BK"));
+            const deThiSnap = await getDocs(collection(db, "DETHI"));
             const matchedDeThi = deThiSnap.docs.find(d =>
               d.id.includes(classLabel) && d.id.includes(hocKiCode)
             );
@@ -316,10 +316,10 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
 
             const deThiName = matchedDeThi.id;
 
-            const tracNghiemSnap = await getDocs(collection(db, "TRACNGHIEM_BK"));
+            const tracNghiemSnap = await getDocs(collection(db, "NGANHANG_DE"));
             const matchedDoc = tracNghiemSnap.docs.find(d => d.id === deThiName);
 
-            collectionName = "TRACNGHIEM_BK";
+            collectionName = "NGANHANG_DE";
             docId = matchedDoc?.id;
 
           } else if (configData.baiTapTuan === true) {

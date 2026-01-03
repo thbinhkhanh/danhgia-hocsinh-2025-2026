@@ -162,38 +162,63 @@ export default function TracNghiem_OnTap() {
       try {
         if (!selectedClass) return;
 
-        const classNumber = selectedClass.split(".")[0];
-        const monFromConfig = config?.mon?.trim(); // Tin học / Công nghệ
+        const classNumber = selectedClass.split(".")[0]; // "5" từ "5.A"
+        const monFromConfig = config?.mon?.trim();      // Tin học / Công nghệ
+        const hocKyFromConfig = config?.hocKy;          // "Cuối kỳ I", "Cả năm", ...
+        const namHocFromConfig = config?.namHoc;        // "2025-2026"
 
-        const colName =
-          school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
+        const colName = "NGANHANG_DE"; // cố định
 
         const snapshot = await getDocs(collection(db, colName));
 
+        // 🔹 map học kỳ sang code trong ID
+        const hocKyMap = {
+          "Giữa kỳ I": "GKI",
+          "Cuối kỳ I": "CKI",
+          "Giữa kỳ II": "GKII",
+          "Cả năm": "CN",
+        };
+        const hocKyCode = hocKyMap[hocKyFromConfig] || "";
+
+        // 🔹 tách năm học: "2025-2026" -> "25-26"
+        const yearKey = namHocFromConfig
+          ? namHocFromConfig.split("-").map(y => y.slice(2)).join("-")
+          : "";
+
+        console.log("💠 Lop:", classNumber, "Mon:", monFromConfig, "HocKyCode:", hocKyCode, "YearKey:", yearKey);
+        console.log("📋 Tất cả ID trong NGANHANG_DE:", snapshot.docs.map(d => d.id));
+
+        // 🔹 lọc đề
         const exams = snapshot.docs
           .map(d => d.id)
           .filter(id => {
-            /*
-              id ví dụ:
-              quiz_Lớp 5_Tin học_CKI_25-26 (A)
-            */
-            const match = id.match(/quiz_Lớp\s*(\d+)_([^_]+)_/i);
+            // ID ví dụ: quiz_Lớp 5_Công nghệ_CKI_25-26 (A)
+            const match = id.match(/quiz_Lớp\s*(\d+)_([^_]+)_([^_]+)_([^_ ]+)/i);
             if (!match) return false;
 
-            const lop = match[1];        // "5"
-            const mon = match[2];        // "Tin học"
+            const lop = match[1];      // "5"
+            const mon = match[2];      // "Công nghệ"
+            const hocKyId = match[3];  // "CKI"
+            const namHocId = match[4]; // "25-26"
 
             // 🔹 Lọc theo lớp
             if (lop !== classNumber) return false;
 
-            // 🔹 Lọc theo môn từ config
+            // 🔹 Lọc theo môn
             if (monFromConfig && mon !== monFromConfig) return false;
 
-            // 🔹 Bỏ đề (C)
-            if (/\(C\)\s*$/.test(id)) return false;
+            // 🔹 Lọc theo học kỳ
+            if (hocKyCode && hocKyId !== hocKyCode) return false;
+
+            // 🔹 Lọc theo năm học
+            if (yearKey && namHocId !== yearKey) return false;
+
+            // ✅ Không loại bỏ đề (C) nữa
 
             return true;
           });
+
+        console.log("✅ Đề lọc được:", exams);
 
         setExamList(exams);
 
@@ -208,8 +233,7 @@ export default function TracNghiem_OnTap() {
     };
 
     fetchExams();
-  }, [school, selectedClass, config?.mon]);
-
+  }, [selectedClass, config?.mon, config?.hocKy, config?.namHoc]);
 
   // ⭐ RESET TOÀN BỘ SAU KHI CHỌN ĐỀ MỚI
   useEffect(() => {
@@ -255,7 +279,7 @@ export default function TracNghiem_OnTap() {
         let prog = 0;
 
         let docId = null;
-        let collectionName = "TRACNGHIEM_BK";
+        let collectionName = "NGANHANG_DE";
         let hocKiFromConfig = "";
         let monHocFromConfig = "";
         let timeLimitMinutes = 0; // ⬅ để lưu thời gian
@@ -323,8 +347,6 @@ export default function TracNghiem_OnTap() {
             }
 
             docId = selectedExam;
-            collectionName = school === "TH Lâm Văn Bền" ? "TRACNGHIEM_LVB" : "TRACNGHIEM_BK";
-
 
         // 🔹 Set thời gian làm bài (giây)
         setTimeLeft(timeLimitMinutes * 60);
@@ -937,6 +959,51 @@ const formatExamName = (exam) => {
   return `${subject} (Đề ${version})`;
 };
 
+const formatExamTitle = (examName = "") => {
+  if (!examName) return "";
+
+  // 1. Loại bỏ prefix "quiz_" nếu có
+  let name = examName.startsWith("quiz_") ? examName.slice(5) : examName;
+
+  // 2. Tách các phần theo dấu "_"
+  const parts = name.split("_");
+
+  // 3. Tìm lớp
+  const classPart = parts.find(p => p.toLowerCase().includes("lớp")) || "";
+  const classNumber = classPart.match(/\d+/)?.[0] || "";
+
+  // 4. Tìm chỉ số lớp trong mảng để lấy môn
+  const classIndex = parts.indexOf(classPart);
+
+  // 5. Tìm môn: phần ngay sau lớp (hoặc phần đầu nếu lớp là đầu)
+  let subjectPart = "";
+  for (let i = classIndex + 1; i < parts.length; i++) {
+    // bỏ qua CKI, CKII, CN, năm học cuối, chỉ lấy môn
+    const p = parts[i];
+    if (!p.toLowerCase().includes("cki") && !p.toLowerCase().includes("cn") && !/\d{2}-\d{2}/.test(p)) {
+      subjectPart = p;
+      break;
+    }
+  }
+
+  // 6. Tìm phần mở rộng (CKI/CKII/CN) sau môn và lớp
+  let extraPart = "";
+  for (let i = classIndex + 1; i < parts.length; i++) {
+    const p = parts[i];
+    if (p.toLowerCase().includes("cki") || p.toLowerCase() === "cn") {
+      extraPart = p.toUpperCase();
+      break;
+    }
+  }
+
+  // 7. Tìm ký hiệu đề (A, B, ...) trong ngoặc
+  const match = examName.match(/\(([^)]+)\)/);
+  const examLetter = match ? match[1] : "";
+
+  // 8. Kết hợp lại
+  return `${subjectPart} ${classNumber}${extraPart ? ` - ${extraPart}` : ""} ${examLetter ? `(${examLetter})` : ""}`.trim();
+};
+
 return (
   <Box
     id="quiz-container"  // <-- Thêm dòng này
@@ -1073,15 +1140,16 @@ return (
             label="Chọn đề"
             onChange={(e) => setSelectedExam(e.target.value)}
             sx={{ fontSize: "16px", fontWeight: 500 }}
-            renderValue={(value) => formatExamName(value)}
+            renderValue={(value) => formatExamTitle(value)}  // ⬅ dùng hàm format
           >
             {examList.map((exam) => (
-              <MenuItem key={exam} value={exam} sx={{ fontSize: "16px" }}>
-                {formatExamName(exam)}
+              <MenuItem key={exam.id || exam} value={exam.id || exam} sx={{ fontSize: "16px" }}>
+                {formatExamTitle(exam.id || exam)}  {/* ⬅ dùng hàm format */}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
+
       </Box>
 
       {/* Đồng hồ với vị trí cố định */}
@@ -2211,7 +2279,6 @@ return (
       </DialogActions>
     </Dialog>
 
-    
     {/* Snackbar */}
     <Snackbar
       open={snackbar.open}

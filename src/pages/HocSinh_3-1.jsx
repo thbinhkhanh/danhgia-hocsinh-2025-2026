@@ -391,6 +391,7 @@ const updateConfig = async (field, value) => {
   }
 };
 
+
 return (
     <Box
       sx={{
@@ -429,8 +430,7 @@ return (
               ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
               : config?.danhGiaTuan
               ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
-              : config?.onTap
-              ? `ÔN TẬP - ${config?.hocKy?.toUpperCase() || ""}`
+              //: `KIỂM TRA ĐỊNH KỲ - ${config?.hocKy?.toUpperCase() || ""}`}
               : `KIỂM TRA ĐỊNH KỲ`}
           </Typography>
         </Box>
@@ -824,15 +824,15 @@ return (
 
                               // 🔹 ÔN TẬP
                               if (mode === "ontap") {
-                                navigate("/tracnghiem-ontap", {
+                                navigate("/tracnghiem", {
                                   state: {
                                     studentId: student.maDinhDanh,
                                     fullname: student.hoVaTen,
                                     lop: selectedClass,
                                     selectedWeek,
-                                    //mon: config.mon,
-                                    //collectionName: "TRACNGHIEM_ONTAP",
-                                    //docId: `${selectedClass}_ONTAP_${config.mon}_${config.hocKy}`,
+                                    mon: config.mon,
+                                    collectionName: "TRACNGHIEM_ONTAP",
+                                    docId: `${selectedClass}_ONTAP_${config.mon}_${config.hocKy}`,
                                   },
                                 });
 

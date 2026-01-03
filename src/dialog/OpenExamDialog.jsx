@@ -2,7 +2,6 @@
 import React from "react";
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
   IconButton,
@@ -16,6 +15,41 @@ import {
   MenuItem,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+
+// Hàm format tên đề
+const formatExamTitle = (examName = "") => {
+    if (!examName) return "";
+    let name = examName.startsWith("quiz_") ? examName.slice(5) : examName;
+    const parts = name.split("_");
+
+    const classPart = parts.find(p => p.toLowerCase().includes("lớp")) || "";
+    const classNumber = classPart.match(/\d+/)?.[0] || "";
+
+    const classIndex = parts.indexOf(classPart);
+
+    let subjectPart = "";
+    for (let i = classIndex + 1; i < parts.length; i++) {
+      const p = parts[i];
+      if (!p.toLowerCase().includes("cki") && !p.toLowerCase().includes("cn") && !/\d{2}-\d{2}/.test(p)) {
+        subjectPart = p;
+        break;
+      }
+    }
+
+    let extraPart = "";
+    for (let i = classIndex + 1; i < parts.length; i++) {
+      const p = parts[i];
+      if (p.toLowerCase().includes("cki") || p.toLowerCase() === "cn") {
+        extraPart = p.toUpperCase();
+        break;
+      }
+    }
+
+    const match = examName.match(/\(([^)]+)\)/);
+    const examLetter = match ? match[1] : "";
+
+    return `${subjectPart} ${classNumber}${extraPart ? ` - ${extraPart}` : ""} ${examLetter ? `(${examLetter})` : ""}`.trim();
+  };
 
 const OpenExamDialog = ({
   open,
@@ -48,7 +82,7 @@ const OpenExamDialog = ({
         },
       }}
     >
-      {/* Thanh tiêu đề */}
+      {/* ===== HEADER ===== */}
       <Box
         sx={{
           display: "flex",
@@ -57,14 +91,12 @@ const OpenExamDialog = ({
           background: "linear-gradient(to right, #1976d2, #42a5f5)",
           color: "#fff",
           px: 2,
-          py: 1.2,
-          borderTopLeftRadius: 12,
-          borderTopRightRadius: 12,
+          py: 2,
         }}
       >
         <Typography
           variant="subtitle1"
-          sx={{ fontWeight: "bold", fontSize: "1.1rem", letterSpacing: 0.5 }}
+          sx={{ fontWeight: "bold", fontSize: "1.1rem" }}
         >
           📂 Danh sách đề
         </Typography>
@@ -73,14 +105,13 @@ const OpenExamDialog = ({
         </IconButton>
       </Box>
 
-      {/* Nội dung Dialog */}
+      {/* ===== CONTENT ===== */}
       <DialogContent
         dividers
         sx={{ maxHeight: 350, overflowY: "auto", px: 2, py: 2, bgcolor: "#fff" }}
       >
         {/* Loại đề + Lọc lớp */}
         <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: "wrap" }}>
-          {/* Chọn loại đề */}
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Loại đề</InputLabel>
             <Select
@@ -97,7 +128,6 @@ const OpenExamDialog = ({
             </Select>
           </FormControl>
 
-          {/* Bộ lọc lớp */}
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Lọc lớp</InputLabel>
             <Select
@@ -115,14 +145,13 @@ const OpenExamDialog = ({
           </FormControl>
         </Stack>
 
-        {/* Bảng danh sách đề */}
+        {/* Danh sách đề */}
         <Box
           sx={{
             maxHeight: 260,
             overflowY: "auto",
             border: "1px solid #ccc",
             borderRadius: 2,
-            mb: 1,
           }}
         >
           {loadingList ? (
@@ -138,19 +167,19 @@ const OpenExamDialog = ({
               .filter((doc) =>
                 filterClass === "Tất cả" ? true : doc.class === filterClass
               )
-              .filter((doc) => {
-                if (dialogExamType === "bt") return doc.collection === "BAITAP_TUAN";
-                else return doc.collection === "TRACNGHIEM_BK"; // KTĐK
-              })
+              .filter((doc) =>
+                dialogExamType === "bt"
+                  ? doc.collection === "BAITAP_TUAN"
+                  : doc.collection === "NGANHANG_DE"
+              )
               .map((doc) => (
                 <Stack
                   key={doc.id}
                   direction="row"
                   alignItems="center"
-                  justifyContent="space-between"
                   sx={{
-                    px: 2,
-                    py: 1,
+                    px: 1,
+                    py: 0.5,
                     height: 36,
                     cursor: "pointer",
                     borderRadius: 1,
@@ -161,17 +190,17 @@ const OpenExamDialog = ({
                   onClick={() => setSelectedDoc(doc.id)}
                   onDoubleClick={() => handleOpenSelectedDoc(doc.id)}
                 >
-                  <Typography variant="subtitle1">{doc.id}</Typography>
+                  <Typography variant="subtitle1">
+                    {formatExamTitle(doc.id)}
+                  </Typography>
                 </Stack>
               ))
           )}
         </Box>
       </DialogContent>
 
-      {/* Nút hành động */}
-      <DialogActions
-        sx={{ px: 3, pb: 2, justifyContent: "center", gap: 1.5 }}
-      >
+      {/* ===== ACTIONS ===== */}
+      <DialogActions sx={{ px: 3, pb: 2, justifyContent: "center", gap: 1.5 }}>
         <Button
           onClick={() => handleOpenSelectedDoc(selectedDoc)}
           variant="contained"

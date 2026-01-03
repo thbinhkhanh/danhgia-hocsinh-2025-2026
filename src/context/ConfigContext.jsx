@@ -10,6 +10,7 @@ export const ConfigProvider = ({ children }) => {
     mon: "Tin học",
     login: false,
     hocKy: "Giữa kỳ I",
+    namHoc: "2025-2026",
     lop: "",
     kiemTraDinhKi: false,
     baiTapTuan: false,
