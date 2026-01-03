@@ -68,6 +68,8 @@ const [examLetter, setExamLetter] = useState(savedConfig.examLetter || "");
 const [examType, setExamType] = useState("bt");
 const [dialogExamType, setDialogExamType] = useState("");
 const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+const [filterYear, setFilterYear] = useState("Tất cả");
+
 
 useEffect(() => {
   if (openDialog) {
@@ -938,6 +940,8 @@ useEffect(() => {
           setDialogExamType={setDialogExamType}
           filterClass={filterClass}
           setFilterClass={setFilterClass}
+          filterYear={filterYear}          // thêm
+  setFilterYear={setFilterYear}    // thêm
           classes={classes}
           loadingList={loadingList}
           docList={docList}

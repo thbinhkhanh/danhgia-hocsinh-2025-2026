@@ -18,46 +18,38 @@ import CloseIcon from "@mui/icons-material/Close";
 
 // Hàm format tên đề
 const formatExamTitle = (examName = "") => {
-  if (!examName) return "";
-  let name = examName.startsWith("quiz_") ? examName.slice(5) : examName;
-  const parts = name.split("_");
+    if (!examName) return "";
+    let name = examName.startsWith("quiz_") ? examName.slice(5) : examName;
+    const parts = name.split("_");
 
-  const classPart = parts.find((p) => p.toLowerCase().includes("lớp")) || "";
-  const classNumber = classPart.match(/\d+/)?.[0] || "";
-  const classIndex = parts.indexOf(classPart);
+    const classPart = parts.find(p => p.toLowerCase().includes("lớp")) || "";
+    const classNumber = classPart.match(/\d+/)?.[0] || "";
 
-  let subjectPart = "";
-  for (let i = classIndex + 1; i < parts.length; i++) {
-    const p = parts[i];
-    if (!p.toLowerCase().includes("cki") && !p.toLowerCase().includes("cn") && !/\d{2}-\d{2}/.test(p)) {
-      subjectPart = p;
-      break;
+    const classIndex = parts.indexOf(classPart);
+
+    let subjectPart = "";
+    for (let i = classIndex + 1; i < parts.length; i++) {
+      const p = parts[i];
+      if (!p.toLowerCase().includes("cki") && !p.toLowerCase().includes("cn") && !/\d{2}-\d{2}/.test(p)) {
+        subjectPart = p;
+        break;
+      }
     }
-  }
 
-  let extraPart = "";
-  for (let i = classIndex + 1; i < parts.length; i++) {
-    const p = parts[i];
-    if (p.toLowerCase().includes("cki") || p.toLowerCase() === "cn") {
-      extraPart = p.toUpperCase();
-      break;
+    let extraPart = "";
+    for (let i = classIndex + 1; i < parts.length; i++) {
+      const p = parts[i];
+      if (p.toLowerCase().includes("cki") || p.toLowerCase() === "cn") {
+        extraPart = p.toUpperCase();
+        break;
+      }
     }
-  }
 
-  const match = examName.match(/\(([^)]+)\)/);
-  const examLetter = match ? match[1] : "";
+    const match = examName.match(/\(([^)]+)\)/);
+    const examLetter = match ? match[1] : "";
 
-  return `${subjectPart} ${classNumber}${extraPart ? ` - ${extraPart}` : ""} ${examLetter ? `(${examLetter})` : ""}`.trim();
-};
-
-// Lấy năm học dạng "2026-2027" từ ID đề
-const getExamYearFromId = (examId) => {
-  const match = examId.match(/(\d{2}-\d{2})/); // tìm "25-26", "26-27"...
-  if (!match) return "";
-  const years = match[1].split("-");
-  return `20${years[0]}-20${years[1]}`; // ví dụ "26-27" -> "2026-2027"
-};
-
+    return `${subjectPart} ${classNumber}${extraPart ? ` - ${extraPart}` : ""} ${examLetter ? `(${examLetter})` : ""}`.trim();
+  };
 
 const OpenExamDialog = ({
   open,
@@ -66,8 +58,6 @@ const OpenExamDialog = ({
   setDialogExamType,
   filterClass,
   setFilterClass,
-  filterYear,
-  setFilterYear,
   classes,
   loadingList,
   docList,
@@ -77,9 +67,6 @@ const OpenExamDialog = ({
   handleDeleteSelectedDoc,
   fetchQuizList,
 }) => {
-  // Danh sách năm học cố định
-  const years = ["2025-2026", "2026-2027", "2027-2028", "2028-2029", "2029-2030"];
-
   return (
     <Dialog
       open={open}
@@ -107,7 +94,10 @@ const OpenExamDialog = ({
           py: 2,
         }}
       >
-        <Typography variant="subtitle1" sx={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+        <Typography
+          variant="subtitle1"
+          sx={{ fontWeight: "bold", fontSize: "1.1rem" }}
+        >
           📂 Danh sách đề
         </Typography>
         <IconButton onClick={onClose} sx={{ color: "#fff", p: 0.6 }}>
@@ -118,17 +108,9 @@ const OpenExamDialog = ({
       {/* ===== CONTENT ===== */}
       <DialogContent
         dividers
-        sx={{
-          height: 380,         // ✅ chiều cao cố định toàn bộ DialogContent
-          px: 2,
-          py: 2,
-          bgcolor: "#fff",
-          display: "flex",
-          flexDirection: "column",
-          // ❌ bỏ overflowY: "hidden" để scroll Box con hoạt động
-        }}
+        sx={{ maxHeight: 350, overflowY: "auto", px: 2, py: 2, bgcolor: "#fff" }}
       >
-        {/* Loại đề + Lọc lớp + Lọc năm */}
+        {/* Loại đề + Lọc lớp */}
         <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: "wrap" }}>
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Loại đề</InputLabel>
@@ -148,7 +130,11 @@ const OpenExamDialog = ({
 
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Lọc lớp</InputLabel>
-            <Select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} label="Lọc lớp">
+            <Select
+              value={filterClass}
+              onChange={(e) => setFilterClass(e.target.value)}
+              label="Lọc lớp"
+            >
               <MenuItem value="Tất cả">Tất cả</MenuItem>
               {classes.map((lop) => (
                 <MenuItem key={lop} value={lop}>
@@ -157,25 +143,13 @@ const OpenExamDialog = ({
               ))}
             </Select>
           </FormControl>
-
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>Năm học</InputLabel>
-            <Select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} label="Năm học">
-              <MenuItem value="Tất cả">Tất cả</MenuItem>
-              {years.map((y) => (
-                <MenuItem key={y} value={y}>
-                  {y}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
         </Stack>
 
-        {/* Danh sách đề chiếm toàn bộ chiều cao còn lại */}
+        {/* Danh sách đề */}
         <Box
           sx={{
-            flex: 1,                  // chiếm hết không gian còn lại
-            overflowY: "auto",        // ✅ scroll khi danh sách dài
+            maxHeight: 260,
+            overflowY: "auto",
             border: "1px solid #ccc",
             borderRadius: 2,
           }}
@@ -190,10 +164,13 @@ const OpenExamDialog = ({
             </Typography>
           ) : (
             docList
-              .filter((doc) => (filterClass === "Tất cả" ? true : doc.class === filterClass))
-              .filter((doc) => (filterYear === "Tất cả" ? true : getExamYearFromId(doc.id) === filterYear))
               .filter((doc) =>
-                dialogExamType === "bt" ? doc.collection === "BAITAP_TUAN" : doc.collection === "NGANHANG_DE"
+                filterClass === "Tất cả" ? true : doc.class === filterClass
+              )
+              .filter((doc) =>
+                dialogExamType === "bt"
+                  ? doc.collection === "BAITAP_TUAN"
+                  : doc.collection === "NGANHANG_DE"
               )
               .map((doc) => (
                 <Stack
@@ -206,27 +183,37 @@ const OpenExamDialog = ({
                     height: 36,
                     cursor: "pointer",
                     borderRadius: 1,
-                    backgroundColor: selectedDoc === doc.id ? "#E3F2FD" : "transparent",
+                    backgroundColor:
+                      selectedDoc === doc.id ? "#E3F2FD" : "transparent",
                     "&:hover": { backgroundColor: "#f5f5f5" },
                   }}
                   onClick={() => setSelectedDoc(doc.id)}
                   onDoubleClick={() => handleOpenSelectedDoc(doc.id)}
                 >
-                  <Typography variant="subtitle1">{formatExamTitle(doc.id)}</Typography>
+                  <Typography variant="subtitle1">
+                    {formatExamTitle(doc.id)}
+                  </Typography>
                 </Stack>
               ))
           )}
         </Box>
       </DialogContent>
 
-
-
       {/* ===== ACTIONS ===== */}
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: "center", gap: 1.5 }}>
-        <Button onClick={() => handleOpenSelectedDoc(selectedDoc)} variant="contained" disabled={!selectedDoc}>
+        <Button
+          onClick={() => handleOpenSelectedDoc(selectedDoc)}
+          variant="contained"
+          disabled={!selectedDoc}
+        >
           Mở đề
         </Button>
-        <Button onClick={handleDeleteSelectedDoc} variant="outlined" color="error" disabled={!selectedDoc}>
+        <Button
+          onClick={handleDeleteSelectedDoc}
+          variant="outlined"
+          color="error"
+          disabled={!selectedDoc}
+        >
           Xóa đề
         </Button>
       </DialogActions>
