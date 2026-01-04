@@ -275,6 +275,42 @@ export default function DeThi() {
     ex.id.includes(yearKey)
   );
 
+  // Hàm sort đề thi sau khi format tên, theo regex
+  const sortExamList = (list) => {
+    return [...list].sort((a, b) => {
+      const regex = /(Công nghệ|Tin học) (\d+)(?: - (CKI|CKII|CN))? ?\(?([A-Z])?\)?/i;
+
+      const titleA = formatExamTitle(a.tenDe || a.id);
+      const titleB = formatExamTitle(b.tenDe || b.id);
+
+      const matchA = titleA.match(regex);
+      const matchB = titleB.match(regex);
+
+      if (!matchA || !matchB) return 0;
+
+      const [_, subjectA, classA, extraA, letterA] = matchA;
+      const [__, subjectB, classB, extraB, letterB] = matchB;
+
+      // 1️⃣ Sắp môn: Công nghệ trước Tin học
+      const subjectOrder = ["Công nghệ", "Tin học"];
+      const indexA = subjectOrder.indexOf(subjectA);
+      const indexB = subjectOrder.indexOf(subjectB);
+      if (indexA !== indexB) return indexA - indexB;
+
+      // 2️⃣ Sắp lớp
+      if (parseInt(classA) !== parseInt(classB)) return parseInt(classA) - parseInt(classB);
+
+      // 3️⃣ Sắp CKI < CKII < CN
+      const extraOrder = ["CKI", "CKII", "CN"];
+      const eA = extraOrder.indexOf(extraA || "") === -1 ? 99 : extraOrder.indexOf(extraA || "");
+      const eB = extraOrder.indexOf(extraB || "") === -1 ? 99 : extraOrder.indexOf(extraB || "");
+      if (eA !== eB) return eA - eB;
+
+      // 4️⃣ Sắp chữ cái đề
+      return (letterA || "").localeCompare(letterB || "");
+    });
+  };
+
   return (
   <Box
     sx={{
@@ -331,96 +367,91 @@ export default function DeThi() {
           </Typography>
 
           <Box
-            sx={{
-              maxHeight: { xs: 220, sm: 420 },
-              overflowY: "auto",
-              border: "1px solid #ccc",
-              borderRadius: 2,
+  sx={{
+    maxHeight: { xs: 220, sm: 420 },
+    overflowY: "auto",
+    border: "1px solid #ccc",
+    borderRadius: 2,
+  }}
+>
+  {examList.length === 0 ? (
+    <Typography sx={{ p: 2 }}>Chưa có đề</Typography>
+  ) : (
+    sortExamList(examList).map((ex) => {
+      const checked = selectedExamIds.includes(ex.id);
+
+      return (
+        <Stack
+          key={ex.id}
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{
+            px: 1,
+            py: 0.5,
+            cursor: "pointer",
+            backgroundColor: checked ? "#bbdefb" : "transparent",
+            "&:hover": { background: "#e3f2fd" },
+          }}
+          onClick={() => {
+            setSelectedExamIds(prev =>
+              prev.includes(ex.id) ? prev.filter(id => id !== ex.id) : [...prev, ex.id]
+            );
+            setSelectedExamsToCombine(prev => {
+              const has = prev.some(e => e.id === ex.id);
+              return has ? prev.filter(e => e.id !== ex.id) : [...prev, ex];
+            });
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1 }}>
+            <Checkbox
+              size="small"
+              checked={checked}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                e.stopPropagation();
+                const willCheck = e.target.checked;
+
+                setSelectedExamIds(prev =>
+                  willCheck ? [...prev, ex.id] : prev.filter(id => id !== ex.id)
+                );
+
+                setSelectedExamsToCombine(prev => {
+                  const has = prev.some(item => item.id === ex.id);
+                  if (willCheck) {
+                    return has ? prev : [...prev, ex];
+                  } else {
+                    return prev.filter(item => item.id !== ex.id);
+                  }
+                });
+              }}
+            />
+            <Typography>
+              {formatExamTitle(ex.tenDe || ex.id)}
+            </Typography>
+          </Stack>
+
+          <IconButton
+            size="small"
+            color="primary"
+            onClick={async (e) => {
+              e.stopPropagation();
+              setSelectedExam(prev => {
+                if (prev.some(e => e.id === ex.id)) return prev;
+                return [...prev, ex];
+              });
+              await addExamToFirestore(ex);
             }}
           >
-            {examList.length === 0 ? (
-              <Typography sx={{ p: 2 }}>Chưa có đề</Typography>
-            ) : (
-              examList.map((ex) => {
-                const checked = selectedExamIds.includes(ex.id);
+            <ChevronRight />
+          </IconButton>
+        </Stack>
+      );
+    })
+  )}
+</Box>
 
-                return (
-                  <Stack
-                    key={ex.id}
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                    sx={{
-                      px: 1,
-                      py: 0.5,
-                      cursor: "pointer",
-                      backgroundColor: checked ? "#bbdefb" : "transparent",
-                      "&:hover": { background: "#e3f2fd" },
-                    }}
-                    // Click vào vùng tên đề sẽ toggle
-                    onClick={() => {
-                      // toggle checkbox list
-                      setSelectedExamIds(prev =>
-                        prev.includes(ex.id) ? prev.filter(id => id !== ex.id) : [...prev, ex.id]
-                      );
-                      // toggle combine list
-                      setSelectedExamsToCombine(prev => {
-                        const has = prev.some(e => e.id === ex.id);
-                        return has ? prev.filter(e => e.id !== ex.id) : [...prev, ex];
-                      });
-                    }}
-                  >
-                    {/* Checkbox + Tên đề */}
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1 }}>
-                      <Checkbox
-                        size="small"
-                        checked={checked}
-                        // chặn mọi sự kiện nổi lên container để tránh toggle 2 lần
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          const willCheck = e.target.checked;
-
-                          setSelectedExamIds(prev =>
-                            willCheck ? [...prev, ex.id] : prev.filter(id => id !== ex.id)
-                          );
-
-                          setSelectedExamsToCombine(prev => {
-                            const has = prev.some(item => item.id === ex.id);
-                            if (willCheck) {
-                              return has ? prev : [...prev, ex];
-                            } else {
-                              return prev.filter(item => item.id !== ex.id);
-                            }
-                          });
-                        }}
-                      />
-                      <Typography>
-                        {formatExamTitle(ex.tenDe || ex.id)}
-                      </Typography>
-
-                    </Stack>
-
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        setSelectedExam(prev => {
-                          if (prev.some(e => e.id === ex.id)) return prev;
-                          return [...prev, ex];
-                        });
-                        await addExamToFirestore(ex);
-                      }}
-                    >
-                      <ChevronRight />
-                    </IconButton>
-                  </Stack>
-                );
-              })
-            )}
-          </Box>
 
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
             <Button

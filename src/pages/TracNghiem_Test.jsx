@@ -160,7 +160,6 @@ export default function TracNghiem_Test() {
         const snap = await getDocs(colRef);
 
         // Lấy key năm học từ selectedYear
-        // "2025-2026" -> "25-26"
         const yearKey = selectedYear.slice(2, 4) + "-" + selectedYear.slice(7, 9);
 
         // Học kỳ: "Cuối kỳ I" -> "CKI", "Cả năm" -> "CN"
@@ -171,11 +170,41 @@ export default function TracNghiem_Test() {
           .map(d => d.id)
           .filter(id => id.includes(yearKey) && id.includes(hocKyKey));
 
-        setExamList(exams);
+        // ✅ Sắp xếp theo thứ tự mong muốn
+        const sortedExams = exams.sort((a, b) => {
+          const regex = /quiz_Lớp (\d+)_(Công nghệ|Tin học)_(CKI|CKII|CN)_(\d+-\d+) \(([A-Z])\)/i;
+
+          const matchA = a.match(regex);
+          const matchB = b.match(regex);
+          if (!matchA || !matchB) return 0;
+
+          const [_, classA, subjectA, hkA, yearA, letterA] = matchA;
+          const [__, classB, subjectB, hkB, yearB, letterB] = matchB;
+
+          // 1️⃣ Sắp môn: Công nghệ trước Tin học
+          const subjectOrder = ["Công nghệ", "Tin học"];
+          const indexA = subjectOrder.indexOf(subjectA);
+          const indexB = subjectOrder.indexOf(subjectB);
+          if (indexA !== indexB) return indexA - indexB;
+
+          // 2️⃣ Sắp lớp
+          if (parseInt(classA) !== parseInt(classB)) return parseInt(classA) - parseInt(classB);
+
+          // 3️⃣ Sắp học kỳ CKI < CKII < CN
+          const extraOrder = ["CKI", "CKII", "CN"];
+          const eA = extraOrder.indexOf(hkA) === -1 ? 99 : extraOrder.indexOf(hkA);
+          const eB = extraOrder.indexOf(hkB) === -1 ? 99 : extraOrder.indexOf(hkB);
+          if (eA !== eB) return eA - eB;
+
+          // 4️⃣ Sắp chữ cái đề
+          return (letterA || "").localeCompare(letterB || "");
+        });
+
+        setExamList(sortedExams);
 
         // Chọn mặc định đề đầu tiên nếu selectedExam không hợp lệ
-        if (!selectedExam || !exams.includes(selectedExam)) {
-          if (exams.length > 0) setSelectedExam(exams[0]);
+        if (!selectedExam || !sortedExams.includes(selectedExam)) {
+          if (sortedExams.length > 0) setSelectedExam(sortedExams[0]);
         }
 
       } catch (err) {
@@ -187,8 +216,6 @@ export default function TracNghiem_Test() {
 
     fetchExams();
   }, [school, selectedYear, hocKi]);
-
-
 
   // ⭐ RESET TOÀN BỘ SAU KHI CHỌN ĐỀ MỚI
   useEffect(() => {
