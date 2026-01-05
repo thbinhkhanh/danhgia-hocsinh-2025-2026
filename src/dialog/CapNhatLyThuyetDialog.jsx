@@ -226,21 +226,28 @@ const CapNhatLyThuyetDialog = ({
           )}
 
           {/* Nhận xét */}
-          <TextField
+          <TextField 
             label="Nhận xét"
             size="small"
             fullWidth
             value={nhanXet}
             multiline
             maxRows={3}
-            InputProps={{ readOnly: true }}
+            onChange={(e) => setNhanXet(e.target.value)}   // ✅ cho nhập tay
             sx={{
-                mt: 3,
-              "& .MuiInputBase-root": { height: 60, alignItems: "flex-start", paddingTop: "8px", paddingBottom: "8px" },
-              "& .MuiInputBase-input": { height: "100%", overflow: "auto" },
+              mt: 3,
+              "& .MuiInputBase-root": {
+                minHeight: 60,
+                alignItems: "flex-start",
+                paddingTop: "8px",
+                paddingBottom: "8px",
+              },
+              "& .MuiInputBase-input": {
+                height: "100%",
+                overflow: "auto",
+              },
             }}
           />
-
           {error && <Typography color="error">{error}</Typography>}
 
           <Stack direction="row" justifyContent="flex-end" spacing={1} mt={1}>

@@ -100,7 +100,7 @@ export default function DeThi() {
     fetchSelected();
   }, []);
 
-  useEffect(() => {
+  /*useEffect(() => {
     const fetchCombinedExams = async () => {
       try {
         const snap = await getDocs(collection(db, "TRACNGHIEM_ONTAP"));
@@ -117,7 +117,7 @@ export default function DeThi() {
     };
 
     fetchCombinedExams();
-  }, []);
+  }, []);*/
 
 
   const addExamToFirestore = async (ex) => {
@@ -329,7 +329,7 @@ export default function DeThi() {
         borderRadius: 3,
         width: { xs: "95%", sm: "80%", md: "70%" },
         maxWidth: 600,
-        height: "600px",
+        height: "630px",
       }}
     >
       <Typography
@@ -367,90 +367,90 @@ export default function DeThi() {
           </Typography>
 
           <Box
-  sx={{
-    maxHeight: { xs: 220, sm: 420 },
-    overflowY: "auto",
-    border: "1px solid #ccc",
-    borderRadius: 2,
-  }}
->
-  {examList.length === 0 ? (
-    <Typography sx={{ p: 2 }}>Chưa có đề</Typography>
-  ) : (
-    sortExamList(examList).map((ex) => {
-      const checked = selectedExamIds.includes(ex.id);
-
-      return (
-        <Stack
-          key={ex.id}
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          sx={{
-            px: 1,
-            py: 0.5,
-            cursor: "pointer",
-            backgroundColor: checked ? "#bbdefb" : "transparent",
-            "&:hover": { background: "#e3f2fd" },
-          }}
-          onClick={() => {
-            setSelectedExamIds(prev =>
-              prev.includes(ex.id) ? prev.filter(id => id !== ex.id) : [...prev, ex.id]
-            );
-            setSelectedExamsToCombine(prev => {
-              const has = prev.some(e => e.id === ex.id);
-              return has ? prev.filter(e => e.id !== ex.id) : [...prev, ex];
-            });
-          }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1 }}>
-            <Checkbox
-              size="small"
-              checked={checked}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onChange={(e) => {
-                e.stopPropagation();
-                const willCheck = e.target.checked;
-
-                setSelectedExamIds(prev =>
-                  willCheck ? [...prev, ex.id] : prev.filter(id => id !== ex.id)
-                );
-
-                setSelectedExamsToCombine(prev => {
-                  const has = prev.some(item => item.id === ex.id);
-                  if (willCheck) {
-                    return has ? prev : [...prev, ex];
-                  } else {
-                    return prev.filter(item => item.id !== ex.id);
-                  }
-                });
-              }}
-            />
-            <Typography>
-              {formatExamTitle(ex.tenDe || ex.id)}
-            </Typography>
-          </Stack>
-
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={async (e) => {
-              e.stopPropagation();
-              setSelectedExam(prev => {
-                if (prev.some(e => e.id === ex.id)) return prev;
-                return [...prev, ex];
-              });
-              await addExamToFirestore(ex);
+            sx={{
+              maxHeight: 420,
+              overflowY: "auto",
+              border: "1px solid #ccc",
+              borderRadius: 2,
             }}
           >
-            <ChevronRight />
-          </IconButton>
-        </Stack>
-      );
-    })
-  )}
-</Box>
+            {examList.length === 0 ? (
+              <Typography sx={{ p: 2 }}>Chưa có đề</Typography>
+            ) : (
+              sortExamList(examList).map((ex) => {
+                const checked = selectedExamIds.includes(ex.id);
+
+                return (
+                  <Stack
+                    key={ex.id}
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{
+                      px: 1,
+                      py: 0.5,
+                      cursor: "pointer",
+                      backgroundColor: checked ? "#bbdefb" : "transparent",
+                      "&:hover": { background: "#e3f2fd" },
+                    }}
+                    onClick={() => {
+                      setSelectedExamIds(prev =>
+                        prev.includes(ex.id) ? prev.filter(id => id !== ex.id) : [...prev, ex.id]
+                      );
+                      setSelectedExamsToCombine(prev => {
+                        const has = prev.some(e => e.id === ex.id);
+                        return has ? prev.filter(e => e.id !== ex.id) : [...prev, ex];
+                      });
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1 }}>
+                      <Checkbox
+                        size="small"
+                        checked={checked}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          const willCheck = e.target.checked;
+
+                          setSelectedExamIds(prev =>
+                            willCheck ? [...prev, ex.id] : prev.filter(id => id !== ex.id)
+                          );
+
+                          setSelectedExamsToCombine(prev => {
+                            const has = prev.some(item => item.id === ex.id);
+                            if (willCheck) {
+                              return has ? prev : [...prev, ex];
+                            } else {
+                              return prev.filter(item => item.id !== ex.id);
+                            }
+                          });
+                        }}
+                      />
+                      <Typography>
+                        {formatExamTitle(ex.tenDe || ex.id)}
+                      </Typography>
+                    </Stack>
+
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setSelectedExam(prev => {
+                          if (prev.some(e => e.id === ex.id)) return prev;
+                          return [...prev, ex];
+                        });
+                        await addExamToFirestore(ex);
+                      }}
+                    >
+                      <ChevronRight />
+                    </IconButton>
+                  </Stack>
+                );
+              })
+            )}
+          </Box>
 
 
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
