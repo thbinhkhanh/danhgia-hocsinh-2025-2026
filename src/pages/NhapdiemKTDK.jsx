@@ -667,7 +667,7 @@ useEffect(() => {
 
   const handleDownload = async () => {
     try {
-      await exportKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I", config.mon);
+      await exportKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I", config.mon, config.namHoc);
     } catch (error) {
       console.error("❌ Lỗi khi xuất Excel:", error);
     }
@@ -712,7 +712,13 @@ useEffect(() => {
       return;
     }
     try {
-      await printKTDK(students, selectedClass, config.hocKy || "Giữa kỳ I", config.mon);
+      await printKTDK(
+        students,
+        selectedClass,
+        config.hocKy || "Giữa kỳ I",
+        config.mon,
+        config.namHoc // 👈 thêm dòng này
+      );
     } catch (err) {
       console.error("❌ Lỗi khi in:", err);
       alert("Lỗi khi in danh sách. Vui lòng thử lại!");

@@ -1,4 +1,4 @@
-export const printKTDK = (students, className, selectedSemester = "Giữa kỳ I", subject = "Tin học") => {
+export const printKTDK = (students, className, selectedSemester = "Giữa kỳ I", subject = "Tin học", namHoc) => {
   if (!students || students.length === 0) {
     alert("❌ Không có dữ liệu để in!");
     return;
@@ -27,8 +27,9 @@ export const printKTDK = (students, className, selectedSemester = "Giữa kỳ I
       break;
   }
 
-  const currentYear = new Date().getFullYear();
-  const nextYear = currentYear + 1;
+  const [currentYear, nextYear] = namHoc
+    ? namHoc.split("-")
+    : ["", ""];
   const hocKy =
     termDoc === "GKI" ? "Giữa kỳ I" :
     termDoc === "CKI" ? "Cuối kỳ I" :

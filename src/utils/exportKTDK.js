@@ -7,7 +7,7 @@ import { saveAs } from "file-saver";
  * @param {string} className - Tên lớp
  * @param {string} term - GKI, CKI, GKII, CN
  */
-export const exportKTDK = async (students, className, term = "CKI", subject = "Tin học") => {
+export const exportKTDK = async (students, className, term = "CKI", subject = "Tin học", namHoc) => {
   if (!students || students.length === 0) {
     alert("❌ Không có dữ liệu học sinh để xuất!");
     return;
@@ -64,8 +64,7 @@ export const exportKTDK = async (students, className, term = "CKI", subject = "T
     titleRow.height = 25;
 
     // 🔹 Dòng học kỳ & năm học
-    const currentYear = new Date().getFullYear();
-    const subRow = sheet.addRow([`${termLabel} – NH: ${currentYear}-${currentYear + 1}`]);
+    const subRow = sheet.addRow([`${termLabel} – NH: ${namHoc}`]);
     subRow.font = { italic: true, size: 12 };
     sheet.mergeCells(`A3:H3`);
     subRow.alignment = { horizontal: "center" };
