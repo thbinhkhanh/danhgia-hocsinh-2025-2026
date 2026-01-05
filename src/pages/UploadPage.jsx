@@ -14,6 +14,11 @@ import {
   Box,
   LinearProgress,
   Snackbar,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormControl,
+  FormLabel,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -29,11 +34,13 @@ export default function UploadPage({ open, onClose, selectedClass }) {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+  const [uploadType, setUploadType] = useState("students"); 
 
   // Reset khi mở dialog
   useEffect(() => {
     if (open) {
       setSelectedFile(null);
+      setUploadType("students");
       setLoading(false);
       setProgress(0);
       setMessage("");
@@ -50,7 +57,11 @@ export default function UploadPage({ open, onClose, selectedClass }) {
 
   const handleUpload = async () => {
     if (!selectedFile || !selectedClass) {
-      setSnackbar({ open: true, severity: "warning", message: "Vui lòng chọn file và lớp trước khi tải" });
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "Vui lòng chọn file và lớp trước khi tải",
+      });
       return;
     }
 
@@ -64,34 +75,86 @@ export default function UploadPage({ open, onClose, selectedClass }) {
       const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-      const dataToSave = {};
-      jsonData.forEach((item) => {
-        if (item.maDinhDanh && item.hoVaTen) {
-          dataToSave[item.maDinhDanh] = { hoVaTen: item.hoVaTen };
-        }
-      });
+      /* ================= DANH SÁCH HỌC SINH ================= */
+      if (uploadType === "students") {
+        const dataToSave = {};
 
-      // Mô phỏng progress
-      const keys = Object.keys(dataToSave);
-      for (let i = 0; i < keys.length; i++) {
-        const id = keys[i];
-        await setDoc(doc(db, "DANHSACH", selectedClass), { [id]: dataToSave[id] }, { merge: true });
-        setProgress(Math.round(((i + 1) / keys.length) * 100));
+        jsonData.forEach((item) => {
+          if (item.maDinhDanh && item.hoVaTen) {
+            dataToSave[item.maDinhDanh] = { hoVaTen: item.hoVaTen };
+          }
+        });
+
+        const keys = Object.keys(dataToSave);
+        for (let i = 0; i < keys.length; i++) {
+          const id = keys[i];
+          await setDoc(
+            doc(db, "DANHSACH", selectedClass),
+            { [id]: dataToSave[id] },
+            { merge: true }
+          );
+          setProgress(Math.round(((i + 1) / keys.length) * 100));
+        }
+
+        setSnackbar({
+          open: true,
+          severity: "success",
+          message: "✅ Tải danh sách học sinh thành công",
+        });
       }
 
-      setMessage("📥 Tải dữ liệu thành công!");
-      setSuccess(true);
-      setSnackbar({ open: true, severity: "success", message: "✅ Tải danh sách thành công" });
+      /* ================= PHÂN PHỐI CHƯƠNG TRÌNH ================= */
+      else {
+        const validRows = jsonData.filter(
+          (i) => i["Tuần"] && i["Chủ đề"] && i["Tên bài học"] && i["Khối"]
+        );
+
+        for (let i = 0; i < validRows.length; i++) {
+          const item = validRows[i];
+
+          const khoi = `khoi${item["Khối"]}`;
+
+          // Chuẩn hoá tuần: "2 + 3" → tuan_2_3
+          const tuanKey =
+            "tuan_" +
+            String(item["Tuần"])
+              .replace(/\s+/g, "")
+              .replace(/\+/g, "_");
+
+          await setDoc(
+            doc(db, "PPCT", khoi),
+            {
+              [tuanKey]: {
+                chuDe: item["Chủ đề"],
+                tenBaiHoc: item["Tên bài học"],
+                thoiLuong: item["Thời lượng"] || "",
+              },
+            },
+            { merge: true }
+          );
+
+          setProgress(Math.round(((i + 1) / validRows.length) * 100));
+        }
+
+        setSnackbar({
+          open: true,
+          severity: "success",
+          message: "✅ Tải phân phối chương trình thành công",
+        });
+      }
     } catch (err) {
       console.error(err);
-      setMessage("❌ Lỗi khi tải file.");
-      setSuccess(false);
-      setSnackbar({ open: true, severity: "error", message: "❌ Lỗi khi tải danh sách" });
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "❌ Lỗi khi tải file Excel",
+      });
     } finally {
       setLoading(false);
       setProgress(0);
     }
   };
+
 
   return (
     <>
@@ -126,6 +189,26 @@ export default function UploadPage({ open, onClose, selectedClass }) {
             <CloseIcon />
           </IconButton>
         </Box>
+
+        <FormControl>
+          <FormLabel>Loại dữ liệu tải lên</FormLabel>
+          <RadioGroup
+            row
+            value={uploadType}
+            onChange={(e) => setUploadType(e.target.value)}
+          >
+            <FormControlLabel
+              value="students"
+              control={<Radio />}
+              label="Danh sách học sinh"
+            />
+            <FormControlLabel
+              value="ppc"
+              control={<Radio />}
+              label="Phân phối chương trình"
+            />
+          </RadioGroup>
+        </FormControl>
 
         {/* Nội dung */}
         <DialogContent dividers>

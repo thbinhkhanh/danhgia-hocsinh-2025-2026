@@ -9,6 +9,8 @@ import { printDanhSach } from "../utils/printDanhSach";
 
 import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
+import { Tabs, Tab } from "@mui/material";
+import { Switch, FormControlLabel } from "@mui/material";
 
 export default function DanhSachHS() {
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
@@ -17,7 +19,12 @@ export default function DanhSachHS() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
+  const [ppct, setPpct] = useState([]);
+  const [viewMode, setViewMode] = useState("ppct"); 
+  const [selectedKhoi, setSelectedKhoi] = useState("khoi4");
+  const [showChuDe, setShowChuDe] = useState(false); // ✅ mặc định OFF
 
+  
   // 🔹 Lấy config realtime
   useEffect(() => {
     const docRef = doc(db, "CONFIG", "config");
@@ -120,6 +127,51 @@ export default function DanhSachHS() {
   fetchStudents();
 }, [selectedClass, studentData, setStudentData]);
 
+useEffect(() => {
+    if (viewMode !== "ppct" || !selectedKhoi) return;
+
+    const fetchPPCT = async () => {
+      try {
+        const docRef = doc(db, "PPCT", selectedKhoi);
+        const snap = await getDoc(docRef);
+
+        if (!snap.exists()) {
+          setPpct([]);
+          return;
+        }
+
+        const data = snap.data();
+
+        // data dạng: tuan_1, tuan_2_3...
+        const list = Object.entries(data)
+          .map(([key, value]) => {
+            const weekText = key.replace("tuan_", "").replace(/_/g, " + ");
+
+            // Lấy tuần nhỏ nhất để sort
+            const firstWeek = parseInt(weekText.split("+")[0].trim(), 10);
+
+            return {
+              tuan: weekText,
+              chuDe: value.chuDe,
+              tenBaiHoc: value.tenBaiHoc,
+              thoiLuong: value.thoiLuong,
+              _sortWeek: firstWeek, // dùng nội bộ để sort
+            };
+          })
+          .sort((a, b) => a._sortWeek - b._sortWeek)
+          .map(({ _sortWeek, ...rest }) => rest); // xoá field phụ
+
+
+        setPpct(list);
+      } catch (err) {
+        console.error("❌ Lỗi lấy PPCT:", err);
+        setPpct([]);
+      }
+    };
+
+    fetchPPCT();
+  }, [viewMode, selectedKhoi]);
+
 
   {/*const handleClassChange = async (e) => {
     const newClass = e.target.value;
@@ -156,130 +208,166 @@ export default function DanhSachHS() {
         p: 4,
         borderRadius: 3,
         width: "100%",
-        maxWidth: 800,
+        maxWidth:
+          viewMode === "students"
+            ? 700
+            : showChuDe
+            ? 1100
+            : 700,
         bgcolor: "white",
-        position: "relative", // ✅ để đặt icon tuyệt đối
+        position: "relative",
       }}
     >
-      {/* 🔹 Nhóm icon ở góc trên trái */}
-      <Box
-        sx={{
-          position: "absolute",
-          top: 12,
-          left: 12,
-          display: "flex",
-          gap: 1, // khoảng cách giữa 2 icon
-        }}
-      >
-        {/* Xuất Excel */}
-        <Tooltip title="Xuất danh sách Excel">
-          <IconButton
-            onClick={() => exportDanhsach(selectedClass)}
-            sx={{
-              color: "#1976d2",
-              backgroundColor: "rgba(25,118,210,0.1)",
-              "&:hover": { backgroundColor: "rgba(25,118,210,0.2)" },
-            }}
-          >
-            <DownloadIcon />
-          </IconButton>
-        </Tooltip>
 
-        {/* In danh sách */}
-        <Tooltip title="In danh sách học sinh">
-          <IconButton
-            onClick={() => printDanhSach(selectedClass)}
-            sx={{
-              color: "#2e7d32",
-              backgroundColor: "rgba(46,125,50,0.1)",
-              "&:hover": { backgroundColor: "rgba(46,125,50,0.2)" },
-            }}
-          >
-            <PrintIcon />
-          </IconButton>
-        </Tooltip>
+      {/* ICON */}
+      <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
+        {viewMode === "students" && (
+          <>
+            <Tooltip title="Xuất Excel">
+              <IconButton
+                onClick={() => exportDanhsach(selectedClass)}
+                sx={{ color: "#1976d2", bgcolor: "rgba(25,118,210,0.1)" }}
+              >
+                <DownloadIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="In danh sách">
+              <IconButton
+                onClick={() => printDanhSach(selectedClass)}
+                sx={{ color: "#2e7d32", bgcolor: "rgba(46,125,50,0.1)" }}
+              >
+                <PrintIcon />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
       </Box>
 
-      {/* Tiêu đề */}
+      {/* TIÊU ĐỀ */}
       <Box sx={{ textAlign: "center", mb: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2" }}>
-          DANH SÁCH HỌC SINH
+          {viewMode === "students" ? "DANH SÁCH HỌC SINH" : "PHÂN PHỐI CHƯƠNG TRÌNH"}
         </Typography>
       </Box>
 
-      {/* Dropdown chọn lớp */}
+      {/* DROPDOWN */}
       <Box
         sx={{
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          mb: 4,
-          gap: 1,
+          mb: 2,
+          gap: 2,
+          flexWrap: "wrap",
         }}
       >
-        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-          Lớp:
-        </Typography>
-        <Select
-          value={selectedClass}
-          onChange={handleClassChange}
-          size="small"
-          sx={{ width: 80, height: 40 }}
-        >
-          {classes.map((cls) => (
-            <MenuItem key={cls} value={cls}>
-              {cls}
-            </MenuItem>
-          ))}
-        </Select>
+        {viewMode === "students" ? (
+          <>
+            <Typography fontWeight={500}>Lớp:</Typography>
+            <Select
+              value={selectedClass}
+              onChange={handleClassChange}
+              size="small"
+              sx={{ width: 80 }}
+            >
+              {classes.map((cls) => (
+                <MenuItem key={cls} value={cls}>
+                  {cls}
+                </MenuItem>
+              ))}
+            </Select>
+          </>
+        ) : (
+          <>
+            <Typography fontWeight={500}>Khối:</Typography>
+            <Select
+              value={selectedKhoi}
+              onChange={(e) => setSelectedKhoi(e.target.value)}
+              size="small"
+              sx={{
+                width: 80,
+                textAlign: "center",
+
+                // phần chữ khi Select đang đóng
+                "& .MuiSelect-select": {
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                },
+              }}
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    "& .MuiMenuItem-root": {
+                      justifyContent: "center", // menu xổ xuống
+                    },
+                  },
+                },
+              }}
+            >
+              <MenuItem value="khoi4">4</MenuItem>
+              <MenuItem value="khoi5">5</MenuItem>
+            </Select>
+
+
+            {/* 🔹 TOGGLE CHỦ ĐỀ */}
+            <FormControlLabel
+              sx={{ ml: 2 }}
+              control={
+                <Switch
+                  checked={showChuDe}
+                  onChange={(e) => setShowChuDe(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Hiện cột Chủ đề"
+            />
+          </>
+        )}
       </Box>
 
-      {/* Bảng học sinh */}
-      <Box sx={{ width: "100%", overflowX: "auto" }}>
-        <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
-          <Table size="small" sx={{ minWidth: 650 }}>
+      {/* TAB */}
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+        <Tabs value={viewMode} onChange={(e, v) => setViewMode(v)}>
+          <Tab value="ppct" label="Phân phối chương trình" />
+          <Tab value="students" label="Danh sách học sinh" />          
+        </Tabs>
+      </Box>
+
+      {/* ===== DANH SÁCH ===== */}
+      {viewMode === "students" && (
+        <TableContainer
+          component={Paper}
+          sx={{ boxShadow: "none", border: "1px solid rgba(0,0,0,0.12)", overflowX: "auto" }}
+        >
+          <Table size="small" sx={{ tableLayout: "fixed", minWidth: 600 }}>
             <TableHead>
-              <TableRow sx={{ height: 36 }}>
+              <TableRow>
                 <TableCell
-                  sx={{
-                    bgcolor: "#1976d2",
-                    color: "#ffffff",
-                    textAlign: "center",
-                    borderRight: "1px solid rgba(0,0,0,0.12)",
-                    width: 50,
-                  }}
+                  align="center"
+                  sx={{ width: 40, bgcolor: "#1976d2", color: "#fff", border: "1px solid rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}
                 >
                   STT
                 </TableCell>
+
                 <TableCell
-                  sx={{
-                    bgcolor: "#1976d2",
-                    color: "#ffffff",
-                    textAlign: "center",
-                    borderRight: "1px solid rgba(0,0,0,0.12)",
-                    width: 120,
-                  }}
+                  align="center"
+                  sx={{ width: 120, bgcolor: "#1976d2", color: "#fff", border: "1px solid rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}
                 >
                   MÃ ĐỊNH DANH
                 </TableCell>
+
                 <TableCell
-                  sx={{
-                    bgcolor: "#1976d2",
-                    color: "#ffffff",
-                    textAlign: "center",
-                    borderRight: "1px solid rgba(0,0,0,0.12)",
-                    width: 200,
-                  }}
+                  align="center"
+                  sx={{ width: 220, bgcolor: "#1976d2", color: "#fff", border: "1px solid rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}
                 >
                   HỌ VÀ TÊN
                 </TableCell>
+
                 <TableCell
-                  sx={{
-                    bgcolor: "#1976d2",
-                    color: "#ffffff",
-                    textAlign: "center",
-                    width: 250,
-                  }}
+                  align="center"
+                  sx={{ bgcolor: "#1976d2", color: "#fff", border: "1px solid rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}
                 >
                   GHI CHÚ
                 </TableCell>
@@ -287,56 +375,209 @@ export default function DanhSachHS() {
             </TableHead>
 
             <TableBody>
-              {students.map((student) => (
-                <TableRow key={student.maDinhDanh} sx={{ height: 32 }}>
+              {students.map((s) => (
+                <TableRow key={s.maDinhDanh}>
                   <TableCell
-                    sx={{
-                      px: 1,
-                      textAlign: "center",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      width: 50,
-                    }}
+                    align="center"
+                    sx={{ width: 40, border: "1px solid rgba(0,0,0,0.12)", whiteSpace: "nowrap" }}
                   >
-                    {student.stt}
+                    {s.stt}
                   </TableCell>
+
                   <TableCell
-                    sx={{
-                      px: 1,
-                      textAlign: "center",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      width: 120,
-                    }}
+                    align="center"
+                    sx={{ width: 120, border: "1px solid rgba(0,0,0,0.12)", whiteSpace: "nowrap" }}
                   >
-                    {student.maDinhDanh}
+                    {s.maDinhDanh}
                   </TableCell>
+
                   <TableCell
                     sx={{
-                      px: 1,
-                      textAlign: "left",
+                      width: 220,
                       border: "1px solid rgba(0,0,0,0.12)",
-                      width: 200,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
-                    {student.hoVaTen}
+                    {s.hoVaTen}
                   </TableCell>
+
                   <TableCell
                     sx={{
-                      px: 1,
-                      textAlign: "center",
                       border: "1px solid rgba(0,0,0,0.12)",
-                      width: 250,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
-                    {student.ghiChu}
+                    {s.ghiChu}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
+
           </Table>
         </TableContainer>
-      </Box>
+      )}
+
+      {/* ===== PPCT ===== */}
+      {viewMode === "ppct" && (
+        <TableContainer
+          component={Paper}
+          sx={{
+            boxShadow: "none",
+            border: "1px solid rgba(0,0,0,0.12)",
+            overflowX: "auto",
+          }}
+        >
+          <Table
+            size="small"
+            sx={{
+              tableLayout: "fixed", // ✅ bắt buộc
+              minWidth: showChuDe ? 900 : 580,
+            }}
+          >
+            {/* ===== HEADER ===== */}
+            <TableHead>
+              <TableRow>
+                <TableCell
+                  align="center"
+                  sx={{
+                    width: 80,
+                    bgcolor: "#1976d2",
+                    color: "#fff",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  TUẦN
+                </TableCell>
+
+                {showChuDe && (
+                  <TableCell
+                    align="center"
+                    sx={{
+                      width: 320,
+                      bgcolor: "#1976d2",
+                      color: "#fff",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    CHỦ ĐỀ
+                  </TableCell>
+                )}
+
+                <TableCell
+                  align="center"
+                  sx={{
+                    width: 320, // ✅ CỐ ĐỊNH
+                    bgcolor: "#1976d2",
+                    color: "#fff",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  TÊN BÀI HỌC
+                </TableCell>
+
+                <TableCell
+                  align="center"
+                  sx={{
+                    width: 80,
+                    bgcolor: "#1976d2",
+                    color: "#fff",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  THỜI LƯỢNG
+                </TableCell>
+              </TableRow>
+            </TableHead>
+
+            {/* ===== BODY ===== */}
+            <TableBody>
+              {ppct.map((row, idx) => {
+                const isOnTap = row.tenBaiHoc?.toLowerCase().includes("ôn tập");
+                const isKiemTra = row.tenBaiHoc?.toLowerCase().includes("kiểm tra");
+
+                const bgColor = isOnTap
+                  ? "#fff8e1"
+                  : isKiemTra
+                  ? "#e3f2fd"
+                  : "transparent";
+
+                return (
+                  <TableRow key={idx} sx={{ bgcolor: bgColor }}>
+                    {/* TUẦN */}
+                    <TableCell
+                      align="center"
+                      sx={{
+                        width: 80,
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {row.tuan}
+                    </TableCell>
+
+                    {/* CHỦ ĐỀ */}
+                    {showChuDe && (
+                      <TableCell
+                        sx={{
+                          width: 320,
+                          maxWidth: 320,
+                          border: "1px solid rgba(0,0,0,0.12)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                        title={row.chuDe}
+                      >
+                        {row.chuDe}
+                      </TableCell>
+                    )}
+
+                    {/* TÊN BÀI HỌC */}
+                    <TableCell
+                      sx={{
+                        width: 320,
+                        maxWidth: 320, // ✅ KHÓA CỨNG
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        fontWeight: isKiemTra ? 600 : 400,
+                      }}
+                      title={row.tenBaiHoc}
+                    >
+                      {row.tenBaiHoc}
+                    </TableCell>
+
+                    {/* THỜI LƯỢNG */}
+                    <TableCell
+                      align="center"
+                      sx={{
+                        width: 80,
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {row.thoiLuong}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
     </Paper>
   </Box>
 );
+
 
 }
