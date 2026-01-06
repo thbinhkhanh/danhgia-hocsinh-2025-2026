@@ -420,14 +420,18 @@ export default function QuanTri() {
               <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                 <FormControl size="small" sx={{ flex: 1 }}>
                   <Select value={selectedWeek} onChange={handleWeekChange}>
-                    {[...Array(35)].map((_, i) => (
-                      <MenuItem key={i + 1} value={i + 1}>
-                        Tuần {i + 1}
+                    {(
+                      selectedSemester === "Giữa kỳ I" ||
+                      selectedSemester === "Cuối kỳ I"
+                        ? Array.from({ length: 18 }, (_, i) => i + 1) // 1 → 18
+                        : Array.from({ length: 17 }, (_, i) => i + 19) // 19 → 35
+                    ).map((week) => (
+                      <MenuItem key={week} value={week}>
+                        Tuần {week}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
-
                 <TextField
                   label="Thời gian (phút)"
                   type="number"

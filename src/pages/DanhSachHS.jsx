@@ -321,7 +321,7 @@ useEffect(() => {
                   color="primary"
                 />
               }
-              label="Hiện cột Chủ đề"
+              label="Hiện Chủ đề"
             />
           </>
         )}
