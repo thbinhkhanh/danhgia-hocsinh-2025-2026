@@ -128,50 +128,84 @@ export default function DanhSachHS() {
 }, [selectedClass, studentData, setStudentData]);
 
 useEffect(() => {
-    if (viewMode !== "ppct" || !selectedKhoi) return;
+  if (viewMode !== "ppct" || !selectedKhoi || !config?.namHoc) return;
 
-    const fetchPPCT = async () => {
-      try {
-        const docRef = doc(db, "PPCT", selectedKhoi);
-        const snap = await getDoc(docRef);
+  const fetchPPCT = async () => {
+    try {
+      // 👉 ghép khối + năm học
+      const khoiNamHoc = `${selectedKhoi}_${config.namHoc}`;
 
-        if (!snap.exists()) {
-          setPpct([]);
-          return;
+      const docRef = doc(db, "PPCT", khoiNamHoc);
+      const snap = await getDoc(docRef);
+
+      if (!snap.exists()) {
+        setPpct([]);
+        return;
+      }
+
+      const data = snap.data();
+
+      // 1️⃣ Chuẩn hoá & sort theo tuần
+      const list = Object.entries(data)
+        .map(([key, value]) => {
+          const weekText = key.replace("tuan_", "").replace(/_/g, " + ");
+          const firstWeek = parseInt(weekText.split("+")[0].trim(), 10);
+
+          return {
+            tuan: weekText,
+            chuDe: value.chuDe || "",
+            tenBaiHoc: value.tenBaiHoc || "",
+            lt: value.lt || "",
+            th: value.th || "",
+            _sortWeek: firstWeek,
+          };
+        })
+        .sort((a, b) => a._sortWeek - b._sortWeek)
+        .map(({ _sortWeek, ...rest }) => rest);
+
+      // 2️⃣ MERGE CHỦ ĐỀ (rowSpan)
+      const processed = [];
+      let i = 0;
+
+      while (i < list.length) {
+        const currentChuDe = list[i].chuDe;
+        let rowSpan = 1;
+
+        // đếm các dòng liên tiếp cùng chủ đề
+        for (let j = i + 1; j < list.length; j++) {
+          if (list[j].chuDe === currentChuDe) rowSpan++;
+          else break;
         }
 
-        const data = snap.data();
+        // dòng đầu của nhóm
+        processed.push({
+          ...list[i],
+          _showChuDe: true,
+          _rowSpan: rowSpan,
+        });
 
-        // data dạng: tuan_1, tuan_2_3...
-        const list = Object.entries(data)
-          .map(([key, value]) => {
-            const weekText = key.replace("tuan_", "").replace(/_/g, " + ");
+        // các dòng sau
+        for (let k = 1; k < rowSpan; k++) {
+          processed.push({
+            ...list[i + k],
+            _showChuDe: false,
+            _rowSpan: 0,
+          });
+        }
 
-            // Lấy tuần nhỏ nhất để sort
-            const firstWeek = parseInt(weekText.split("+")[0].trim(), 10);
-
-            return {
-              tuan: weekText,
-              chuDe: value.chuDe,
-              tenBaiHoc: value.tenBaiHoc,
-              thoiLuong: value.thoiLuong,
-              _sortWeek: firstWeek, // dùng nội bộ để sort
-            };
-          })
-          .sort((a, b) => a._sortWeek - b._sortWeek)
-          .map(({ _sortWeek, ...rest }) => rest); // xoá field phụ
-
-
-        setPpct(list);
-      } catch (err) {
-        console.error("❌ Lỗi lấy PPCT:", err);
-        setPpct([]);
+        i += rowSpan;
       }
-    };
 
-    fetchPPCT();
-  }, [viewMode, selectedKhoi]);
+      // 3️⃣ setState DUY NHẤT 1 LẦN
+      setPpct(processed);
+    } catch (err) {
+      console.error("❌ Lỗi lấy PPCT:", err);
+      setPpct([]);
+    }
+  };
 
+  fetchPPCT();
+}, [viewMode, selectedKhoi, config?.namHoc]);
 
   {/*const handleClassChange = async (e) => {
     const newClass = e.target.value;
@@ -189,6 +223,18 @@ useEffect(() => {
     const newClass = e.target.value;
     setSelectedClass(newClass); // chỉ cập nhật state local
     };
+
+  const tongLT = ppct.reduce((sum, r) => sum + (Number(r.lt) || 0), 0);
+  const tongTH = ppct.reduce((sum, r) => {
+    const ten = r.tenBaiHoc?.toLowerCase() || "";
+
+    // bỏ 4 tiết ôn tập + kiểm tra
+    if (ten.includes("ôn tập") || ten.includes("kiểm tra")) {
+      return sum;
+    }
+
+    return sum + (Number(r.th) || 0);
+  }, 0);
 
   return (
   <Box
@@ -247,7 +293,9 @@ useEffect(() => {
       {/* TIÊU ĐỀ */}
       <Box sx={{ textAlign: "center", mb: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2" }}>
-          {viewMode === "students" ? "DANH SÁCH HỌC SINH" : "PHÂN PHỐI CHƯƠNG TRÌNH"}
+          {viewMode === "students"
+            ? "DANH SÁCH HỌC SINH"
+            : `PHÂN PHỐI CHƯƠNG TRÌNH ${config?.namHoc ?? ""}`}
         </Typography>
       </Box>
 
@@ -434,13 +482,14 @@ useEffect(() => {
           <Table
             size="small"
             sx={{
-              tableLayout: "fixed", // ✅ bắt buộc
-              minWidth: showChuDe ? 900 : 580,
+              tableLayout: "fixed",
+              minWidth: showChuDe ? 1020 : 700,
             }}
           >
             {/* ===== HEADER ===== */}
             <TableHead>
               <TableRow>
+                {/* TUẦN */}
                 <TableCell
                   align="center"
                   sx={{
@@ -454,6 +503,7 @@ useEffect(() => {
                   TUẦN
                 </TableCell>
 
+                {/* CHỦ ĐỀ */}
                 {showChuDe && (
                   <TableCell
                     align="center"
@@ -469,10 +519,11 @@ useEffect(() => {
                   </TableCell>
                 )}
 
+                {/* TÊN BÀI HỌC */}
                 <TableCell
                   align="center"
                   sx={{
-                    width: 320, // ✅ CỐ ĐỊNH
+                    width: 320,
                     bgcolor: "#1976d2",
                     color: "#fff",
                     border: "1px solid rgba(0,0,0,0.12)",
@@ -482,17 +533,32 @@ useEffect(() => {
                   TÊN BÀI HỌC
                 </TableCell>
 
+                {/* LT */}
                 <TableCell
                   align="center"
                   sx={{
-                    width: 80,
+                    width: 60,
                     bgcolor: "#1976d2",
                     color: "#fff",
                     border: "1px solid rgba(0,0,0,0.12)",
                     whiteSpace: "nowrap",
                   }}
                 >
-                  THỜI LƯỢNG
+                  LT
+                </TableCell>
+
+                {/* TH */}
+                <TableCell
+                  align="center"
+                  sx={{
+                    width: 60,
+                    bgcolor: "#1976d2",
+                    color: "#fff",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  TH
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -523,9 +589,10 @@ useEffect(() => {
                       {row.tuan}
                     </TableCell>
 
-                    {/* CHỦ ĐỀ */}
-                    {showChuDe && (
+                    {/* CHỦ ĐỀ (MERGE) */}
+                    {showChuDe && row._showChuDe && (
                       <TableCell
+                        rowSpan={row._rowSpan}
                         sx={{
                           width: 320,
                           maxWidth: 320,
@@ -533,6 +600,8 @@ useEffect(() => {
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
+                          verticalAlign: "middle",
+                          textTransform: "uppercase",
                         }}
                         title={row.chuDe}
                       >
@@ -544,7 +613,7 @@ useEffect(() => {
                     <TableCell
                       sx={{
                         width: 320,
-                        maxWidth: 320, // ✅ KHÓA CỨNG
+                        maxWidth: 320,
                         border: "1px solid rgba(0,0,0,0.12)",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
@@ -556,24 +625,93 @@ useEffect(() => {
                       {row.tenBaiHoc}
                     </TableCell>
 
-                    {/* THỜI LƯỢNG */}
+                    {/* LT */}
                     <TableCell
                       align="center"
                       sx={{
-                        width: 80,
+                        width: 60,
                         border: "1px solid rgba(0,0,0,0.12)",
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {row.thoiLuong}
+                      {row.lt || ""}
+                    </TableCell>
+
+                    {/* TH */}
+                    <TableCell
+                      align="center"
+                      sx={{
+                        width: 60,
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {row.th || ""}
                     </TableCell>
                   </TableRow>
                 );
               })}
+
+              {/* ===== DÒNG TỔNG ===== */}
+              <TableRow sx={{ bgcolor: "#ffcc80" }}>
+                {/* TUẦN */}
+                <TableCell
+                  align="center"
+                  sx={{
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    fontWeight: 600,
+                  }}
+                >
+                  TỔNG
+                </TableCell>
+
+                {/* CHỦ ĐỀ (nếu có) */}
+                {showChuDe && (
+                  <TableCell
+                    sx={{
+                      border: "1px solid rgba(0,0,0,0.12)",
+                    }}
+                  />
+                )}
+
+                {/* TÊN BÀI HỌC */}
+                <TableCell
+                  sx={{
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    fontWeight: 600,
+                  }}
+                >
+                  Tổng số tiết
+                </TableCell>
+
+                {/* LT */}
+                <TableCell
+                  align="center"
+                  sx={{
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {tongLT}
+                </TableCell>
+
+                {/* TH */}
+                <TableCell
+                  align="center"
+                  sx={{
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {tongTH}
+                </TableCell>
+              </TableRow>
+
             </TableBody>
           </Table>
         </TableContainer>
       )}
+
 
     </Paper>
   </Box>

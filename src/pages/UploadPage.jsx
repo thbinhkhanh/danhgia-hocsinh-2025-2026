@@ -25,6 +25,8 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import * as XLSX from "xlsx";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { ConfigContext } from "../context/ConfigContext";
+import { useContext } from "react";
 
 export default function UploadPage({ open, onClose, selectedClass }) {
   const fileInputRef = useRef(null);
@@ -35,6 +37,7 @@ export default function UploadPage({ open, onClose, selectedClass }) {
   const [success, setSuccess] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const [uploadType, setUploadType] = useState("students"); 
+  const { config } = useContext(ConfigContext);
 
   // Reset khi mở dialog
   useEffect(() => {
@@ -106,42 +109,60 @@ export default function UploadPage({ open, onClose, selectedClass }) {
       /* ================= PHÂN PHỐI CHƯƠNG TRÌNH ================= */
       else {
         const validRows = jsonData.filter(
-          (i) => i["Tuần"] && i["Chủ đề"] && i["Tên bài học"] && i["Khối"]
+          (i) =>
+            i["Tuần"] &&
+            i["Chủ đề"] &&
+            i["Tên bài học"] &&
+            i["Khối"] &&
+            (i["LT"] || i["TH"])
         );
+
+        const namHoc = config?.namHoc;
+        const khoiData = {};
 
         for (let i = 0; i < validRows.length; i++) {
           const item = validRows[i];
 
-          const khoi = `khoi${item["Khối"]}`;
+          const khoiNamHoc = `khoi${item["Khối"]}_${namHoc}`;
 
-          // Chuẩn hoá tuần: "2 + 3" → tuan_2_3
           const tuanKey =
             "tuan_" +
             String(item["Tuần"])
               .replace(/\s+/g, "")
               .replace(/\+/g, "_");
 
-          await setDoc(
-            doc(db, "PPCT", khoi),
-            {
-              [tuanKey]: {
-                chuDe: item["Chủ đề"],
-                tenBaiHoc: item["Tên bài học"],
-                thoiLuong: item["Thời lượng"] || "",
-              },
-            },
-            { merge: true }
-          );
+          if (!khoiData[khoiNamHoc]) {
+            khoiData[khoiNamHoc] = {};
+          }
+
+          const lt = Number(item["LT"] || 0);
+          const th = Number(item["TH"] || 0);
+
+          khoiData[khoiNamHoc][tuanKey] = {
+            chuDe: item["Chủ đề"],
+            tenBaiHoc: item["Tên bài học"],
+            lt,      // ✅ GHI RIÊNG LT
+            th,      // ✅ GHI RIÊNG TH
+          };
 
           setProgress(Math.round(((i + 1) / validRows.length) * 100));
+        }
+
+        for (const khoiNamHoc in khoiData) {
+          await setDoc(
+            doc(db, "PPCT", khoiNamHoc),
+            khoiData[khoiNamHoc]
+          );
         }
 
         setSnackbar({
           open: true,
           severity: "success",
-          message: "✅ Tải phân phối chương trình thành công",
+          message: "✅ Tải phân phối chương trình thành công (ghi đè toàn bộ khối)",
         });
       }
+
+
     } catch (err) {
       console.error(err);
       setSnackbar({
