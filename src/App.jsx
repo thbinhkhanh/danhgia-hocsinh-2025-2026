@@ -115,7 +115,7 @@ function AppContent() {
           { path: "/xuatdanhgia", label: "Xuất đánh giá" },
           { path: "/ketqua", label: "Kết quả" },
           { path: "/thongke", label: "Thống kê" },
-          { path: "/danhsach", label: "PPCT" },
+          { path: "/danhsach", label: "PPCT - DS" },
           //{ path: "/tracnghiem", label: "Trắc nghiệm" },
           { path: "/tracnghiem-gv", label: "Soạn đề" },
           { path: "/tracnghiem-test", label: "Test đề" }, 

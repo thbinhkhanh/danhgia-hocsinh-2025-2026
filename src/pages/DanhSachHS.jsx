@@ -696,7 +696,7 @@ export default function DanhSachHS() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    LT
+                    L.THUYẾT
                   </TableCell>
 
                   {/* TH */}
@@ -710,7 +710,7 @@ export default function DanhSachHS() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    TH
+                    T.HÀNH
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -833,7 +833,7 @@ export default function DanhSachHS() {
                       fontWeight: 600,
                     }}
                   >
-                    Tổng số tiết
+                    {/*Tổng số tiết*/}
                   </TableCell>
 
                   {/* LT */}
