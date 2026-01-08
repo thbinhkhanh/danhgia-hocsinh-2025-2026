@@ -575,14 +575,14 @@ export default function QuanTri() {
             {/* Quản trị dữ liệu */}
             <Stack spacing={2.5} sx={{ mb: 4 }}>
               {/* 📤 DANH SÁCH HỌC SINH */}
-              <Button
+              {/*<Button
                 variant="contained"
                 color="success"
                 startIcon={<CloudUploadIcon />}
                 onClick={() => setOpenUploadPage(true)}
               >
                 Tải danh sách năm mới
-              </Button>
+              </Button>*/}
 
               <Button
                 variant="contained"
