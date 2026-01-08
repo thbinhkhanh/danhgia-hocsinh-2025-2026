@@ -1,15 +1,45 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Box, Typography, MenuItem, FormControl, InputLabel, Select, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, IconButton, Tooltip } from "@mui/material";
+import {
+  Box,
+  Typography,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  Grid,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+} from "@mui/material";
+
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, setDoc, onSnapshot } from "firebase/firestore";
+import { updateDoc, deleteField } from "firebase/firestore";
 import { exportDanhsach } from "../utils/exportDanhSach";
 import { printDanhSach } from "../utils/printDanhSach";
 import { uploadStudents, uploadPPCT } from "../utils/uploadExcel";
+import updateDATAForStudent from "../utils/updateDATAForStudent";
+import EditStudentDialog from "../dialog/EditStudentDialog";
 
 //import UploadIcon from "@mui/icons-material/Upload";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
@@ -35,7 +65,16 @@ export default function DanhSachHS() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [selectedNamHoc, setSelectedNamHoc] = useState(config?.namHoc || "");
-
+  
+  const [hoveredHS, setHoveredHS] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [newMaDinhDanh, setNewMaDinhDanh] = useState("");
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [confirmDeleteStudent, setConfirmDeleteStudent] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // 🔹 Lấy config realtime (nguồn sự thật duy nhất)
   useEffect(() => {
@@ -323,6 +362,152 @@ export default function DanhSachHS() {
     }
   };
 
+  const handleEditStudent = (student) => {
+    setEditingStudent(student);
+    setNewName(student.hoVaTen);
+  };
+
+  const handleOpenAddStudent = () => {
+    setIsAdding(true);
+    setEditingStudent(null);
+    setNewMaDinhDanh("");
+    setNewName("");
+  };
+
+  const handleDeleteClick = (student) => {
+    setStudentToDelete(student);
+    setConfirmDialogOpen(true);
+  };
+
+  // ===== Thêm học sinh =====
+  const handleAddStudent = async () => {
+    if (!newMaDinhDanh.trim() || !newName.trim()) return;
+
+    const ma = newMaDinhDanh.trim();
+    const ten = newName.trim().toUpperCase();
+    const sttMoi = students.length + 1; // STT mới
+    const lop = selectedClass; // ví dụ "4.1"
+
+    // 🔹 Đóng dialog ngay
+    setIsAdding(false);
+    setEditingStudent(null);
+
+    try {
+      // 1️⃣ Ghi Firestore DANHSACH với lop + stt
+      await updateDoc(doc(db, "DANHSACH", selectedClass), {
+        [ma]: {
+          hoVaTen: ten,
+          lop,
+          stt: sttMoi,
+        },
+      });
+
+      // 2️⃣ Cập nhật UI ngay
+      const updatedStudents = [
+        ...students,
+        { maDinhDanh: ma, hoVaTen: ten, stt: sttMoi, lop },
+      ];
+
+      setStudents(updatedStudents);
+
+      // 3️⃣ Cập nhật cache StudentContext
+      setStudentData((prev) => ({
+        ...prev,
+        [selectedClass]: updatedStudents,
+      }));
+
+      // 4️⃣ Reset input
+      setNewMaDinhDanh("");
+      setNewName("");
+
+      // 5️⃣ Cập nhật DATA chạy nền
+      await updateDATAForStudent(selectedClass, {
+        maDinhDanh: ma,
+        hoVaTen: ten,
+        stt: sttMoi,
+        lop,
+      }, updatedStudents);
+    } catch (err) {
+      console.error("❌ Lỗi khi thêm học sinh:", err);
+    }
+  };
+
+  // ===== Chỉnh sửa học sinh =====
+  const handleSaveStudent = async () => {
+    if (!editingStudent || !newName.trim()) return;
+
+    const ma = editingStudent.maDinhDanh;
+    const ten = newName.trim().toUpperCase();
+
+    // 🔹 Đóng dialog ngay
+    setIsAdding(false);
+    setEditingStudent(null);
+
+    try {
+      // 1️⃣ Ghi Firestore DANHSACH
+      await updateDoc(doc(db, "DANHSACH", selectedClass), {
+        [ma]: { hoVaTen: ten },
+      });
+
+      // 2️⃣ Cập nhật UI ngay
+      const updatedStudents = students.map((s) =>
+        s.maDinhDanh === ma ? { ...s, hoVaTen: ten } : s
+      );
+      setStudents(updatedStudents);
+
+      // 3️⃣ Cập nhật cache StudentContext
+      setStudentData((prev) => ({
+        ...prev,
+        [selectedClass]: updatedStudents,
+      }));
+
+      // 4️⃣ 🔹 Cập nhật DATA chạy nền
+      await updateDATAForStudent(selectedClass, { maDinhDanh: ma, hoVaTen: ten }, updatedStudents);
+    } catch (err) {
+      console.error("❌ Lỗi khi cập nhật học sinh:", err);
+    }
+  };
+
+  // ===== Xóa học sinh =====
+  const handleDeleteStudent = async (student) => {
+    if (!student) return;
+
+    const ma = student.maDinhDanh;
+
+    // 🔹 Đóng dialog ngay nếu đang mở
+    setIsAdding(false);
+    setEditingStudent(null);
+
+    try {
+      // 1️⃣ Xóa trên Firestore
+      await updateDoc(doc(db, "DANHSACH", selectedClass), {
+        [ma]: deleteField(),
+      });
+
+      // 2️⃣ Cập nhật UI ngay
+      const updatedStudents = students
+        .filter((s) => s.maDinhDanh !== ma)
+        .map((s, i) => ({ ...s, stt: i + 1 }));
+
+      setStudents(updatedStudents);
+
+      // 3️⃣ Cập nhật cache StudentContext
+      setStudentData((prev) => ({
+        ...prev,
+        [selectedClass]: updatedStudents,
+      }));
+
+      // 4️⃣ Reset trạng thái hover nếu cần
+      setHoveredHS(null);
+    } catch (err) {
+      console.error("❌ Lỗi khi xóa học sinh:", err);
+    }
+  };
+
+
+
+
+
   return (
     <Box
       sx={{
@@ -462,11 +647,11 @@ export default function DanhSachHS() {
               <FormControl size="small" sx={{ width: 140 }}>
                 <InputLabel id="label-namhoc">Năm học</InputLabel>
                 <Select
-  labelId="label-namhoc"
-  value={selectedNamHoc}
-  onChange={handleNamHocChange}
-  label="Năm học"
->
+                  labelId="label-namhoc"
+                  value={selectedNamHoc}
+                  onChange={handleNamHocChange}
+                  label="Năm học"
+                >
 
                   <MenuItem value="2025-2026">2025-2026</MenuItem>
                   <MenuItem value="2026-2027">2026-2027</MenuItem>
@@ -567,16 +752,32 @@ export default function DanhSachHS() {
 
                   <TableCell
                     align="center"
-                    sx={{ bgcolor: "#1976d2", color: "#fff", border: "1px solid rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}
+                    sx={{
+                      bgcolor: "#1976d2",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.4)",
+                      whiteSpace: "nowrap",
+                      width: 100,
+                    }}
                   >
-                    GHI CHÚ
+                    ĐIỀU CHỈNH
                   </TableCell>
                 </TableRow>
               </TableHead>
 
               <TableBody>
                 {students.map((s) => (
-                  <TableRow key={s.maDinhDanh}>
+                  <TableRow
+                    key={s.maDinhDanh}
+                    onMouseEnter={() => setHoveredHS(s.maDinhDanh)}
+                    onMouseLeave={() => setHoveredHS(null)}
+                    sx={{
+                      "&:hover": {
+                        backgroundColor: "rgba(25,118,210,0.05)",
+                      },
+                    }}
+                  >
+
                     <TableCell
                       align="center"
                       sx={{ width: 40, border: "1px solid rgba(0,0,0,0.12)", whiteSpace: "nowrap" }}
@@ -603,16 +804,61 @@ export default function DanhSachHS() {
                       {s.hoVaTen}
                     </TableCell>
 
+                    {/* ĐIỀU CHỈNH */}
                     <TableCell
+                      align="center"
                       sx={{
                         border: "1px solid rgba(0,0,0,0.12)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
+                        height: 30,
                       }}
                     >
-                      {s.ghiChu}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "center",
+                          gap: 0.5,
+                          visibility: hoveredHS === s.maDinhDanh ? "visible" : "hidden",
+                        }}
+                      >
+                        {/* ➕ THÊM */}
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => {
+                            setIsAdding(true);
+                            setEditingStudent(null);
+                            setNewName("");
+                            setNewMaDinhDanh("");
+                          }}
+                        >
+                          <PersonAddIcon fontSize="small" />
+                        </IconButton>
+
+
+                        {/* ✏️ SỬA */}
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleEditStudent(s)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+
+                        {/* 🗑️ XOÁ */}
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => {
+                            setStudentToDelete(s);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
                     </TableCell>
+
+
                   </TableRow>
                 ))}
               </TableBody>
@@ -873,6 +1119,32 @@ export default function DanhSachHS() {
         accept=".xlsx"
         onChange={handleFileChange}
       />
+
+      <EditStudentDialog
+        open={isAdding || !!editingStudent || deleteDialogOpen}
+        onClose={() => {
+          setIsAdding(false);
+          setEditingStudent(null);
+          setDeleteDialogOpen(false);
+        }}
+        student={editingStudent || studentToDelete}
+        newName={newName}
+        setNewName={setNewName}
+        newMaDinhDanh={newMaDinhDanh}
+        setNewMaDinhDanh={setNewMaDinhDanh}
+        isAdding={isAdding}
+        onSave={isAdding ? handleAddStudent : handleSaveStudent}
+        isConfirm={deleteDialogOpen} // 🔹 bật chế độ xác nhận xóa
+        onConfirm={async () => {
+          if (studentToDelete) {
+            await handleDeleteStudent(studentToDelete);
+            setDeleteDialogOpen(false);
+            setStudentToDelete(null);
+          }
+        }}
+      />
+
+
     </Box>    
   );
 }
