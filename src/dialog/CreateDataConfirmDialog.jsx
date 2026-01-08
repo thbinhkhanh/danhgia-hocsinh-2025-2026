@@ -23,6 +23,7 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [mode, setMode] = useState("update"); // "update" hoặc "new"
+  const [disableConfirm, setDisableConfirm] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -34,6 +35,17 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const checkClassList = async () => {
+      const classSnap = await getDocs(collection(db, "DANHSACH"));
+      setDisableConfirm(classSnap.empty);
+    };
+
+    checkClassList();
+  }, [open]);
+
   const handleCreateDATA = async () => {
   try {
     setLoading(true);
@@ -42,6 +54,14 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
 
     const classSnap = await getDocs(collection(db, "DANHSACH"));
     const CLASS_LIST = classSnap.docs.map(doc => doc.id);
+
+    // ⛔ KIỂM TRA DANH SÁCH LỚP RỖNG
+    if (CLASS_LIST.length === 0) {
+      setMessage("⚠️ Không có lớp nào trong DANHSACH. Không thể tạo DATA.");
+      setSuccess(false);
+      setLoading(false);
+      return;
+    }
 
     let done = 0;
 
@@ -116,9 +136,15 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
       maxWidth="xs"
       fullWidth
       PaperProps={{
-        sx: { borderRadius: 3, p: 3, bgcolor: "#e3f2fd", boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)" },
+        sx: {
+          borderRadius: 3,
+          p: 3,
+          bgcolor: "#e3f2fd",
+          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+        },
       }}
     >
+      {/* ===== HEADER ===== */}
       <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
         <Box
           sx={{
@@ -137,16 +163,47 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
         >
           {success ? "✅" : "⚠️"}
         </Box>
-        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: success ? "#2e7d32" : "#d32f2f" }}>
-          {mode === "new" ? "Tạo DATA mới" : "Cập nhật DATA"}
+
+        <DialogTitle
+          sx={{
+            p: 0,
+            fontWeight: "bold",
+            color: "#d32f2f",
+          }}
+        >
+          {disableConfirm
+            ? "Cảnh báo"
+            : mode === "new"
+            ? "Tạo DATA mới"
+            : "Cập nhật DATA"}
         </DialogTitle>
       </Box>
 
+      {/* ===== CONTENT ===== */}
       <DialogContent>
-        {!loading && !success && (
+        {/* 🔴 CẢNH BÁO KHI DANHSACH RỖNG */}
+        {disableConfirm && (
+          <Typography
+            sx={{
+              fontSize: 16,
+              color: "error.main",
+              textAlign: "left",
+              mt: 2,
+            }}
+          >
+            ⚠️ Không tìm thấy danh sách học sinh. Vui lòng tải danh sách học sinh lên trước.
+          </Typography>
+        )}
+
+        {/* 🟢 NỘI DUNG XÁC NHẬN (CHỈ KHI CÓ LỚP) */}
+        {!disableConfirm && !loading && !success && (
           <>
             <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
-              Bạn chắc chắn muốn {mode === "new" ? "xóa dữ liệu cũ và tạo DATA mới" : "cập nhật DATA, giữ dữ liệu hiện có"}?<br />
+              Bạn chắc chắn muốn{" "}
+              {mode === "new"
+                ? "xóa dữ liệu cũ và tạo DATA mới"
+                : "cập nhật DATA, giữ dữ liệu hiện có"}
+              ?<br />
               Hành động này <strong>không thể hoàn tác</strong>.
             </Typography>
 
@@ -158,14 +215,27 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
                 onChange={(e) => setMode(e.target.value)}
               >
                 <FormControlLabel value="new" control={<Radio />} label="Tạo mới" />
-                <FormControlLabel value="update" control={<Radio />} label="Cập nhật" />
+                <FormControlLabel
+                  value="update"
+                  control={<Radio />}
+                  label="Cập nhật"
+                />
               </RadioGroup>
             </FormControl>
           </>
         )}
 
+        {/* 🔄 LOADING */}
         {loading && (
-          <Box sx={{ mt: 2, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              mt: 2,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             <LinearProgress
               variant="determinate"
               value={progress}
@@ -174,42 +244,74 @@ const CreateDataConfirmDialog = ({ open, onClose }) => {
                 borderRadius: 2,
                 height: 4,
                 backgroundColor: "#cfe8fc",
-                "& .MuiLinearProgress-bar": { backgroundColor: "#1976d2" },
+                "& .MuiLinearProgress-bar": {
+                  backgroundColor: "#1976d2",
+                },
                 mb: 0.5,
               }}
             />
-            <Typography variant="body2" sx={{ textAlign: "center", fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
               {message} ({progress}%)
             </Typography>
           </Box>
         )}
 
+        {/* ✅ SUCCESS */}
         {success && !loading && (
-          <Typography sx={{ fontSize: 16, color: "#0d47a1", textAlign: "center" }}>
-            ✅ {mode === "new" ? "Dữ liệu mới đã được tạo thành công!" : "Cập nhật dữ liệu thành công!"}
+          <Typography
+            sx={{
+              fontSize: 16,
+              color: "#0d47a1",
+              textAlign: "center",
+            }}
+          >
+            ✅{" "}
+            {mode === "new"
+              ? "Dữ liệu mới đã được tạo thành công!"
+              : "Cập nhật dữ liệu thành công!"}
           </Typography>
         )}
       </DialogContent>
 
+      {/* ===== ACTIONS ===== */}
       <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
-        {!loading && !success && (
+        {/* 🔴 CHỈ OK KHI DANHSACH RỖNG */}
+        {disableConfirm && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={onClose}
+            sx={{ borderRadius: 1, px: 4 }}
+          >
+            OK
+          </Button>
+        )}
+
+        {/* 🟢 NÚT XÁC NHẬN KHI CÓ LỚP */}
+        {!disableConfirm && !loading && !success && (
           <>
-            <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 1, px: 3 }}>
+            <Button variant="outlined" onClick={onClose}>
               Hủy
             </Button>
-            <Button variant="contained" color="error" onClick={handleCreateDATA} sx={{ borderRadius: 1, px: 3 }}>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleCreateDATA}
+            >
               Xác nhận
             </Button>
           </>
         )}
+
         {!loading && success && (
-          <Button variant="contained" color="primary" onClick={onClose} sx={{ borderRadius: 1, px: 4 }}>
+          <Button variant="contained" onClick={onClose}>
             OK
           </Button>
         )}
       </DialogActions>
     </Dialog>
   );
+
 };
 
 export default CreateDataConfirmDialog;
