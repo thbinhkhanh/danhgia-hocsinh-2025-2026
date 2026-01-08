@@ -67,7 +67,7 @@ export const AdminProvider = ({ children }) => {
     const docRef = doc(db, "ADMIN", "config");
     try {
       await setDoc(docRef, filtered, { merge: true });
-      console.log("✅ Firestore ADMIN cập nhật:", filtered);
+      //console.log("✅ Firestore ADMIN cập nhật:", filtered);
     } catch (err) {
       console.error("❌ Lỗi cập nhật ADMIN config:", err);
     }

@@ -123,7 +123,7 @@ export const restoreAllFromJson = async (file, selectedCollections, onProgress) 
     }
 
     if (onProgress) onProgress(100);
-    console.log("✅ Phục hồi dữ liệu hoàn tất!");
+    //console.log("✅ Phục hồi dữ liệu hoàn tất!");
     return true;
 
   } catch (err) {

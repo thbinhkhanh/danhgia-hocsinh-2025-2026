@@ -99,7 +99,7 @@ export const saveAllQuestions = async ({
       docId = `quiz_${selectedClass}_${selectedSubject}_${weekValue}`;
     }
 
-    console.log("📁 Document path:", `${collectionName} / ${docId}`);
+    //console.log("📁 Document path:", `${collectionName} / ${docId}`);
     const quizRef = doc(db, collectionName, docId);
     await setDoc(quizRef, {
       class: selectedClass,

@@ -185,8 +185,8 @@ export default function TracNghiem_OnTap() {
           ? namHocFromConfig.split("-").map(y => y.slice(2)).join("-")
           : "";
 
-        console.log("💠 Lop:", classNumber, "Mon:", monFromConfig, "HocKyCode:", hocKyCode, "YearKey:", yearKey);
-        console.log("📋 Tất cả ID trong NGANHANG_DE:", snapshot.docs.map(d => d.id));
+        //console.log("💠 Lop:", classNumber, "Mon:", monFromConfig, "HocKyCode:", hocKyCode, "YearKey:", yearKey);
+        //console.log("📋 Tất cả ID trong NGANHANG_DE:", snapshot.docs.map(d => d.id));
 
         // 🔹 lọc đề
         const exams = snapshot.docs
@@ -218,7 +218,7 @@ export default function TracNghiem_OnTap() {
             return true;
           });
 
-        console.log("✅ Đề lọc được:", exams);
+        //console.log("✅ Đề lọc được:", exams);
 
         setExamList(exams);
 
@@ -394,23 +394,23 @@ export default function TracNghiem_OnTap() {
               const pairs = Array.isArray(q.pairs) ? q.pairs : [];
               if (pairs.length === 0) return null;
 
-              console.log("🔥 RAW MATCHING PAIRS:", pairs);
+              //console.log("🔥 RAW MATCHING PAIRS:", pairs);
 
               const leftOptions = pairs.map((p, idx) => {
                 // --- CASE 1: editor lưu { leftImage: { url, name } } ---
                 if (p.leftImage && p.leftImage.url) {
-                  console.log(`🔥 left[${idx}] = leftImage`, p.leftImage.url);
+                  //console.log(`🔥 left[${idx}] = leftImage`, p.leftImage.url);
                   return { type: "image", url: p.leftImage.url, name: p.leftImage.name || `img-${idx}` };
                 }
 
                 // --- CASE 2: left là chuỗi URL ---
                 if (typeof p.left === "string" && /^https?:\/\//i.test(p.left.trim())) {
-                  console.log(`🔥 left[${idx}] = URL`, p.left);
+                  //console.log(`🔥 left[${idx}] = URL`, p.left);
                   return { type: "image", url: p.left.trim(), name: `img-${idx}` };
                 }
 
                 // --- CASE 3: để nguyên dạng text ---
-                console.log(`🔥 left[${idx}] = text`, p.left);
+                //console.log(`🔥 left[${idx}] = text`, p.left);
                 return p.left ?? "";
               });
 
@@ -585,7 +585,7 @@ export default function TracNghiem_OnTap() {
   const hoVaTen = capitalizeName(studentName);
 
   // Ví dụ:
-  console.log(capitalizeName("thái phạm")); // "Thái Phạm"
+  //console.log(capitalizeName("thái phạm")); // "Thái Phạm"
 
 
   const currentQuestion = questions[currentIndex] || null;

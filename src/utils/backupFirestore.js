@@ -101,7 +101,7 @@ export const fetchAllBackup = async (onProgress, selectedCollections) => {
     }
 
     if (onProgress) onProgress(100);
-    console.log("✅ Backup hoàn tất");
+    //console.log("✅ Backup hoàn tất");
     return backupData;
 
   } catch (err) {

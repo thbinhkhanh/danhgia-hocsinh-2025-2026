@@ -103,7 +103,7 @@ export default function HocSinh() {
   // Khi thay đổi lớp
   const handleClassChange = (e) => {
     const newClass = e.target.value;
-    console.log("🎯 Chọn lớp:", newClass);
+    //console.log("🎯 Chọn lớp:", newClass);
 
     // Chỉ cập nhật context lớp và state local
     setSelectedClass(newClass);
@@ -221,7 +221,7 @@ export default function HocSinh() {
           }
         }
 
-        console.log("[INIT] studentStatus từ DATA:", statusMap);
+        //console.log("[INIT] studentStatus từ DATA:", statusMap);
         setStudentStatus(statusMap);
       } catch (err) {
         console.error("❌ Lỗi khi lấy status từ DATA:", err);

@@ -289,7 +289,7 @@ const handleStatusChange = (maDinhDanh, status) => {
           [`${subjectKey}.dgtx.tuan_${tuan}.TN_diem`]: null,
           [`${subjectKey}.dgtx.tuan_${tuan}.TN_status`]: "",
         });
-        console.log(`✅ Đã xóa bài tập tuần ${tuan} của HS ${hoVaTen}`);
+        //console.log(`✅ Đã xóa bài tập tuần ${tuan} của HS ${hoVaTen}`);
       }
 
       if (kiemTraDinhKi && hocKy) {
@@ -309,7 +309,7 @@ const handleStatusChange = (maDinhDanh, status) => {
           [`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`]: null,
         });
 
-        console.log(`✅ Đã reset điểm KTDK ${hocKy} của HS ${hoVaTen} (giữ nhận xét)`);
+        //console.log(`✅ Đã reset điểm KTDK ${hocKy} của HS ${hoVaTen} (giữ nhận xét)`);
       }
     } catch (err) {
       console.error("❌ Lỗi xóa dữ liệu trong DATA:", err);

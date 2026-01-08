@@ -26,18 +26,12 @@ const StudentStatusDialog = ({
   const fromMap = studentStatus?.[expandedStudent.maDinhDanh] ?? "";
   const currentStatus = fromExpanded || fromMap;
 
-  // 🔎 Log đầu vào dialog
-  console.log("[Dialog] expandedStudent:", expandedStudent);
-  console.log("[Dialog] status.fromExpanded:", fromExpanded);
-  console.log("[Dialog] status.fromMap:", fromMap);
-  console.log("[Dialog] currentStatus:", currentStatus);
-
   return (
     <Dialog
       open={Boolean(expandedStudent)}
       onClose={(event, reason) => {
         if (reason !== "backdropClick") {
-          console.log("[Dialog] Close clicked");
+          //console.log("[Dialog] Close clicked");
           setExpandedStudent(null);
         }
       }}
@@ -70,7 +64,7 @@ const StudentStatusDialog = ({
 
           <IconButton
             onClick={() => {
-              console.log("[Dialog] Close icon clicked");
+              //console.log("[Dialog] Close icon clicked");
               setExpandedStudent(null);
             }}
             disabled={saving}
@@ -99,12 +93,12 @@ const StudentStatusDialog = ({
                       : "warning"
                   }
                   onClick={() => {
-                    console.log("[Dialog] Click chọn trạng thái:", {
+                    {/*console.log("[Dialog] Click chọn trạng thái:", {
                       id: expandedStudent.maDinhDanh,
                       name: expandedStudent.hoVaTen,
                       chọn: s,
                       currentStatus,
-                    });
+                    });*/}
                     handleStatusChange(
                       expandedStudent.maDinhDanh,
                       expandedStudent.hoVaTen,
@@ -121,11 +115,11 @@ const StudentStatusDialog = ({
               <Box sx={{ mt: 5, textAlign: "center" }}>
                 <Button
                   onClick={() => {
-                    console.log("[Dialog] Hủy đánh giá:", {
+                    {/*console.log("[Dialog] Hủy đánh giá:", {
                       id: expandedStudent.maDinhDanh,
                       name: expandedStudent.hoVaTen,
                       trước_khi_hủy: currentStatus,
-                    });
+                    });*/}
                     handleStatusChange(
                       expandedStudent.maDinhDanh,
                       expandedStudent.hoVaTen,

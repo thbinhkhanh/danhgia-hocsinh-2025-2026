@@ -401,23 +401,23 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
             const pairs = Array.isArray(q.pairs) ? q.pairs : [];
             if (pairs.length === 0) return null;
 
-            console.log("🔥 RAW MATCHING PAIRS:", pairs);
+            //console.log("🔥 RAW MATCHING PAIRS:", pairs);
 
             const leftOptions = pairs.map((p, idx) => {
               // --- CASE 1: editor lưu { leftImage: { url, name } } ---
               if (p.leftImage && p.leftImage.url) {
-                console.log(`🔥 left[${idx}] = leftImage`, p.leftImage.url);
+                //console.log(`🔥 left[${idx}] = leftImage`, p.leftImage.url);
                 return { type: "image", url: p.leftImage.url, name: p.leftImage.name || `img-${idx}` };
               }
 
               // --- CASE 2: left là chuỗi URL ---
               if (typeof p.left === "string" && /^https?:\/\//i.test(p.left.trim())) {
-                console.log(`🔥 left[${idx}] = URL`, p.left);
+                //console.log(`🔥 left[${idx}] = URL`, p.left);
                 return { type: "image", url: p.left.trim(), name: `img-${idx}` };
               }
 
               // --- CASE 3: để nguyên dạng text ---
-              console.log(`🔥 left[${idx}] = text`, p.left);
+              //console.log(`🔥 left[${idx}] = text`, p.left);
               return p.left ?? "";
             });
 
@@ -624,7 +624,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
   };
 
   const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
-  console.log("🔎 Tổng điểm đề (maxScore):", maxScore);
+  //console.log("🔎 Tổng điểm đề (maxScore):", maxScore);
 
   const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";
