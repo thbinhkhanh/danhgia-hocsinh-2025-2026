@@ -71,10 +71,10 @@ export default function EditStudentDialog({
           }}
         >
           {isConfirm
-            ? "Xác nhận xóa học sinh"
+            ? "Xóa học sinh"
             : isAdding
             ? "Thêm học sinh"
-            : "Chỉnh sửa học sinh"}
+            : "Chỉnh sửa tên"}
         </DialogTitle>
 
         <IconButton
