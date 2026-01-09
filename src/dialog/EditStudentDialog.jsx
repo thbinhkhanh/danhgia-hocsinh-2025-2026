@@ -32,10 +32,11 @@ export default function EditStudentDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      fullWidth
-      maxWidth="sm"
+      fullWidth={true}        // vẫn fullWidth để responsive
+      maxWidth={false}        // tắt maxWidth mặc định
       PaperProps={{
         sx: {
+          width: { xs: "90%", sm: 500 }, // mobile 90% màn hình, desktop 400px
           borderRadius: 3,
           p: 3,
           bgcolor: "#fff",
@@ -95,23 +96,52 @@ export default function EditStudentDialog({
             Bạn có chắc chắn muốn xóa học sinh <b>{student?.hoVaTen}</b>?
           </Typography>
         ) : (
-          <Box sx={{ display: "flex", gap: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 1.5, // khoảng cách gọn hơn
+            }}
+          >
             {/* Mã định danh */}
             <TextField
               label="Mã định danh"
               value={isAdding ? newMaDinhDanh : student?.maDinhDanh || ""}
               onChange={(e) => setNewMaDinhDanh?.(e.target.value)}
               InputProps={{ readOnly: !isAdding }}
-              sx={{ flex: 1 }}
+              size="small"
+              sx={{
+                flex: 1,
+                "& .MuiInputBase-root": {
+                  minHeight: 40,          // đủ 1 dòng chữ
+                  paddingTop: 1,
+                  paddingBottom: 1,
+                },
+                "& .MuiInputBase-input": {
+                  padding: "2px 10px",    // padding nội dung bên trong
+                },
+              }}
             />
-            {/* Họ và tên */}
+
             <TextField
               label="Họ và tên"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               autoFocus
-              sx={{ flex: 2 }}
+              size="small"
+              sx={{
+                flex: 2,
+                "& .MuiInputBase-root": {
+                  minHeight: 40,
+                  paddingTop: 1,
+                  paddingBottom: 1,
+                },
+                "& .MuiInputBase-input": {
+                  padding: "2px 10px",
+                },
+              }}
             />
+
           </Box>
         )}
       </DialogContent>

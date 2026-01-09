@@ -1,5 +1,5 @@
 // Utils/updateDATAForStudent.js
-import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
 /**
@@ -7,21 +7,12 @@ import { db } from "../firebase";
  * @param {string} selectedClass - Tên lớp hiện tại
  * @param {object} student - { maDinhDanh, hoVaTen }
  * @param {Array} students - danh sách học sinh hiện tại (UI)
- * @param {object} options - { remove: true } nếu xóa học sinh
  */
-const updateDATAForStudent = async (selectedClass, student, students, options = {}) => {
+const updateDATAForStudent = async (selectedClass, student, students) => {
   const ma = student.maDinhDanh;
-
+  const ten = student.hoVaTen.toUpperCase(); // 🔹 tên in hoa
   const lopKey = selectedClass.replace(".", "_");
   const hsRef = doc(db, "DATA", lopKey, "HOCSINH", ma);
-
-  if (options.remove) {
-    // 🔹 Xóa học sinh khỏi DATA
-    await deleteDoc(hsRef);
-    return;
-  }
-
-  const ten = student.hoVaTen.toUpperCase(); // 🔹 tên in hoa
 
   const existingDoc = await getDoc(hsRef);
 

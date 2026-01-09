@@ -28,7 +28,7 @@ import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc, getDocs, collection, setDoc, onSnapshot } from "firebase/firestore";
-import { updateDoc, deleteField } from "firebase/firestore";
+import { updateDoc, deleteField, deleteDoc } from "firebase/firestore";
 import { exportDanhsach } from "../utils/exportDanhSach";
 import { printDanhSach } from "../utils/printDanhSach";
 import { uploadStudents, uploadPPCT } from "../utils/uploadExcel";
@@ -479,34 +479,35 @@ export default function DanhSachHS() {
     setEditingStudent(null);
 
     try {
-      // 1️⃣ Xóa trên Firestore
+      // 1️⃣ Xóa trên Firestore DANHSACH
       await updateDoc(doc(db, "DANHSACH", selectedClass), {
         [ma]: deleteField(),
       });
 
-      // 2️⃣ Cập nhật UI ngay
+      // 2️⃣ Xóa document DATA của học sinh (bao gồm mã định danh)
+      const lopKey = selectedClass.replace(".", "_");
+      const hsRef = doc(db, "DATA", lopKey, "HOCSINH", ma);
+      await deleteDoc(hsRef); // ✅ xóa hẳn document
+
+      // 3️⃣ Cập nhật UI ngay
       const updatedStudents = students
         .filter((s) => s.maDinhDanh !== ma)
         .map((s, i) => ({ ...s, stt: i + 1 }));
 
       setStudents(updatedStudents);
 
-      // 3️⃣ Cập nhật cache StudentContext
+      // 4️⃣ Cập nhật cache StudentContext
       setStudentData((prev) => ({
         ...prev,
         [selectedClass]: updatedStudents,
       }));
 
-      // 4️⃣ Reset trạng thái hover nếu cần
+      // 5️⃣ Reset trạng thái hover nếu cần
       setHoveredHS(null);
     } catch (err) {
       console.error("❌ Lỗi khi xóa học sinh:", err);
     }
   };
-
-
-
-
 
   return (
     <Box
