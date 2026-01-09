@@ -575,7 +575,7 @@ export default function DanhSachHS() {
           </Tooltip>
 
           {viewMode === "students" && (
-            <Tooltip title="Tạo/Cập nhật DATA học sinh">
+            <Tooltip title="Khởi tạo DATA năm mới">
               <IconButton
                 onClick={() => setCreateDataDialogOpen(true)}
                 sx={{
