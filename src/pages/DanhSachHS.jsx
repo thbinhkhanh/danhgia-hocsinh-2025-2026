@@ -34,12 +34,14 @@ import { printDanhSach } from "../utils/printDanhSach";
 import { uploadStudents, uploadPPCT } from "../utils/uploadExcel";
 import updateDATAForStudent from "../utils/updateDATAForStudent";
 import EditStudentDialog from "../dialog/EditStudentDialog";
+import CreateDataConfirmDialog from "../dialog/CreateDataConfirmDialog";
 
 //import UploadIcon from "@mui/icons-material/Upload";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import StorageIcon from "@mui/icons-material/Storage"; 
 
 import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
@@ -75,6 +77,7 @@ export default function DanhSachHS() {
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [confirmDeleteStudent, setConfirmDeleteStudent] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [createDataDialogOpen, setCreateDataDialogOpen] = useState(false);
 
   // 🔹 Lấy config realtime (nguồn sự thật duy nhất)
   useEffect(() => {
@@ -570,6 +573,21 @@ export default function DanhSachHS() {
               <FileUploadIcon />
             </IconButton>
           </Tooltip>
+
+          {viewMode === "students" && (
+            <Tooltip title="Tạo/Cập nhật DATA học sinh">
+              <IconButton
+                onClick={() => setCreateDataDialogOpen(true)}
+                sx={{
+                  color: "#d32f2f",
+                  bgcolor: "rgba(211,47,47,0.1)",
+                  "&:hover": { bgcolor: "rgba(211,47,47,0.2)" },
+                }}
+              >
+                <StorageIcon />
+              </IconButton>
+            </Tooltip>
+          )}
 
           {/*{viewMode === "students" && (
             <>
@@ -1145,6 +1163,10 @@ export default function DanhSachHS() {
         }}
       />
 
+    <CreateDataConfirmDialog
+      open={createDataDialogOpen}
+      onClose={() => setCreateDataDialogOpen(false)}
+    />
 
     </Box>    
   );
