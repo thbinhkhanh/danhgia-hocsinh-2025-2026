@@ -1,8 +1,18 @@
 import React from "react";
-import { Box, Paper, IconButton, Typography, Checkbox, Stack, Button } from "@mui/material";
+import {
+  Box,
+  Paper,
+  IconButton,
+  Typography,
+  Checkbox,
+  Stack,
+  Button,
+} from "@mui/material";
+import FormatBoldIcon from "@mui/icons-material/FormatBold";
+import FormatItalicIcon from "@mui/icons-material/FormatItalic";
+import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 
 const ImageOptions = ({ q, qi, update }) => {
-
   // ---- Upload Cloudinary ----
   const uploadToCloudinary = async (file) => {
     const formData = new FormData();
@@ -10,10 +20,13 @@ const ImageOptions = ({ q, qi, update }) => {
     formData.append("upload_preset", "tracnghiem_upload");
     formData.append("folder", "questions");
 
-    const res = await fetch("https://api.cloudinary.com/v1_1/dxzpfljv4/image/upload", {
-      method: "POST",
-      body: formData,
-    });
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dxzpfljv4/image/upload",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
 
     if (!res.ok) throw new Error("Upload hình thất bại");
 
@@ -59,6 +72,19 @@ const ImageOptions = ({ q, qi, update }) => {
 
   return (
     <Stack spacing={2} mb={2}>
+      {/* ===== Toolbar chung (chỉ để đồng bộ, disable) ===== */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+        <IconButton size="small" disabled>
+          <FormatBoldIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" disabled>
+          <FormatItalicIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" disabled>
+          <FormatUnderlinedIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={2}
@@ -86,7 +112,11 @@ const ImageOptions = ({ q, qi, update }) => {
                     <img
                       src={img}
                       alt={`option-${oi}`}
-                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                      }}
                     />
 
                     {/* Nút xoá hình & xoá ô */}

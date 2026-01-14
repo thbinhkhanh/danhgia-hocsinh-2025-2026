@@ -17,7 +17,7 @@ update(qi, patch);
 
 
 return (
-<Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+<Stack direction="row" spacing={2} sx={{ mb: -2 }}>
 <FormControl size="small" sx={{ width: 180 }}>
 <InputLabel>Loại câu hỏi</InputLabel>
 <Select value={q.type} label="Loại câu hỏi" onChange={(e) => handleChange(e.target.value)}>

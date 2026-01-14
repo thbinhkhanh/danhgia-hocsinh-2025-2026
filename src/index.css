@@ -1,3 +1,7 @@
+/* ===================================================== */
+/* ===== VITE DEFAULT STYLES ===== */
+/* ===================================================== */
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -24,8 +28,6 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
 }
@@ -65,4 +67,117 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* ===================================================== */
+/* ===== TIÊU ĐỀ CÂU HỎI / NHÓM ===== */
+/* ===================================================== */
+
+.question-header-title {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+/* ===================================================== */
+/* ===== REACT QUILL – OPTION (ĐÁP ÁN) ===== */
+/* ===================================================== */
+
+.choice-option-editor .ql-editor {
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 10.5px 14px;
+  min-height: auto;
+}
+
+.choice-option-editor .ql-editor p {
+  margin: 0;
+}
+
+.choice-option-editor .ql-container {
+  font-family: Roboto, Helvetica, Arial, sans-serif;
+  border-radius: 4px;
+}
+
+.choice-option-editor .ql-container.ql-snow {
+  border: 1px solid rgba(0, 0, 0, 0.23);
+}
+
+.choice-option-editor .ql-container.ql-snow:hover {
+  border-color: rgba(0, 0, 0, 0.87);
+}
+
+.choice-option-editor .ql-container.ql-snow.ql-focused {
+  border-color: #1976d2;
+  border-width: 2px;
+}
+
+/* ===================================================== */
+/* ===== REACT QUILL – QUESTION HEADER ===== */
+/* ===================================================== */
+
+.question-header-editor .ql-editor {
+  font-size: 17px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  min-height: auto;
+}
+
+.question-header-editor .ql-editor p {
+  margin: 0;
+}
+
+.question-header-editor .ql-container {
+  font-family: Roboto, Helvetica, Arial, sans-serif;
+  border-radius: 4px;
+}
+
+.question-header-editor .ql-container.ql-snow {
+  border: 1px solid rgba(0, 0, 0, 0.23);
+}
+
+.question-header-editor .ql-container.ql-snow:hover {
+  border-color: rgba(0, 0, 0, 0.87);
+}
+
+.question-header-editor .ql-container.ql-snow.ql-focused {
+  border-color: #1976d2;
+  border-width: 2px;
+}
+
+/* ===================================================== */
+/* ===== B / I / U – OPTION + HEADER ===== */
+/* ===================================================== */
+
+/* Bold */
+.choice-option-editor .ql-editor strong,
+.choice-option-editor .ql-editor b,
+.question-header-editor .ql-editor strong,
+.question-header-editor .ql-editor b {
+  font-weight: 600;
+}
+
+/* Italic */
+.choice-option-editor .ql-editor em,
+.choice-option-editor .ql-editor i,
+.question-header-editor .ql-editor em,
+.question-header-editor .ql-editor i {
+  font-style: italic;
+}
+
+/* Underline */
+.choice-option-editor .ql-editor u,
+.question-header-editor .ql-editor u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Bold + Italic */
+.choice-option-editor .ql-editor strong em,
+.choice-option-editor .ql-editor em strong,
+.question-header-editor .ql-editor strong em,
+.question-header-editor .ql-editor em strong {
+  font-weight: 600;
+  font-style: italic;
 }

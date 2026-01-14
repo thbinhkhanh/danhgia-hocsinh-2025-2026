@@ -44,7 +44,8 @@ import QuestionCard from "../Types/questions/QuestionCard";
 import { saveAllQuestions } from "../utils/saveAllQuestions";
 
 export default function TracNghiemGV() {
-  const { config, setConfig } = useConfig(); // 🔹 thêm dòng này
+  const { config, setConfig } = useConfig(); 
+  const semester = config?.hocKy || "";
   const { config: quizConfig, updateConfig: updateQuizConfig } = useTracNghiem();
 
   // ⚙️ State cho dialog mở đề
@@ -62,13 +63,18 @@ export default function TracNghiemGV() {
 
 const [selectedClass, setSelectedClass] = useState(savedConfig.selectedClass || "");
 const [selectedSubject, setSelectedSubject] = useState(savedConfig.selectedSubject || "");
-const [semester, setSemester] = useState(savedConfig.semester || "");
+//const [semester, setSemester] = useState(savedConfig.semester || "");
 const [schoolYear, setSchoolYear] = useState(savedConfig.schoolYear || "2025-2026");
 const [examLetter, setExamLetter] = useState(savedConfig.examLetter || "");
 const [examType, setExamType] = useState("bt");
 const [dialogExamType, setDialogExamType] = useState("");
 const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 const [filterYear, setFilterYear] = useState("Tất cả");
+
+useEffect(() => {
+  setDeTuan("");
+  localStorage.removeItem("deTuan");
+}, [config?.hocKy]);
 
 
 useEffect(() => {
@@ -204,7 +210,7 @@ const hocKyMap = {
           JSON.stringify({
             selectedClass: data.class || "",
             selectedSubject: data.subject || "",
-            semester: data.semester || "",
+            //semester: data.semester || "",
             schoolYear: data.schoolYear || "",
             examLetter: data.examLetter || "",
             examType: examType || "",
@@ -232,7 +238,7 @@ useEffect(() => {
     if (cfg?.selectedSubject) setSelectedSubject(cfg.selectedSubject);
 
     // ⭐ Thêm 3 dòng cần thiết
-    if (cfg?.semester) setSemester(cfg.semester);
+    //if (cfg?.semester) setSemester(cfg.semester);
     if (cfg?.schoolYear) setSchoolYear(cfg.schoolYear);
     if (cfg?.examLetter) setExamLetter(cfg.examLetter);
 
@@ -941,7 +947,7 @@ useEffect(() => {
           filterClass={filterClass}
           setFilterClass={setFilterClass}
           filterYear={filterYear}          // thêm
-  setFilterYear={setFilterYear}    // thêm
+          setFilterYear={setFilterYear}    // thêm
           classes={classes}
           loadingList={loadingList}
           docList={docList}
