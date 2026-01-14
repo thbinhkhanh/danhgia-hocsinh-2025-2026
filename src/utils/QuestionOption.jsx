@@ -3,13 +3,26 @@ import { Box, Typography } from "@mui/material";
 const QuestionOption = ({ option }) => {
   if (!option) return null;
 
+  // Nếu option là string thì hiển thị thẳng
+  if (typeof option === "string") {
+    return (
+      <Typography
+        component="div"
+        dangerouslySetInnerHTML={{ __html: option }}
+        sx={{ flex: 1, "& p": { margin: 0 } }}
+      />
+    );
+  }
+
+  // Nếu option là object { text, image, formats }
+  const { text = "", image = null, formats = {} } = option;
+
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      {/* Hình trước nhãn */}
-      {option.image && (
+      {image && (
         <Box
           component="img"
-          src={option.image}
+          src={image}
           alt=""
           sx={{
             maxHeight: 40,
@@ -20,16 +33,14 @@ const QuestionOption = ({ option }) => {
           }}
         />
       )}
-
-      {/* Text nhãn (có thể chứa <img> bên trong) */}
       <Typography
         component="div"
-        dangerouslySetInnerHTML={{ __html: option.text || "" }}
+        dangerouslySetInnerHTML={{ __html: text }}
         sx={{
           flex: 1,
-          fontWeight: option.formats?.bold ? "bold" : "normal",
-          fontStyle: option.formats?.italic ? "italic" : "normal",
-          textDecoration: option.formats?.underline ? "underline" : "none",
+          fontWeight: formats.bold ? "bold" : "normal",
+          fontStyle: formats.italic ? "italic" : "normal",
+          textDecoration: formats.underline ? "underline" : "none",
           "& p": { margin: 0 },
         }}
       />
