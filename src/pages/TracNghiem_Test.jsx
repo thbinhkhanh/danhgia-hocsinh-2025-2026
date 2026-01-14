@@ -49,9 +49,6 @@ import { useNavigate } from "react-router-dom";
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
-import { normalizeQuillHTML } from "../utils/quill";
-import QuillView from "./QuillView";
-
 
 // Hàm shuffle mảng
 function shuffleArray(array) {
@@ -983,7 +980,6 @@ const normalizeValue = (val) => {
   return String(val).trim();
 };
 
-
 return (
   <Box
     id="quiz-container"  // <-- Thêm dòng này
@@ -1148,9 +1144,13 @@ return (
       {!loading && currentQuestion && (
         <Box key={currentQuestion.id || currentIndex}>
           <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" sx={{ mb: 2 }} component="div">
+          <Typography variant="h6" sx={{ mb: 2 }}>
             <strong>Câu {currentIndex + 1}:</strong>{" "}
-            <QuillView value={currentQuestion.question} />
+            <span
+              dangerouslySetInnerHTML={{
+                __html: (currentQuestion.question || "").replace(/^<p>|<\/p>$/g, "")
+              }}
+            />
           </Typography>
 
           {currentQuestion.image && (
@@ -1213,13 +1213,10 @@ return (
                       <Stack {...provided.droppableProps} ref={provided.innerRef} spacing={2}>
                         {orderIdx.map((optIdx, pos) => {
                           const optionData = currentQuestion.options[optIdx];
-                          const optionText = normalizeQuillHTML(optionData);
-
+                          const optionText =
+                            typeof optionData === "string" ? optionData : optionData.text ?? "";
                           const optionImage =
-                            optionData && typeof optionData === "object"
-                              ? optionData.image ?? null
-                              : null;
-
+                            typeof optionData === "object" ? optionData.image ?? null : null;
 
                           // ✅ So sánh với correctTexts thay vì correct index
                           const correctData = currentQuestion.correctTexts[pos];
@@ -1291,10 +1288,8 @@ return (
                                       "& p": { margin: 0 },
                                     }}
                                     component="div"
-                                  >
-                                    <QuillView value={optionData} />
-                                  </Typography>
-
+                                    dangerouslySetInnerHTML={{ __html: optionText }}
+                                  />
                                 </Box>
                               )}
                             </Draggable>
@@ -1317,7 +1312,7 @@ return (
 
                 const currentOrder =
                   answers[currentQuestion.id] ??
-                  currentQuestion.rightOptions.map((_, idx) => idx);
+                  currentQuestion.pairs.map((_, idx) => idx);
 
                 const newOrder = reorder(
                   currentOrder,
@@ -1330,7 +1325,7 @@ return (
             >
               <Stack spacing={1.5} sx={{ width: "100%", px: 1 }}>
                 {currentQuestion.pairs.map((pair, i) => {
-                  const optionData = pair.left;
+                  const optionText = pair.left || "";
                   const optionImage =
                     pair.leftImage?.url || pair.leftIconImage?.url || null;
 
@@ -1339,9 +1334,10 @@ return (
                     currentQuestion.rightOptions.map((_, idx) => idx);
 
                   const rightIdx = userOrder[i];
-                  const rightData = currentQuestion.rightOptions[rightIdx];
+                  const rightVal = currentQuestion.rightOptions[rightIdx];
+                  const rightText = typeof rightVal === "string" ? rightVal : "";
                   const rightImage =
-                    typeof rightData === "object" ? rightData?.url : null;
+                    typeof rightVal === "object" ? rightVal?.url : null;
 
                   const isCorrect =
                     submitted && userOrder[i] === currentQuestion.correct[i];
@@ -1382,8 +1378,7 @@ return (
                             }}
                           />
                         )}
-
-                        {optionData && (
+                        {optionText && (
                           <Typography
                             component="div"
                             sx={{
@@ -1394,9 +1389,8 @@ return (
                               lineHeight: 1.5,
                               "& p": { margin: 0 },
                             }}
-                          >
-                            <QuillView value={optionData} />
-                          </Typography>
+                            dangerouslySetInnerHTML={{ __html: optionText }}
+                          />
                         )}
                       </Paper>
 
@@ -1458,8 +1452,7 @@ return (
                                       }}
                                     />
                                   )}
-
-                                  {rightData && (
+                                  {rightText && (
                                     <Typography
                                       component="div"
                                       sx={{
@@ -1470,9 +1463,8 @@ return (
                                         lineHeight: 1.5,
                                         "& p": { margin: 0 },
                                       }}
-                                    >
-                                      <QuillView value={rightData} />
-                                    </Typography>
+                                      dangerouslySetInnerHTML={{ __html: rightText }}
+                                    />
                                   )}
                                 </Paper>
                               )}
@@ -1487,7 +1479,6 @@ return (
               </Stack>
             </DragDropContext>
           )}
-
 
           {/* 1. Single */}
           {currentQuestion.type === "single" && (
@@ -1523,10 +1514,18 @@ return (
                   handleSingleSelect(currentQuestion.id, optIdx);
                 };
 
-                // ✅ dữ liệu option (có thể là string | object từ Quill)
+                // Lấy dữ liệu option
                 const optionData = currentQuestion.options[optIdx];
+                const optionText =
+                  typeof optionData === "object" && optionData.text
+                    ? optionData.text
+                    : typeof optionData === "string"
+                    ? optionData
+                    : "";
                 const optionImage =
-                  typeof optionData === "object" ? optionData.image ?? null : null;
+                  typeof optionData === "object" && optionData.image
+                    ? optionData.image
+                    : null;
 
                 return (
                   <Paper
@@ -1544,17 +1543,17 @@ return (
                             ? "#c8e6c9"
                             : isWrong
                             ? "#ffcdd2"
-                            : "transparent"
+                            : "transparent"   // 👈 nền mặc định trong suốt
                           : "transparent",
                       border: "1px solid #90caf9",
                       minHeight: 40,
                       py: 0.5,
                       px: 1,
-                      boxShadow: "none",
+                      boxShadow: "none",          // 👈 bỏ đổ bóng
                       transition: "background-color 0.2s ease, border-color 0.2s ease",
                       "&:hover": {
                         borderColor: "#1976d2",
-                        bgcolor: "#f5f5f5",
+                        bgcolor: "#f5f5f5",       // 👈 highlight khi hover
                       },
                     }}
                   >
@@ -1577,29 +1576,25 @@ return (
                       />
                     )}
 
-                    {/* Text option (QUILL) */}
-                    {optionData && (
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          userSelect: "none",
-                          fontSize: "1.1rem",
-                          lineHeight: 1.5,
-                          flex: 1,
-                          whiteSpace: "pre-wrap",
-                          "& p": { margin: 0 },
-                        }}
-                        component="div"
-                      >
-                        <QuillView value={optionData} />
-                      </Typography>
-                    )}
+                    {/* Text option */}
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        userSelect: "none",
+                        fontSize: "1.1rem",
+                        lineHeight: 1.5,
+                        flex: 1,
+                        whiteSpace: "pre-wrap",
+                        "& p": { margin: 0 },
+                      }}
+                      component="div"
+                      dangerouslySetInnerHTML={{ __html: optionText }}
+                    />
                   </Paper>
                 );
               })}
             </Stack>
           )}
-
 
           {/* 2. Multiple */}
           {currentQuestion.type === "multiple" && (
@@ -1622,8 +1617,8 @@ return (
 
               {currentQuestion.displayOrder.map((optIdx) => {
                 const optionData = currentQuestion.options[optIdx];
-                const optionImage =
-                  typeof optionData === "object" ? optionData.image ?? null : null;
+                const optionText = optionData.text ?? "";
+                const optionImage = optionData.image ?? null;
 
                 const userAns = answers[currentQuestion.id] || [];
                 const checked = userAns.includes(optIdx);
@@ -1653,18 +1648,18 @@ return (
                             ? "#c8e6c9"
                             : isWrong
                             ? "#ffcdd2"
-                            : "transparent"
+                            : "transparent"   // 👈 nền mặc định trong suốt
                           : "transparent",
                       border: "1px solid #90caf9",
                       minHeight: 40,
                       py: 0.5,
                       px: 1,
                       gap: 1,
-                      boxShadow: "none",
+                      boxShadow: "none",          // 👈 bỏ đổ bóng
                       transition: "background-color 0.2s ease, border-color 0.2s ease",
                       "&:hover": {
                         borderColor: "#1976d2",
-                        bgcolor: "#f5f5f5",
+                        bgcolor: "#f5f5f5",       // 👈 highlight khi hover
                       },
                     }}
                   >
@@ -1691,34 +1686,30 @@ return (
                       />
                     )}
 
-                    {/* Text option (QUILL) */}
-                    {optionData && (
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          userSelect: "none",
-                          fontSize: "1.1rem",
-                          lineHeight: 1.5,
-                          flex: 1,
-                          whiteSpace: "pre-wrap",
-                          "& p": { margin: 0 },
-                        }}
-                        component="div"
-                      >
-                        <QuillView value={optionData} />
-                      </Typography>
-                    )}
+                    {/* Text option */}
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        userSelect: "none",
+                        fontSize: "1.1rem",
+                        lineHeight: 1.5,
+                        flex: 1,
+                        whiteSpace: "pre-wrap",
+                        "& p": { margin: 0 },
+                      }}
+                      component="div"
+                      dangerouslySetInnerHTML={{ __html: optionText }}
+                    />
                   </Paper>
                 );
               })}
             </Stack>
           )}
 
-
           {/* TRUE / FALSE */}
           {currentQuestion.type === "truefalse" && (
             <Stack spacing={2}>
-              {/* Hiển thị hình minh họa nếu có */}
+              {/* Hiển thị hình minh họa nếu có, căn giữa */}
               {currentQuestion.questionImage && (
                 <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
                   <img
@@ -1733,7 +1724,7 @@ return (
                   />
                 </Box>
               )}
-
+              
               {currentQuestion.options.map((opt, i) => {
                 const userAns = answers[currentQuestion.id] || [];
                 const selected = userAns[i] ?? "";
@@ -1760,14 +1751,12 @@ return (
                       alignItems: "center",
                       gap: 1,
                       borderRadius: 1,
-                      minHeight: 40,
+                      minHeight: 40,          // 👈 giống single choice
                       py: 0.5,
                       px: 1,
-                      bgcolor: isCorrect
-                        ? "#c8e6c9"
-                        : isWrong
-                        ? "#ffcdd2"
-                        : "transparent",
+                      bgcolor: isCorrect ? "#c8e6c9"
+                            : isWrong   ? "#ffcdd2"
+                            : "transparent",
                       border: "1px solid #90caf9",
                       boxShadow: "none",
                       transition: "background-color 0.2s ease, border-color 0.2s ease",
@@ -1777,25 +1766,22 @@ return (
                       },
                     }}
                   >
-                    {/* Text option (QUILL) */}
-                    {opt && (
-                      <Typography
-                        variant="body1"
-                        component="div"
-                        sx={{
-                          userSelect: "none",
-                          fontSize: "1.1rem",
-                          lineHeight: 1.5,
-                          flex: 1,
-                          whiteSpace: "pre-wrap",
-                          "& p": { margin: 0 },
-                        }}
-                      >
-                        <QuillView value={opt} />
-                      </Typography>
-                    )}
+                    {/* Text option */}
+                    <Typography
+                      variant="body1"
+                      component="div"
+                      sx={{
+                        userSelect: "none",
+                        fontSize: "1.1rem",
+                        lineHeight: 1.5,
+                        flex: 1,
+                        whiteSpace: "pre-wrap",
+                        "& p": { margin: 0 },
+                      }}
+                      dangerouslySetInnerHTML={{ __html: opt }}
+                    />
 
-                    {/* Dropdown Đúng / Sai */}
+                    {/* Dropdown nhỏ gọn */}
                     <FormControl size="small" sx={{ width: 90 }}>
                       <Select
                         value={selected}
@@ -1811,7 +1797,7 @@ return (
                           });
                         }}
                         sx={{
-                          height: 32,
+                          height: 32,          // 👈 giảm chiều cao dropdown
                           fontSize: "0.95rem",
                           "& .MuiSelect-select": {
                             py: 0.5,
@@ -1832,7 +1818,6 @@ return (
             </Stack>
           )}
 
-
           {/* IMAGE MULTIPLE */}
           {currentQuestion.type === "image" && (
             <Stack
@@ -1847,17 +1832,15 @@ return (
                 const userAns = answers[currentQuestion.id] || [];
                 const checked = userAns.includes(optIdx);
 
-                const isCorrect =
-                  submitted && currentQuestion.correct.includes(optIdx);
-                const isWrong =
-                  submitted && checked && !currentQuestion.correct.includes(optIdx);
+                const isCorrect = submitted && currentQuestion.correct.includes(optIdx);
+                const isWrong = submitted && checked && !currentQuestion.correct.includes(optIdx);
 
-                // ✅ Chuẩn hoá option image
-                const optionData = currentQuestion.options[optIdx];
-                const imageUrl =
-                  typeof optionData === "string"
-                    ? optionData
-                    : optionData?.image ?? "";
+                // ký hiệu đáp án đúng/sai
+                const bullet = submitted
+                  ? isCorrect
+                    ? "[●]" // hình đúng
+                    : "( )" // hình sai
+                  : "( )"; // chưa nộp thì tất cả là ( )
 
                 return (
                   <Paper
@@ -1871,46 +1854,38 @@ return (
                       p: 1,
                       border: "1px solid #90caf9",
                       cursor: submitted || !started ? "default" : "pointer",
+
                       width: { xs: "100%", sm: 150 },
                       height: { xs: "auto", sm: 180 },
                       boxSizing: "border-box",
-                      bgcolor:
-                        submitted
-                          ? isCorrect
-                            ? "#c8e6c9"
-                            : isWrong
-                            ? "#ffcdd2"
-                            : "transparent"
-                          : "transparent",
-                      transition: "background-color 0.2s ease, border-color 0.2s ease",
-                      "&:hover": {
-                        borderColor: "#1976d2",
-                        bgcolor: "#f5f5f5",
-                      },
                     }}
                     onClick={() => {
                       if (submitted || !started) return;
                       handleMultipleSelect(currentQuestion.id, optIdx, !checked);
                     }}
                   >
-                    {/* Image */}
-                    {imageUrl && (
-                      <img
-                        src={imageUrl}
-                        alt={`option-${optIdx + 1}`}
-                        style={{
-                          maxHeight: 80,
-                          maxWidth: "100%",
-                          objectFit: "contain",
-                          marginBottom: 8,
-                        }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    )}
+                    {/* bullet + số thứ tự */}
+                    {/*<div style={{ marginBottom: 4, fontSize: 14 }}>
+                      {bullet} Hình {optIdx + 1}
+                    </div>*/}
 
-                    {/* Checkbox */}
+                    {/* hình ảnh */}
+                    <img
+                      src={currentQuestion.options[optIdx]}
+                      alt={`option ${optIdx + 1}`}
+                      style={{
+                        maxHeight: 80,
+                        maxWidth: "100%",
+                        objectFit: "contain",
+                        marginBottom: 8,
+                      }}
+                      onError={(e) => {
+                        e.target.src = "";
+                        e.target.alt = "(Không tải được ảnh)";
+                      }}
+                    />
+
+                    {/* checkbox để chọn */}
                     <Checkbox
                       checked={checked}
                       disabled={submitted || !started}
@@ -1918,19 +1893,21 @@ return (
                         handleMultipleSelect(currentQuestion.id, optIdx, !checked)
                       }
                       sx={{
-                        color:
-                          submitted && isCorrect
+                        color: !submitted
+                          ? undefined
+                          : isCorrect
+                          ? "#388e3c"
+                          : isWrong
+                          ? "#d32f2f"
+                          : undefined,
+                        "&.Mui-checked": {
+                          color: !submitted
+                            ? undefined
+                            : isCorrect
                             ? "#388e3c"
-                            : submitted && isWrong
+                            : isWrong
                             ? "#d32f2f"
                             : undefined,
-                        "&.Mui-checked": {
-                          color:
-                            submitted && isCorrect
-                              ? "#388e3c"
-                              : submitted && isWrong
-                              ? "#d32f2f"
-                              : undefined,
                         },
                       }}
                     />
@@ -1939,7 +1916,6 @@ return (
               })}
             </Stack>
           )}
-
 
           {/* FILLBLANK */}
           {currentQuestion.type === "fillblank" && (
@@ -1957,37 +1933,27 @@ return (
                   }}
                 >
                   {currentQuestion.option.split("[...]").map((part, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        display: "inline",
-                        fontFamily: "Roboto, Arial, sans-serif",
-                      }}
-                    >
-                      {/* ===== TEXT (Quill) ===== */}
-                      {part && (
-                        <Typography
-                          component="span"
-                          variant="body1"
-                          sx={{
-                            mr: 0.5,
-                            lineHeight: 1.5,
-                            fontSize: "1.1rem",
-                            "& p": { display: "inline", margin: 0 },
-                            "& div": { display: "inline" },
-                          }}
-                        >
-                          <QuillView value={part} inline />
-                        </Typography>
-                      )}
+                    <span key={idx} style={{ display: "inline", fontFamily: "Roboto, Arial, sans-serif" }}>
+                      
+                      {/* Phần văn bản */}
+                      <Typography
+                        component="span"
+                        variant="body1"
+                        sx={{
+                          mr: 0.5,
+                          lineHeight: 1.5,
+                          fontSize: "1.1rem",
+                          "& p, & div": { display: "inline", margin: 0 }
+                        }}
+                        dangerouslySetInnerHTML={{ __html: part }}
+                      />
 
-                      {/* ===== CHỖ TRỐNG ===== */}
+                      {/* Chỗ trống */}
                       {idx < currentQuestion.option.split("[...]").length - 1 && (
                         <Droppable droppableId={`blank-${idx}`} direction="horizontal">
                           {(provided) => {
                             const userWord = currentQuestion.filled?.[idx] ?? "";
                             const correctWord = currentQuestion.options?.[idx] ?? "";
-
                             const color =
                               submitted && userWord
                                 ? userWord.trim() === correctWord.trim()
@@ -2012,7 +1978,7 @@ return (
                                   fontFamily: "Roboto, Arial, sans-serif",
                                   fontSize: "1.1rem",
                                   lineHeight: "normal",
-                                  color,
+                                  color: color,
                                   verticalAlign: "baseline",
                                 }}
                               >
@@ -2035,10 +2001,10 @@ return (
                                           justifyContent: "center",
                                           minHeight: 30,
                                           maxWidth: "100%",
-                                          color,
-                                          border: "1px solid #90caf9",
-                                          boxShadow: "none",
-                                          "&:hover": { bgcolor: "#bbdefb" },
+                                          color: color,
+                                          border: "1px solid #90caf9",   // 👈 thêm border
+                                          boxShadow: "none",             // 👈 bỏ đổ bóng
+                                          "&:hover": { bgcolor: "#bbdefb" }, // 👈 hover nhẹ
                                         }}
                                       >
                                         {userWord}
@@ -2056,16 +2022,9 @@ return (
                   ))}
                 </Box>
 
-                {/* ======================= KHU VỰC TỪ KÉO ======================= */}
+                {/* ======================= KHU VỰC THẺ TỪ ======================= */}
                 <Box sx={{ mt: 2, textAlign: "left" }}>
-                  <Typography
-                    sx={{
-                      mb: 1,
-                      fontWeight: "bold",
-                      fontSize: "1.1rem",
-                      fontFamily: "Roboto, Arial, sans-serif",
-                    }}
-                  >
+                  <Typography sx={{ mb: 1, fontWeight: "bold", fontSize: "1.1rem", fontFamily: "Roboto, Arial, sans-serif" }}>
                     Các từ cần điền:
                   </Typography>
 
@@ -2096,7 +2055,7 @@ return (
                                   ref={prov.innerRef}
                                   {...prov.draggableProps}
                                   {...prov.dragHandleProps}
-                                  elevation={0}
+                                  elevation={0}                // 👈 tắt shadow mặc định
                                   sx={{
                                     px: 2,
                                     py: 0.5,
@@ -2108,8 +2067,8 @@ return (
                                     minHeight: 30,
                                     fontFamily: "Roboto, Arial, sans-serif",
                                     fontSize: "1.1rem",
-                                    border: "1px solid #90caf9",
-                                    boxShadow: "none",
+                                    border: "1px solid #90caf9",   // 👈 thêm border nhẹ
+                                    boxShadow: "none",             // 👈 đảm bảo không còn bóng
                                     "&:hover": { bgcolor: "#bbdefb" },
                                   }}
                                 >
@@ -2118,6 +2077,7 @@ return (
                               )}
                             </Draggable>
                           ))}
+
                         {provided.placeholder}
                       </Box>
                     )}
@@ -2126,7 +2086,6 @@ return (
               </Stack>
             </DragDropContext>
           )}
-
         </Box>
       )}
 

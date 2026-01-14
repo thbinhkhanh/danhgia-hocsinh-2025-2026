@@ -17,19 +17,6 @@ export const saveAllQuestions = async ({
   setSnackbar,
   setIsEditingNewDoc,
 }) => {
-  /*const invalid = questions
-    .map((q, i) => (!isQuestionValid(q) ? `Câu ${i + 1}` : null))
-    .filter(Boolean);
-
-  if (invalid.length > 0) {
-    setSnackbar({
-      open: true,
-      message: `❌ Các câu hỏi chưa hợp lệ: ${invalid.join(", ")}`,
-      severity: "error",
-    });
-    return;
-  }*/
-
   try {
     const weekValue =
       typeof week !== "undefined" && week !== null
@@ -37,6 +24,7 @@ export const saveAllQuestions = async ({
         : quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1";
 
     const uploadImage = async (file) => {
+      if (!(file instanceof File)) return file; // nếu đã là URL thì giữ nguyên
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", "tracnghiem_upload");
@@ -50,29 +38,69 @@ export const saveAllQuestions = async ({
       return data.secure_url;
     };
 
+    // ✅ Chuẩn hóa options: thêm text, formats, image
+    const normalizeOptions = async (options) => {
+      if (!options) return [];
+      return Promise.all(
+        options.map(async (opt) => {
+          // Nếu opt là string → wrap lại
+          if (typeof opt === "string") {
+            return { text: opt, formats: {}, image: "" };
+          }
+          if (opt && typeof opt === "object") {
+            // Upload image nếu là File
+            let imageUrl = opt.image;
+            if (opt.image instanceof File) {
+              imageUrl = await uploadImage(opt.image);
+            }
+            return {
+              text: opt.text || "",
+              formats: opt.formats || {}, // { bold, italic, underline }
+              image: imageUrl || "",
+            };
+          }
+          return { text: "", formats: {}, image: "" };
+        })
+      );
+    };
+
     const questionsToSave = [];
 
     for (let q of questions) {
       let updatedQ = { ...q };
 
+      // Chuẩn hóa options trước khi xử lý
+      updatedQ.options = await normalizeOptions(q.options);
+
       if (q.type === "image") {
+        // Nếu là type image thì options chính là danh sách ảnh
         const uploadedOptions = await Promise.all(
-          (q.options || []).map(async (opt) => (opt instanceof File ? await uploadImage(opt) : opt))
+          updatedQ.options.map(async (opt) =>
+            opt.image instanceof File ? await uploadImage(opt.image) : opt.image
+          )
         );
-        updatedQ.options = uploadedOptions;
+        updatedQ.options = uploadedOptions.map((url, i) => ({
+          text: updatedQ.options[i].text || "",
+          formats: updatedQ.options[i].formats || {},
+          image: url,
+        }));
         updatedQ.correct = updatedQ.correct || [];
       }
 
       if (q.type === "matching") updatedQ.correct = q.pairs.map((_, i) => i);
-      if (q.type === "sort") updatedQ.correct = q.options.map((_, i) => i);
+      if (q.type === "sort") updatedQ.correct = updatedQ.options.map((_, i) => i);
       if (q.type === "single") updatedQ.correct = q.correct?.length ? q.correct : [0];
       if (q.type === "multiple") updatedQ.correct = q.correct || [];
       if (q.type === "truefalse")
-        updatedQ.correct = q.correct?.length === q.options?.length ? q.correct : q.options.map(() => "");
+        updatedQ.correct =
+          q.correct?.length === updatedQ.options?.length
+            ? q.correct
+            : updatedQ.options.map(() => "");
 
       questionsToSave.push(updatedQ);
     }
 
+    // Lưu vào localStorage
     localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
     localStorage.setItem(
       "teacherConfig",
@@ -86,20 +114,27 @@ export const saveAllQuestions = async ({
     let collectionName, docId;
 
     if (examType === "ktdk") {
-      //collectionName = "TRACNGHIEM_BK";
       collectionName = "NGANHANG_DE";
-      const semesterMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cả năm": "CN" };
+      const semesterMap = {
+        "Giữa kỳ I": "GKI",
+        "Cuối kỳ I": "CKI",
+        "Giữa kỳ II": "GKII",
+        "Cả năm": "CN",
+      };
       const shortSchoolYear = (year) => {
         const parts = year.split("-");
-        return parts.length === 2 ? parts[0].slice(2) + "-" + parts[1].slice(2) : year;
+        return parts.length === 2
+          ? parts[0].slice(2) + "-" + parts[1].slice(2)
+          : year;
       };
-      docId = `quiz_${selectedClass}_${selectedSubject}_${semesterMap[semester]}_${shortSchoolYear(schoolYear)} (${examLetter})`;
+      docId = `quiz_${selectedClass}_${selectedSubject}_${semesterMap[semester]}_${shortSchoolYear(
+        schoolYear
+      )} (${examLetter})`;
     } else {
       collectionName = "BAITAP_TUAN";
       docId = `quiz_${selectedClass}_${selectedSubject}_${weekValue}`;
     }
 
-    //console.log("📁 Document path:", `${collectionName} / ${docId}`);
     const quizRef = doc(db, collectionName, docId);
     await setDoc(quizRef, {
       class: selectedClass,
@@ -125,7 +160,15 @@ export const saveAllQuestions = async ({
     }
 
     // Cập nhật context
-    const newDoc = { id: docId, class: selectedClass, subject: selectedSubject, semester, week: weekValue, examType, questions: questionsToSave };
+    const newDoc = {
+      id: docId,
+      class: selectedClass,
+      subject: selectedSubject,
+      semester,
+      week: weekValue,
+      examType,
+      questions: questionsToSave,
+    };
     setDeTuan(weekValue);
     localStorage.setItem("deTuan", weekValue);
 
@@ -136,6 +179,10 @@ export const saveAllQuestions = async ({
     setIsEditingNewDoc(false);
   } catch (err) {
     console.error(err);
-    setSnackbar({ open: true, message: `❌ Lỗi khi lưu đề: ${err.message}`, severity: "error" });
+    setSnackbar({
+      open: true,
+      message: `❌ Lỗi khi lưu đề: ${err.message}`,
+      severity: "error",
+    });
   }
 };
