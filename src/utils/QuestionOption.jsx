@@ -15,8 +15,8 @@ const QuestionOption = ({ option }) => {
           src={image}
           alt=""
           sx={{
-            maxHeight: 40,
-            maxWidth: 40,
+            maxHeight: 35,
+            width: "auto",
             objectFit: "contain",
             borderRadius: 2,
             flexShrink: 0,

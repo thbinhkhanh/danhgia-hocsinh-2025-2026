@@ -1535,7 +1535,7 @@ return (
           {/* Radio button */}
           <Radio checked={selected} onChange={handleSelect} sx={{ mr: 1 }} />
 
-          {/* Hiển thị option với font-size chuẩn */}
+          {/* Hiển thị option text + image nếu có (đã xử lý trong QuestionOption) */}
           <Box sx={{ flex: 1 }}>
             <QuestionOption option={optionData} />
           </Box>
