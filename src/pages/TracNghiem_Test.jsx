@@ -1058,7 +1058,7 @@ return (
             color: "#1976d2", // màu xanh
           }}
         >
-          TEST ĐỀ KIỂM TRA Error
+          TEST ĐỀ KIỂM TRA
         </Typography>
 
         {/* Ô chọn đề */}
@@ -1085,7 +1085,6 @@ return (
           </Select>
         </FormControl>
       </Box>
-      
 
       {/* Đồng hồ với vị trí cố định */}
       <Box
@@ -1147,13 +1146,13 @@ return (
         <Box key={currentQuestion.id || currentIndex}>
           <Divider sx={{ my: 2 }} />
           <Typography variant="h6" sx={{ mb: 2 }}>
-  <strong>Câu {currentIndex + 1}:</strong>{" "}
-  <span
-    dangerouslySetInnerHTML={{
-      __html: (currentQuestion.question || "").replace(/^<p>|<\/p>$/g, "")
-    }}
-  />
-</Typography>
+            <strong>Câu {currentIndex + 1}:</strong>{" "}
+            <span
+              dangerouslySetInnerHTML={{
+                __html: (currentQuestion.question || "").replace(/^<p>|<\/p>$/g, "")
+              }}
+            />
+          </Typography>
 
           {currentQuestion.image && (
             <Box sx={{ width: "100%", textAlign: "center", mb: 2 }}>
@@ -1286,20 +1285,7 @@ return (
                           />
                         )}
 
-                        <Typography
-                          variant="body1"
-                          fontWeight="400"
-                          sx={{
-                            userSelect: "none",
-                            fontSize: "1.1rem",
-                            lineHeight: 1.5,
-                            flex: 1,
-                            whiteSpace: "pre-wrap",
-                            "& p": { margin: 0 },
-                          }}
-                          component="div"
-                          dangerouslySetInnerHTML={{ __html: optionText }}
-                        />
+                        <QuestionOption option={optionData} />
                       </Box>
                     )}
                   </Draggable>
@@ -1497,65 +1483,70 @@ return (
   </DragDropContext>
 )}
           {/* 1. Single */}
-          {Array.isArray(currentQuestion?.displayOrder) &&
-  currentQuestion.displayOrder.map((optIdx) => {
-    const selected = answers[currentQuestion.id] === optIdx;
+          {currentQuestion.type === "single" && Array.isArray(currentQuestion?.displayOrder) && (
+  <Stack spacing={2}>
+    {currentQuestion.displayOrder.map((optIdx) => {
+      const selected = answers[currentQuestion.id] === optIdx;
 
-    const correctArray = Array.isArray(currentQuestion.correct)
-      ? currentQuestion.correct
-      : [currentQuestion.correct];
+      const correctArray = Array.isArray(currentQuestion.correct)
+        ? currentQuestion.correct
+        : [currentQuestion.correct];
 
-    const isCorrect = submitted && correctArray.includes(optIdx);
-    const isWrong = submitted && selected && !correctArray.includes(optIdx);
+      const isCorrect = submitted && correctArray.includes(optIdx);
+      const isWrong = submitted && selected && !correctArray.includes(optIdx);
 
-    const handleSelect = () => {
-      if (submitted || !started) return;
-      handleSingleSelect(currentQuestion.id, optIdx);
-    };
+      const handleSelect = () => {
+        if (submitted || !started) return;
+        handleSingleSelect(currentQuestion.id, optIdx);
+      };
 
-    const optionData = currentQuestion.options?.[optIdx] ?? {};
+      const optionData = currentQuestion.options?.[optIdx] ?? {};
 
-    return (
-      <Paper
-        key={optIdx}
-        onClick={handleSelect}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          borderRadius: 1,
-          cursor: submitted || !started ? "default" : "pointer",
-          bgcolor:
-            submitted && choXemDapAn
-              ? isCorrect
-                ? "#c8e6c9"
-                : isWrong
-                ? "#ffcdd2"
-                : "transparent"
-              : "transparent",
-          border: "1px solid #90caf9",
-          minHeight: 40,
-          py: 0.5,
-          px: 1,
-          boxShadow: "none",
-          transition: "background-color 0.2s ease, border-color 0.2s ease",
-          "&:hover": {
-            borderColor: "#1976d2",
-            bgcolor: "#f5f5f5",
-          },
-        }}
-      >
-        {/* Radio button */}
-        <Radio checked={selected} onChange={handleSelect} sx={{ mr: 1 }} />
+      return (
+        <Paper
+          key={optIdx}
+          onClick={handleSelect}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            borderRadius: 1,
+            cursor: submitted || !started ? "default" : "pointer",
+            bgcolor:
+              submitted && choXemDapAn
+                ? isCorrect
+                  ? "#c8e6c9"
+                  : isWrong
+                  ? "#ffcdd2"
+                  : "transparent"
+                : "transparent",
+            border: "1px solid #90caf9",
+            minHeight: 40,
+            py: 0.5,
+            px: 1,
+            boxShadow: "none",
+            transition: "background-color 0.2s ease, border-color 0.2s ease",
+            "&:hover": {
+              borderColor: "#1976d2",
+              bgcolor: "#f5f5f5",
+            },
+          }}
+        >
+          {/* Radio button */}
+          <Radio checked={selected} onChange={handleSelect} sx={{ mr: 1 }} />
 
-        {/* Gọi component QuestionOption */}
-        <QuestionOption option={optionData} />
-      </Paper>
-    );
-  })}
+          {/* Hiển thị option với font-size chuẩn */}
+          <Box sx={{ flex: 1 }}>
+            <QuestionOption option={optionData} />
+          </Box>
+        </Paper>
+      );
+    })}
+  </Stack>
+)}
 
           {/* 2. Multiple */}
-          {currentQuestion.type === "multiple" && Array.isArray(currentQuestion?.displayOrder) && (
+          {currentQuestion.type === "multiple" && Array.isArray(currentQuestion.displayOrder) && (
   <Stack spacing={2}>
     {/* Hình minh họa câu hỏi nếu có */}
     {currentQuestion.questionImage && (
@@ -1573,90 +1564,90 @@ return (
       </Box>
     )}
 
-    {currentQuestion.displayOrder.map((optIdx) => {
-      const optionData = currentQuestion.options?.[optIdx] ?? {};
-      const optionText = optionData.text ?? "";
-      const optionImage = optionData.image ?? null;
+    {currentQuestion.displayOrder
+      .filter((optIdx) => currentQuestion.options?.[optIdx] !== undefined)
+      .map((optIdx) => {
+        const optionData = currentQuestion.options[optIdx];
+        const optionText = optionData?.text ?? "";
+        const optionImage = optionData?.image ?? null;
 
-      const userAns = answers[currentQuestion.id] || [];
-      const checked = userAns.includes(optIdx);
+        const userAns = answers[currentQuestion.id] || [];
+        const checked = userAns.includes(optIdx);
 
-      const isCorrect =
-        submitted && Array.isArray(currentQuestion.correct) && currentQuestion.correct.includes(optIdx);
-      const isWrong =
-        submitted && checked && Array.isArray(currentQuestion.correct) && !currentQuestion.correct.includes(optIdx);
+        const isCorrect = submitted && currentQuestion.correct.includes(optIdx);
+        const isWrong = submitted && checked && !currentQuestion.correct.includes(optIdx);
 
-      const handleSelect = () => {
-        if (submitted || !started) return;
-        handleMultipleSelect(currentQuestion.id, optIdx, !checked);
-      };
+        const handleSelect = () => {
+          if (submitted || !started) return;
+          handleMultipleSelect(currentQuestion.id, optIdx, !checked);
+        };
 
-      return (
-        <Paper
-          key={optIdx}
-          onClick={handleSelect}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            borderRadius: 1,
-            cursor: submitted || !started ? "default" : "pointer",
-            bgcolor:
-              submitted && choXemDapAn
-                ? isCorrect
-                  ? "#c8e6c9"
-                  : isWrong
-                  ? "#ffcdd2"
-                  : "transparent"
-                : "transparent",
-            border: "1px solid #90caf9",
-            minHeight: 40,
-            py: 0.5,
-            px: 1,
-            gap: 1,
-            boxShadow: "none",
-            transition: "background-color 0.2s ease, border-color 0.2s ease",
-            "&:hover": {
-              borderColor: "#1976d2",
-              bgcolor: "#f5f5f5",
-            },
-          }}
-        >
-          {/* Checkbox */}
-          <Checkbox checked={checked} onChange={handleSelect} sx={{ mr: 1 }} />
-
-          {/* Hình option nếu có */}
-          {optionImage && (
-            <Box
-              component="img"
-              src={optionImage}
-              alt={`option-${optIdx}`}
-              sx={{
-                maxHeight: 40,
-                maxWidth: 40,
-                objectFit: "contain",
-                borderRadius: 2,
-                flexShrink: 0,
-              }}
-            />
-          )}
-
-          {/* Text option */}
-          <Typography
-            variant="body1"
+        return (
+          <Paper
+            key={optIdx}
+            onClick={handleSelect}
             sx={{
-              userSelect: "none",
-              fontSize: "1.1rem",
-              lineHeight: 1.5,
-              flex: 1,
-              whiteSpace: "pre-wrap",
-              "& p": { margin: 0 },
+              display: "flex",
+              alignItems: "center",
+              borderRadius: 1,
+              cursor: submitted || !started ? "default" : "pointer",
+              bgcolor:
+                submitted && choXemDapAn
+                  ? isCorrect
+                    ? "#c8e6c9"
+                    : isWrong
+                    ? "#ffcdd2"
+                    : "transparent"
+                  : "transparent",
+              border: "1px solid #90caf9",
+              minHeight: 40,
+              py: 0.5,
+              px: 1,
+              gap: 1,
+              boxShadow: "none",
+              transition: "background-color 0.2s ease, border-color 0.2s ease",
+              "&:hover": {
+                borderColor: "#1976d2",
+                bgcolor: "#f5f5f5",
+              },
             }}
-            component="div"
-            dangerouslySetInnerHTML={{ __html: optionText }}
-          />
-        </Paper>
-      );
-    })}
+          >
+            {/* Checkbox */}
+            <Checkbox checked={checked} onChange={handleSelect} sx={{ mr: 1 }} />
+
+            {/* Hình option nếu có */}
+            {optionImage && (
+              <Box
+                component="img"
+                src={optionImage}
+                alt={`option-${optIdx}`}
+                sx={{
+                  maxHeight: 40,
+                  maxWidth: 40,
+                  objectFit: "contain",
+                  borderRadius: 2,
+                  flexShrink: 0,
+                }}
+              />
+            )}
+
+            {/* Text option */}
+            <Typography
+              variant="body1"
+              sx={{
+                userSelect: "none",
+                fontSize: "1.1rem",
+                lineHeight: 1.5,
+                flex: 1,
+                whiteSpace: "pre-wrap",
+                "& p": { margin: 0 },
+              }}
+              component="div"
+              dangerouslySetInnerHTML={{ __html: optionText }}
+            />
+          </Paper>
+        );
+      })}
   </Stack>
 )}
 
@@ -1799,7 +1790,8 @@ return (
         Array.isArray(currentQuestion.correct) &&
         !currentQuestion.correct.includes(optIdx);
 
-      const optionVal = currentQuestion.options?.[optIdx] ?? "";
+      const optionData = currentQuestion.options?.[optIdx] ?? {};
+      const optionVal = optionData.image || optionData.text || ""; // 👈 lấy ảnh từ text nếu image rỗng
 
       return (
         <Paper
@@ -1816,14 +1808,6 @@ return (
             width: { xs: "100%", sm: 150 },
             height: { xs: "auto", sm: 180 },
             boxSizing: "border-box",
-            bgcolor:
-              submitted && choXemDapAn
-                ? isCorrect
-                  ? "#c8e6c9"
-                  : isWrong
-                  ? "#ffcdd2"
-                  : "transparent"
-                : "transparent",
           }}
           onClick={() => {
             if (submitted || !started) return;
@@ -1841,8 +1825,8 @@ return (
               marginBottom: 8,
             }}
             onError={(e) => {
-              e.target.src = "";
-              e.target.alt = "(Không tải được ảnh)";
+              e.target.onerror = null;
+              e.target.src = "https://via.placeholder.com/80?text=Ảnh+lỗi";
             }}
           />
 

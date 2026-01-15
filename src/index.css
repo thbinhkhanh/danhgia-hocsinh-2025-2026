@@ -11,7 +11,8 @@
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
-  font-synthesis: none;
+  /* Cho phép trình duyệt giả lập italic/bold nếu font thiếu */
+  font-synthesis: style weight;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -96,7 +97,7 @@ button:focus-visible {
 }
 
 .choice-option-editor .ql-container {
-  font-family: Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Roboto', Helvetica, Arial, sans-serif;
   border-radius: 4px;
 }
 
@@ -129,7 +130,7 @@ button:focus-visible {
 }
 
 .question-header-editor .ql-container {
-  font-family: Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Roboto', Helvetica, Arial, sans-serif;
   border-radius: 4px;
 }
 
@@ -151,33 +152,65 @@ button:focus-visible {
 /* ===================================================== */
 
 /* Bold */
+.choice-option-editor strong,
+.choice-option-editor b,
 .choice-option-editor .ql-editor strong,
 .choice-option-editor .ql-editor b,
+.question-header-editor strong,
+.question-header-editor b,
 .question-header-editor .ql-editor strong,
 .question-header-editor .ql-editor b {
-  font-weight: 600;
+  font-weight: 600 !important;
 }
 
 /* Italic */
+.choice-option-editor em,
+.choice-option-editor i,
+.choice-option-editor span[style*="italic"],
 .choice-option-editor .ql-editor em,
 .choice-option-editor .ql-editor i,
+.choice-option-editor .ql-editor span[style*="italic"],
+.choice-option-editor .ql-editor *[style*="font-style: italic"],
+.question-header-editor em,
+.question-header-editor i,
+.question-header-editor span[style*="italic"],
 .question-header-editor .ql-editor em,
-.question-header-editor .ql-editor i {
-  font-style: italic;
+.question-header-editor .ql-editor i,
+.question-header-editor .ql-editor span[style*="italic"],
+.question-header-editor .ql-editor *[style*="font-style: italic"] {
+  font-style: italic !important;
 }
 
 /* Underline */
+.choice-option-editor u,
+.choice-option-editor span[style*="underline"],
 .choice-option-editor .ql-editor u,
-.question-header-editor .ql-editor u {
-  text-decoration: underline;
+.choice-option-editor .ql-editor span[style*="underline"],
+.choice-option-editor .ql-editor *[style*="text-decoration: underline"],
+.question-header-editor u,
+.question-header-editor span[style*="underline"],
+.question-header-editor .ql-editor u,
+.question-header-editor .ql-editor span[style*="underline"],
+.question-header-editor .ql-editor *[style*="text-decoration: underline"] {
+  text-decoration: underline !important;
   text-underline-offset: 2px;
 }
 
 /* Bold + Italic */
+.choice-option-editor strong em,
+.choice-option-editor em strong,
 .choice-option-editor .ql-editor strong em,
 .choice-option-editor .ql-editor em strong,
+.question-header-editor strong em,
+.question-header-editor em strong,
 .question-header-editor .ql-editor strong em,
 .question-header-editor .ql-editor em strong {
-  font-weight: 600;
-  font-style: italic;
+  font-weight: 600 !important;
+  font-style: italic !important;
+}
+
+/* Reset margin cho p */
+.choice-option-editor p,
+.question-header-editor p {
+  margin: 0;
 }

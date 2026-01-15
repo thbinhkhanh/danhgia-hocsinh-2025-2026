@@ -20,16 +20,18 @@ const QuestionHeader = ({ q, qi, update }) => {
   const [focused, setFocused] = useState(false);
 
   const applyFormat = (format) => {
-    if (!focused) return;
-
     const quill = quillRef.current?.getEditor();
     if (!quill) return;
 
-    const range = quill.getSelection();
+    // lấy selection chuẩn, tránh mất chọn
+    const range = quill.getSelection(true);
     if (!range || range.length === 0) return;
 
     const current = quill.getFormat(range);
-    quill.format(format, !current[format]);
+    // áp dụng format cho toàn bộ vùng chọn
+    quill.formatText(range.index, range.length, format, !current[format]);
+    // giữ nguyên selection sau khi format
+    quill.setSelection(range.index, range.length, "silent");
   };
 
   return (
@@ -47,13 +49,31 @@ const QuestionHeader = ({ q, qi, update }) => {
         </Typography>
 
         <Box sx={{ display: "flex", gap: 1 }}>
-          <IconButton size="small" onClick={() => applyFormat("bold")}>
+          <IconButton
+            size="small"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormat("bold");
+            }}
+          >
             <FormatBoldIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" onClick={() => applyFormat("italic")}>
+          <IconButton
+            size="small"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormat("italic");
+            }}
+          >
             <FormatItalicIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" onClick={() => applyFormat("underline")}>
+          <IconButton
+            size="small"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormat("underline");
+            }}
+          >
             <FormatUnderlinedIcon fontSize="small" />
           </IconButton>
         </Box>
