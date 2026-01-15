@@ -176,14 +176,25 @@ function AppContent() {
                     location.pathname === item.path
                       ? "3px solid #fff"
                       : "3px solid transparent",
-                  "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+
+                  "&:hover": {
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    opacity: 1,               // 🔴 QUAN TRỌNG
+                  },
                 }}
               >
-                {item.icon}
-                <Typography variant="body2" sx={{ ml: 0.3 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    ml: 0.3,
+                    color: "white",           // 🔴 FIX CHÍNH
+                    opacity: 1,               // 🔴 FIX CHÍNH
+                  }}
+                >
                   {item.label}
                 </Typography>
               </Button>
+
             ))}
           </Box>
 
