@@ -6,8 +6,6 @@ import MatchingOptions from "./options/MatchingOptions";
 import ImageOptions from "./options/ImageOptions";
 import FillBlankOptions from "./options/FillBlankOptions";
 
-
-
 const QuestionOptions = ({ q, qi, update }) => {
 switch (q.type) {
 case "matching": return <MatchingOptions q={q} qi={qi} update={update} />;

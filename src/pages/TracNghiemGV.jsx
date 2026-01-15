@@ -45,7 +45,7 @@ import { saveAllQuestions } from "../utils/saveAllQuestions";
 
 export default function TracNghiemGV() {
   const { config, setConfig } = useConfig(); 
-  const semester = config?.hocKy || "";
+  //const semester = config?.hocKy || "";
   const { config: quizConfig, updateConfig: updateQuizConfig } = useTracNghiem();
 
   // ⚙️ State cho dialog mở đề
@@ -70,6 +70,8 @@ const [examType, setExamType] = useState("bt");
 const [dialogExamType, setDialogExamType] = useState("");
 const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 const [filterYear, setFilterYear] = useState("Tất cả");
+const [semester, setSemester] = useState("Giữa kỳ I");
+
 
 useEffect(() => {
   setDeTuan("");
@@ -824,46 +826,43 @@ useEffect(() => {
               <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
                 <InputLabel>Tuần</InputLabel>
                 <Select
-                  value={deTuan || ""}   // fallback rỗng khi reset
+                  value={deTuan || ""} // fallback rỗng khi reset
                   onChange={(e) => {
-                    const w = Number(e.target.value);
+                    const w = e.target.value === "" ? "" : Number(e.target.value);
                     setDeTuan(w);
-                    localStorage.setItem("deTuan", w);
+                    if (w !== "") {
+                      localStorage.setItem("deTuan", w);
+                    } else {
+                      localStorage.removeItem("deTuan");
+                    }
                   }}
                   label="Tuần"
                 >
                   {/* MenuItem mặc định */}
                   <MenuItem value="">Chọn tuần</MenuItem>
 
-                  {/* Chỉ render khi hocKyMap[semester] tồn tại */}
-                  {semester && hocKyMap[semester] ? (
-                    Array.from(
-                      { length: hocKyMap[semester].to - hocKyMap[semester].from + 1 },
-                      (_, i) => i + hocKyMap[semester].from
-                    ).map((t) => (
-                      <MenuItem key={t} value={t}>
-                        Tuần {t}
-                      </MenuItem>
-                    ))
-                  ) : null}
+                  {/* List cứng từ 1 đến 35 */}
+                  {Array.from({ length: 35 }, (_, i) => i + 1).map((t) => (
+                    <MenuItem key={t} value={t}>
+                      Tuần {t}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             )}
-
-
+            
             {/* Nếu là KTĐK */}
             {examType === "ktdk" && (
               <>
-                <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+                <FormControl size="small" sx={{ flex: 1 }}>
                   <InputLabel>Học kỳ</InputLabel>
                   <Select
-                    value={semester || ""}
+                    value={semester}
                     onChange={(e) => setSemester(e.target.value)}
                     label="Học kỳ"
                   >
-                    {semesters.map((hk) => (
-                      <MenuItem key={hk} value={hk}>{hk}</MenuItem>
-                    ))}
+                    <MenuItem value="Cuối kỳ I">Học kỳ I</MenuItem>
+                    <MenuItem value="Cả năm">Học kỳ II</MenuItem>
                   </Select>
                 </FormControl>
 

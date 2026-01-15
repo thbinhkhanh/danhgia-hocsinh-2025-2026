@@ -44,8 +44,8 @@ const QuestionHeader = ({ q, qi, update }) => {
           mb: 1,
         }}
       >
-        <Typography className="question-header-title">
-          Câu hỏi {qi + 1}
+        <Typography className="question-header-title" fontWeight="bold">
+          Câu hỏi {qi + 1}:
         </Typography>
 
         <Box sx={{ display: "flex", gap: 1 }}>

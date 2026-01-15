@@ -91,15 +91,16 @@ const ImageOptions = ({ q, qi, update }) => {
         flexWrap="wrap"
         alignItems="center"
       >
-        {(q.options || []).map((img, oi) => {
+        {(q.options || []).map((option, oi) => {
+          const imageUrl = option?.text || "";
           const isChecked = q.correct?.includes(oi) || false;
 
           return (
             <Box key={oi} sx={{ position: "relative" }}>
               <Paper
                 sx={{
-                  width: { xs: "80%", sm: 120 },
-                  height: { xs: 80, sm: 120 },
+                  width: 120,
+                  height: 120,
                   border: "2px dashed #90caf9",
                   display: "flex",
                   alignItems: "center",
@@ -107,10 +108,10 @@ const ImageOptions = ({ q, qi, update }) => {
                   position: "relative",
                 }}
               >
-                {img ? (
+                {imageUrl ? (
                   <>
                     <img
-                      src={img}
+                      src={imageUrl}
                       alt={`option-${oi}`}
                       style={{
                         maxWidth: "100%",
@@ -119,7 +120,6 @@ const ImageOptions = ({ q, qi, update }) => {
                       }}
                     />
 
-                    {/* Nút xoá hình & xoá ô */}
                     <IconButton
                       size="small"
                       sx={{ position: "absolute", top: 2, right: 2 }}
@@ -129,7 +129,6 @@ const ImageOptions = ({ q, qi, update }) => {
                     </IconButton>
                   </>
                 ) : (
-                  // Nút tải hình
                   <label
                     style={{
                       cursor: "pointer",
@@ -140,25 +139,24 @@ const ImageOptions = ({ q, qi, update }) => {
                       justifyContent: "center",
                     }}
                   >
-                    <Typography variant="body2" sx={{ textAlign: "center" }}>
-                      Tải hình lên
+                    <Typography variant="body2" align="center">
+                      Tải hình
                     </Typography>
 
                     <input
                       type="file"
                       accept="image/*"
-                      style={{ display: "none" }}
+                      hidden
                       onChange={(e) =>
                         e.target.files?.[0] &&
-                        handleImageChange(e.target.files[0], oi)
+                        handleImageChange(qi, oi, e.target.files[0])
                       }
                     />
                   </label>
                 )}
               </Paper>
 
-              {/* Checkbox chọn đáp án */}
-              {img && (
+              {imageUrl && (
                 <Checkbox
                   checked={isChecked}
                   onChange={(e) => {
@@ -179,6 +177,7 @@ const ImageOptions = ({ q, qi, update }) => {
             </Box>
           );
         })}
+
 
         {/* Nút thêm hình */}
         <Button
