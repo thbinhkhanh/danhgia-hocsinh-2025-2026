@@ -100,7 +100,6 @@ export default function TracNghiem_Test() {
   const [examList, setExamList] = useState([]);
   const [selectedExam, setSelectedExam] = useState("");
   const [complete, setComplete] = useState(false); // thêm dòng này
-  const [examType, setExamType] = useState("kt"); // "bt" | "kt"
   
   // Lấy trường từ tài khoản đăng nhập
   const account = localStorage.getItem("account") || "";
@@ -154,7 +153,7 @@ export default function TracNghiem_Test() {
     });
   };
 
-  /*useEffect(() => {
+  useEffect(() => {
     const fetchExams = async () => {
       try {
         const colName = "NGANHANG_DE";
@@ -217,13 +216,7 @@ export default function TracNghiem_Test() {
     };
 
     fetchExams();
-  }, [school, selectedYear, hocKi]);*/
-
-  useEffect(() => {
-    if (!examType) return;
-    fetchQuizList(examType);
-  }, [examType]);
-
+  }, [school, selectedYear, hocKi]);
 
   // ⭐ RESET TOÀN BỘ SAU KHI CHỌN ĐỀ MỚI
   useEffect(() => {
@@ -269,10 +262,7 @@ export default function TracNghiem_Test() {
         let prog = 0;
 
         let docId = null;
-        //let collectionName = "NGANHANG_DE";
-        let collectionName =
-          examType === "kt" ? "NGANHANG_DE" : "BAITAP_TUAN";
-
+        let collectionName = "NGANHANG_DE";
         let hocKiFromConfig = "";
         let monHocFromConfig = "";
         let timeLimitMinutes = 0; // ⬅ để lưu thời gian
@@ -532,6 +522,7 @@ export default function TracNghiem_Test() {
             return null;
         }).filter(Boolean);
 
+
         // --- Lọc câu hợp lệ bao gồm fillblank ---
         const validQuestions = loadedQuestions.filter(q => {
             if (q.type === "matching") return q.question.trim() !== "" && q.leftOptions.length > 0 && q.rightOptions.length > 0;
@@ -541,6 +532,7 @@ export default function TracNghiem_Test() {
             if (q.type === "fillblank") return q.question.trim() !== "" && q.options.length > 0;
             return false;
         });
+
 
         setQuestions(validQuestions);
         setProgress(100);
@@ -555,81 +547,8 @@ export default function TracNghiem_Test() {
     };
 
     fetchQuestions();
-  }, [selectedExam, examType]);
+ }, [selectedExam]);
 
-  const fetchQuizList = async (type) => {
-    try {
-      const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
-
-      const colRef = collection(db, colName);
-      const snap = await getDocs(colRef);
-
-      const exams = snap.docs.map((d) => d.id);
-
-      setExamList(exams);
-
-      if (exams.length > 0) {
-        setSelectedExam(exams[0]);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi khi lấy danh sách đề:", err);
-      setSnackbar({
-        open: true,
-        message: "❌ Không thể tải danh sách đề!",
-        severity: "error",
-      });
-    }
-  };
-
-  const formatQuizTitle = (examName = "") => {
-    if (!examName) return "";
-
-    // Bỏ prefix quiz_
-    let name = examName.startsWith("quiz_") ? examName.slice(5) : examName;
-    const parts = name.split("_");
-
-    // ===== LỚP =====
-    const classPart = parts.find(p => p.toLowerCase().includes("lớp")) || "";
-    const classNumber = classPart.match(/\d+/)?.[0] || "";
-
-    // ===== MÔN =====
-    let subjectPart = "";
-    for (let i = parts.indexOf(classPart) + 1; i < parts.length; i++) {
-      const p = parts[i];
-      if (
-        !p.toLowerCase().includes("cki") &&
-        !p.toLowerCase().includes("cn") &&
-        !/\d{2}-\d{2}/.test(p)
-      ) {
-        subjectPart = p;
-        break;
-      }
-    }
-
-    // ===== PHÂN BIỆT BT / KT =====
-    const lastPart = parts[parts.length - 1];
-
-    // 👉 BÀI TẬP TUẦN (kết thúc bằng số)
-    if (/^\d+$/.test(lastPart)) {
-      return `${subjectPart} ${classNumber} – Tuần ${lastPart}`.trim();
-    }
-
-    // 👉 KIỂM TRA ĐỊNH KỲ
-    let extraPart = "";
-    for (let i = parts.indexOf(classPart) + 1; i < parts.length; i++) {
-      const p = parts[i];
-      if (p.toLowerCase().includes("cki") || p.toLowerCase() === "cn") {
-        extraPart = p.toUpperCase();
-        break;
-      }
-    }
-
-    const match = examName.match(/\(([^)]+)\)/);
-    const examLetter = match ? match[1] : "";
-
-    return `${subjectPart} ${classNumber}${extraPart ? ` - ${extraPart}` : ""}${examLetter ? ` (${examLetter})` : ""}`.trim();
-  };
-  
   const studentClass = studentInfo.class;
   const studentName = studentInfo.name;
 
@@ -1005,6 +924,52 @@ const handleDragEnd = (result) => {
   });
 };
 
+// Hàm format tên đề
+const formatExamTitle = (examName = "") => {
+  if (!examName) return "";
+
+  // 1. Loại bỏ prefix "quiz_" nếu có
+  let name = examName.startsWith("quiz_") ? examName.slice(5) : examName;
+
+  // 2. Tách các phần theo dấu "_"
+  const parts = name.split("_");
+
+  // 3. Tìm lớp
+  const classPart = parts.find(p => p.toLowerCase().includes("lớp")) || "";
+  const classNumber = classPart.match(/\d+/)?.[0] || "";
+
+  // 4. Tìm chỉ số lớp trong mảng để lấy môn
+  const classIndex = parts.indexOf(classPart);
+
+  // 5. Tìm môn: phần ngay sau lớp (hoặc phần đầu nếu lớp là đầu)
+  let subjectPart = "";
+  for (let i = classIndex + 1; i < parts.length; i++) {
+    // bỏ qua CKI, CKII, CN, năm học cuối, chỉ lấy môn
+    const p = parts[i];
+    if (!p.toLowerCase().includes("cki") && !p.toLowerCase().includes("cn") && !/\d{2}-\d{2}/.test(p)) {
+      subjectPart = p;
+      break;
+    }
+  }
+
+  // 6. Tìm phần mở rộng (CKI/CKII/CN) sau môn và lớp
+  let extraPart = "";
+  for (let i = classIndex + 1; i < parts.length; i++) {
+    const p = parts[i];
+    if (p.toLowerCase().includes("cki") || p.toLowerCase() === "cn") {
+      extraPart = p.toUpperCase();
+      break;
+    }
+  }
+
+  // 7. Tìm ký hiệu đề (A, B, ...) trong ngoặc
+  const match = examName.match(/\(([^)]+)\)/);
+  const examLetter = match ? match[1] : "";
+
+  // 8. Kết hợp lại
+  return `${subjectPart} ${classNumber}${extraPart ? ` - ${extraPart}` : ""} ${examLetter ? `(${examLetter})` : ""}`.trim();
+};
+
 const normalizeValue = (val) => {
   if (typeof val === "object") {
     if (val.image) return String(val.image).trim();
@@ -1097,55 +1062,28 @@ return (
         </Typography>
 
         {/* Ô chọn đề */}
-        <Stack direction="row" spacing={2} alignItems="center">
-          {/* ================= LOẠI ĐỀ ================= */}
-          <FormControl fullWidth size="small" sx={{ width: 159, mb: 0 }}>
-            <InputLabel sx={{ fontSize: "16px", fontWeight: "bold" }}>
-              Loại đề
-            </InputLabel>
+        <FormControl fullWidth size="small" sx={{ width: 250, mb: -2 }}>
+          <InputLabel
+            id="exam-select-label"
+            sx={{ fontSize: "16px", fontWeight: "bold" }}
+          >
+            Chọn đề
+          </InputLabel>
 
-            <Select
-              value={examType}
-              label="Loại đề"
-              sx={{ fontSize: "16px", fontWeight: 500 }}
-              onChange={(e) => {
-                const type = e.target.value; // "bt" | "kt"
-                setExamType(type);
-                fetchQuizList(type); // load danh sách đề
-              }}
-            >
-              <MenuItem value="bt" sx={{ fontSize: "16px" }}>
-                Bài tập tuần
+          <Select
+            labelId="exam-select-label"
+            value={selectedExam}
+            label="Chọn đề"
+            onChange={(e) => setSelectedExam(e.target.value)}
+            sx={{ fontSize: "16px", fontWeight: 500 }}
+          >
+            {examList.map((exam) => (
+              <MenuItem key={exam} value={exam} sx={{ fontSize: "16px" }}>
+                {formatExamTitle(exam)}
               </MenuItem>
-              <MenuItem value="kt" sx={{ fontSize: "16px" }}>
-                KTĐK
-              </MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* ================= CHỌN ĐỀ ================= */}
-          <FormControl fullWidth size="small" sx={{ width: 220 }}>
-            <InputLabel id="exam-select-label">Chọn đề</InputLabel>
-
-            <Select
-              labelId="exam-select-label"
-              value={selectedExam}
-              label="Chọn đề"
-              onChange={(e) => {
-                setSelectedExam(e.target.value); // 👈 đổi đề → useEffect tự chạy
-              }}
-            >
-              {examList.map((exam) => (
-                <MenuItem key={exam} value={exam}>
-                  {formatQuizTitle(exam)}
-                </MenuItem>
-              ))}
-            </Select>
-
-          </FormControl>
-        </Stack>
-
-
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       {/* Đồng hồ với vị trí cố định */}
@@ -1155,7 +1093,7 @@ return (
           flexDirection: "column",
           alignItems: "center",
           mt: 0.5,
-          mb: 0,
+          mb: -2,
           minHeight: 40, // giữ khoảng trống luôn
           width: "100%",
         }}
