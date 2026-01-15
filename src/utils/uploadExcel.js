@@ -1,5 +1,5 @@
 // src/utils/uploadExcel.js
-import * as XLSX from "xlsx";
+//import * as XLSX from "xlsx";
 import { doc, setDoc } from "firebase/firestore";
 
 /* ================== UPLOAD DANH SÁCH HỌC SINH ================== */

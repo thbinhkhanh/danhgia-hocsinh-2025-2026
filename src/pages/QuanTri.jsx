@@ -36,7 +36,7 @@ import ChangePasswordDialog from "../dialog/ChangePasswordDialog";
 import CreateDataConfirmDialog from "../dialog/CreateDataConfirmDialog";
 import BackupPage from "./BackupPage";
 import RestorePage from "./RestorePage";
-import UploadPage from "./UploadPage";
+//import UploadPage from "./UploadPage";
 import TextField from "@mui/material/TextField";
 
 export default function QuanTri() {
