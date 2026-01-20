@@ -78,7 +78,7 @@ const QuestionRenderer = ({
             alt="question"
             style={{
               maxWidth: "100%",
-              maxHeight: 150,
+              maxHeight: 120,
               objectFit: "contain",
               borderRadius: 8
             }}
@@ -199,49 +199,48 @@ const QuestionRenderer = ({
       )}
 
       {/* =================== IMAGE =================== */}
-{currentQuestion.type === "image" && (
-  <Stack spacing={2}>
-    {currentQuestion.options.map((opt, oi) => {
-      const imgSrc = getImageFromOption(opt);
-      const selected = answers[currentQuestion.id] === oi;
+      {currentQuestion.type === "image" && (
+        <Stack spacing={2}>
+          {currentQuestion.options.map((opt, oi) => {
+            const imgSrc = getImageFromOption(opt);
+            const selected = answers[currentQuestion.id] === oi;
 
-      return (
-        <Paper
-          key={oi}
-          onClick={() =>
-            !submitted &&
-            started &&
-            setAnswers((prev) => ({
-              ...prev,
-              [currentQuestion.id]: oi,
-            }))
-          }
-          sx={{
-            p: 1,
-            border: "2px solid",
-            borderColor: selected ? "#1976d2" : "#90caf9",
-            cursor: submitted || !started ? "default" : "pointer",
-            textAlign: "center",
-          }}
-        >
-          {imgSrc && (
-            <img
-              src={imgSrc}
-              alt={`option-${oi}`}
-              style={{
-                maxWidth: "100%",
-                maxHeight: 180,
-                objectFit: "contain",
-                borderRadius: 8,
-              }}
-            />
-          )}
-        </Paper>
-      );
-    })}
-  </Stack>
-)}
-
+            return (
+              <Paper
+                key={oi}
+                onClick={() =>
+                  !submitted &&
+                  started &&
+                  setAnswers((prev) => ({
+                    ...prev,
+                    [currentQuestion.id]: oi,
+                  }))
+                }
+                sx={{
+                  p: 1,
+                  border: "2px solid",
+                  borderColor: selected ? "#1976d2" : "#90caf9",
+                  cursor: submitted || !started ? "default" : "pointer",
+                  textAlign: "center",
+                }}
+              >
+                {imgSrc && (
+                  <img
+                    src={imgSrc}
+                    alt={`option-${oi}`}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: 180,
+                      objectFit: "contain",
+                      borderRadius: 8,
+                    }}
+                  />
+                )}
+              </Paper>
+            );
+          })}
+        </Stack>
+      )}
 
       {/* =================== SINGLE =================== */}
       {currentQuestion.type === "single" && (

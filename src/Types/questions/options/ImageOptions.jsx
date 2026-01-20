@@ -135,8 +135,8 @@ const ImageOptions = ({ q, qi, update }) => {
                       src={imageUrl}
                       alt={`option-${oi}`}
                       style={{
-                        maxWidth: "100%",
-                        maxHeight: "100%",
+                        maxWidth: "60%",
+                        maxHeight: "60%",
                         objectFit: "contain",
                       }}
                     />
