@@ -683,30 +683,29 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
 const autoSubmit = () => {
   autoSubmitQuiz({
     studentName,
-    studentClass,
-    studentId,
-    studentInfo,
-    questions,
-    answers,
-    startTime,
-    db,
-    config,
-    configData,
-    selectedWeek,
-    getQuestionMax,
-
-    // state setters
-    setSnackbar,
-    setSaving,
-    setSubmitted,
-    setOpenResultDialog,
-    setStudentResult,
-
-    // hàm utils
-    capitalizeName,
-    mapHocKyToDocKey,
-    formatTime,
-    exportQuizPDF,
+      studentClass,
+      studentId,
+      studentInfo,
+      studentResult,
+      setStudentResult,
+      setSnackbar,
+      setSaving,
+      setSubmitted,
+      setOpenAlertDialog,
+      setUnansweredQuestions,
+      setOpenResultDialog,
+      questions,
+      answers,
+      startTime,
+      db,
+      config,
+      configData,
+      selectedWeek,
+      getQuestionMax,
+      capitalizeName,
+      mapHocKyToDocKey,
+      formatTime,
+      exportQuizPDF,
   });
 };
 
