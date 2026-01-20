@@ -81,28 +81,11 @@ const MatchingOptions = ({ q, qi, update }) => {
             <Box sx={{ flex: 1, display: "flex", alignItems: "center" }}>
               {pair.leftImage && (
                 <Box
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    maxHeight: 100,     // ⭐ tối đa 100
-                    mr: 1,
-                    flexShrink: 0,
-                    overflow: "hidden", // tránh tràn
-                  }}
-                >
-                  <img
-                    src={pair.leftImage.url}
-                    alt={pair.leftImage.name}
-                    style={{
-                      maxHeight: 60,            // ⭐ giới hạn chiều cao
-                      width: "auto",            // ⭐ auto chiều rộng
-                      height: "auto",
-                      objectFit: "contain",
-                      display: "block",
-                    }}
-                  />
-                </Box>
+                  component="img"
+                  src={pair.leftImage.url}
+                  alt={pair.leftImage.name}
+                  sx={{ width: 60, height: 60, objectFit: "contain", mr: 1 }}
+                />
               )}
 
               {!pair.leftImage && (
@@ -112,25 +95,24 @@ const MatchingOptions = ({ q, qi, update }) => {
                       component="img"
                       src={pair.leftIconImage.url}
                       alt={pair.leftIconImage.name}
-                      sx={{
-                        maxHeight: 40,
-                        width: "auto",
-                        objectFit: "contain",
-                        mr: 1,
-                      }}
+                      sx={{ width: 40, height: 40, objectFit: "contain", mr: 1 }}
                     />
                   )}
 
                   <Box sx={{ flex: 1 }}>
                     <ReactQuill
-                      ref={(el) => (quillRefs.current[`${pi}-left`] = el)}
+                      ref={(el) =>
+                        (quillRefs.current[`${pi}-left`] = el)
+                      }
                       theme="snow"
                       value={pair.left || ""}
                       modules={quillModules}
                       formats={quillFormats}
                       className="choice-option-editor"
                       placeholder={`A ${pi + 1}`}
-                      onFocus={() => setFocused({ pairIndex: pi, side: "left" })}
+                      onFocus={() =>
+                        setFocused({ pairIndex: pi, side: "left" })
+                      }
                       onChange={(value) => {
                         if (value === pair.left) return;
                         const newPairs = [...q.pairs];
@@ -142,7 +124,6 @@ const MatchingOptions = ({ q, qi, update }) => {
                 </>
               )}
             </Box>
-
 
             {/* ================= ICONS (GIỮ NGUYÊN) ================= */}
             <Stack direction="row" spacing={0.5}>

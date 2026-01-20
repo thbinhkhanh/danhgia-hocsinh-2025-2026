@@ -13,9 +13,7 @@ import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 
 const ImageOptions = ({ q, qi, update }) => {
-  /* =========================
-     UPLOAD CLOUDINARY
-  ========================== */
+  // ---- Upload Cloudinary ----
   const uploadToCloudinary = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -36,21 +34,13 @@ const ImageOptions = ({ q, qi, update }) => {
     return data.secure_url;
   };
 
-  /* =========================
-     KHI CHỌN HÌNH
-  ========================== */
-  const handleImageChange = async (index, file) => {
+  // ---- Khi chọn hình ----
+  const handleImageChange = async (file, index) => {
     try {
       const url = await uploadToCloudinary(file);
 
-      const newOptions = [...(q.options || [])];
-
-      newOptions[index] = {
-        ...(newOptions[index] || {}),
-        text: url,          // ✅ URL nằm ở text
-        image: "",
-        formats: newOptions[index]?.formats || {},
-      };
+      const newOptions = [...q.options];
+      newOptions[index] = url;
 
       update(qi, { options: newOptions });
     } catch (err) {
@@ -59,26 +49,20 @@ const ImageOptions = ({ q, qi, update }) => {
     }
   };
 
-  /* =========================
-     THÊM Ô HÌNH
-  ========================== */
+  // ---- Thêm ô hình ----
   const addOption = () => {
-    const newOptions = [
-      ...(q.options || []),
-      { text: "", image: "", formats: {} }, // ✅ ĐÚNG schema
-    ];
+    const newOptions = [...(q.options || []), ""];
     update(qi, { options: newOptions });
   };
 
-  /* =========================
-     XOÁ Ô HÌNH (DỒN INDEX)
-  ========================== */
+  // ---- Xoá ô hình (dồn mảng) ----
   const removeOption = (index) => {
     const options = q.options || [];
     const correct = q.correct || [];
 
     const newOptions = options.filter((_, i) => i !== index);
 
+    // cập nhật correct vì index bị dịch
     const newCorrect = correct
       .filter((c) => c !== index)
       .map((c) => (c > index ? c - 1 : c));
@@ -88,7 +72,7 @@ const ImageOptions = ({ q, qi, update }) => {
 
   return (
     <Stack spacing={2} mb={2}>
-      {/* ===== Toolbar (disable cho đồng bộ UI) ===== */}
+      {/* ===== Toolbar chung (chỉ để đồng bộ, disable) ===== */}
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
         <IconButton size="small" disabled>
           <FormatBoldIcon fontSize="small" />
@@ -108,12 +92,7 @@ const ImageOptions = ({ q, qi, update }) => {
         alignItems="center"
       >
         {(q.options || []).map((option, oi) => {
-          const imageUrl =
-            typeof option?.text === "string" &&
-            option.text.startsWith("http")
-              ? option.text
-              : "";
-
+          const imageUrl = option?.text || "";
           const isChecked = q.correct?.includes(oi) || false;
 
           return (
@@ -170,14 +149,13 @@ const ImageOptions = ({ q, qi, update }) => {
                       hidden
                       onChange={(e) =>
                         e.target.files?.[0] &&
-                        handleImageChange(oi, e.target.files[0])
+                        handleImageChange(qi, oi, e.target.files[0])
                       }
                     />
                   </label>
                 )}
               </Paper>
 
-              {/* Checkbox chọn đáp án đúng */}
               {imageUrl && (
                 <Checkbox
                   checked={isChecked}
@@ -185,7 +163,6 @@ const ImageOptions = ({ q, qi, update }) => {
                     let newCorrect = [...(q.correct || [])];
                     if (e.target.checked) newCorrect.push(oi);
                     else newCorrect = newCorrect.filter((c) => c !== oi);
-
                     update(qi, { correct: newCorrect });
                   }}
                   sx={{
@@ -200,6 +177,7 @@ const ImageOptions = ({ q, qi, update }) => {
             </Box>
           );
         })}
+
 
         {/* Nút thêm hình */}
         <Button

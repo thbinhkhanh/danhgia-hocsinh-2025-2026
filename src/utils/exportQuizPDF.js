@@ -141,8 +141,13 @@ export const exportQuizPDF = async (
     if (q.questionImage) {
       try {
         const img64 = await getBase64FromUrl(q.questionImage);
-        pdf.addImage(img64, "PNG", margin + 40, y, 40, 40);
-        y += 45;
+
+        const imgSize = 25; // giữ nguyên
+        const xImg = (pageWidth - imgSize) / 2; // ⭐ căn giữa trang
+
+        pdf.addImage(img64, "PNG", xImg, y, imgSize, imgSize);
+        //y += 45;
+        y += imgSize + 8;
       } catch {}
     }
 
@@ -244,6 +249,24 @@ export const exportQuizPDF = async (
           // checkbox
           pdf.text(selected, x + imgSize / 2 - 4, y);
 
+          // ===== ✓ / ✗ =====
+          const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
+          const isChosen = (answers[q.id] || []).includes(i);
+          const isCorrect = isChosen && correctArr.includes(i);
+
+          if (isChosen) {
+            pdf.setTextColor(isCorrect ? 0 : 255, isCorrect ? 128 : 0, 0);
+
+            // vẽ ✓ / ✗ ở góc phải ảnh
+            pdf.text(
+              isCorrect ? "✓" : "✗",
+              x + imgSize - 2,
+              y + imgSize + 8
+            );
+
+            pdf.setTextColor(0, 0, 0);
+          }
+
           // image
           if (imgUrl) {
             try {
@@ -255,7 +278,7 @@ export const exportQuizPDF = async (
           x += gap;
         }
 
-        y += imgSize + 20;
+        y += imgSize + 15;
         break;
       }
 
@@ -324,11 +347,20 @@ export const exportQuizPDF = async (
       }
 
       case "fillblank": {
-        const filled = q.filled || [];
-        const correct = q.options || [];
+        const filled = Array.isArray(q.filled) ? q.filled : [];
+        const correct = Array.isArray(q.options) ? q.options : [];
 
         filled.forEach((word, i) => {
-          const isCorrect = word === correct[i];
+          const userWord = (word || "").trim().toLowerCase();
+
+          const correctObj = correct[i];
+          const correctWord =
+            typeof correctObj === "string"
+              ? correctObj.trim().toLowerCase()
+              : (correctObj?.text || "").trim().toLowerCase();
+
+          const isCorrect = userWord && userWord === correctWord;
+
           const line = `${i + 1}. ${word || "______"}`;
 
           if (y + lineHeight > pageBottom) {
@@ -346,17 +378,30 @@ export const exportQuizPDF = async (
 
           y += lineHeight;
         });
+
         break;
       }
 
+
       case "matching": {
-        const order = answers[q.id] || [];
+        const userOrder = Array.isArray(answers[q.id]) ? answers[q.id] : [];
+        const correctOrder = Array.isArray(q.correct) ? q.correct : [];
+
+        const isNotInteracted = userOrder.length === 0;
+
         q.pairs.forEach((pair, i) => {
           const left = extractText(pair.left);
-          const rightIdx = order[i];
+
+          // 👉 Nếu chưa tương tác → hiển thị đáp án đúng
+          const rightIdx = isNotInteracted
+            ? correctOrder[i]
+            : userOrder[i];
+
           const right = extractText(q.rightOptions?.[rightIdx]);
 
-          const isCorrect = rightIdx === q.correct?.[i];
+          const isCorrect = isNotInteracted
+            ? true
+            : rightIdx === correctOrder[i];
 
           const line = `${left}  →  ${right || "_____"}`;
 
@@ -378,8 +423,10 @@ export const exportQuizPDF = async (
 
           y += lines.length * lineHeight;
         });
+
         break;
       }
+
 
 
       default:

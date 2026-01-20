@@ -83,10 +83,13 @@ const FillBlankOptions = ({ q, qi, update }) => {
               <TextField
                 size="small"
                 fullWidth
-                value={opt}
+                value={opt?.text || ""}
                 onChange={(e) => {
                   const newOptions = [...q.options];
-                  newOptions[oi] = e.target.value;
+                  newOptions[oi] = {
+                    ...newOptions[oi],
+                    text: e.target.value,
+                  };
                   update(qi, { options: newOptions });
                 }}
               />
@@ -107,7 +110,14 @@ const FillBlankOptions = ({ q, qi, update }) => {
         <Grid item xs={12} sm={6}>
           <Button
             variant="outlined"
-            onClick={() => update(qi, { options: [...q.options, ""] })}
+            onClick={() =>
+              update(qi, {
+                options: [
+                  ...(q.options || []),
+                  { text: "", image: "", formats: {} }, // ✅ đúng schema
+                ],
+              })
+            }
             sx={{
               height: 40,
               width: "100%",
@@ -119,6 +129,7 @@ const FillBlankOptions = ({ q, qi, update }) => {
           </Button>
         </Grid>
       </Grid>
+
 
       {/* ===== PREVIEW ===== */}
       <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#1976d2" }}>

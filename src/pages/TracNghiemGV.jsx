@@ -906,7 +906,7 @@ useEffect(() => {
               updateQuestionAt={updateQuestionAt}
               handleDeleteQuestion={handleDeleteQuestion}
               handleImageChange={handleImageChange}
-              saveAllQuestions={() =>
+              handleSaveAll={() =>
                 saveAllQuestions({
                   questions,
                   db,

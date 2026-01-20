@@ -19,7 +19,7 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
 /* ================= QUILL CONFIG ================= */
-const quillModules = { toolbar: false }; // tắt toolbar mặc định
+const quillModules = { toolbar: false };
 const quillFormats = ["bold", "italic", "underline"];
 
 /* ================= COMPONENT ================= */
@@ -38,7 +38,7 @@ const TrueFalseOptions = ({ q, qi, update }) => {
     if (!range || range.length === 0) return;
 
     const current = quill.getFormat(range);
-    quill.format(format, !current[format]); // toggle định dạng
+    quill.format(format, !current[format]);
   };
 
   return (
@@ -56,64 +56,84 @@ const TrueFalseOptions = ({ q, qi, update }) => {
         </IconButton>
       </Box>
 
-      {q.options?.map((opt, oi) => (
-        <Stack key={oi} direction="row" spacing={1} alignItems="center">
-          {/* Editor */}
-          <Box sx={{ flex: 1 }}>
-            <ReactQuill
-              ref={(el) => (quillRefs.current[oi] = el)}
-              theme="snow"
-              value={opt || ""}
-              modules={quillModules}
-              formats={quillFormats}
-              className="choice-option-editor"
-              onFocus={() => setActiveIndex(oi)}
-              onChange={(value) => {
-                if (value === opt) return;
-                const newOptions = [...q.options];
-                newOptions[oi] = value;
-                update(qi, { options: newOptions });
-              }}
-            />
-          </Box>
+      {q.options?.map((opt, oi) => {
+        // ✅ LẤY TEXT ĐÚNG KIỂU
+        const value =
+          typeof opt === "string"
+            ? opt
+            : typeof opt === "object"
+            ? opt.text || ""
+            : "";
 
-          {/* Dropdown chọn Đúng/Sai */}
-          <FormControl size="small" sx={{ width: 120 }}>
-            <Select
-              value={q.correct?.[oi] || ""}
-              onChange={(e) => {
+        return (
+          <Stack key={oi} direction="row" spacing={1} alignItems="center">
+            {/* Editor */}
+            <Box sx={{ flex: 1 }}>
+              <ReactQuill
+                ref={(el) => (quillRefs.current[oi] = el)}
+                theme="snow"
+                value={value}
+                modules={quillModules}
+                formats={quillFormats}
+                className="choice-option-editor"
+                onFocus={() => setActiveIndex(oi)}
+                onChange={(html) => {
+                  const newOptions = [...q.options];
+
+                  // ✅ GIỮ CẤU TRÚC OBJECT
+                  newOptions[oi] =
+                    typeof newOptions[oi] === "object"
+                      ? { ...newOptions[oi], text: html }
+                      : { text: html, image: "", formats: {} };
+
+                  update(qi, { options: newOptions });
+                }}
+              />
+            </Box>
+
+            {/* Dropdown chọn Đúng/Sai */}
+            <FormControl size="small" sx={{ width: 120 }}>
+              <Select
+                value={q.correct?.[oi] || ""}
+                onChange={(e) => {
+                  const newCorrect = [...(q.correct || [])];
+                  newCorrect[oi] = e.target.value;
+                  update(qi, { correct: newCorrect });
+                }}
+              >
+                <MenuItem value="">Chọn</MenuItem>
+                <MenuItem value="Đ">Đúng</MenuItem>
+                <MenuItem value="S">Sai</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Xóa option */}
+            <IconButton
+              onClick={() => {
+                const newOptions = [...q.options];
+                newOptions.splice(oi, 1);
+
                 const newCorrect = [...(q.correct || [])];
-                newCorrect[oi] = e.target.value;
-                update(qi, { correct: newCorrect });
+                newCorrect.splice(oi, 1);
+
+                update(qi, { options: newOptions, correct: newCorrect });
               }}
             >
-              <MenuItem value="">Chọn</MenuItem>
-              <MenuItem value="Đ">Đúng</MenuItem>
-              <MenuItem value="S">Sai</MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Xóa option */}
-          <IconButton
-            onClick={() => {
-              const newOptions = [...q.options];
-              newOptions.splice(oi, 1);
-              const newCorrect = [...(q.correct || [])];
-              newCorrect.splice(oi, 1);
-              update(qi, { options: newOptions, correct: newCorrect });
-            }}
-          >
-            <RemoveCircleOutlineIcon sx={{ color: "error.main" }} />
-          </IconButton>
-        </Stack>
-      ))}
+              <RemoveCircleOutlineIcon sx={{ color: "error.main" }} />
+            </IconButton>
+          </Stack>
+        );
+      })}
 
       {/* Thêm option */}
       <Button
         variant="outlined"
         onClick={() =>
           update(qi, {
-            options: [...(q.options || []), ""],
+            options: [
+              ...(q.options || []),
+              { text: "", image: "", formats: {} },
+            ],
             correct: [...(q.correct || []), ""],
           })
         }

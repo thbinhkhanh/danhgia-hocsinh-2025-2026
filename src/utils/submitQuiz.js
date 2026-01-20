@@ -51,7 +51,7 @@ export const handleSubmitQuiz = async ({
     }
 
     // --- Kiểm tra câu chưa trả lời ---
-    const unanswered = questions.filter(q => {
+    /*const unanswered = questions.filter(q => {
       const userAnswer = answers[q.id];
       if (q.type === "single") {
         return userAnswer === undefined || userAnswer === null || userAnswer === "";
@@ -71,7 +71,24 @@ export const handleSubmitQuiz = async ({
       );
       setOpenAlertDialog(true);
       return;
-    }
+    }*/
+
+    const unanswered = questions.filter(q => {
+      const a = answers[q.id];
+      if (q.type === "single") return a === undefined || a === null || a === "";
+      if (q.type === "multiple") return !Array.isArray(a) || a.length === 0;
+      if (q.type === "image") {
+        const isSingle = Array.isArray(q.correct) && q.correct.length === 1;
+        if (isSingle) return a === undefined || a === null || a.length === 0;
+        return !Array.isArray(a) || a.length === 0;
+      }
+      if (q.type === "truefalse")
+        return !Array.isArray(a) || a.length !== q.options.length;
+      if (q.type === "fillblank")
+        return !Array.isArray(a) || a.some(v => !v);
+      // 👉 sort và matching không coi là unanswered
+      return false;
+    });
 
     // --- Tính điểm ---
     setSaving(true);
@@ -97,7 +114,12 @@ export const handleSubmitQuiz = async ({
           total += q.score ?? 1;
 
       } else if (q.type === "sort") {
-        const userOrder = Array.isArray(rawAnswer) ? rawAnswer : [];
+        const defaultOrder = q.options.map((_, idx) => idx);
+        const userOrder =
+          Array.isArray(rawAnswer) && rawAnswer.length > 0
+            ? rawAnswer
+            : defaultOrder;
+
         const userTexts = userOrder.map(idx => q.options[idx]);
         const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
 
@@ -106,20 +128,17 @@ export const handleSubmitQuiz = async ({
           userTexts.every((t, i) => t === correctTexts[i]);
 
         if (isCorrect) total += q.score ?? 1;
-
       } else if (q.type === "matching") {
-        const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
         const correctArray = Array.isArray(q.correct) ? q.correct : [];
 
-        let isCorrect = false;
+        const userArray =
+          Array.isArray(rawAnswer) && rawAnswer.length > 0
+            ? rawAnswer
+            : correctArray; // 👈 KHÔNG tương tác → coi như đúng mặc định
 
-        if (userArray.length > 0) {
-          // Người dùng có sắp xếp → so sánh trực tiếp
-          isCorrect =
-            userArray.length === correctArray.length &&
-            userArray.every((val, i) => val === correctArray[i]);
-        }
-        // Nếu userArray.length === 0 → không tương tác → không cộng điểm
+        const isCorrect =
+          userArray.length === correctArray.length &&
+          userArray.every((val, i) => val === correctArray[i]);
 
         if (isCorrect) total += q.score ?? 1;
       } else if (q.type === "truefalse") {
@@ -141,14 +160,20 @@ export const handleSubmitQuiz = async ({
         const correctAnswers = Array.isArray(q.options) ? q.options : [];
 
         if (userAnswers.length === correctAnswers.length) {
-          const isAllCorrect = correctAnswers.every(
-            (correct, i) =>
-              userAnswers[i] &&
-              userAnswers[i].trim() === correct.trim()
-          );
+          const isAllCorrect = correctAnswers.every((correct, i) => {
+            if (!userAnswers[i] || !correct || typeof correct.text !== "string")
+              return false;
+
+            return (
+              String(userAnswers[i]).trim().toLowerCase() ===
+              correct.text.trim().toLowerCase()
+            );
+          });
+
           if (isAllCorrect) total += q.score ?? 1;
         }
       }
+
     });
 
     setSubmitted(true);
