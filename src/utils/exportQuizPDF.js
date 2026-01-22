@@ -314,37 +314,54 @@ export const exportQuizPDF = async (
       }
 
       case "truefalse": {
-        const userAns = answers[q.id] || [];
-        q.options.forEach((opt, i) => {
+        const userAns = Array.isArray(answers[q.id]) ? answers[q.id] : [];
+        const order = Array.isArray(q.initialOrder)
+          ? q.initialOrder
+          : q.correct.map((_, i) => i);
+
+        q.options.forEach((opt, displayIdx) => {
           const text = extractText(opt);
-          const val = userAns[i] || "";
-          const correctVal = q.correct?.[i] || "";
 
-          const mark = val ? `[${val}]` : "[ ]";
-          const isCorrect = val === correctVal;
+          const userVal = userAns[displayIdx]; // "Đ" | "S" | undefined
+          const originalIdx = order[displayIdx];
+          const correctVal = q.correct?.[originalIdx]; // "Đ" | "S"
 
-          const line = pdf.splitTextToSize(
+          // ✅ HIỂN THỊ NHÃN
+          const mark =
+            userVal === "Đ"
+              ? "[Đ]"
+              : userVal === "S"
+              ? "[S]"
+              : "[ ]";
+
+          const isCorrect =
+            userVal !== undefined && userVal === correctVal;
+
+          const lines = pdf.splitTextToSize(
             `${mark} ${text}`,
             pageWidth - 2 * margin
           );
 
-          if (y + line.length * lineHeight > pageBottom) {
+          if (y + lines.length * lineHeight > pageBottom) {
             pdf.addPage();
             y = margin;
           }
 
-          pdf.text(line, margin + 5, y);
+          pdf.text(lines, margin + 5, y);
 
-          if (val) {
+          if (userVal !== undefined) {
             pdf.setTextColor(isCorrect ? 0 : 255, isCorrect ? 128 : 0, 0);
             pdf.text(isCorrect ? "✓" : "✗", pageWidth - margin - 10, y);
             pdf.setTextColor(0, 0, 0);
           }
 
-          y += line.length * lineHeight;
+          y += lines.length * lineHeight;
         });
+
         break;
       }
+
+
 
       case "fillblank": {
         const filled = Array.isArray(q.filled) ? q.filled : [];
