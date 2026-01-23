@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Stack, IconButton, Button, Box, Tooltip, FormControl, Select, MenuItem, InputLabel } from "@mui/material";
+import { Stack, IconButton, Button, Box, Tooltip } from "@mui/material";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import PhotoCamera from "@mui/icons-material/PhotoCamera";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -18,7 +18,6 @@ const MatchingOptions = ({ q, qi, update }) => {
   const fileInputs = useRef({});
   const quillRefs = useRef({});
   const [focused, setFocused] = useState({ pairIndex: null, side: null });
-  const ratio = q.columnRatio || { left: 1, right: 1 };
 
   /* ================= Upload Cloudinary ================= */
   const uploadToCloudinary = async (file) => {
@@ -56,29 +55,6 @@ const MatchingOptions = ({ q, qi, update }) => {
     <Stack spacing={1} sx={{ mb: 2 }}>
       {/* ===== Toolbar chung ===== */}
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1 }}>
-        <FormControl size="small" sx={{ width: 80 }}>
-          <InputLabel id="ratio-label">Tỉ lệ</InputLabel>
-            <Select
-              labelId="ratio-label"
-              label="Tỉ lệ"
-              value={`${ratio.left}:${ratio.right}`}
-              onChange={(e) => {
-                const [l, r] = e.target.value.split(":").map(Number);
-
-                update(qi, {
-                  columnRatio: { left: l, right: r },
-                });
-              }}
-            >
-              <MenuItem value="1:1">1 : 1</MenuItem>
-              <MenuItem value="1:2">1 : 2</MenuItem>
-              <MenuItem value="2:1">2 : 1</MenuItem>
-              <MenuItem value="1:3">1 : 3</MenuItem>
-              <MenuItem value="3:1">3 : 1</MenuItem>
-            </Select>
-
-        </FormControl>
-
         <IconButton size="small" onClick={() => applyFormat("bold")}>
           <FormatBoldIcon fontSize="medium" />
         </IconButton>
@@ -102,15 +78,7 @@ const MatchingOptions = ({ q, qi, update }) => {
             sx={{ minHeight: rowHeight }}
           >
             {/* ================= LEFT ================= */}
-            <Box
-              sx={{
-                flexGrow: ratio.left,
-                flexBasis: 0,
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-
+            <Box sx={{ flex: 1, display: "flex", alignItems: "center" }}>
               {pair.leftImage && (
                 <Box
                   sx={{
@@ -153,13 +121,7 @@ const MatchingOptions = ({ q, qi, update }) => {
                     />
                   )}
 
-                  <Box
-                    sx={{
-                      flexGrow: ratio.right,
-                      flexBasis: 0,
-                    }}
-                  >
-
+                  <Box sx={{ flex: 1 }}>
                     <ReactQuill
                       ref={(el) => (quillRefs.current[`${pi}-left`] = el)}
                       theme="snow"
@@ -279,12 +241,7 @@ const MatchingOptions = ({ q, qi, update }) => {
             </Stack>
 
             {/* ================= RIGHT ================= */}
-            <Box
-              sx={{
-                flexGrow: ratio.right,
-                flexBasis: 0,
-              }}
-            >
+            <Box sx={{ flex: 1 }}>
               <ReactQuill
                 ref={(el) => (quillRefs.current[`${pi}-right`] = el)}
                 theme="snow"

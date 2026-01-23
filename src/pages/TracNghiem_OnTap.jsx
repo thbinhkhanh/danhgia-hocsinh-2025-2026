@@ -1007,6 +1007,8 @@ const normalizeValue = (val) => {
   return String(val).trim();
 };
 
+const ratio = currentQuestion?.columnRatio || { left: 1, right: 1 };
+
 return (
   <Box
     id="quiz-container"  // <-- Thêm dòng này
@@ -1491,7 +1493,8 @@ return (
                         {/* ================= LEFT ================= */}
                         <Paper
                           sx={{
-                            flex: 1,
+                            flexGrow: ratio.left,
+                            flexBasis: 0,
                             display: "flex",
                             alignItems: "center",
                             gap: 1.5,
@@ -1551,7 +1554,7 @@ return (
                             <Stack
                               ref={provided.innerRef}
                               {...provided.droppableProps}
-                              sx={{ flex: 1 }}
+                              sx={{ flexGrow: ratio.right, flexBasis: 0, }}
                             >
                               <Draggable
                                 key={rightIdx}

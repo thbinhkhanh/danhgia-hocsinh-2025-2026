@@ -114,7 +114,6 @@ export default function TracNghiem_Test() {
   const detectedClass = selectedExam?.match(/Lớp\s*(\d+)/)?.[1] || "Test";
   const [selectedClass, setSelectedClass] = useState("4");
 
-
 // Gán thông tin mặc định theo yêu cầu
   const studentInfo = {
     name: "Tên học sinh",
@@ -1140,6 +1139,8 @@ const normalizeValue = (val) => {
   return String(val).trim();
 };
 
+const ratio = currentQuestion?.columnRatio || { left: 1, right: 1 };
+
 return (
   <Box
     id="quiz-container"  // <-- Thêm dòng này
@@ -1222,67 +1223,67 @@ return (
 
         {/* Ô chọn đề */}
         <Stack direction="row" spacing={2} alignItems="center">
-  {/* ================= LOẠI ĐỀ ================= */}
-  <FormControl size="small" sx={{ width: 159 }}>
-    <InputLabel sx={{ fontSize: 16, fontWeight: "bold" }}>
-      Loại đề
-    </InputLabel>
-    <Select
-      value={examType}
-      label="Loại đề"
-      sx={{ fontSize: 16, fontWeight: 500 }}
-      onChange={(e) => {
-        const type = e.target.value;
-        setExamType(type);
-        fetchQuizList(type);
+          {/* ================= LOẠI ĐỀ ================= */}
+          <FormControl size="small" sx={{ width: 159 }}>
+            <InputLabel sx={{ fontSize: 16, fontWeight: "bold" }}>
+              Loại đề
+            </InputLabel>
+            <Select
+              value={examType}
+              label="Loại đề"
+              sx={{ fontSize: 16, fontWeight: 500 }}
+              onChange={(e) => {
+                const type = e.target.value;
+                setExamType(type);
+                fetchQuizList(type);
 
-        // 👉 đổi sang KT thì reset lớp
-        if (type === "bt") {
-          setSelectedClass("4");   // 👈 mặc định Lớp 4
-        } else {
-          setSelectedClass("");    // KTĐK không dùng lớp
-        }
+                // 👉 đổi sang KT thì reset lớp
+                if (type === "bt") {
+                  setSelectedClass("4");   // 👈 mặc định Lớp 4
+                } else {
+                  setSelectedClass("");    // KTĐK không dùng lớp
+                }
 
-      }}
-    >
-      <MenuItem value="bt">Bài tập tuần</MenuItem>
-      <MenuItem value="kt">KTĐK</MenuItem>
-    </Select>
-  </FormControl>
+              }}
+            >
+              <MenuItem value="bt">Bài tập tuần</MenuItem>
+              <MenuItem value="kt">KTĐK</MenuItem>
+            </Select>
+          </FormControl>
 
-  {/* ================= CHỌN LỚP (CHỈ HIỆN KHI BT) ================= */}
-  {examType === "bt" && (
-    <FormControl size="small" sx={{ width: 120 }}>
-      <InputLabel>Lớp</InputLabel>
-      <Select
-        value={selectedClass}
-        label="Lớp"
-        onChange={(e) => setSelectedClass(e.target.value)}
-      >
+          {/* ================= CHỌN LỚP (CHỈ HIỆN KHI BT) ================= */}
+          {examType === "bt" && (
+            <FormControl size="small" sx={{ width: 120 }}>
+              <InputLabel>Lớp</InputLabel>
+              <Select
+                value={selectedClass}
+                label="Lớp"
+                onChange={(e) => setSelectedClass(e.target.value)}
+              >
 
-        <MenuItem value="3">Lớp 3</MenuItem>
-        <MenuItem value="4">Lớp 4</MenuItem>
-        <MenuItem value="5">Lớp 5</MenuItem>
-      </Select>
-    </FormControl>
-  )}
+                <MenuItem value="3">Lớp 3</MenuItem>
+                <MenuItem value="4">Lớp 4</MenuItem>
+                <MenuItem value="5">Lớp 5</MenuItem>
+              </Select>
+            </FormControl>
+          )}
 
-  {/* ================= CHỌN ĐỀ ================= */}
-  <FormControl size="small" sx={{ width: 220 }}>
-    <InputLabel>Chọn đề</InputLabel>
-    <Select
-      value={selectedExam}
-      label="Chọn đề"
-      onChange={(e) => setSelectedExam(e.target.value)}
-    >
-      {examList.map((exam) => (
-        <MenuItem key={exam} value={exam}>
-          {formatQuizTitle(exam)}
-        </MenuItem>
-      ))}
-    </Select>
-  </FormControl>
-</Stack>
+          {/* ================= CHỌN ĐỀ ================= */}
+          <FormControl size="small" sx={{ width: 220 }}>
+            <InputLabel>Chọn đề</InputLabel>
+            <Select
+              value={selectedExam}
+              label="Chọn đề"
+              onChange={(e) => setSelectedExam(e.target.value)}
+            >
+              {examList.map((exam) => (
+                <MenuItem key={exam} value={exam}>
+                  {formatQuizTitle(exam)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
 
 
 
@@ -1614,7 +1615,9 @@ return (
                         {/* ================= LEFT ================= */}
                         <Paper
                           sx={{
-                            flex: 1,
+                            //flex: 1,
+                            flexGrow: ratio.left,
+                            flexBasis: 0,
                             display: "flex",
                             alignItems: "center",
                             gap: 1.5,
@@ -1674,7 +1677,7 @@ return (
                             <Stack
                               ref={provided.innerRef}
                               {...provided.droppableProps}
-                              sx={{ flex: 1 }}
+                              sx={{ flexGrow: ratio.right, flexBasis: 0, }}
                             >
                               <Draggable
                                 key={rightIdx}

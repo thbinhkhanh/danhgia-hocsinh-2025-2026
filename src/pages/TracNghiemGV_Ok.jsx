@@ -195,22 +195,9 @@ const hocKyMap = {
 
         const data = quizSnap.data();
         const list = Array.isArray(data.questions) ? data.questions : [];
-        
-        const normalizedList = list.map((q) => {
-          if (q.type === "matching") {
-            return {
-              ...q,
-              columnRatio: q.columnRatio || { left: 1, right: 1 },
-            };
-          }
-          return q;
-        });
-
-
-        setQuestions(normalizedList);
 
         // 🔹 Đồng bộ state từ document
-        //setQuestions(list);
+        setQuestions(list);
         setSelectedClass(data.class || "");
         setSelectedSubject(data.subject || "");
         setSemester(data.semester || "");
