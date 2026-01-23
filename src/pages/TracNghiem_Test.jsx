@@ -21,7 +21,7 @@ import {
   MenuItem,
   InputLabel,
 } from "@mui/material";
-import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
+import { doc, getDoc, getDocs, setDoc, collection } from "firebase/firestore";
 // Thay cho react-beautiful-dnd
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
@@ -49,8 +49,8 @@ import DialogActions from "@mui/material/DialogActions";
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+//import { jsPDF } from "jspdf";
+//import html2canvas from "html2canvas";
 
 // Hàm shuffle mảng
 function shuffleArray(array) {
@@ -104,6 +104,7 @@ export default function TracNghiem_Test() {
   const [selectedExam, setSelectedExam] = useState("");
   const [complete, setComplete] = useState(false); // thêm dòng này
   const [examType, setExamType] = useState("kt"); // "bt" | "kt"
+  const [allExamList, setAllExamList] = useState([]);
   
   // Lấy trường từ tài khoản đăng nhập
   const account = localStorage.getItem("account") || "";
@@ -111,6 +112,8 @@ export default function TracNghiem_Test() {
 
   // Lấy lớp từ tên đề
   const detectedClass = selectedExam?.match(/Lớp\s*(\d+)/)?.[1] || "Test";
+  const [selectedClass, setSelectedClass] = useState("4");
+
 
 // Gán thông tin mặc định theo yêu cầu
   const studentInfo = {
@@ -522,70 +525,34 @@ export default function TracNghiem_Test() {
         let hocKiFromConfig = "";
         let monHocFromConfig = "";
         let timeLimitMinutes = 0; // ⬅ để lưu thời gian
+        
+        const configRef = doc(db, "CONFIG", "config");
+        const configSnap = await getDoc(configRef);
+        prog += 30;
+        setProgress(prog);
 
-        // 🔹 Lấy config dựa vào trường
-        if (school === "TH Lâm Văn Bền") {
-            // 🔹 Lấy lớp học sinh từ studentInfo
-            const studentClass = studentInfo?.class || ""; // ví dụ: "3A"
-            const classNumber = studentClass.match(/\d+/)?.[0]; // "3A" -> "3"
-            if (!classNumber) {
-            //setSnackbar({ open: true, message: "❌ Không xác định được lớp của học sinh!", severity: "error" });
-            setLoading(false);
-            return;
-            }
-            const classLabel = `Lớp ${classNumber}`; // "Lớp 3"
-
-            // 🔹 Lấy config vẫn từ LAMVANBEN/config
-            const lvbConfigRef = doc(db, "LAMVANBEN", "config");
-            const lvbConfigSnap = await getDoc(lvbConfigRef);
-            prog += 30;
-            setProgress(prog);
-
-            if (!lvbConfigSnap.exists()) {
-            //setSnackbar({ open: true, message: "❌ Không tìm thấy config LAMVANBEN!", severity: "error" });
-            setLoading(false);
-            return;
-            }
-
-            const lvbConfigData = lvbConfigSnap.data();
-            hocKiFromConfig = lvbConfigData.hocKy || "";
-            monHocFromConfig = lvbConfigData.mon || "";
-            timeLimitMinutes = lvbConfigData.timeLimit ?? 0; // ⬅ lấy timeLimit
-            setTimeLimitMinutes(timeLimitMinutes);
-            setChoXemDiem(lvbConfigData.choXemDiem ?? false);
-            setChoXemDapAn(lvbConfigData.choXemDapAn ?? false);
-
-        } else {
-            // 🔹 Trường khác, lấy config từ CONFIG/config
-            const configRef = doc(db, "CONFIG", "config");
-            const configSnap = await getDoc(configRef);
-            prog += 30;
-            setProgress(prog);
-
-            if (!configSnap.exists()) {
-            setSnackbar({ open: true, message: "❌ Không tìm thấy config!", severity: "error" });
-            setLoading(false);
-            return;
-            }
-
-            const configData = configSnap.data();
-            hocKiFromConfig = configData.hocKy || "";
-            monHocFromConfig = configData.mon || "";
-            timeLimitMinutes = configData.timeLimit ?? 0;   // ⬅ lấy timeLimit
-            setTimeLimitMinutes(timeLimitMinutes);
-            setChoXemDiem(configData.choXemDiem ?? false);
-            setChoXemDapAn(configData.choXemDapAn ?? false);
-            
+        if (!configSnap.exists()) {
+        setSnackbar({ open: true, message: "❌ Không tìm thấy config!", severity: "error" });
+        setLoading(false);
+        return;
         }
 
-        // 🔹 Lấy docId theo đề được chọn từ dropdown (áp dụng cho mọi trường)
-            if (!selectedExam) {
-                //setSnackbar({ open: true, message: "Vui lòng chọn đề!", severity: "warning" });
-                setLoading(false);
-            return;
-            }
+        const configData = configSnap.data();
+        hocKiFromConfig = configData.hocKy || "";
+        monHocFromConfig = configData.mon || "";
+        timeLimitMinutes = configData.timeLimit ?? 0;   // ⬅ lấy timeLimit
+        setTimeLimitMinutes(timeLimitMinutes);
+        setChoXemDiem(configData.choXemDiem ?? false);
+        setChoXemDapAn(configData.choXemDapAn ?? false);          
 
-            docId = selectedExam;
+        // 🔹 Lấy docId theo đề được chọn từ dropdown (áp dụng cho mọi trường)
+        if (!selectedExam) {
+            //setSnackbar({ open: true, message: "Vui lòng chọn đề!", severity: "warning" });
+            setLoading(false);
+        return;
+        }
+
+        docId = selectedExam;
 
         // 🔹 Set thời gian làm bài (giây)
         setTimeLeft(timeLimitMinutes * 60);
@@ -596,11 +563,11 @@ export default function TracNghiem_Test() {
         prog += 30;
         setProgress(prog);
 
-        if (!docSnap.exists()) {
+        /*if (!docSnap.exists()) {
             setSnackbar({ open: true, message: "❌ Không tìm thấy đề trắc nghiệm!", severity: "error" });
             setLoading(false);
             return;
-        }
+        }*/
 
         const data = docSnap.data();
         setQuizClass(data.class || "");
@@ -660,7 +627,16 @@ export default function TracNghiem_Test() {
 
       const exams = snap.docs.map((d) => d.id);
 
-      setExamList(exams);
+      setAllExamList(exams);
+
+      if (type === "bt") {
+        setExamList([]);       // chờ chọn lớp
+        setSelectedExam("");
+      } else {
+        setExamList(exams);    // KTĐK thì hiện hết
+        setSelectedExam(exams[0] || "");
+      }
+
 
       if (exams.length > 0) {
         setSelectedExam(exams[0]);
@@ -674,6 +650,24 @@ export default function TracNghiem_Test() {
       });
     }
   };
+
+  useEffect(() => {
+    if (examType !== "bt") return;
+
+    if (!selectedClass) {
+      setExamList([]);
+      setSelectedExam("");
+      return;
+    }
+
+    const filtered = allExamList.filter((examId) =>
+      examId.includes(`Lớp ${selectedClass}`)
+    );
+
+    setExamList(filtered);
+    setSelectedExam(filtered[0] || "");
+  }, [selectedClass, examType, allExamList]);
+
 
   const formatQuizTitle = (examName = "") => {
     if (!examName) return "";
@@ -1228,52 +1222,69 @@ return (
 
         {/* Ô chọn đề */}
         <Stack direction="row" spacing={2} alignItems="center">
-          {/* ================= LOẠI ĐỀ ================= */}
-          <FormControl fullWidth size="small" sx={{ width: 159, mb: 0 }}>
-            <InputLabel sx={{ fontSize: "16px", fontWeight: "bold" }}>
-              Loại đề
-            </InputLabel>
+  {/* ================= LOẠI ĐỀ ================= */}
+  <FormControl size="small" sx={{ width: 159 }}>
+    <InputLabel sx={{ fontSize: 16, fontWeight: "bold" }}>
+      Loại đề
+    </InputLabel>
+    <Select
+      value={examType}
+      label="Loại đề"
+      sx={{ fontSize: 16, fontWeight: 500 }}
+      onChange={(e) => {
+        const type = e.target.value;
+        setExamType(type);
+        fetchQuizList(type);
 
-            <Select
-              value={examType}
-              label="Loại đề"
-              sx={{ fontSize: "16px", fontWeight: 500 }}
-              onChange={(e) => {
-                const type = e.target.value; // "bt" | "kt"
-                setExamType(type);
-                fetchQuizList(type); // load danh sách đề
-              }}
-            >
-              <MenuItem value="bt" sx={{ fontSize: "16px" }}>
-                Bài tập tuần
-              </MenuItem>
-              <MenuItem value="kt" sx={{ fontSize: "16px" }}>
-                KTĐK
-              </MenuItem>
-            </Select>
-          </FormControl>
+        // 👉 đổi sang KT thì reset lớp
+        if (type === "bt") {
+          setSelectedClass("4");   // 👈 mặc định Lớp 4
+        } else {
+          setSelectedClass("");    // KTĐK không dùng lớp
+        }
 
-          {/* ================= CHỌN ĐỀ ================= */}
-          <FormControl fullWidth size="small" sx={{ width: 220 }}>
-            <InputLabel id="exam-select-label">Chọn đề</InputLabel>
+      }}
+    >
+      <MenuItem value="bt">Bài tập tuần</MenuItem>
+      <MenuItem value="kt">KTĐK</MenuItem>
+    </Select>
+  </FormControl>
 
-            <Select
-              labelId="exam-select-label"
-              value={selectedExam}
-              label="Chọn đề"
-              onChange={(e) => {
-                setSelectedExam(e.target.value); // 👈 đổi đề → useEffect tự chạy
-              }}
-            >
-              {examList.map((exam) => (
-                <MenuItem key={exam} value={exam}>
-                  {formatQuizTitle(exam)}
-                </MenuItem>
-              ))}
-            </Select>
+  {/* ================= CHỌN LỚP (CHỈ HIỆN KHI BT) ================= */}
+  {examType === "bt" && (
+    <FormControl size="small" sx={{ width: 120 }}>
+      <InputLabel>Lớp</InputLabel>
+      <Select
+        value={selectedClass}
+        label="Lớp"
+        onChange={(e) => setSelectedClass(e.target.value)}
+      >
 
-          </FormControl>
-        </Stack>
+        <MenuItem value="3">Lớp 3</MenuItem>
+        <MenuItem value="4">Lớp 4</MenuItem>
+        <MenuItem value="5">Lớp 5</MenuItem>
+      </Select>
+    </FormControl>
+  )}
+
+  {/* ================= CHỌN ĐỀ ================= */}
+  <FormControl size="small" sx={{ width: 220 }}>
+    <InputLabel>Chọn đề</InputLabel>
+    <Select
+      value={selectedExam}
+      label="Chọn đề"
+      onChange={(e) => setSelectedExam(e.target.value)}
+    >
+      {examList.map((exam) => (
+        <MenuItem key={exam} value={exam}>
+          {formatQuizTitle(exam)}
+        </MenuItem>
+      ))}
+    </Select>
+  </FormControl>
+</Stack>
+
+
 
 
       </Box>
@@ -2418,13 +2429,23 @@ return (
                                     py: 0.5,
                                     bgcolor: "#e3f2fd",
                                     cursor: "grab",
+
                                     minHeight: 30,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+
+                                    fontFamily: "Roboto, Arial, sans-serif",
+                                    fontSize: "1.1rem",
+                                    lineHeight: 1.6,
+
                                     border: "1px solid #90caf9",
                                     boxShadow: "none",
                                   }}
                                 >
                                   {word.text}
                                 </Paper>
+
                               )}
                             </Draggable>
                           ))}

@@ -2105,18 +2105,33 @@ return (
                                   ref={prov.innerRef}
                                   {...prov.draggableProps}
                                   {...prov.dragHandleProps}
+                                  elevation={0}
                                   sx={{
                                     px: 2,
                                     py: 0.5,
                                     bgcolor: "#e3f2fd",
                                     cursor: "grab",
+
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+
                                     minHeight: 30,
+                                    fontFamily: "Roboto, Arial, sans-serif",
+                                    fontSize: "1.1rem",
+                                    lineHeight: "normal",
+
                                     border: "1px solid #90caf9",
                                     boxShadow: "none",
+
+                                    "&:hover": {
+                                      bgcolor: "#bbdefb",
+                                    },
                                   }}
                                 >
                                   {word.text}
                                 </Paper>
+
                               )}
                             </Draggable>
                           ))}

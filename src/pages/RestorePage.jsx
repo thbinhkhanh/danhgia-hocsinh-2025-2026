@@ -31,6 +31,12 @@ const BACKUP_KEYS = [
   { key: "MATKHAU", label: "Mật khẩu" },
   { key: "DETHI", label: "Đề thi" },
   { key: "DATA", label: "Kết quả đánh giá" },
+
+  { key: "TRACNGHIEM1", label: "Lớp 1" },
+  { key: "TRACNGHIEM2", label: "Lớp 2" },
+  { key: "TRACNGHIEM3", label: "Lớp 3" },
+  { key: "TRACNGHIEM4", label: "Lớp 4" },
+  { key: "TRACNGHIEM5", label: "Lớp 5" },
 ];
 
 export default function RestorePage({ open, onClose }) {
@@ -197,6 +203,15 @@ export default function RestorePage({ open, onClose }) {
             {renderGroup("Hệ thống", ["CONFIG", "MATKHAU", "DANHSACH"])}
             {renderGroup("Ngân hàng đề", ["BAITAP_TUAN", "NGANHANG_DE", "DETHI"])}
             {renderGroup("Kết quả", ["DATA"])}
+
+            {/* 👉 TRẮC NGHIỆM */}
+            {renderGroup("Luyện tập Tin học", [
+              "TRACNGHIEM1",
+              "TRACNGHIEM2",
+              "TRACNGHIEM3",
+              "TRACNGHIEM4",
+              "TRACNGHIEM5",
+            ])}
           </Stack>
         </DialogContent>
 

@@ -447,195 +447,167 @@ useEffect(() => {
 
   // 🔹 Hàm lấy danh sách đề trong Firestore
   const fetchQuizList = async (type) => {
-  setLoadingList(true);
-  setFilterClass("Tất cả");
-  setDialogExamType(type);
+    setLoadingList(true);
+    setFilterClass("Tất cả");
+    setDialogExamType(type); // cập nhật loại đề hiện tại trong dialog
 
-  try {
-    let docs = [];
-
-    // ===== GIỮ NGUYÊN BT / KTĐK =====
-    if (type !== "luyentap") {
+    try {
+      // Chọn collection theo loại đề
       const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
-      const snap = await getDocs(collection(db, colName));
 
-      docs = snap.docs.map((d) => ({
+      // Lấy tất cả document trong collection
+      const colRef = collection(db, colName);
+      const snap = await getDocs(colRef);
+
+      // Lấy dữ liệu và gắn luôn tên collection để filter sau
+      const docs = snap.docs.map((d) => ({
         id: d.id,
         name: d.id,
         collection: colName,
         ...d.data(),
       }));
+
+      setDocList(docs);
+
+      // Tự động chọn đề đầu tiên nếu có
+      if (docs.length > 0) setSelectedDoc(docs[0].id);
+
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy danh sách đề:", err);
+      setSnackbar({
+        open: true,
+        message: "❌ Không thể tải danh sách đề!",
+        severity: "error",
+      });
+    } finally {
+      setLoadingList(false);
+      setOpenDialog(true);
     }
-
-    // ===== LUYỆN TẬP TIN HỌC =====
-    else {
-      const collections = [
-        "TRACNGHIEM1",
-        "TRACNGHIEM2",
-        "TRACNGHIEM3",
-        "TRACNGHIEM4",
-        "TRACNGHIEM5",
-      ];
-
-      for (const colName of collections) {
-        const snap = await getDocs(collection(db, colName));
-
-        const colDocs = snap.docs.map((d) => ({
-          id: d.id,                 // ✅ VD: "Bài 10. Trang trình chiếu của em"
-          name: d.id,               // ✅ TÊN ĐỀ CHÍNH LÀ ID
-          collection: colName,      // TRACNGHIEM3
-          lop: colName.replace("TRACNGHIEM", ""), // 👉 lớp 3
-          ...d.data(),
-        }));
-
-        docs.push(...colDocs);
-      }
-    }
-
-    setDocList(docs);
-
-    if (docs.length > 0) setSelectedDoc(docs[0].id);
-
-  } catch (err) {
-    console.error("❌ Lỗi khi lấy danh sách đề:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Không thể tải danh sách đề!",
-      severity: "error",
-    });
-  } finally {
-    setLoadingList(false);
-    setOpenDialog(true);
-  }
-};
-
+  };
 
   // 🔹 Hàm mở đề được chọn
   const handleOpenSelectedDoc = async () => {
-  if (!selectedDoc) {
-    setSnackbar({
-      open: true,
-      message: "Vui lòng chọn một đề trước khi mở.",
-      severity: "warning",
-    });
-    return;
-  }
-
-  setOpenDialog(false);
-
-  try {
-    // 🔹 Xác định collection theo loại đề
-    let collectionName = "BAITAP_TUAN";
-
-    if (dialogExamType === "ktdk") {
-      collectionName = "NGANHANG_DE";
-    } 
-    else if (dialogExamType === "luyentap") {
-      // 🔥 luyện tập: collection nằm sẵn trong docList
-      const currentDoc = docList.find((d) => d.id === selectedDoc);
-      if (!currentDoc?.collection) {
-        throw new Error("Không xác định được collection của đề luyện tập");
-      }
-      collectionName = currentDoc.collection; // TRACNGHIEM1..5
-    }
-
-    const docRef = doc(db, collectionName, selectedDoc);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
+    if (!selectedDoc) {
       setSnackbar({
         open: true,
-        message: "❌ Không tìm thấy đề này!",
-        severity: "error",
+        message: "Vui lòng chọn một đề trước khi mở.",
+        severity: "warning",
       });
       return;
     }
 
-    const data = docSnap.data();
-
-    /* ================== TUẦN (chỉ BT) ================== */
-    const weekFromFile = data.week || 1;
-    setDeTuan(weekFromFile);
-    localStorage.setItem("deTuan", weekFromFile);
-
+    setOpenDialog(false); 
+    
     try {
-      const configRef = doc(db, "CONFIG", "config");
-      await setDoc(configRef, { deTuan: weekFromFile }, { merge: true });
-    } catch (err) {
-      console.error("❌ Lỗi ghi deTuan CONFIG:", err);
-    }
+      // 🔹 Xác định loại đề hiện tại
+      const collectionName =
+        dialogExamType === "ktdk" ? "NGANHANG_DE" : "BAITAP_TUAN";
 
-    /* ================== LOẠI ĐỀ ================== */
-    let examTypeFromCollection = "bt";
-    if (collectionName === "NGANHANG_DE") examTypeFromCollection = "ktdk";
-    if (collectionName.startsWith("TRACNGHIEM")) examTypeFromCollection = "luyentap";
+      const docRef = doc(db, collectionName, selectedDoc);
+      const docSnap = await getDoc(docRef);
 
-    setDialogExamType(examTypeFromCollection);
-    setExamType(examTypeFromCollection);
-    localStorage.setItem("teacherExamType", examTypeFromCollection);
-
-    /* ================== CHUẨN HÓA CÂU HỎI ================== */
-    const fixedQuestions = (data.questions || []).map((q) => {
-      if (q.type === "image") {
-        return {
-          ...q,
-          options: Array.from({ length: 4 }, (_, i) => q.options?.[i] || ""),
-          correct: Array.isArray(q.correct) ? q.correct : [],
-        };
+      if (!docSnap.exists()) {
+        setSnackbar({
+          open: true,
+          message: "❌ Không tìm thấy đề này!",
+          severity: "error",
+        });
+        return;
       }
-      return q;
-    });
 
-    /* ================== SET STATE ================== */
-    setQuestions(fixedQuestions);
-    setSelectedClass(data.class || "");
-    setSelectedSubject(data.subject || "");
-    setSemester(data.semester || "");
-    setSchoolYear(data.schoolYear || "");
-    setExamLetter(data.examLetter || "");
+      const data = docSnap.data();
+      
+      const weekFromFile = data.week || 1;      // lấy tuần từ dữ liệu đề
+      setDeTuan(weekFromFile);                 // cập nhật state riêng TracNghiemGV
+      localStorage.setItem("deTuan", weekFromFile); // lưu localStorage riêng trang này
 
-    /* ================== CONTEXT + STORAGE ================== */
-    updateQuizConfig({ deTracNghiem: selectedDoc });
-    localStorage.setItem("deTracNghiemId", selectedDoc);
-    localStorage.setItem("teacherQuiz", JSON.stringify(fixedQuestions));
+      // Cập nhật CONFIG chung
+      try {
+        const configRef = doc(db, "CONFIG", "config");
+        await setDoc(
+          configRef,
+          { deTuan: weekFromFile },  // lưu tuần của đề hiện tại
+          { merge: true }
+        );
+      } catch (err) {
+        console.error("❌ Lỗi khi ghi deTuan vào CONFIG:", err);
+      }
 
-    localStorage.setItem(
-      "teacherConfig",
-      JSON.stringify({
-        selectedClass: data.class,
-        selectedSubject: data.subject,
-        semester: data.semester,
-        schoolYear: data.schoolYear,
-        examLetter: data.examLetter,
-      })
-    );
 
-    /* ================== CONFIG CHUNG ================== */
-    try {
-      const configRef = doc(db, "CONFIG", "config");
-      await setDoc(
-        configRef,
-        {
-          deTracNghiem: selectedDoc,
-          examType: examTypeFromCollection,
-        },
-        { merge: true }
+      // 🔹 Cập nhật loại đề
+      const examTypeFromCollection =
+        collectionName === "NGANHANG_DE" ? "ktdk" : "bt";
+      setDialogExamType(examTypeFromCollection);
+      setExamType(examTypeFromCollection);
+      localStorage.setItem("teacherExamType", examTypeFromCollection);
+
+      // 🔹 Chuẩn hóa câu hỏi
+      const fixedQuestions = (data.questions || []).map((q) => {
+        if (q.type === "image") {
+          return {
+            ...q,
+            options: Array.from({ length: 4 }, (_, i) => q.options?.[i] || ""),
+            correct: Array.isArray(q.correct) ? q.correct : [],
+          };
+        }
+        return q;
+      });
+
+      // 🔹 Cập nhật state
+      setQuestions(fixedQuestions);
+      setSelectedClass(data.class || "");
+      setSelectedSubject(data.subject || "");
+      setSemester(data.semester || "");
+      setSchoolYear(data.schoolYear || "");
+      setExamLetter(data.examLetter || "");
+
+      // 🔹 Lưu context và localStorage
+      updateQuizConfig({ deTracNghiem: selectedDoc });
+      localStorage.setItem("deTracNghiemId", selectedDoc);
+
+      localStorage.setItem(
+        "teacherConfig",
+        JSON.stringify({
+          selectedClass: data.class,
+          selectedSubject: data.subject,
+          semester: data.semester,
+          schoolYear: data.schoolYear,
+          examLetter: data.examLetter,
+        })
       );
-      setIsEditingNewDoc(false);
+
+      localStorage.setItem("teacherQuiz", JSON.stringify(fixedQuestions));
+
+      setOpenDialog(false);
+
+      // 🔹 Ghi vào CONFIG/config chung
+      try {
+        const configRef = doc(db, "CONFIG", "config");
+        const examTypeDisplay =
+          examTypeFromCollection === "ktdk" ? "KTĐK" : "Bài tập tuần";
+
+        await setDoc(
+          configRef,
+          {
+            deTracNghiem: selectedDoc, // chỉ ghi id đề
+            examType: examTypeFromCollection, 
+          },
+          { merge: true }
+        );
+
+        setIsEditingNewDoc(false);
+      } catch (err) {
+        console.error("❌ Lỗi khi ghi CONFIG:", err);
+      }
     } catch (err) {
-      console.error("❌ Lỗi ghi CONFIG:", err);
+      console.error(err);
+      setSnackbar({
+        open: true,
+        message: `❌ Lỗi khi mở đề: ${err.message}`,
+        severity: "error",
+      });
     }
-
-  } catch (err) {
-    console.error(err);
-    setSnackbar({
-      open: true,
-      message: `❌ Lỗi khi mở đề: ${err.message}`,
-      severity: "error",
-    });
-  }
-};
-
+  };
 
   const addQuestion = () => {
     setQuestions((prev) => [
