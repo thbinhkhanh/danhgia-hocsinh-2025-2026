@@ -19,9 +19,9 @@ import {
   FormControl,
   Select,
   MenuItem,
-  Card,
+  InputLabel,
 } from "@mui/material";
-import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
+import { doc, getDoc, getDocs, setDoc, collection } from "firebase/firestore";
 // Thay cho react-beautiful-dnd
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
@@ -29,17 +29,16 @@ import { db } from "../firebase";
 import { useContext } from "react";
 import { ConfigContext } from "../context/ConfigContext";
 import { exportQuizPDF } from "../utils/exportQuizPDF"; 
-import { handleSubmitQuiz } from "../utils/submitQuiz";
-import { autoSubmitQuiz } from "../utils/autoSubmitQuiz";
 import QuestionOption from "../utils/QuestionOption";
-import ImageZoomDialog from "../dialog/ImageZoomDialog";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+//import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+//import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
+import ImageZoomDialog from "../dialog/ImageZoomDialog";
 
 
 import Dialog from "@mui/material/Dialog";
@@ -50,15 +49,8 @@ import DialogActions from "@mui/material/DialogActions";
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
-
-import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
-import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
-import ResultDialog from "../dialog/ResultDialog";
-
-
-
+//import { jsPDF } from "jspdf";
+//import html2canvas from "html2canvas";
 
 // Hàm shuffle mảng
 function shuffleArray(array) {
@@ -70,7 +62,7 @@ function shuffleArray(array) {
   return arr;
 }
 
-export default function TracNghiem() {
+export default function TracNghiem_Test() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -79,16 +71,16 @@ export default function TracNghiem() {
   const [score, setScore] = useState(0);
 
   const [openAlertDialog, setOpenAlertDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState(""); 
   const [unansweredQuestions, setUnansweredQuestions] = useState([]);
-
-  const [zoomImage, setZoomImage] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const { config } = useContext(ConfigContext);
+  const [selectedYear, setSelectedYear] = useState(config?.namHoc || "2025-2026");
   const [saving, setSaving] = useState(false);
   const [openExitConfirm, setOpenExitConfirm] = useState(false);
+
+  const [zoomImage, setZoomImage] = useState(null);
 
   const location = useLocation();
   //const { studentId, studentName, studentClass, selectedWeek, mon } = location.state || {};
@@ -98,52 +90,36 @@ export default function TracNghiem() {
   const [startTime, setStartTime] = useState(null);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
 
-  const [hocKi, setHocKi] = useState("");
+  const [hocKi, setHocKi] = useState(config?.hocKy || "Cuối kỳ I");
   const [monHoc, setMonHoc] = useState("");
   const [choXemDiem, setChoXemDiem] = useState(false);
   const [choXemDapAn, setChoXemDapAn] = useState(false);
+  const xuatFileBaiLam = config?.xuatFileBaiLam ?? true;
 
   const [openResultDialog, setOpenResultDialog] = useState(false);
   const [studentResult, setStudentResult] = useState(null);
   const [fillBlankStatus, setFillBlankStatus] = useState({});
-  const [dialogMessage, setDialogMessage] = useState("");
 
-  const [notFoundMessage, setNotFoundMessage] = useState(""); 
-  const [selectedExamType, setSelectedExamType] = useState("Giữa kỳ I"); // mặc định
-  const [configData, setConfigData] = useState(null);
+  const [examList, setExamList] = useState([]);
+  const [selectedExam, setSelectedExam] = useState("");
+  const [complete, setComplete] = useState(false); // thêm dòng này
+  const [examType, setExamType] = useState("kt"); // "bt" | "kt"
+  const [allExamList, setAllExamList] = useState([]);
+  
+  // Lấy trường từ tài khoản đăng nhập
+  const account = localStorage.getItem("account") || "";
+  const school = account === "TH Lâm Văn Bền" ? account : "TH Bình Khánh";
 
-  const locationState = location.state || {};
-  //const { fullname, lop, school, studentId, selectedWeek, mon } = locationState;
-  const [studentId, setStudentId] = useState(locationState.studentId || "HS001");
-  const [fullname, setFullname] = useState(locationState.fullname || "Test");
-  const [lop, setLop] = useState(locationState.lop || "4.1");
-  const [selectedWeek, setSelectedWeek] = useState(locationState.selectedWeek || 13);
-  const [mon, setMon] = useState(locationState.mon || "Tin học");
+  // Lấy lớp từ tên đề
+  const detectedClass = selectedExam?.match(/Lớp\s*(\d+)/)?.[1] || "Test";
+  const [selectedClass, setSelectedClass] = useState("4");
 
+// Gán thông tin mặc định theo yêu cầu
   const studentInfo = {
-    id: studentId,
-    name: fullname,
-    className: lop,           // giữ key là className
-    //school: school || "",
-    selectedWeek: selectedWeek || 1,
-    mon: mon || config.mon || "Tin học",
+    name: "Tên học sinh",
+    class: detectedClass,
+    school: school
   };
-
-// Khi cần lấy lớp học sinh
-const studentClass = studentInfo.className;
-const studentName = studentInfo.name;
-const hocKiDisplay = config?.hocKy || "Cuối kỳ I"; // fallback nếu chưa có config
-const monHocDisplay = studentInfo.mon || config?.mon || "Tin học";
-
-// Kiểm tra dữ liệu học sinh
-if (!studentInfo.id || !studentInfo.name || !studentClass) {
-  console.warn("❌ Thiếu dữ liệu học sinh, quay lại danh sách");
-  navigate("/hoc-sinh"); // quay lại trang danh sách
-}
-
-//console.log("📌 studentInfo:", studentInfo);
-
-
 
   // Đồng bộ thời gian
   useEffect(() => {
@@ -182,6 +158,99 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
       return { ...prev, [questionId]: newAns };
     });
   };
+
+  /*useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const colName = "NGANHANG_DE";
+        const colRef = collection(db, colName);
+        const snap = await getDocs(colRef);
+
+        // Lấy key năm học từ selectedYear
+        const yearKey = selectedYear.slice(2, 4) + "-" + selectedYear.slice(7, 9);
+
+        // Học kỳ: "Cuối kỳ I" -> "CKI", "Cả năm" -> "CN"
+        const hocKyKey = hocKi === "Cả năm" ? "CN" : "CKI";
+
+        // Lọc đề theo năm học + học kỳ
+        const exams = snap.docs
+          .map(d => d.id)
+          .filter(id => id.includes(yearKey) && id.includes(hocKyKey));
+
+        // ✅ Sắp xếp theo thứ tự mong muốn
+        const sortedExams = exams.sort((a, b) => {
+          const regex = /quiz_Lớp (\d+)_(Công nghệ|Tin học)_(CKI|CKII|CN)_(\d+-\d+) \(([A-Z])\)/i;
+
+          const matchA = a.match(regex);
+          const matchB = b.match(regex);
+          if (!matchA || !matchB) return 0;
+
+          const [_, classA, subjectA, hkA, yearA, letterA] = matchA;
+          const [__, classB, subjectB, hkB, yearB, letterB] = matchB;
+
+          // 1️⃣ Sắp môn: Công nghệ trước Tin học
+          const subjectOrder = ["Công nghệ", "Tin học"];
+          const indexA = subjectOrder.indexOf(subjectA);
+          const indexB = subjectOrder.indexOf(subjectB);
+          if (indexA !== indexB) return indexA - indexB;
+
+          // 2️⃣ Sắp lớp
+          if (parseInt(classA) !== parseInt(classB)) return parseInt(classA) - parseInt(classB);
+
+          // 3️⃣ Sắp học kỳ CKI < CKII < CN
+          const extraOrder = ["CKI", "CKII", "CN"];
+          const eA = extraOrder.indexOf(hkA) === -1 ? 99 : extraOrder.indexOf(hkA);
+          const eB = extraOrder.indexOf(hkB) === -1 ? 99 : extraOrder.indexOf(hkB);
+          if (eA !== eB) return eA - eB;
+
+          // 4️⃣ Sắp chữ cái đề
+          return (letterA || "").localeCompare(letterB || "");
+        });
+
+        setExamList(sortedExams);
+
+        // Chọn mặc định đề đầu tiên nếu selectedExam không hợp lệ
+        if (!selectedExam || !sortedExams.includes(selectedExam)) {
+          if (sortedExams.length > 0) setSelectedExam(sortedExams[0]);
+        }
+
+      } catch (err) {
+        console.error("Lỗi lấy danh sách đề:", err);
+        setExamList([]);
+        setSelectedExam("");
+      }
+    };
+
+    fetchExams();
+  }, [school, selectedYear, hocKi]);*/
+
+  useEffect(() => {
+    if (!examType) return;
+    fetchQuizList(examType);
+  }, [examType]);
+
+
+  // ⭐ RESET TOÀN BỘ SAU KHI CHỌN ĐỀ MỚI
+  useEffect(() => {
+    if (!selectedExam) return;
+
+    // Reset các state liên quan
+    setAnswers({});
+    setCurrentIndex(0);
+    setComplete(false);
+    setSubmitted(false);       // reset trạng thái đã nộp
+    setStarted(false);
+    setScore(0);
+    setTimeLeft(0);
+    setStartTime(null);        // reset thời gian bắt đầu
+    setQuestions([]);
+    setProgress(0);
+    setLoading(true);
+    setOpenResultDialog(false);
+    setStudentResult(null);
+    setFillBlankStatus({});
+
+  }, [selectedExam]);
 
   // Hàm shuffleUntilDifferent: đảo mảng cho đến khi khác ít nhất 1 phần tử so với gốc
   function shuffleUntilDifferent(items) {
@@ -440,168 +509,50 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
       return false;
     });
   }
-
+  
   useEffect(() => {
     const fetchQuestions = async () => {
-      try {
+        try {
         setLoading(true);
         let prog = 0;
 
         let docId = null;
-          let collectionName = "NGANHANG_DE"; // mặc định
-          let hocKiFromConfig = "";
-          let monHocFromConfig = "";
-          let timeLimitMinutes = 0;
+        //let collectionName = "NGANHANG_DE";
+        let collectionName =
+          examType === "kt" ? "NGANHANG_DE" : "BAITAP_TUAN";
 
-          // lấy config
-          const configRef = doc(db, "CONFIG", "config");
-          const configSnap = await getDoc(configRef);
-          if (configSnap.exists()) {
-            const data = configSnap.data();
-            setConfigData(data); // ← thêm dòng này
-          }
+        let hocKiFromConfig = "";
+        let monHocFromConfig = "";
+        let timeLimitMinutes = 0; // ⬅ để lưu thời gian
+        
+        const configRef = doc(db, "CONFIG", "config");
+        const configSnap = await getDoc(configRef);
+        prog += 30;
+        setProgress(prog);
 
-          prog += 30;
-          setProgress(prog);
+        if (!configSnap.exists()) {
+        setSnackbar({ open: true, message: "❌ Không tìm thấy config!", severity: "error" });
+        setLoading(false);
+        return;
+        }
 
-          if (!configSnap.exists()) {
-            setSnackbar({ 
-              open: true, 
-              message: "❌ Không tìm thấy config!", 
-              severity: "error" 
-            });
+        const configData = configSnap.data();
+        hocKiFromConfig = configData.hocKy || "";
+        monHocFromConfig = configData.mon || "";
+        timeLimitMinutes = configData.timeLimit ?? 0;   // ⬅ lấy timeLimit
+        setTimeLimitMinutes(timeLimitMinutes);
+        setChoXemDiem(configData.choXemDiem ?? false);
+        setChoXemDapAn(configData.choXemDapAn ?? false);          
+
+        // 🔹 Lấy docId theo đề được chọn từ dropdown (áp dụng cho mọi trường)
+        if (!selectedExam) {
+            //setSnackbar({ open: true, message: "Vui lòng chọn đề!", severity: "warning" });
             setLoading(false);
-            return;
-          }
+        return;
+        }
 
-          const configData = configSnap.data();
-          //console.log("👉 CONFIG DATA:", configData);
-          //console.log("👉 kiemTraDinhKi =", configData.kiemTraDinhKi);
+        docId = selectedExam;
 
-          hocKiFromConfig = configData.hocKy || "";
-          monHocFromConfig = configData.mon || "";
-          timeLimitMinutes = configData.timeLimit ?? 0;
-
-          setTimeLimitMinutes(timeLimitMinutes);
-          setChoXemDiem(configData.choXemDiem ?? false);
-          setChoXemDapAn(configData.choXemDapAn ?? false);
-
-          // === Lấy lớp học sinh ===
-          const studentClass = studentInfo.className;
-          const classNumber = studentClass.match(/\d+/)?.[0];
-          if (!classNumber) {
-            setSnackbar({ 
-              open: true, 
-              message: "❌ Không xác định được lớp của học sinh!", 
-              severity: "error" 
-            });
-            setLoading(false);
-            return;
-          }
-          const classLabel = `Lớp ${classNumber}`;
-
-          // === Xác định docId ===
-          if (configData.onTap === true) {
-            // 🔹 NHÁNH ÔN TẬP
-            const hocKiMap = {
-              "Cuối kỳ I": "CKI",
-              "Giữa kỳ I": "GKI",
-              "Giữa kỳ II": "GKII",
-              "Cả năm": "CN"
-            };
-            const hocKiCode = hocKiMap[hocKiFromConfig];
-
-            if (!hocKiCode) {
-              setNotFoundMessage(`❌ Không tìm thấy đề Ôn tập ${hocKiFromConfig}`);
-              setLoading(false);
-              return;
-            }
-
-            const onTapSnap = await getDocs(collection(db, "NGANHANG_DE"));
-
-            // Tìm đề vừa khớp lớp, vừa khớp học kỳ
-            const matchedDoc = onTapSnap.docs.find(d =>
-              d.id.includes(classLabel) && d.id.includes(hocKiCode)
-            );
-
-            if (!matchedDoc) {
-              setNotFoundMessage(`❌ Không tìm thấy đề Ôn tập ${hocKiFromConfig}`);
-              setLoading(false);
-              return;
-            }
-
-            collectionName = "NGANHANG_DE";
-            docId = matchedDoc.id;
-
-          } else if (configData.kiemTraDinhKi === true) {
-            // 🔹 NHÁNH KTĐK (giữ nguyên)
-            const hocKiMap = {
-              "Cuối kỳ I": "CKI",
-              "Giữa kỳ I": "GKI",
-              "Giữa kỳ II": "GKII",
-              "Cả năm": "CN"
-            };
-
-            const hocKiCode = hocKiMap[hocKiFromConfig];
-
-            if (!hocKiCode) {
-              setNotFoundMessage(`❌ Không tìm thấy đề KTĐK ${hocKiFromConfig}`);
-              setLoading(false);
-              return;
-            }
-
-            const deThiSnap = await getDocs(collection(db, "DETHI"));
-            const matchedDeThi = deThiSnap.docs.find(d =>
-              d.id.includes(classLabel) && d.id.includes(hocKiCode)
-            );
-
-            if (!matchedDeThi) {
-              setNotFoundMessage(`❌ Không tìm thấy đề KTĐK ${hocKiFromConfig}`);
-              setLoading(false);
-              return;
-            }
-
-            const deThiName = matchedDeThi.id;
-
-            const tracNghiemSnap = await getDocs(collection(db, "NGANHANG_DE"));
-            const matchedDoc = tracNghiemSnap.docs.find(d => d.id === deThiName);
-
-            collectionName = "NGANHANG_DE";
-            docId = matchedDoc?.id;
-
-          } else if (configData.baiTapTuan === true) {
-            // 🔹 NHÁNH BÀI TẬP TUẦN (giữ nguyên)
-            const studentClass = studentInfo.className;
-            const classNumber = studentClass.match(/\d+/)?.[0];
-            const selectedWeek = studentInfo.selectedWeek;
-            const monHoc = studentInfo.mon;
-
-            if (!classNumber || !selectedWeek || !monHoc) {
-              showNotFoundDialog("❌ Thiếu thông tin lớp / tuần / môn để mở bài tập tuần!");
-              setLoading(false);
-              return;
-            }
-
-            const expectedDocId = `quiz_Lớp ${classNumber}_${monHoc}_${selectedWeek}`;
-            const baitapTuanSnap = await getDocs(collection(db, "BAITAP_TUAN"));
-            const matchedDoc = baitapTuanSnap.docs.find(d => d.id === expectedDocId);
-
-            if (!matchedDoc) {
-              setNotFoundMessage(`❌ Không tìm thấy đề ${monHoc} Lớp ${classNumber} (tuần ${selectedWeek})`);
-              setLoading(false);
-              return;
-            }
-
-            collectionName = "BAITAP_TUAN";
-            docId = matchedDoc.id;
-
-          } else {
-            setNotFoundMessage("❌ Không xác định nhánh nào để load đề!");
-            setLoading(false);
-            return;
-          }
-
-          
         // 🔹 Set thời gian làm bài (giây)
         setTimeLeft(timeLimitMinutes * 60);
 
@@ -611,11 +562,11 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
         prog += 30;
         setProgress(prog);
 
-        if (!docSnap.exists()) {
-          setSnackbar({ open: true, message: "❌ Không tìm thấy đề trắc nghiệm!", severity: "error" });
-          setLoading(false);
-          return;
-        }
+        /*if (!docSnap.exists()) {
+            setSnackbar({ open: true, message: "❌ Không tìm thấy đề trắc nghiệm!", severity: "error" });
+            setLoading(false);
+            return;
+        }*/
 
         const data = docSnap.data();
         setQuizClass(data.class || "");
@@ -632,6 +583,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
         window.currentMonHoc = monHocFromDoc;
 
         // --- Xử lý câu hỏi ---
+        // --- Xử lý câu hỏi ---
         const runtimeQuestions = buildRuntimeQuestions(data.questions);
         setQuestions(runtimeQuestions);
         
@@ -642,29 +594,131 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
         //Chấm Sort không tương tác
         setAnswers(prev => {
           const next = { ...prev };
+
           runtimeQuestions.forEach(q => {
             if (q.type === "sort" && Array.isArray(q.initialSortOrder)) {
               if (!Array.isArray(next[q.id])) {
-                next[q.id] = q.initialSortOrder;
+                next[q.id] = [...q.initialSortOrder]; // ✅ clone mảng
               }
             }
           });
+
           return next;
         });
 
-
-        //============================
-
-      } catch (err) {
+        } catch (err) {
         console.error("❌ Lỗi khi load câu hỏi:", err);
         setQuestions([]);
-      } finally {
+        } finally {
         setLoading(false);
-      }
+        }
     };
 
     fetchQuestions();
-  }, []);
+  }, [selectedExam, examType]);
+
+  const fetchQuizList = async (type) => {
+    try {
+      const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
+
+      const colRef = collection(db, colName);
+      const snap = await getDocs(colRef);
+
+      const exams = snap.docs.map((d) => d.id);
+
+      setAllExamList(exams);
+
+      if (type === "bt") {
+        setExamList([]);       // chờ chọn lớp
+        setSelectedExam("");
+      } else {
+        setExamList(exams);    // KTĐK thì hiện hết
+        setSelectedExam(exams[0] || "");
+      }
+
+
+      if (exams.length > 0) {
+        setSelectedExam(exams[0]);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy danh sách đề:", err);
+      setSnackbar({
+        open: true,
+        message: "❌ Không thể tải danh sách đề!",
+        severity: "error",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (examType !== "bt") return;
+
+    if (!selectedClass) {
+      setExamList([]);
+      setSelectedExam("");
+      return;
+    }
+
+    const filtered = allExamList.filter((examId) =>
+      examId.includes(`Lớp ${selectedClass}`)
+    );
+
+    setExamList(filtered);
+    setSelectedExam(filtered[0] || "");
+  }, [selectedClass, examType, allExamList]);
+
+
+  const formatQuizTitle = (examName = "") => {
+    if (!examName) return "";
+
+    // Bỏ prefix quiz_
+    let name = examName.startsWith("quiz_") ? examName.slice(5) : examName;
+    const parts = name.split("_");
+
+    // ===== LỚP =====
+    const classPart = parts.find(p => p.toLowerCase().includes("lớp")) || "";
+    const classNumber = classPart.match(/\d+/)?.[0] || "";
+
+    // ===== MÔN =====
+    let subjectPart = "";
+    for (let i = parts.indexOf(classPart) + 1; i < parts.length; i++) {
+      const p = parts[i];
+      if (
+        !p.toLowerCase().includes("cki") &&
+        !p.toLowerCase().includes("cn") &&
+        !/\d{2}-\d{2}/.test(p)
+      ) {
+        subjectPart = p;
+        break;
+      }
+    }
+
+    // ===== PHÂN BIỆT BT / KT =====
+    const lastPart = parts[parts.length - 1];
+
+    // 👉 BÀI TẬP TUẦN (kết thúc bằng số)
+    if (/^\d+$/.test(lastPart)) {
+      return `${subjectPart} ${classNumber} – Tuần ${lastPart}`.trim();
+    }
+
+    // 👉 KIỂM TRA ĐỊNH KỲ
+    let extraPart = "";
+    for (let i = parts.indexOf(classPart) + 1; i < parts.length; i++) {
+      const p = parts[i];
+      if (p.toLowerCase().includes("cki") || p.toLowerCase() === "cn") {
+        extraPart = p.toUpperCase();
+        break;
+      }
+    }
+
+    const match = examName.match(/\(([^)]+)\)/);
+    const examLetter = match ? match[1] : "";
+
+    return `${subjectPart} ${classNumber}${extraPart ? ` - ${extraPart}` : ""}${examLetter ? ` (${examLetter})` : ""}`.trim();
+  };
+  
+  const studentClass = studentInfo.class;
+  const studentName = studentInfo.name;
 
   // Hàm chuyển chữ đầu thành hoa
   const capitalizeName = (name = "") =>
@@ -678,40 +732,9 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
   // Sử dụng:
   const hoVaTen = capitalizeName(studentName);
 
-  function mapHocKyToDocKey(loaiKT) {
-    switch (loaiKT) {
-      case "Giữa kỳ I": return "GKI";
-      case "Cuối kỳ I": return "CKI";
-      case "Giữa kỳ II": return "GKII";
-      case "Cả năm": return "CN";
-      default:
-        console.warn("❌ Loại kiểm tra không xác định:", loaiKT);
-        return "UNKNOWN";
-    }
-  }
+  // Ví dụ:
+  //console.log(capitalizeName("thái phạm")); // "Thái Phạm"
 
-  const getQuestionMax = (q) => {
-    // Nếu có scoreTotal thì dùng (tổng sẵn của câu)
-    if (typeof q.scoreTotal === "number") return q.scoreTotal;
-
-    // Nếu có per-item score và có danh sách tiểu mục
-    if (typeof q.perItemScore === "number") {
-      // xác định số tiểu mục theo loại
-      const subCount =
-        q.type === "truefalse" ? (Array.isArray(q.correct) ? q.correct.length : 0) :
-        q.type === "fillblank" ? (Array.isArray(q.options) ? q.options.length : 0) :
-        q.type === "matching" ? (Array.isArray(q.correct) ? q.correct.length : 0) :
-        q.type === "sort" ? (Array.isArray(q.correctTexts) ? q.correctTexts.length : 0) :
-        1;
-      return q.perItemScore * subCount;
-    }
-
-    // Mặc định: dùng score nếu có, nếu không thì 1
-    return typeof q.score === "number" ? q.score : 1;
-  };
-
-  const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
-  //console.log("🔎 Tổng điểm đề (maxScore):", maxScore);
 
   const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";
@@ -719,63 +742,311 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
   const handleCloseSnackbar = (event, reason) => { if (reason === "clickaway") return; setSnackbar(prev => ({ ...prev, open: false })); };
 
-  const handleSubmit = () =>
-    handleSubmitQuiz({
-      studentName,
-      studentClass,
-      studentId,
-      studentInfo,
-      studentResult,
-      setStudentResult,
-      setSnackbar,
-      setSaving,
-      setSubmitted,
-      setOpenAlertDialog,
-      setUnansweredQuestions,
-      setOpenResultDialog,
-      questions,
-      answers,
-      startTime,
-      db,
-      config,
-      configData,
-      selectedWeek,
-      getQuestionMax,
-      capitalizeName,
-      mapHocKyToDocKey,
-      formatTime,
-      exportQuizPDF,
+  const handleSubmit = async () => {
+    if (!studentClass || !studentName) {
+      setSnackbar({ open: true, message: "Thiếu thông tin học sinh", severity: "info" });
+      return;
+    }
+
+    // Kiểm tra câu chưa trả lời
+    const unanswered = questions.filter(q => {
+      const userAnswer = answers[q.id];
+      if (q.type === "single") {
+        return userAnswer === undefined || userAnswer === null || userAnswer === "";
+      }
+      if (q.type === "multiple" || q.type === "image") {
+        return !Array.isArray(userAnswer) || userAnswer.length === 0;
+      }
+      if (q.type === "truefalse") {
+        return !Array.isArray(userAnswer) || userAnswer.length !== q.options.length;
+      }
+      return false;
     });
 
-const autoSubmit = () => {
-  autoSubmitQuiz({
-    studentName,
-      studentClass,
-      studentId,
-      studentInfo,
-      studentResult,
-      setStudentResult,
-      setSnackbar,
-      setSaving,
-      setSubmitted,
-      setOpenAlertDialog,
-      setUnansweredQuestions,
-      setOpenResultDialog,
-      questions,
-      answers,
-      startTime,
-      db,
-      config,
-      configData,
-      selectedWeek,
-      getQuestionMax,
-      capitalizeName,
-      mapHocKyToDocKey,
-      formatTime,
-      exportQuizPDF,
-  });
-};
+    if (unanswered.length > 0) {
+      setUnansweredQuestions(unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1));
+      setOpenAlertDialog(true);
+      return;
+    }
 
+    try {
+      setSaving(true);
+
+      // Tính điểm thô
+      let total = 0;
+      questions.forEach(q => {
+        const rawAnswer = answers[q.id];
+
+        if (q.type === "single") {
+          const ua = Number(rawAnswer);
+          if (Array.isArray(q.correct) ? q.correct.includes(ua) : q.correct === ua) total += q.score ?? 1;
+
+        } else if (q.type === "multiple" || q.type === "image") {
+          const userSet = new Set(Array.isArray(rawAnswer) ? rawAnswer : []);
+          const correctSet = new Set(Array.isArray(q.correct) ? q.correct : [q.correct]);
+          if (userSet.size === correctSet.size && [...correctSet].every(x => userSet.has(x))) total += q.score ?? 1;
+
+        } else if (q.type === "sort") {
+          // 👉 nếu không kéo, dùng thứ tự ban đầu
+          const order =
+            Array.isArray(rawAnswer) && rawAnswer.length > 0
+              ? rawAnswer
+              : q.initialOrder ?? q.options.map((_, i) => i);
+
+          const userTexts = order.map(idx => q.options[idx]);
+          const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
+
+          const isCorrect =
+            userTexts.length === correctTexts.length &&
+            userTexts.every((t, i) => t === correctTexts[i]);
+
+          if (isCorrect) total += q.score ?? 1;
+
+        } else if (q.type === "matching") {
+          const userArray =
+            Array.isArray(rawAnswer) && rawAnswer.length > 0
+              ? rawAnswer
+              : q.initialOrder ?? q.correct?.map((_, i) => i);
+
+          const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
+          const isCorrect =
+            userArray.length === correctArray.length &&
+            userArray.every((val, i) => val === correctArray[i]);
+
+          if (isCorrect) total += q.score ?? 1;
+        } else if (q.type === "truefalse") {
+          const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
+          const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
+          if (userArray.length === correctArray.length) {
+            const isAllCorrect = userArray.every((val, i) => {
+              const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
+              return val === correctArray[originalIdx];
+            });
+
+            if (isAllCorrect) {
+              total += q.score ?? 1;
+            }
+          }
+        } else if (q.type === "fillblank") {
+          const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
+          const correctAnswers = Array.isArray(q.options) ? q.options : [];
+
+          if (userAnswers.length === correctAnswers.length) {
+            const isAllCorrect = correctAnswers.every((correct, i) => {
+              if (!userAnswers[i] || !correct || typeof correct.text !== "string")
+                return false;
+
+              return (
+                String(userAnswers[i]).trim().toLowerCase() ===
+                correct.text.trim().toLowerCase()
+              );
+            });
+
+            if (isAllCorrect) total += q.score ?? 1;
+          }
+        }
+      });
+
+      setScore(total);
+      setSubmitted(true);
+      
+      // ⏱ Tính thời gian làm bài
+      const durationSec = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+      const durationStr = formatTime(durationSec);
+
+      // Tạo biến chứa tiêu đề hiển thị
+      const hocKi = window.currentHocKi || "GKI";
+      const monHoc = window.currentMonHoc || "Không rõ";
+
+      // Tạo tiêu đề PDF
+      const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
+
+      // Gọi export PDF
+      //exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
+      // ⬅️ Chỉ xuất file nếu được bật
+      if (xuatFileBaiLam === true) {
+        exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
+      }
+
+      // Ngày theo định dạng Việt Nam
+      const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
+
+      const normalizeName = (name) =>
+        name.normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d").replace(/Đ/g, "D")
+            .toLowerCase().trim()
+            .replace(/\s+/g, "_")
+            .replace(/[^a-z0-9_]/g, "");
+
+      setStudentResult({
+        hoVaTen: capitalizeName(studentName),
+        lop: studentClass,
+        diem: total,
+      });
+      setOpenResultDialog(true);
+
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu điểm:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const autoSubmit = async () => {
+    if (!studentClass || !studentName) {
+      setSnackbar({ open: true, message: "Thiếu thông tin học sinh", severity: "info" });
+      return;
+    }
+
+    // Kiểm tra câu chưa trả lời
+    /*const unanswered = questions.filter(q => {
+      const userAnswer = answers[q.id];
+      if (q.type === "single") {
+        return userAnswer === undefined || userAnswer === null || userAnswer === "";
+      }
+      if (q.type === "multiple" || q.type === "image") {
+        return !Array.isArray(userAnswer) || userAnswer.length === 0;
+      }
+      if (q.type === "truefalse") {
+        return !Array.isArray(userAnswer) || userAnswer.length !== q.options.length;
+      }
+      return false;
+    });
+
+    if (unanswered.length > 0) {
+      setUnansweredQuestions(unanswered.map(q => questions.findIndex(item => item.id === q.id) + 1));
+      setOpenAlertDialog(true);
+      return;
+    }*/
+
+    try {
+      setSaving(true);
+
+      // Tính điểm thô
+      let total = 0;
+      questions.forEach(q => {
+        const rawAnswer = answers[q.id];
+
+        if (q.type === "single") {
+          const ua = Number(rawAnswer);
+          if (Array.isArray(q.correct) ? q.correct.includes(ua) : q.correct === ua) total += q.score ?? 1;
+
+        } else if (q.type === "multiple" || q.type === "image") {
+          const userSet = new Set(Array.isArray(rawAnswer) ? rawAnswer : []);
+          const correctSet = new Set(Array.isArray(q.correct) ? q.correct : [q.correct]);
+          if (userSet.size === correctSet.size && [...correctSet].every(x => userSet.has(x))) total += q.score ?? 1;
+
+        } else if (q.type === "sort") {
+          // 👉 nếu không kéo, dùng thứ tự ban đầu
+          const order =
+            Array.isArray(rawAnswer) && rawAnswer.length > 0
+              ? rawAnswer
+              : q.initialOrder ?? q.options.map((_, i) => i);
+
+          const userTexts = order.map(idx => q.options[idx]);
+          const correctTexts = Array.isArray(q.correctTexts) ? q.correctTexts : [];
+
+          const isCorrect =
+            userTexts.length === correctTexts.length &&
+            userTexts.every((t, i) => t === correctTexts[i]);
+
+          if (isCorrect) total += q.score ?? 1;
+
+        } else if (q.type === "matching") {
+          const userArray =
+            Array.isArray(rawAnswer) && rawAnswer.length > 0
+              ? rawAnswer
+              : q.initialOrder ?? q.correct?.map((_, i) => i);
+
+          const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
+          const isCorrect =
+            userArray.length === correctArray.length &&
+            userArray.every((val, i) => val === correctArray[i]);
+
+          if (isCorrect) total += q.score ?? 1;
+        } else if (q.type === "truefalse") {
+          const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
+          const correctArray = Array.isArray(q.correct) ? q.correct : [];
+
+          if (userArray.length === correctArray.length) {
+            const isAllCorrect = userArray.every((val, i) => {
+              const originalIdx = Array.isArray(q.initialOrder) ? q.initialOrder[i] : i;
+              return val === correctArray[originalIdx];
+            });
+
+            if (isAllCorrect) {
+              total += q.score ?? 1;
+            }
+          }
+        } else if (q.type === "fillblank") {
+          const userAnswers = Array.isArray(rawAnswer) ? rawAnswer : [];
+          const correctAnswers = Array.isArray(q.options) ? q.options : [];
+
+          if (userAnswers.length === correctAnswers.length) {
+            const isAllCorrect = correctAnswers.every((correct, i) => {
+              if (!userAnswers[i] || !correct || typeof correct.text !== "string")
+                return false;
+
+              return (
+                String(userAnswers[i]).trim().toLowerCase() ===
+                correct.text.trim().toLowerCase()
+              );
+            });
+
+            if (isAllCorrect) total += q.score ?? 1;
+          }
+        }
+      });
+
+      setScore(total);
+      setSubmitted(true);
+      
+      // ⏱ Tính thời gian làm bài
+      const durationSec = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+      const durationStr = formatTime(durationSec);
+
+      // Tạo biến chứa tiêu đề hiển thị
+      const hocKi = window.currentHocKi || "GKI";
+      const monHoc = window.currentMonHoc || "Không rõ";
+
+      // Tạo tiêu đề PDF
+      const quizTitle = `KTĐK${hocKi ? ` ${hocKi.toUpperCase()}` : ""}${monHoc ? ` - ${monHoc.toUpperCase()}` : ""}`;
+
+      // Gọi export PDF
+      //exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
+      // ⬅️ Chỉ xuất file nếu được bật
+      if (xuatFileBaiLam === true) {
+        exportQuizPDF(studentInfo, quizClass, questions, answers, total, durationStr, quizTitle);
+      }
+
+      // Ngày theo định dạng Việt Nam
+      const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
+
+      const normalizeName = (name) =>
+        name.normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d").replace(/Đ/g, "D")
+            .toLowerCase().trim()
+            .replace(/\s+/g, "_")
+            .replace(/[^a-z0-9_]/g, "");
+
+      setStudentResult({
+        hoVaTen: capitalizeName(studentName),
+        lop: studentClass,
+        diem: total,
+      });
+      setOpenResultDialog(true);
+
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu điểm:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
   const handlePrev = () => currentIndex > 0 && setCurrentIndex(currentIndex - 1);
@@ -857,12 +1128,6 @@ const handleDragEnd = (result) => {
   });
 };
 
-const showNotFoundDialog = (msg) => {
-  setDialogMessage(msg);
-  setDialogMode("notFound");
-  setOpenResultDialog(true);
-};
-
 const normalizeValue = (val) => {
   if (typeof val === "object") {
     if (val.image) return String(val.image).trim();
@@ -895,17 +1160,15 @@ return (
         borderRadius: 3,
         width: "100%",
         maxWidth: 1000,
-        minWidth: { xs: "auto", sm: 700 },   // sửa minWidth giống mẫu
-        minHeight: { xs: "auto", sm: 650 },  // sửa minHeight giống mẫu
+        minWidth: { xs: "auto", sm: 600 },
+        minHeight: { xs: "auto", sm: 650 }, // ⬅ tăng để đủ không gian
         display: "flex",
         flexDirection: "column",
-        gap: 2,
         position: "relative",
         boxSizing: "border-box",
-        backgroundColor: "#fff",             // thêm nền trắng giống mẫu
-        pb: 3,
       }}
     >
+
       {/* Nút thoát */}
       <Tooltip title="Thoát trắc nghiệm" arrow>
         <IconButton
@@ -913,13 +1176,7 @@ return (
             if (submitted) {
               navigate(-1);
             } else {
-              // Nếu không tìm thấy đề thì không mở dialog
-              if (!notFoundMessage) {
-                setOpenExitConfirm(true);
-              } else {
-                // Nếu muốn, có thể quay lại luôn
-                navigate(-1);
-              }
+              setOpenExitConfirm(true);
             }
           }}
           sx={{
@@ -935,45 +1192,103 @@ return (
         </IconButton>
       </Tooltip>
 
-      {/* Thông tin học sinh */}
+      {/* Tiêu đề */}
       <Box
         sx={{
-          p: 1.5,
-          border: "2px solid #1976d2",
-          borderRadius: 2,
-          color: "#1976d2",
-          width: "fit-content",
+          width: "60%",
+          maxWidth: 350,
+          mt: 1,
           mb: 2,
-          position: { xs: "relative", sm: "absolute" },
-          top: { sm: 16 },
-          left: { sm: 16 },
-          alignSelf: { xs: "flex-start", sm: "auto" },
-          bgcolor: { xs: "#fff", sm: "transparent" },
-          zIndex: 2,
+          ml: "auto",
+          mr: "auto",
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
         }}
       >
-        <Typography variant="subtitle1" fontWeight="bold">
-          Tên: {capitalizeName(studentInfo.name)}
+        {/* Tiêu đề */}
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: "bold",
+            fontSize: "20px",
+            mb: 2,
+            mt: -1,
+            color: "#1976d2", // màu xanh
+          }}
+        >
+          TEST ĐỀ KIỂM TRA
         </Typography>
-        <Typography variant="subtitle1" fontWeight="bold">
-          Lớp: {studentInfo.className} 
-        </Typography>
-      </Box>
 
-      {/* Tiêu đề */}
-      <Typography
-        variant="h5"
-        fontWeight="bold"
-        sx={{ color: "#1976d2", mb: { xs: 1, sm: -1 }, textAlign: "center" }}
-      >
-        {loading
-          ? "TRẮC NGHIỆM"
-          : config?.baiTapTuan
-          ? "TRẮC NGHIỆM"
-          : config?.kiemTraDinhKi && hocKiDisplay && monHocDisplay
-          ? `KTĐK ${hocKiDisplay.toUpperCase()} - ${monHocDisplay.toUpperCase()}`
-          : "TRẮC NGHIỆM"}
-      </Typography>
+        {/* Ô chọn đề */}
+        <Stack direction="row" spacing={2} alignItems="center">
+          {/* ================= LOẠI ĐỀ ================= */}
+          <FormControl size="small" sx={{ width: 159 }}>
+            <InputLabel sx={{ fontSize: 16, fontWeight: "bold" }}>
+              Loại đề
+            </InputLabel>
+            <Select
+              value={examType}
+              label="Loại đề"
+              sx={{ fontSize: 16, fontWeight: 500 }}
+              onChange={(e) => {
+                const type = e.target.value;
+                setExamType(type);
+                fetchQuizList(type);
+
+                // 👉 đổi sang KT thì reset lớp
+                if (type === "bt") {
+                  setSelectedClass("4");   // 👈 mặc định Lớp 4
+                } else {
+                  setSelectedClass("");    // KTĐK không dùng lớp
+                }
+
+              }}
+            >
+              <MenuItem value="bt">Bài tập tuần</MenuItem>
+              <MenuItem value="kt">KTĐK</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* ================= CHỌN LỚP (CHỈ HIỆN KHI BT) ================= */}
+          {examType === "bt" && (
+            <FormControl size="small" sx={{ width: 120 }}>
+              <InputLabel>Lớp</InputLabel>
+              <Select
+                value={selectedClass}
+                label="Lớp"
+                onChange={(e) => setSelectedClass(e.target.value)}
+              >
+
+                <MenuItem value="3">Lớp 3</MenuItem>
+                <MenuItem value="4">Lớp 4</MenuItem>
+                <MenuItem value="5">Lớp 5</MenuItem>
+              </Select>
+            </FormControl>
+          )}
+
+          {/* ================= CHỌN ĐỀ ================= */}
+          <FormControl size="small" sx={{ width: 220 }}>
+            <InputLabel>Chọn đề</InputLabel>
+            <Select
+              value={selectedExam}
+              label="Chọn đề"
+              onChange={(e) => setSelectedExam(e.target.value)}
+            >
+              {examList.map((exam) => (
+                <MenuItem key={exam} value={exam}>
+                  {formatQuizTitle(exam)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+
+
+
+
+      </Box>
 
       {/* Đồng hồ với vị trí cố định */}
       <Box
@@ -982,7 +1297,7 @@ return (
           flexDirection: "column",
           alignItems: "center",
           mt: 0.5,
-          mb: -2,
+          mb: 0,
           minHeight: 40, // giữ khoảng trống luôn
           width: "100%",
         }}
@@ -1030,7 +1345,7 @@ return (
           </Box>
         </Box>
       )}
-      
+
       {!loading && currentQuestion && (
         <Box key={currentQuestion.id || currentIndex}>
           <Divider sx={{ my: 2 }} />
@@ -1724,11 +2039,11 @@ return (
             <>
               {/* 🖼️ ẢNH MINH HỌA CÂU HỎI */}
               {currentQuestion.questionImage && (
-                <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+                <Box sx={{ display: "flex", justifyContent: "center", mb: 1 }}>
                   <Box
                     sx={{
-                      maxHeight: 150,
-                      maxWidth: "100%",
+                      maxHeight: 100,           // 🔥 GIẢM NHỎ HƠN
+                      maxWidth: "85%",         // 🔥 gọn thêm
                       overflow: "hidden",
                       borderRadius: 1,
                       border: "1px solid #ddd",
@@ -1742,8 +2057,10 @@ return (
                       src={currentQuestion.questionImage}
                       alt="Hình minh họa"
                       style={{
-                        maxHeight: 150,
+                        maxHeight: "100px",     // 🔥 khớp khung
                         maxWidth: "100%",
+                        width: "auto",
+                        height: "auto",
                         objectFit: "contain",
                         cursor: "zoom-in",
                       }}
@@ -1752,6 +2069,7 @@ return (
                   </Box>
                 </Box>
               )}
+
 
               {/* ✅ OPTIONS – GIỮ NGUYÊN CHIỀU CAO GỐC */}
               {currentQuestion.options.map((opt, i) => {
@@ -1863,7 +2181,6 @@ return (
               gap={2}
               flexWrap="wrap"
               justifyContent="center"
-              alignItems="center"
             >
               {currentQuestion.displayOrder.map((optIdx) => {
                 const option = currentQuestion.options[optIdx];
@@ -2110,28 +2427,23 @@ return (
                                   ref={prov.innerRef}
                                   {...prov.draggableProps}
                                   {...prov.dragHandleProps}
-                                  elevation={0}
                                   sx={{
                                     px: 2,
                                     py: 0.5,
                                     bgcolor: "#e3f2fd",
                                     cursor: "grab",
 
+                                    minHeight: 30,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
 
-                                    minHeight: 30,
                                     fontFamily: "Roboto, Arial, sans-serif",
                                     fontSize: "1.1rem",
-                                    lineHeight: "normal",
+                                    lineHeight: 1.6,
 
                                     border: "1px solid #90caf9",
                                     boxShadow: "none",
-
-                                    "&:hover": {
-                                      bgcolor: "#bbdefb",
-                                    },
                                   }}
                                 >
                                   {word.text}
@@ -2153,7 +2465,7 @@ return (
         </Box>
       )}
 
-      {/* Nút điều hướng luôn cố định ở đáy Paper */}
+      {/* Nút điều hướng và bắt đầu/nộp bài */}
       <Box sx={{ flexGrow: 1 }} />
       {started && !loading && (
         <Stack
@@ -2214,59 +2526,223 @@ return (
         </Stack>
       )}
 
-
-      {notFoundMessage && (
-        <Card
-          sx={{
-            bgcolor: "#ffebee",
-            border: "1px solid #f44336",
-            p: 2,
-            mb: 2,
-            width: "60%",    // chiếm 50% chiều rộng
-            mx: "auto",      // căn giữa ngang
-            mt: 4            // optional: thêm khoảng cách từ trên
-          }}
-        >
-          <Typography
-            sx={{ color: "#d32f2f", fontWeight: "bold", fontSize: "1.5rem", textAlign: "center" }}
-          >
-            {notFoundMessage}
-          </Typography>
-        </Card>
-      )}
     </Paper>
 
-    {/* Dialog câu chưa làm */}
-    <IncompleteAnswersDialog
+    {/* Dialog cảnh báo chưa làm hết */}
+    <Dialog
       open={openAlertDialog}
       onClose={() => setOpenAlertDialog(false)}
-      unansweredQuestions={unansweredQuestions}
-    />
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 0,
+          bgcolor: "#e3f2fd",
+          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+        },
+      }}
+    >
+      {/* Header với nền màu full width */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: 0.75, // chiều cao header
+          bgcolor: "#90caf9", // nền màu xanh nhạt
+          borderRadius: "12px 12px 0 0", // bo 2 góc trên
+          mb: 2,
+        }}
+      >
+        <Box
+          sx={{
+            bgcolor: "#42a5f5", // xanh đậm cho icon
+            color: "#fff",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mr: 1.5,
+            fontWeight: "bold",
+            fontSize: 18,
+          }}
+        >
+          ⚠️
+        </Box>
+
+        <DialogTitle
+          sx={{
+            p: 0,
+            fontWeight: "bold",
+            color: "#0d47a1", // màu xanh tiêu đề
+            fontSize: 20,
+          }}
+        >
+          Chưa hoàn thành
+        </DialogTitle>
+      </Box>
+
+      {/* Nội dung */}
+      <DialogContent sx={{ px: 3, pb: 3 }}>
+        <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
+          Bạn chưa chọn đáp án cho câu: {unansweredQuestions.join(", ")}.<br />
+          Vui lòng trả lời tất cả câu hỏi trước khi nộp.
+        </Typography>
+      </DialogContent>
+
+      {/* Nút OK */}
+      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenAlertDialog(false)}
+          sx={{
+            px: 4,
+            borderRadius: 2,
+            bgcolor: "#42a5f5", // xanh đậm giống mẫu
+            color: "#fff",
+            "&:hover": { bgcolor: "#1e88e5" },
+            fontWeight: "bold",
+            mb:2,
+          }}
+        >
+          OK
+        </Button>
+      </DialogActions>
+    </Dialog>
 
     {/* Dialog xác nhận thoát */}
-      <ExitConfirmDialog
+    <ExitConfirmDialog
       open={openExitConfirm}
       onClose={() => setOpenExitConfirm(false)}
     />
 
-    {/* Dialog xáchiển thị kết quả */}
-    <ResultDialog
+    <Dialog
       open={openResultDialog}
-      onClose={() => setOpenResultDialog(false)}
-      dialogMode={dialogMode}
-      dialogMessage={dialogMessage}
-      studentResult={studentResult}
-      choXemDiem={choXemDiem}
-      configData={configData}
-      convertPercentToScore={convertPercentToScore}
-    />
+      onClose={(event, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        setOpenResultDialog(false);
+      }}
+      disableEscapeKeyDown
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 0,
+          bgcolor: "#e3f2fd",
+          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+        },
+      }}
+    >
+
+      {/* Header với nền màu full width */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: 0.75,
+          bgcolor: "#90caf9",
+          borderRadius: "12px 12px 0 0", // bo 2 góc trên
+          mb: 2,
+        }}
+      >
+        <Box
+          sx={{
+            bgcolor: "#42a5f5",
+            color: "#fff",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mr: 1.5,
+            fontWeight: "bold",
+            fontSize: 18,
+          }}
+        >
+          🎉
+        </Box>
+
+        <DialogTitle
+          sx={{
+            p: 0,
+            fontWeight: "bold",
+            color: "#0d47a1",
+            fontSize: 20,
+          }}
+        >
+          Kết quả
+        </DialogTitle>
+      </Box>
+
+      {/* Nội dung */}
+      <DialogContent sx={{ textAlign: "center", px: 3, pb: 3 }}>
+        <Typography
+          sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}
+        >
+          {studentResult?.hoVaTen?.toUpperCase()}
+        </Typography>
+
+        <Typography sx={{ fontSize: 17, color: "#1565c0", mb: 1 }}>
+          <strong>Lớp: </strong>
+          <span style={{ fontWeight: "bold" }}>{studentResult?.lop}</span>
+        </Typography>
+
+        {/* Nếu cho xem điểm */}
+        {choXemDiem ? (
+          <Typography
+            sx={{
+              fontSize: 17,
+              fontWeight: 700,
+              mt: 1,
+            }}
+          >
+            <span style={{ color: "#1565c0" }}>Điểm:</span>&nbsp;
+            <span style={{ color: "red" }}>{studentResult?.diem}</span>
+          </Typography>
+        ) : (
+          <Typography
+            sx={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "red",
+              mt: 2,
+              textAlign: "center",
+            }}
+          >
+            ĐÃ HOÀN THÀNH BÀI KIỂM TRA
+          </Typography>
+        )}
+      </DialogContent>
+
+      {/* Nút OK */}
+      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenResultDialog(false)}
+          sx={{
+            px: 4,
+            borderRadius: 2,
+            bgcolor: "#42a5f5",
+            color: "#fff",
+            "&:hover": { bgcolor: "#1e88e5" },
+            fontWeight: "bold",
+          }}
+        >
+          OK
+        </Button>
+      </DialogActions>
+    </Dialog>
 
     <ImageZoomDialog
       open={Boolean(zoomImage)}
       imageSrc={zoomImage}
       onClose={() => setZoomImage(null)}
     />
-
+    
     {/* Snackbar */}
     <Snackbar
       open={snackbar.open}

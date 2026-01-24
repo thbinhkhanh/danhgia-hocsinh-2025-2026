@@ -76,7 +76,6 @@ const MatchingOptions = ({ q, qi, update }) => {
               <MenuItem value="1:3">1 : 3</MenuItem>
               <MenuItem value="3:1">3 : 1</MenuItem>
             </Select>
-
         </FormControl>
 
         <IconButton size="small" onClick={() => applyFormat("bold")}>

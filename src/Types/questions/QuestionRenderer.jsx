@@ -35,42 +35,118 @@ const QuestionRenderer = ({
   normalizeValue,
   setZoomImage,
 }) => {
-
   if (loading || !currentQuestion) return null;
 
   const getImageFromOption = (opt) => {
-  if (!opt) return null;
+    if (!opt) return null;
+    if (typeof opt === "string") return opt;
+    if (opt.image) return opt.image;
+    if (typeof opt.text === "string" && opt.text.startsWith("http")) {
+      return opt.text;
+    }
+    return null;
+  };
 
-  if (typeof opt === "string") return opt;
+  /* =================== DROPDOWN RENDER =================== */
+  const renderDropdownQuestion = () => {
+    const content = currentQuestion.content || "";
+    const userAnswers = answers[currentQuestion.id] || {};
 
-  if (opt.image) return opt.image;
+    return (
+      <span>
+        {content.split(/\[\[(\d+)\]\]/g).map((part, idx) => {
+          // text
+          if (idx % 2 === 0) {
+            return (
+              <span
+                key={idx}
+                dangerouslySetInnerHTML={{ __html: part }}
+              />
+            );
+          }
 
-  if (
-    typeof opt.text === "string" &&
-    opt.text.startsWith("http")
-  ) {
-    return opt.text;
-  }
+          // dropdown
+          const blankIndex = Number(part);
+          const blank = currentQuestion.blanks?.[blankIndex];
+          if (!blank) return "___";
 
-  return null;
-};
+          const selected = userAnswers[blankIndex] || "";
 
+          const isCorrect =
+            submitted &&
+            choXemDapAn &&
+            selected === blank.answer;
+
+          const isWrong =
+            submitted &&
+            choXemDapAn &&
+            selected &&
+            selected !== blank.answer;
+
+          return (
+            <FormControl
+              key={idx}
+              size="small"
+              sx={{
+                mx: 1,
+                minWidth: 110,
+                bgcolor: submitted
+                  ? isCorrect
+                    ? "#c8e6c9"
+                    : isWrong
+                    ? "#ffcdd2"
+                    : "transparent"
+                  : "transparent"
+              }}
+            >
+              <Select
+                value={selected}
+                disabled={submitted || !started}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAnswers((prev) => ({
+                    ...prev,
+                    [currentQuestion.id]: {
+                      ...(prev[currentQuestion.id] || {}),
+                      [blankIndex]: val
+                    }
+                  }));
+                }}
+              >
+                <MenuItem value="">
+                  <em>-- chọn --</em>
+                </MenuItem>
+                {blank.options.map((opt, i) => (
+                  <MenuItem key={i} value={opt}>
+                    {opt}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          );
+        })}
+      </span>
+    );
+  };
 
   return (
     <Box key={currentQuestion.id || currentIndex}>
       <Divider sx={{ my: 2 }} />
 
-      {/* =================== TIÊU ĐỀ CÂU HỎI =================== */}
+      {/* =================== TITLE =================== */}
       <Typography variant="h6" sx={{ mb: 2 }}>
         <strong>Câu {currentIndex + 1}:</strong>{" "}
         <span
           dangerouslySetInnerHTML={{
-            __html: (currentQuestion.question || "").replace(/^<p>|<\/p>$/g, "")
+            __html: (currentQuestion.question || "").replace(
+              /^<p>|<\/p>$/g,
+              ""
+            )
           }}
         />
       </Typography>
 
-      {/* =================== HÌNH CHUNG =================== */}
+      {/* =================== IMAGE =================== */}
       {currentQuestion.image && (
         <Box sx={{ textAlign: "center", mb: 2 }}>
           <img
@@ -86,159 +162,12 @@ const QuestionRenderer = ({
         </Box>
       )}
 
-      {/* =================== SORT =================== */}
-      {currentQuestion.type === "sort" && (
-        <DragDropContext
-          onDragEnd={(result) => {
-            if (!result.destination || submitted || !started) return;
-
-            const currentOrder =
-              answers[currentQuestion.id] ??
-              currentQuestion.options.map((_, idx) => idx);
-
-            const newOrder = reorder(
-              currentOrder,
-              result.source.index,
-              result.destination.index
-            );
-
-            setAnswers((prev) => ({
-              ...prev,
-              [currentQuestion.id]: newOrder
-            }));
-          }}
-        >
-          <Droppable droppableId="sort-options">
-            {(provided) => {
-              const orderIdx =
-                answers[currentQuestion.id] ??
-                currentQuestion.options.map((_, idx) => idx);
-
-              return (
-                <Stack
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  spacing={2}
-                >
-                  {orderIdx.map((optIdx, pos) => {
-                    const optionData = currentQuestion.options[optIdx];
-                    const optionText =
-                      typeof optionData === "string"
-                        ? optionData
-                        : optionData.text ?? "";
-                    const optionImage =
-                      typeof optionData === "object"
-                        ? optionData.image ?? null
-                        : null;
-
-                    const correctData =
-                      currentQuestion.correctTexts?.[pos];
-                    const isCorrectPos =
-                      submitted &&
-                      choXemDapAn &&
-                      normalizeValue(optionData) ===
-                        normalizeValue(correctData);
-
-                    return (
-                      <Draggable
-                        key={optIdx}
-                        draggableId={String(optIdx)}
-                        index={pos}
-                        isDragDisabled={submitted || !started}
-                      >
-                        {(prov) => (
-                          <Box
-                            ref={prov.innerRef}
-                            {...prov.draggableProps}
-                            {...prov.dragHandleProps}
-                            sx={{
-                              borderRadius: 1,
-                              border: "1px solid #90caf9",
-                              px: 1,
-                              py: 0.5,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                              bgcolor:
-                                submitted && choXemDapAn
-                                  ? isCorrectPos
-                                    ? "#c8e6c9"
-                                    : "#ffcdd2"
-                                  : "transparent"
-                            }}
-                          >
-                            {optionImage && (
-                              <img
-                                src={optionImage}
-                                alt=""
-                                style={{
-                                  maxHeight: 40,
-                                  objectFit: "contain"
-                                }}
-                              />
-                            )}
-
-                            <Typography
-                              component="div"
-                              sx={{ flex: 1 }}
-                              dangerouslySetInnerHTML={{
-                                __html: optionText
-                              }}
-                            />
-                          </Box>
-                        )}
-                      </Draggable>
-                    );
-                  })}
-                  {provided.placeholder}
-                </Stack>
-              );
-            }}
-          </Droppable>
-        </DragDropContext>
-      )}
-
-      {/* =================== IMAGE =================== */}
-      {currentQuestion.type === "image" && (
+      {/* =================== DROPDOWN =================== */}
+      {currentQuestion.type === "dropdown" && (
         <Stack spacing={2}>
-          {currentQuestion.options.map((opt, oi) => {
-            const imgSrc = getImageFromOption(opt);
-            const selected = answers[currentQuestion.id] === oi;
-
-            return (
-              <Paper
-                key={oi}
-                onClick={() =>
-                  !submitted &&
-                  started &&
-                  setAnswers((prev) => ({
-                    ...prev,
-                    [currentQuestion.id]: oi,
-                  }))
-                }
-                sx={{
-                  p: 1,
-                  border: "2px solid",
-                  borderColor: selected ? "#1976d2" : "#90caf9",
-                  cursor: submitted || !started ? "default" : "pointer",
-                  textAlign: "center",
-                }}
-              >
-                {imgSrc && (
-                  <img
-                    src={imgSrc}
-                    alt={`option-${oi}`}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: 180,
-                      objectFit: "contain",
-                      borderRadius: 8,
-                    }}
-                  />
-                )}
-              </Paper>
-            );
-          })}
+          <Typography component="div">
+            {renderDropdownQuestion()}
+          </Typography>
         </Stack>
       )}
 
@@ -247,7 +176,6 @@ const QuestionRenderer = ({
         <Stack spacing={2}>
           {currentQuestion.displayOrder.map((optIdx) => {
             const selected = answers[currentQuestion.id] === optIdx;
-
             const optionData = currentQuestion.options[optIdx];
             const optionText =
               typeof optionData === "object"
@@ -350,8 +278,8 @@ const QuestionRenderer = ({
                 <FormControl size="small" sx={{ width: 90 }}>
                   <Select
                     value={selected}
+                    disabled={submitted || !started}
                     onChange={(e) => {
-                      if (submitted || !started) return;
                       const val = e.target.value;
                       setAnswers((prev) => {
                         const arr = Array.isArray(prev[currentQuestion.id])
