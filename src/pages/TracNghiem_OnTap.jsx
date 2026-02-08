@@ -970,6 +970,7 @@ return (
               textAlign="center"
               mb={2}
               fontSize="1.1rem"
+              color="#0d47a1"
             >
               Câu hỏi
             </Typography>
