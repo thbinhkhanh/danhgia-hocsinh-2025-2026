@@ -110,12 +110,10 @@ export default function TracNghiem() {
   const [mon, setMon] = useState(locationState.mon || "Tin học");
   
   const theme = useTheme();
-  /*const isBelow900 = useMediaQuery(theme.breakpoints.down("md")); // <900
+  const isBelow900 = useMediaQuery(theme.breakpoints.down("md")); // <900
   const isBelow1080 = useMediaQuery("(max-width:1079px)");
   const isBelow1200 = useMediaQuery("(max-width:1199px)");
-  const [showSidebar, setShowSidebar] = React.useState(true);*/
-  const isBelow1024 = useMediaQuery("(max-width:1023px)");
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = React.useState(true);
   
   const studentInfo = {
     id: studentId,
@@ -620,26 +618,14 @@ const handleExit = () => {
   }
 };
 
-/*const sidebarConfig = React.useMemo(() => {
+const sidebarConfig = React.useMemo(() => {
   if (isBelow900) return null; // ✅ <900px → KHÔNG render
 
   if (isBelow1080) return { width: 130, cols: 2 };
   if (isBelow1200) return { width: 165, cols: 3 };
 
   return { width: 260, cols: 5 };
-}, [isBelow900, isBelow1080, isBelow1200]);*/
-
-const sidebarConfig = React.useMemo(() => {
-  // < 1024px → ẨN sidebar
-  if (isBelow1024) return null;
-
-  // ≥ 1024px → sidebar 5 ô số
-  return {
-    width: 260,
-    cols: 5,
-  };
-}, [isBelow1024]);
-
+}, [isBelow900, isBelow1080, isBelow1200]);
 
 const hasSidebar = sidebarConfig && questions.length > 0;
 const isSidebarVisible = hasSidebar && showSidebar;
