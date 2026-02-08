@@ -89,6 +89,17 @@ export const handleSubmitQuiz = async ({
       // 👉 sort và matching không coi là unanswered
       return false;
     });
+    
+    // 👉👉 CHẶN NỘP BÀI NẾU CÒN CÂU CHƯA LÀM
+    if (unanswered.length > 0) {
+      setUnansweredQuestions(
+        unanswered.map(
+          q => questions.findIndex(item => item.id === q.id) + 1
+        )
+      );
+      setOpenAlertDialog(true);
+      return; // ⛔ DỪNG LUÔN, KHÔNG TÍNH ĐIỂM
+    }
 
     // --- Tính điểm ---
     setSaving(true);

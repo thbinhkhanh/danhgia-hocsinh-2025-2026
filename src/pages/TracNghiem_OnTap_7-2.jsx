@@ -19,12 +19,11 @@ import {
   FormControl,
   Select,
   MenuItem,
-  InputLabel, Card,
+  InputLabel,
 } from "@mui/material";
 import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
 // Thay cho react-beautiful-dnd
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { useTheme, useMediaQuery } from "@mui/material";
 
 import { db } from "../firebase";
 import { useContext } from "react";
@@ -33,31 +32,27 @@ import QuestionOption from "../utils/QuestionOption";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-
+import CloseIcon from "@mui/icons-material/Close";
+//import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+//import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
 import ImageZoomDialog from "../dialog/ImageZoomDialog";
-import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
-import SimpleResultDialog from "../dialog/SimpleResultDialog";
-
 import QuizQuestion from "../Types/questions/options/QuizQuestion";
 import { buildRuntimeQuestions } from "../utils/buildRuntimeQuestions";
 import { handleSubmitQuiz } from "../utils/submitQuiz";
 import { autoSubmitQuiz } from "../utils/autoSubmitQuiz";
-import { getQuestionStatus } from "../utils/questionStatus";
 
-/*import Dialog from "@mui/material/Dialog";
+import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";*/
+import DialogActions from "@mui/material/DialogActions";
 
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
-//import { jsPDF } from "jspdf";
-//import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 export default function TracNghiem_OnTap() {
   const [questions, setQuestions] = useState([]);
@@ -115,11 +110,6 @@ export default function TracNghiem_OnTap() {
   const studentName = location.state?.fullname || "";
   const studentClass = location.state?.lop || "";
 
-  const theme = useTheme();
-  const isBelow900 = useMediaQuery(theme.breakpoints.down("md")); // <900
-  const isBelow1080 = useMediaQuery("(max-width:1079px)");
-  const isBelow1200 = useMediaQuery("(max-width:1199px)");
-  const [showSidebar, setShowSidebar] = useState(true);
 
   // Đồng bộ thời gian
   useEffect(() => {
@@ -633,172 +623,151 @@ const normalizeValue = (val) => {
 
 const ratio = currentQuestion?.columnRatio || { left: 1, right: 1 };
 
-const questionCircleStyle = {
-  width: { xs: 34, sm: 38 },
-  height: { xs: 34, sm: 38 },
-  borderRadius: "50%",
-  minWidth: 0,
-  fontSize: "0.85rem",
-  fontWeight: 600,
-  boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-  transition: "all 0.2s ease",
-};
-
-const handleExit = () => {
-  if (submitted) {
-    navigate(-1);
-  } else {
-    setOpenExitConfirm(true);
-  }
-};
-
-const sidebarConfig = React.useMemo(() => {
-  if (isBelow900) return null; // ✅ <900px → KHÔNG render
-
-  if (isBelow1080) return { width: 130, cols: 2 };
-  if (isBelow1200) return { width: 165, cols: 3 };
-
-  return { width: 260, cols: 5 };
-}, [isBelow900, isBelow1080, isBelow1200]);
-
-const hasSidebar = sidebarConfig && questions.length > 0;
-const isSidebarVisible = hasSidebar && showSidebar;
-
 return (
   <Box
-    id="quiz-container"
+    id="quiz-container"  // <-- Thêm dòng này
     sx={{
       minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
       background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
       pt: { xs: 2, sm: 3 },
       px: { xs: 1, sm: 2 },
     }}
   >
-    {/* ===== WRAPPER: MAIN + SIDEBAR ===== */}
-    <Box
+    <Paper
       sx={{
-        display: "flex",
-        gap: 3,
+        p: { xs: 2, sm: 4 },
+        borderRadius: 3,
         width: "100%",
-
-        maxWidth: isSidebarVisible ? 1280 : 1000,
-        mx: "auto",                         // ✅ LUÔN CĂN GIỮA
-
-        flexDirection: { xs: "column", md: "row" },
-        alignItems: "stretch",
+        maxWidth: 1000,
+        minWidth: { xs: "auto", sm: 600 },
+        minHeight: { xs: "auto", sm: 650 }, // ⬅ tăng để đủ không gian
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+        boxSizing: "border-box",
       }}
     >
-
-      {/* ================= MAIN CONTENT (GIỮ NGUYÊN) ================= */}
-      <Paper
+      {/* 🔹 Thông tin học sinh */}
+      <Box
         sx={{
-          p: { xs: 2, sm: 4 },
-          borderRadius: 3,
-          width: "100%",
-          maxWidth: 1000,
-          minWidth: { xs: "auto", sm: 600 },
-          minHeight: { xs: "auto", sm: 650 },
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-          boxSizing: "border-box",
+          p: 1.5,
+          border: "2px solid #1976d2",
+          borderRadius: 2,
+          color: "#1976d2",
+          width: "fit-content",
+          mb: 2,
+          position: { xs: "relative", sm: "absolute" },
+          top: { sm: 16 },
+          left: { sm: 16 },
+          alignSelf: { xs: "flex-start", sm: "auto" },
+          bgcolor: { xs: "#fff", sm: "transparent" },
+          zIndex: 2,
         }}
       >
-        {/* 🔹 Thông tin học sinh */}
-        <Box
+        <Typography variant="subtitle2" fontWeight="bold">
+          Tên: {hoVaTen}
+        </Typography>
+
+        <Typography variant="subtitle2" fontWeight="bold">
+          Lớp: {studentClass}
+        </Typography>
+      </Box>
+
+      {/* Nút thoát */}
+      <Tooltip title="Thoát trắc nghiệm" arrow>
+        <IconButton
+          onClick={() => {
+            if (submitted) {
+              navigate(-1);
+            } else {
+              setOpenExitConfirm(true);
+            }
+          }}
           sx={{
-            p: 1.5,
-            border: "2px solid #1976d2",
-            borderRadius: 2,
-            color: "#1976d2",
-            width: "fit-content",
-            mb: 2,
-            position: { xs: "relative", sm: "absolute" },
-            top: { sm: 16 },
-            left: { sm: 16 },
-            bgcolor: { xs: "#fff", sm: "transparent" },
-            zIndex: 2,
+            position: "absolute",
+            top: 8,
+            right: 8,
+            color: "#f44336",
+            bgcolor: "rgba(255,255,255,0.9)",
+            "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
           }}
         >
-          <Typography variant="subtitle2" fontWeight="bold">
-            Tên: {hoVaTen}
-          </Typography>
-          <Typography variant="subtitle2" fontWeight="bold">
-            Lớp: {studentClass}
-          </Typography>
-        </Box>
+          <CloseIcon />
+        </IconButton>
+      </Tooltip>
 
-        {/* Nút thoát */}
-        {/*<Tooltip title="Thoát trắc nghiệm" arrow>
-          <IconButton
-            onClick={() => {
-              if (submitted) navigate(-1);
-              else setOpenExitConfirm(true);
-            }}
-            sx={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              color: "#f44336",
-              bgcolor: "rgba(255,255,255,0.9)",
-              "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </Tooltip>*/}
+      {/* Tiêu đề */}
+      <Box
+        sx={{
+          width: "60%",
+          maxWidth: 350,
+          mt: 1,
+          mb: 2,
+          ml: "auto",
+          mr: "auto",
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        {/* Tiêu đề */}
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: "bold",
+            fontSize: "20px",
+            mb: 2,
+            mt: -1,
+            color: "#1976d2",
+          }}
+        >
+          {config?.mon
+            ? `ÔN TẬP ${config.mon.toUpperCase()}`
+            : "ÔN TẬP"}
+        </Typography>
 
-        {hasSidebar && (
-          <Tooltip title={showSidebar ? "Thu gọn bảng câu hỏi" : "Mở bảng câu hỏi"}>
-            <IconButton
-              onClick={() => setShowSidebar(prev => !prev)}
-              sx={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                bgcolor: "#e3f2fd",
-                border: "1px solid #90caf9",
-                "&:hover": { bgcolor: "#bbdefb" },
-                zIndex: 10,
+        {/* Ô chọn đề */}
+        <Stack direction="row" spacing={2} alignItems="center">
+          {/* ================= LOẠI ĐỀ ================= */}
+          {/*<FormControl fullWidth size="small" sx={{ width: 159, mb: 0 }}>
+            <InputLabel sx={{ fontSize: "16px", fontWeight: "bold" }}>
+              Loại đề
+            </InputLabel>
+
+            <Select
+              value={examType}
+              label="Loại đề"
+              sx={{ fontSize: "16px", fontWeight: 500 }}
+              onChange={(e) => {
+                const type = e.target.value; // "bt" | "kt"
+                setExamType(type);
+                fetchQuizList(type); // load danh sách đề
               }}
             >
-              {showSidebar ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-            </IconButton>
-          </Tooltip>
-        )}
+              <MenuItem value="bt" sx={{ fontSize: "16px" }}>
+                Bài tập tuần
+              </MenuItem>
+              <MenuItem value="kt" sx={{ fontSize: "16px" }}>
+                KTĐK
+              </MenuItem>
+            </Select>
+          </FormControl>*/}
 
-        {/* Tiêu đề */}
-        <Box
-          sx={{
-            width: "60%",
-            maxWidth: 350,
-            mt: 1,
-            mb: 2,
-            mx: "auto",
-            textAlign: "center",
-          }}
-        >
-          <Typography
-            sx={{
-              fontWeight: "bold",
-              fontSize: 20,
-              mb: 2,
-              mt: -1,
-              color: "#1976d2",
-            }}
-          >
-            {config?.mon ? `ÔN TẬP ${config.mon.toUpperCase()}` : "ÔN TẬP"}
-          </Typography>
+          {/* ================= CHỌN ĐỀ ================= */}
+          <FormControl fullWidth size="small" sx={{ width: 220 }}>
+            <InputLabel id="exam-select-label">Chọn đề</InputLabel>
 
-          <FormControl
-            size="small"
-            sx={{ width: 230 }} // hoặc "50%", "20rem"
-          >
-            <InputLabel>Chọn đề</InputLabel>
             <Select
+              labelId="exam-select-label"
               value={selectedExam}
               label="Chọn đề"
-              onChange={(e) => setSelectedExam(e.target.value)}
+              onChange={(e) => {
+                setSelectedExam(e.target.value); // 👈 đổi đề → useEffect tự chạy
+              }}
             >
               {examList.map((exam) => (
                 <MenuItem key={exam} value={exam}>
@@ -806,269 +775,235 @@ return (
                 </MenuItem>
               ))}
             </Select>
+
           </FormControl>
-        </Box>
+        </Stack>
 
-        {/* Đồng hồ */}
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            //mt: 2,
-            mb: -3,
-            minHeight: 40, // luôn giữ khoảng trống
-            width: "100%",
-          }}
-        >
-          {started && !loading && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 3,
-                py: 0.5,
-                borderRadius: 2,
-                bgcolor: "#fff",
-              }}
-            >
-              <AccessTimeIcon sx={{ color: "#d32f2f" }} />
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: "bold", color: "#d32f2f" }}
-              >
-                {formatTime(timeLeft)}
-              </Typography>
-            </Box>
-          )}
 
-          {/* Gạch ngang luôn hiển thị để giữ layout */}
-          <Box sx={{ width: "100%", height: 0, bgcolor: "#e0e0e0", mt: 0, mb: 3 }} />
+      </Box>
 
-        </Box>
-
-        {/* Loading */}
-        {loading && (
-          <Box sx={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
-              <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
-              <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
-                🔄 Đang tải... {progress}%
-              </Typography>
-            </Box>
+      {/* Đồng hồ với vị trí cố định */}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          mt: 0.5,
+          mb: 0,
+          minHeight: 40, // giữ khoảng trống luôn
+          width: "100%",
+        }}
+      >
+        {/* Nội dung đồng hồ chỉ hiển thị khi started && !loading */}
+        {started && !loading && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              px: 3,
+              py: 0.5,
+              borderRadius: 2,
+              bgcolor: "#fff", // tùy chỉnh nếu muốn nền
+            }}
+          >
+            <AccessTimeIcon sx={{ color: "#d32f2f" }} />
+            <Typography variant="h6" sx={{ fontWeight: "bold", color: "#d32f2f" }}>
+              {formatTime(timeLeft)}
+            </Typography>
           </Box>
         )}
 
-        {/* Câu hỏi */}
-        {!loading && currentQuestion && (
-          <QuizQuestion
-            key={currentQuestion.id || currentIndex}
-            currentQuestion={currentQuestion}
-            currentIndex={currentIndex}
-            answers={answers}
-            setAnswers={setAnswers}
-            submitted={submitted}
-            started={started}
-            choXemDapAn={choXemDapAn}
-            setZoomImage={setZoomImage}
-            handleSingleSelect={handleSingleSelect}
-            handleMultipleSelect={handleMultipleSelect}
-            handleDragEnd={handleDragEnd}
-            reorder={reorder}
-            normalizeValue={normalizeValue}
-            ratio={ratio}
-          />
-        )}
-
-        <Box sx={{ flexGrow: 1 }} />
-
-        {/* Điều hướng */}
-        {started && !loading && (
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            sx={{
-              mt: 2,
-              pt: 2,
-              mb: { xs: "20px", sm: "5px" },
-              borderTop: "1px solid #e0e0e0",
-            }}
-          >
-            {/* ===== CÂU TRƯỚC ===== */}
-            <Button
-              variant="outlined"
-              startIcon={<ArrowBackIcon />}
-              onClick={handlePrev}
-              disabled={currentIndex === 0}
-              sx={{
-                width: 150,
-                bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
-                borderRadius: 1,
-                color: "#0d47a1",
-                "&:hover": {
-                  bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9",
-                },
-              }}
-            >
-              Câu trước
-            </Button>
-
-            {/* ===== CÂU SAU / NỘP BÀI ===== */}
-            <Box sx={{ width: 150, display: "flex", justifyContent: "flex-end" }}>
-              {currentIndex < questions.length - 1 ? (
-                <Button
-                  variant="outlined"
-                  endIcon={<ArrowForwardIcon />}
-                  onClick={handleNext}
-                  sx={{
-                    width: 150,
-                    bgcolor: "#bbdefb",
-                    borderRadius: 1,
-                    color: "#0d47a1",
-                    "&:hover": { bgcolor: "#90caf9" },
-                  }}
-                >
-                  Câu sau
-                </Button>
-              ) : (
-                !isSidebarVisible && (
-                  <Button
-                    variant="contained"
-                    onClick={handleSubmit}
-                    disabled={submitted || isEmptyQuestion}
-                    sx={{ width: 150, borderRadius: 1 }}
-                  >
-                    Nộp bài
-                  </Button>
-                )
-              )}
-            </Box>
-          </Stack>
-        )}
-      </Paper>
-
-      {/* ================= SIDEBAR ================= */}
-      {isSidebarVisible && (
+        {/* Đường gạch ngang màu xám nhạt luôn hiển thị */}
         <Box
           sx={{
-            width: sidebarConfig.width,   // ✅ theo config
-            flexShrink: 0,
+            width: "100%",
+            height: 1,
+            bgcolor: "#e0e0e0", // màu xám nhạt
+            mt: 0,
           }}
-        >
-          <Card
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              position: sidebarConfig.width === 260 ? "sticky" : "static", // ✅ chỉ sticky khi >=1200
-              top: 24,
-            }}
-          >
-            <Typography
-              fontWeight="bold"
-              textAlign="center"
-              mb={2}
-              fontSize="1.1rem"
-            >
-              Câu hỏi
+        />
+      </Box>
+
+
+      {/* Loading */}
+      {loading && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 1, width: "100%" }}>
+          <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
+            <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
+            <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
+              🔄 Đang tải... {progress}%
             </Typography>
-
-            <Divider sx={{ mt: -1, mb: 3, bgcolor: "#e0e0e0" }} />
-
-            {/* ===== GRID Ô SỐ ===== */}
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${sidebarConfig.cols}, 1fr)`, // ✅ 2 / 3 / 5 ô
-                gap: 1.2,
-                justifyItems: "center",
-                mb: !submitted ? 8 : 0,
-              }}
-            >
-              {questions.map((q, index) => {
-                const status = getQuestionStatus({
-                  question: q,
-                  userAnswer: answers[q.id],
-                  submitted,
-                });
-
-                const active = currentIndex === index;
-
-                let bgcolor = "#eeeeee";
-                let border = "1px solid transparent";
-                let textColor = "#0d47a1";
-
-                if (!submitted && status === "answered") bgcolor = "#bbdefb";
-
-                if (submitted) {
-                  if (status === "correct") bgcolor = "#c8e6c9";
-                  else if (status === "wrong") bgcolor = "#ffcdd2";
-                  else {
-                    bgcolor = "#fafafa";
-                    border = "1px dashed #bdbdbd";
-                  }
-                }
-
-                if (active) {
-                  border = "2px solid #9e9e9e";
-                  textColor = "#616161";
-                }
-
-                return (
-                  <IconButton
-                    key={q.id}
-                    onClick={() => setCurrentIndex(index)}
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: "50%",
-                      fontSize: "0.85rem",
-                      fontWeight: 600,
-                      bgcolor,
-                      color: textColor,
-                      border,
-                      boxShadow: "none",
-                    }}
-                  >
-                    {index + 1}
-                  </IconButton>
-                );
-              })}
-            </Box>
-
-            {/* ===== ACTION BUTTONS ===== */}
-            {!submitted && (
-              <Button fullWidth variant="contained" onClick={handleSubmit}>
-                Nộp bài
-              </Button>
-            )}
-
-            <Button
-              fullWidth
-              variant="outlined"
-              color="error"
-              sx={{ mt: submitted ? 8 : 1.5 }}
-              onClick={() => {
-                if (submitted) navigate(-1);
-                else setOpenExitConfirm(true);
-              }}
-            >
-              Thoát
-            </Button>
-          </Card>
+          </Box>
         </Box>
       )}
 
+      {!loading && currentQuestion && (
+        <QuizQuestion
+          key={currentQuestion.id || currentIndex}
+          currentQuestion={currentQuestion}
+          currentIndex={currentIndex}
+          answers={answers}
+          setAnswers={setAnswers}
+          submitted={submitted}
+          started={started}
+          choXemDapAn={choXemDapAn}
+          setZoomImage={setZoomImage}
+          handleSingleSelect={handleSingleSelect}
+          handleMultipleSelect={handleMultipleSelect}
+          handleDragEnd={handleDragEnd}
+          reorder={reorder}
+          normalizeValue={normalizeValue}
+          ratio={ratio}
+        />
+      )}
 
-    </Box>
+      {/* Nút điều hướng và bắt đầu/nộp bài */}
+      <Box sx={{ flexGrow: 1 }} />
+      {started && !loading && (
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{
+            position: "static",
+            mt: 2,                     // cách option phía trên
+            pt: 2,                     // ⬅⬅⬅ KHOẢNG CÁCH GIỮA GẠCH & NÚT
+            mb: { xs: "20px", sm: "5px" },
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            sx={{
+              width: { xs: "150px", sm: "150px" },
+              bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
+              borderRadius: 1,
+              color: "#0d47a1",
+              "&:hover": { bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9" },
+            }}
+          >
+            Câu trước
+          </Button>
+
+          {currentIndex < questions.length - 1 ? (
+            <Button
+              variant="outlined"
+              endIcon={<ArrowForwardIcon />}
+              onClick={handleNext}
+              sx={{
+                width: { xs: "150px", sm: "150px" },
+                bgcolor: "#bbdefb",
+                borderRadius: 1,
+                color: "#0d47a1",
+                "&:hover": { bgcolor: "#90caf9" },
+              }}
+            >
+              Câu sau
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSubmit}
+              disabled={submitted || isEmptyQuestion}
+              sx={{ width: { xs: "120px", sm: "150px" }, borderRadius: 1 }}
+            >
+              Nộp bài
+            </Button>
+          )}
+        </Stack>
+      )}
+
+    </Paper>
 
     {/* Dialog cảnh báo chưa làm hết */}
-    <IncompleteAnswersDialog
+    <Dialog
       open={openAlertDialog}
       onClose={() => setOpenAlertDialog(false)}
-      unansweredQuestions={unansweredQuestions}
-    />
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 0,
+          bgcolor: "#e3f2fd",
+          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+        },
+      }}
+    >
+      {/* Header với nền màu full width */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: 0.75, // chiều cao header
+          bgcolor: "#90caf9", // nền màu xanh nhạt
+          borderRadius: "12px 12px 0 0", // bo 2 góc trên
+          mb: 2,
+        }}
+      >
+        <Box
+          sx={{
+            bgcolor: "#42a5f5", // xanh đậm cho icon
+            color: "#fff",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mr: 1.5,
+            fontWeight: "bold",
+            fontSize: 18,
+          }}
+        >
+          ⚠️
+        </Box>
+
+        <DialogTitle
+          sx={{
+            p: 0,
+            fontWeight: "bold",
+            color: "#0d47a1", // màu xanh tiêu đề
+            fontSize: 20,
+          }}
+        >
+          Chưa hoàn thành
+        </DialogTitle>
+      </Box>
+
+      {/* Nội dung */}
+      <DialogContent sx={{ px: 3, pb: 3 }}>
+        <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
+          Bạn chưa chọn đáp án cho câu: {unansweredQuestions.join(", ")}.<br />
+          Vui lòng trả lời tất cả câu hỏi trước khi nộp.
+        </Typography>
+      </DialogContent>
+
+      {/* Nút OK */}
+      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenAlertDialog(false)}
+          sx={{
+            px: 4,
+            borderRadius: 2,
+            bgcolor: "#42a5f5", // xanh đậm giống mẫu
+            color: "#fff",
+            "&:hover": { bgcolor: "#1e88e5" },
+            fontWeight: "bold",
+            mb:2,
+          }}
+        >
+          OK
+        </Button>
+      </DialogActions>
+    </Dialog>
 
     {/* Dialog xác nhận thoát */}
     <ExitConfirmDialog
@@ -1076,33 +1011,147 @@ return (
       onClose={() => setOpenExitConfirm(false)}
     />
 
-    <SimpleResultDialog
+    <Dialog
       open={openResultDialog}
-      onClose={() => setOpenResultDialog(false)}
-      studentResult={studentResult}
-      choXemDiem={choXemDiem}
-    />
+      onClose={(event, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        setOpenResultDialog(false);
+      }}
+      disableEscapeKeyDown
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 0,
+          bgcolor: "#e3f2fd",
+          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+        },
+      }}
+    >
 
-    {/* ===== ZOOM ẢNH ===== */}
+      {/* Header với nền màu full width */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: 0.75,
+          bgcolor: "#90caf9",
+          borderRadius: "12px 12px 0 0", // bo 2 góc trên
+          mb: 2,
+        }}
+      >
+        <Box
+          sx={{
+            bgcolor: "#42a5f5",
+            color: "#fff",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mr: 1.5,
+            fontWeight: "bold",
+            fontSize: 18,
+          }}
+        >
+          🎉
+        </Box>
+
+        <DialogTitle
+          sx={{
+            p: 0,
+            fontWeight: "bold",
+            color: "#0d47a1",
+            fontSize: 20,
+          }}
+        >
+          Kết quả
+        </DialogTitle>
+      </Box>
+
+      {/* Nội dung */}
+      <DialogContent sx={{ textAlign: "center", px: 3, pb: 3 }}>
+        <Typography
+          sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}
+        >
+          {studentResult?.hoVaTen?.toUpperCase()}
+        </Typography>
+
+        <Typography sx={{ fontSize: 17, color: "#1565c0", mb: 1 }}>
+          <strong>Lớp: </strong>
+          <span style={{ fontWeight: "bold" }}>{studentResult?.lop}</span>
+        </Typography>
+
+        {/* Nếu cho xem điểm */}
+        {choXemDiem ? (
+          <Typography
+            sx={{
+              fontSize: 17,
+              fontWeight: 700,
+              mt: 1,
+            }}
+          >
+            <span style={{ color: "#1565c0" }}>Điểm:</span>&nbsp;
+            <span style={{ color: "red" }}>{studentResult?.diem}</span>
+          </Typography>
+        ) : (
+          <Typography
+            sx={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "red",
+              mt: 2,
+              textAlign: "center",
+            }}
+          >
+            ĐÃ HOÀN THÀNH BÀI KIỂM TRA
+          </Typography>
+        )}
+      </DialogContent>
+
+      {/* Nút OK */}
+      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenResultDialog(false)}
+          sx={{
+            px: 4,
+            borderRadius: 2,
+            bgcolor: "#42a5f5",
+            color: "#fff",
+            "&:hover": { bgcolor: "#1e88e5" },
+            fontWeight: "bold",
+          }}
+        >
+          OK
+        </Button>
+      </DialogActions>
+    </Dialog>
+
     <ImageZoomDialog
       open={Boolean(zoomImage)}
       imageSrc={zoomImage}
       onClose={() => setZoomImage(null)}
     />
-
-    {/* ===== SNACKBAR ===== */}
+    
+    {/* Snackbar */}
     <Snackbar
       open={snackbar.open}
       autoHideDuration={3000}
       onClose={handleCloseSnackbar}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
     >
-      <Alert severity={snackbar.severity}>
+      <Alert
+        onClose={handleCloseSnackbar}
+        severity={snackbar.severity}
+        sx={{ width: "100%" }}
+      >
         {snackbar.message}
       </Alert>
     </Snackbar>
-
   </Box>
 );
-
 
 }

@@ -19,7 +19,7 @@ import {
   FormControl,
   Select,
   MenuItem,
-  Card, Grid,
+  Card,
 } from "@mui/material";
 import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -39,13 +39,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
-/*import Dialog from "@mui/material/Dialog";
+import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";*/
+import DialogActions from "@mui/material/DialogActions";
 
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -58,8 +56,6 @@ import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
 import ResultDialog from "../dialog/ResultDialog";
 import QuizQuestion from "../Types/questions/options/QuizQuestion";
 import { buildRuntimeQuestions } from "../utils/buildRuntimeQuestions";
-import { getQuestionStatus } from "../utils/questionStatus";
-import { useTheme, useMediaQuery } from "@mui/material";
 
 export default function TracNghiem() {
   const [questions, setQuestions] = useState([]);
@@ -108,13 +104,7 @@ export default function TracNghiem() {
   const [lop, setLop] = useState(locationState.lop || "4.1");
   const [selectedWeek, setSelectedWeek] = useState(locationState.selectedWeek || 13);
   const [mon, setMon] = useState(locationState.mon || "Tin học");
-  
-  const theme = useTheme();
-  const isBelow900 = useMediaQuery(theme.breakpoints.down("md")); // <900
-  const isBelow1080 = useMediaQuery("(max-width:1079px)");
-  const isBelow1200 = useMediaQuery("(max-width:1199px)");
-  const [showSidebar, setShowSidebar] = React.useState(true);
-  
+
   const studentInfo = {
     id: studentId,
     name: fullname,
@@ -599,432 +589,276 @@ const normalizeValue = (val) => {
 
 const ratio = currentQuestion?.columnRatio || { left: 1, right: 1 };
 
-const questionCircleStyle = {
-  width: { xs: 34, sm: 38 },
-  height: { xs: 34, sm: 38 },
-  borderRadius: "50%",
-  minWidth: 0,
-  fontSize: "0.85rem",
-  fontWeight: 600,
-  boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-  transition: "all 0.2s ease",
-};
-
-const handleExit = () => {
-  if (submitted) {
-    navigate(-1);
-  } else {
-    setOpenExitConfirm(true);
-  }
-};
-
-const sidebarConfig = React.useMemo(() => {
-  if (isBelow900) return null; // ✅ <900px → KHÔNG render
-
-  if (isBelow1080) return { width: 130, cols: 2 };
-  if (isBelow1200) return { width: 165, cols: 3 };
-
-  return { width: 260, cols: 5 };
-}, [isBelow900, isBelow1080, isBelow1200]);
-
-const hasSidebar = sidebarConfig && questions.length > 0;
-const isSidebarVisible = hasSidebar && showSidebar;
-
 return (
   <Box
-    id="quiz-container"
+    id="quiz-container"  // <-- Thêm dòng này
     sx={{
       minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
       background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
       pt: { xs: 2, sm: 3 },
       px: { xs: 1, sm: 2 },
     }}
   >
-    {/* ===== WRAPPER ===== */}
-   <Box
+    <Paper
       sx={{
-        display: "flex",
-        gap: 3,
+        p: { xs: 2, sm: 4 },
+        borderRadius: 3,
         width: "100%",
-
-        maxWidth: isSidebarVisible ? 1280 : 1000,
-        mx: "auto",                         // ✅ LUÔN CĂN GIỮA
-
-        flexDirection: { xs: "column", md: "row" },
-        alignItems: "stretch",
+        maxWidth: 1000,
+        minWidth: { xs: "auto", sm: 700 },   
+        minHeight: { xs: "auto", sm: 650 }, 
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        position: "relative",
+        boxSizing: "border-box",
+        backgroundColor: "#fff",             
+        pb: 3,
       }}
     >
-
-      {/* ================= LEFT: CONTENT ================= */}
-      <Box
-        sx={{
-          flex: 1,              // ✅ chiếm phần còn lại
-          minWidth: 0,          // ✅ QUAN TRỌNG: tránh bị tràn
-          maxWidth: 1000,
-        }}
-      >
-        <Paper
+      {/* Nút thoát */}
+      <Tooltip title="Thoát trắc nghiệm" arrow>
+        <IconButton
+          onClick={() => {
+            if (submitted) {
+              navigate(-1);
+            } else {
+              // Nếu không tìm thấy đề thì không mở dialog
+              if (!notFoundMessage) {
+                setOpenExitConfirm(true);
+              } else {
+                // Nếu muốn, có thể quay lại luôn
+                navigate(-1);
+              }
+            }
+          }}
           sx={{
-            p: { xs: 2, sm: 4 },
-            borderRadius: 3,
-            minHeight: 650,
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
+            position: "absolute",
+            top: 8,
+            right: 8,
+            color: "#f44336",
+            bgcolor: "rgba(255,255,255,0.9)",
+            "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
           }}
         >
-          {/* Nút thoát */}
-          {/*<IconButton
-            onClick={() => {
-              if (submitted) navigate(-1);
-              else setOpenExitConfirm(true);
-            }}
-            sx={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              color: "#f44336",
-            }}
-          >
-            <CloseIcon />
-          </IconButton>*/}
+          <CloseIcon />
+        </IconButton>
+      </Tooltip>
 
-          {/* 🔘 Toggle sidebar */}
-          {sidebarConfig && (
-            <Tooltip title={showSidebar ? "Thu gọn bảng câu hỏi" : "Mở bảng câu hỏi"}>
-              <IconButton
-                onClick={() => setShowSidebar((prev) => !prev)}
-                sx={{
-                  position: "absolute",
-                  top: 12,
-                  right: 12,
-                  bgcolor: "#e3f2fd",
-                  border: "1px solid #90caf9",
-                  "&:hover": {
-                    bgcolor: "#bbdefb",
-                  },
-                  zIndex: 10,
-                }}
-              >
-                {showSidebar ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-              </IconButton>
-            </Tooltip>
-          )}
+      {/* Thông tin học sinh */}
+      <Box
+        sx={{
+          p: 1.5,
+          border: "2px solid #1976d2",
+          borderRadius: 2,
+          color: "#1976d2",
+          width: "fit-content",
+          mb: 2,
+          position: { xs: "relative", sm: "absolute" },
+          top: { sm: 16 },
+          left: { sm: 16 },
+          alignSelf: { xs: "flex-start", sm: "auto" },
+          bgcolor: { xs: "#fff", sm: "transparent" },
+          zIndex: 2,
+        }}
+      >
+        <Typography variant="subtitle1" fontWeight="bold">
+          Tên: {capitalizeName(studentInfo.name)}
+        </Typography>
+        <Typography variant="subtitle1" fontWeight="bold">
+          Lớp: {studentInfo.className} 
+        </Typography>
+      </Box>
 
-          {/* Thông tin HS */}
-          <Box
-            sx={{
-              p: 1.5,
-              border: "2px solid #1976d2",
-              borderRadius: 2,
-              color: "#1976d2",
-              width: "fit-content",
-              position: { xs: "relative", sm: "absolute" },
-              top: { sm: 16 },
-              left: { sm: 16 },
-              bgcolor: "#fff",
-            }}
-          >
-            <Typography fontWeight="bold">
-              Tên: {capitalizeName(studentInfo.name)}
-            </Typography>
-            <Typography fontWeight="bold">
-              Lớp: {studentInfo.className}
-            </Typography>
-          </Box>
+      {/* Tiêu đề */}
+      <Typography
+        variant="h5"
+        fontWeight="bold"
+        sx={{ color: "#1976d2", mb: { xs: 1, sm: -1 }, textAlign: "center" }}
+      >
+        {loading
+          ? "TRẮC NGHIỆM"
+          : config?.baiTapTuan
+          ? "TRẮC NGHIỆM"
+          : config?.kiemTraDinhKi && hocKiDisplay && monHocDisplay
+          ? `KTĐK ${hocKiDisplay.toUpperCase()} - ${monHocDisplay.toUpperCase()}`
+          : "TRẮC NGHIỆM"}
+      </Typography>
 
-          {/* Tiêu đề */}
-          <Typography
-            variant="h5"
-            fontWeight="bold"
-            sx={{ color: "#1976d2", mb: { xs: 1, sm: -1 }, textAlign: "center" }}
-          >
-            {loading
-              ? "TRẮC NGHIỆM"
-              : config?.baiTapTuan
-              ? "TRẮC NGHIỆM"
-              : config?.kiemTraDinhKi && hocKiDisplay && monHocDisplay
-              ? `KTĐK ${hocKiDisplay.toUpperCase()} - ${monHocDisplay.toUpperCase()}`
-              : "TRẮC NGHIỆM"}
-          </Typography>
-
-          {/* Đồng hồ với vị trí cố định */}
+      {/* Đồng hồ với vị trí cố định */}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          mt: 0.5,
+          mb: -2,
+          minHeight: 40, // giữ khoảng trống luôn
+          width: "100%",
+        }}
+      >
+        {/* Nội dung đồng hồ chỉ hiển thị khi started && !loading */}
+        {started && !loading && (
           <Box
             sx={{
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
-              mt: 2,
-              mb: -3,
-              minHeight: 40, // giữ khoảng trống luôn
-              width: "100%",
+              gap: 1,
+              px: 3,
+              py: 0.5,
+              borderRadius: 2,
+              bgcolor: "#fff", // tùy chỉnh nếu muốn nền
             }}
           >
-            {/* Nội dung đồng hồ chỉ hiển thị khi started && !loading */}
-            {started && !loading && (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  px: 3,
-                  py: 0.5,
-                  borderRadius: 2,
-                  bgcolor: "#fff",
-                }}
-              >
-                <AccessTimeIcon sx={{ color: "#d32f2f" }} />
-                <Typography variant="h6" sx={{ fontWeight: "bold", color: "#d32f2f" }}>
-                  {formatTime(timeLeft)}
-                </Typography>
-              </Box>
-            )}
-
-            {/* Đường gạch ngang luôn có (giữ layout như gốc) */}
-            <Box
-              sx={{
-                width: "100%",
-                height: 1,
-                bgcolor: "#e0e0e0",
-                mt: 0,
-                mb: 3,
-              }}
-            />
+            <AccessTimeIcon sx={{ color: "#d32f2f" }} />
+            <Typography variant="h6" sx={{ fontWeight: "bold", color: "#d32f2f" }}>
+              {formatTime(timeLeft)}
+            </Typography>
           </Box>
+        )}
 
-          {/*<Divider sx={{ my: 2 }} />*/}
-
-          {/* Loading */}
-          {loading && (
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 1, width: "100%" }}>
-              <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
-                <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
-                <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
-                  🔄 Đang tải... {progress}%
-                </Typography>
-              </Box>
-            </Box>
-          )}
-
-          {/* Câu hỏi */}
-          {!loading && currentQuestion && (
-            <QuizQuestion
-              currentQuestion={currentQuestion}
-              currentIndex={currentIndex}
-              answers={answers}
-              setAnswers={setAnswers}
-              submitted={submitted}
-              started={started}
-              choXemDapAn={choXemDapAn}
-              setZoomImage={setZoomImage}
-              handleSingleSelect={handleSingleSelect}
-              handleMultipleSelect={handleMultipleSelect}
-              handleDragEnd={handleDragEnd}
-              reorder={reorder}
-              normalizeValue={normalizeValue}
-              ratio={ratio}
-            />
-          )}
-
-          <Box sx={{ flexGrow: 1 }} />
-
-          {/* ===== ĐIỀU HƯỚNG ===== */}
-          {started && !loading && (
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              sx={{
-                mt: 2,
-                pt: 2,
-                mb: { xs: "20px", sm: "5px" },
-                borderTop: "1px solid #e0e0e0",
-              }}
-            >
-              {/* ===== CÂU TRƯỚC ===== */}
-              <Button
-                variant="outlined"
-                startIcon={<ArrowBackIcon />}
-                onClick={handlePrev}
-                disabled={currentIndex === 0}
-                sx={{
-                  width: 150,
-                  bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
-                  borderRadius: 1,
-                  color: "#0d47a1",
-                  "&:hover": {
-                    bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9",
-                  },
-                }}
-              >
-                Câu trước
-              </Button>
-
-              {/* ===== CÂU SAU / NỘP BÀI ===== */}
-              {currentIndex < questions.length - 1 ? (
-                <Button
-                  variant="outlined"
-                  endIcon={<ArrowForwardIcon />}
-                  onClick={handleNext}
-                  sx={{
-                    width: 150,
-                    bgcolor: "#bbdefb",
-                    borderRadius: 1,
-                    color: "#0d47a1",
-                    "&:hover": { bgcolor: "#90caf9" },
-                  }}
-                >
-                  Câu sau
-                </Button>
-              ) : (
-                // ✅ HIỆN KHI SIDEBAR KHÔNG HIỂN THỊ (ẩn do toggle HOẶC do màn nhỏ)
-                !isSidebarVisible && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleSubmit}
-                    disabled={submitted || isEmptyQuestion}
-                    sx={{
-                      width: 150,
-                      borderRadius: 1,
-                    }}
-                  >
-                    Nộp bài
-                  </Button>
-                )
-              )}
-
-            </Stack>
-          )}
-        </Paper>
-      </Box>
-
-      {/* ================= RIGHT: SIDEBAR ================= */}
-      {isSidebarVisible && (
+        {/* Đường gạch ngang màu xám nhạt luôn hiển thị */}
         <Box
           sx={{
-            width: sidebarConfig.width,
-            flexShrink: 0,
+            width: "100%",
+            height: 1,
+            bgcolor: "#e0e0e0", // màu xám nhạt
+            mt: 0,
           }}
-        >
-          <Card
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              position: sidebarConfig.width === 260 ? "sticky" : "static",
-              top: 24,
-            }}
-          >
-            <Typography
-              fontWeight="bold"
-              textAlign="center"
-              mb={2}
-              fontSize="1.1rem"
-            >
-              Câu hỏi
+        />
+      </Box>
+
+
+      {/* Loading */}
+      {loading && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 1, width: "100%" }}>
+          <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
+            <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
+            <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
+              🔄 Đang tải... {progress}%
             </Typography>
-
-            <Divider sx={{ mt: -1, mb: 3, bgcolor: "#e0e0e0" }} />
-
-            {/* ===== GRID Ô SỐ ===== */}
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${sidebarConfig.cols}, 1fr)`,
-                gap: 1.2,
-                justifyItems: "center",
-                mb: !submitted ? 8 : 0,
-              }}
-            >
-              {questions.map((q, index) => {
-                const status = getQuestionStatus({
-                  question: q,
-                  userAnswer: answers[q.id],
-                  submitted,
-                });
-
-                const active = currentIndex === index;
-
-                let bgcolor = "#eeeeee";
-                let border = "1px solid transparent";
-                let textColor = "#0d47a1";
-
-                if (!submitted && status === "answered") bgcolor = "#bbdefb";
-
-                if (submitted) {
-                  if (status === "correct") bgcolor = "#c8e6c9";
-                  else if (status === "wrong") bgcolor = "#ffcdd2";
-                  else {
-                    bgcolor = "#fafafa";
-                    border = "1px dashed #bdbdbd";
-                  }
-                }
-
-                if (active) {
-                  border = "2px solid #9e9e9e";
-                  textColor = "#616161";
-                }
-
-                return (
-                  <IconButton
-                    key={q.id}
-                    onClick={() => setCurrentIndex(index)}
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: "50%",
-                      fontSize: "0.85rem",
-                      fontWeight: 600,
-                      bgcolor,
-                      color: textColor,
-                      border,
-                      boxShadow: "none",
-                    }}
-                  >
-                    {index + 1}
-                  </IconButton>
-                );
-              })}
-            </Box>
-
-            {!submitted && (
-              <Button fullWidth variant="contained" onClick={handleSubmit}>
-                Nộp bài
-              </Button>
-            )}
-
-            <Button
-              fullWidth
-              variant="outlined"
-              color="error"
-              sx={{ mt: submitted ? 8 : 1.5 }}
-              onClick={() => {
-                if (submitted) navigate(-1);
-                else setOpenExitConfirm(true);
-              }}
-            >
-              Thoát
-            </Button>
-          </Card>
+          </Box>
         </Box>
       )}
+      
+      {!loading && currentQuestion && (
+        <QuizQuestion
+          currentQuestion={currentQuestion}
+          currentIndex={currentIndex}
+          answers={answers}
+          setAnswers={setAnswers}
+          submitted={submitted}
+          started={started}
+          choXemDapAn={choXemDapAn}
+          setZoomImage={setZoomImage}
+          handleSingleSelect={handleSingleSelect}
+          handleMultipleSelect={handleMultipleSelect}
+          handleDragEnd={handleDragEnd}
+          reorder={reorder}
+          normalizeValue={normalizeValue}
+          ratio={ratio}
+        />
+      )}
 
+      {/* Nút điều hướng luôn cố định ở đáy Paper */}
+      <Box sx={{ flexGrow: 1 }} />
+      {started && !loading && (
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{
+            position: "static",
+            mt: 2,                     // cách option phía trên
+            pt: 2,                     // ⬅⬅⬅ KHOẢNG CÁCH GIỮA GẠCH & NÚT
+            mb: { xs: "20px", sm: "5px" },
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
 
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            sx={{
+              width: { xs: "150px", sm: "150px" },
+              bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
+              borderRadius: 1,
+              color: "#0d47a1",
+              "&:hover": { bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9" },
+            }}
+          >
+            Câu trước
+          </Button>
 
-    </Box>
+          {currentIndex < questions.length - 1 ? (
+            <Button
+              variant="outlined"
+              endIcon={<ArrowForwardIcon />}
+              onClick={handleNext}
+              sx={{
+                width: { xs: "150px", sm: "150px" },
+                bgcolor: "#bbdefb",
+                borderRadius: 1,
+                color: "#0d47a1",
+                "&:hover": { bgcolor: "#90caf9" },
+              }}
+            >
+              Câu sau
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSubmit}
+              disabled={submitted || isEmptyQuestion}
+              sx={{ width: { xs: "120px", sm: "150px" }, borderRadius: 1 }}
+            >
+              Nộp bài
+            </Button>
+          )}
+        </Stack>
+      )}
 
-    {/* ===== DIALOGS (KHÔNG ĐƯỢC BỎ) ===== */}
+      {notFoundMessage && (
+        <Card
+          sx={{
+            bgcolor: "#ffebee",
+            border: "1px solid #f44336",
+            p: 2,
+            mb: 2,
+            width: "60%",    // chiếm 50% chiều rộng
+            mx: "auto",      // căn giữa ngang
+            mt: 4            // optional: thêm khoảng cách từ trên
+          }}
+        >
+          <Typography
+            sx={{ color: "#d32f2f", fontWeight: "bold", fontSize: "1.5rem", textAlign: "center" }}
+          >
+            {notFoundMessage}
+          </Typography>
+        </Card>
+      )}
+    </Paper>
+
+    {/* Dialog câu chưa làm */}
     <IncompleteAnswersDialog
       open={openAlertDialog}
       onClose={() => setOpenAlertDialog(false)}
       unansweredQuestions={unansweredQuestions}
     />
 
-    <ExitConfirmDialog
+    {/* Dialog xác nhận thoát */}
+      <ExitConfirmDialog
       open={openExitConfirm}
       onClose={() => setOpenExitConfirm(false)}
     />
 
+    {/* Dialog xáchiển thị kết quả */}
     <ResultDialog
       open={openResultDialog}
       onClose={() => setOpenResultDialog(false)}
@@ -1042,6 +876,7 @@ return (
       onClose={() => setZoomImage(null)}
     />
 
+    {/* Snackbar */}
     <Snackbar
       open={snackbar.open}
       autoHideDuration={3000}
@@ -1058,7 +893,5 @@ return (
     </Snackbar>
   </Box>
 );
-
-
 
 }

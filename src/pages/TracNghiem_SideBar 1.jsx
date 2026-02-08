@@ -39,13 +39,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
-/*import Dialog from "@mui/material/Dialog";
+import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";*/
+import DialogActions from "@mui/material/DialogActions";
 
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -113,7 +111,6 @@ export default function TracNghiem() {
   const isBelow900 = useMediaQuery(theme.breakpoints.down("md")); // <900
   const isBelow1080 = useMediaQuery("(max-width:1079px)");
   const isBelow1200 = useMediaQuery("(max-width:1199px)");
-  const [showSidebar, setShowSidebar] = React.useState(true);
   
   const studentInfo = {
     id: studentId,
@@ -628,7 +625,6 @@ const sidebarConfig = React.useMemo(() => {
 }, [isBelow900, isBelow1080, isBelow1200]);
 
 const hasSidebar = sidebarConfig && questions.length > 0;
-const isSidebarVisible = hasSidebar && showSidebar;
 
 return (
   <Box
@@ -647,7 +643,7 @@ return (
         gap: 3,
         width: "100%",
 
-        maxWidth: isSidebarVisible ? 1280 : 1000,
+        maxWidth: hasSidebar ? 1280 : 1000, // ✅ CHỈ MỞ RỘNG KHI SIDEBAR THỰC SỰ HIỆN
         mx: "auto",                         // ✅ LUÔN CĂN GIỮA
 
         flexDirection: { xs: "column", md: "row" },
@@ -688,28 +684,6 @@ return (
           >
             <CloseIcon />
           </IconButton>*/}
-
-          {/* 🔘 Toggle sidebar */}
-          {sidebarConfig && (
-            <Tooltip title={showSidebar ? "Thu gọn bảng câu hỏi" : "Mở bảng câu hỏi"}>
-              <IconButton
-                onClick={() => setShowSidebar((prev) => !prev)}
-                sx={{
-                  position: "absolute",
-                  top: 12,
-                  right: 12,
-                  bgcolor: "#e3f2fd",
-                  border: "1px solid #90caf9",
-                  "&:hover": {
-                    bgcolor: "#bbdefb",
-                  },
-                  zIndex: 10,
-                }}
-              >
-                {showSidebar ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-              </IconButton>
-            </Tooltip>
-          )}
 
           {/* Thông tin HS */}
           <Box
@@ -877,8 +851,8 @@ return (
                   Câu sau
                 </Button>
               ) : (
-                // ✅ HIỆN KHI SIDEBAR KHÔNG HIỂN THỊ (ẩn do toggle HOẶC do màn nhỏ)
-                !isSidebarVisible && (
+                // ✅ CHỈ HIỆN KHI SIDEBAR BỊ ẨN (<900px)
+                !sidebarConfig && (
                   <Button
                     variant="contained"
                     color="primary"
@@ -893,14 +867,13 @@ return (
                   </Button>
                 )
               )}
-
             </Stack>
           )}
         </Paper>
       </Box>
 
       {/* ================= RIGHT: SIDEBAR ================= */}
-      {isSidebarVisible && (
+      {questions.length > 0 && sidebarConfig && (
         <Box
           sx={{
             width: sidebarConfig.width,
