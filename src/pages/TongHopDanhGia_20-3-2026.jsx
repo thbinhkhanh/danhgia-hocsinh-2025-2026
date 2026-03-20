@@ -77,41 +77,46 @@ export default function TongHopDanhGia() {
   // -> Trả thêm tỉ lệ số T (để xét ưu tiên xếp loại tốt)
   function tinhDiemTrungBinhTheoKhoang(statusByWeek, from, to) {
     const diemMap = { T: 3, H: 2, C: 1 };
-    let tong = 0;
-    let dem = 0;
-
-    const toShort = (statusStr) =>
-      statusStr === "Hoàn thành tốt" ? "T" :
-      statusStr === "Hoàn thành" ? "H" :
-      statusStr === "Chưa hoàn thành" ? "C" : "";
+    let tong = 0, dem = 0;
 
     for (let i = from; i <= to; i++) {
       const weekId = `tuan_${i}`;
       const raw = statusByWeek?.[weekId];
 
-      if (!raw) continue;
-
+      // Lấy cả HS và GV
       let hs = "";
       let gv = "";
 
-      if (typeof raw === "object") {
-        hs = raw.hs || "";
-        gv = raw.gv || "";
-      } else {
-        hs = raw;
+      if (raw) {
+        if (typeof raw === "object") {
+          hs = raw.hs || "";
+          gv = raw.gv || "";
+        } else {
+          hs = raw;
+        }
       }
+
+      const toShort = (statusStr) =>
+        statusStr === "Hoàn thành tốt" ? "T" :
+        statusStr === "Hoàn thành" ? "H" :
+        statusStr === "Chưa hoàn thành" ? "C" : "";
 
       const hsShort = toShort(hs);
       const gvShort = toShort(gv);
 
-      // ✅ Lấy từng cột riêng biệt
-      if (hsShort) {
+      // Nếu cả HS và GV đều rỗng → bỏ qua
+      if (!hsShort && !gvShort) continue;
+
+      // Nếu chỉ 1 trong 2 có → dùng giá trị đó
+      if (hsShort && !gvShort) {
         tong += diemMap[hsShort];
         dem++;
-      }
-
-      if (gvShort) {
+      } else if (!hsShort && gvShort) {
         tong += diemMap[gvShort];
+        dem++;
+      } else {
+        // Cả HS + GV đều có → lấy trung bình
+        tong += (diemMap[hsShort] + diemMap[gvShort]) / 2;
         dem++;
       }
     }
@@ -123,22 +128,38 @@ export default function TongHopDanhGia() {
 
   // Đánh giá học sinh & sinh nhận xét
   function danhGiaHocSinh(student, from, to) {
-    const { diemTB } = tinhDiemTrungBinhTheoKhoang(
-      student.statusByWeek,
-      from,
-      to
-    );
+    const { diemTB } = tinhDiemTrungBinhTheoKhoang(student.statusByWeek, from, to);
 
-    if (diemTB === null) return { xepLoai: "", nhanXet: "" };
+    if (diemTB === null)
+      return { xepLoai: "", nhanXet: "" }; // Không hiển thị nếu chưa có dữ liệu
 
-    let xepLoai;
+    const nhanXetMuc = getNhanXetMuc(selectedSubject);
+    let xepLoaiDayDu, nhanXet;
 
-    if (diemTB >= 2.8) xepLoai = "T";
-    else if (diemTB >= 2.0) xepLoai = "H";
-    else if (diemTB >= 1.5) xepLoai = "H";
-    else xepLoai = "C";
+    // Xếp loại dựa vào điểm trung bình
+    if (diemTB >= 2.8) {
+      xepLoaiDayDu = "Tốt";
+      nhanXet = randomItem(nhanXetMuc.tot);
+    } else if (diemTB >= 2.0) {
+      xepLoaiDayDu = "Khá";
+      nhanXet = randomItem(nhanXetMuc.kha);
+    } else if (diemTB >= 1.5) {
+      xepLoaiDayDu = "Trung bình";
+      nhanXet = randomItem(nhanXetMuc.trungbinh);
+    } else {
+      xepLoaiDayDu = "Yếu";
+      nhanXet = randomItem(nhanXetMuc.yeu);
+    }
 
-    return { xepLoai };
+    // Rút gọn loại hiển thị: Tốt → T | Khá/Trung bình → H | Yếu → C
+    let xepLoaiRutGon =
+      xepLoaiDayDu === "Tốt"
+        ? "T"
+        : ["Khá", "Trung bình"].includes(xepLoaiDayDu)
+        ? "H"
+        : "C";
+
+    return { xepLoai: xepLoaiRutGon, nhanXet };
   }
 
   function getNhanXetMuc(subject) {
@@ -172,7 +193,7 @@ const handleSaveAll = async () => {
   if (!students || students.length === 0) return;
 
   const selectedSemester = config.hocKy || "Giữa kỳ I";
-  const selectedMon = selectedSubject || config.mon || "Công nghệ";
+  const selectedMon = config.mon || "Công nghệ";
   const isCongNghe = selectedMon === "Công nghệ";
 
   // 🔹 MAP HỌC KỲ
@@ -450,8 +471,7 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
         ...s,
         ...weekCols,
         dgtx: mucDat,
-        //xepLoai: mucDat,
-        xepLoai,          // ✅ giữ đúng kết quả tính
+        xepLoai: mucDat,
         nhanXet: nhanXetAuto,
       };
     });
@@ -728,109 +748,7 @@ return (
                 })()}
 
               <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Học sinh</TableCell>
-              
-              <TableCell
-                rowSpan={2}
-                align="center"
-                sx={{
-                  backgroundColor: "#1976d2",
-                  color: "white",
-                  width: 50,
-                  px: 0.5
-                }}
-              >
-                <Box display="flex" alignItems="center" justifyContent="center" gap={0.3}>
-                  
-                  {/* ✅ TIÊU ĐỀ CHUẨN MUI (không bị nhỏ) */}
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "white", fontSize: 14 }}
-                  >
-                    Giáo viên
-                  </Typography>
-
-                  {/* ✅ DROPDOWN SIÊU GỌN */}
-                  <FormControl
-                    variant="standard"
-                    sx={{
-                      m: 0,
-                      minWidth: 16
-                    }}
-                  >
-                    <Select
-                      defaultValue=""
-                      displayEmpty
-                      disableUnderline
-
-                      onChange={(e) => {
-                        const val = e.target.value;
-
-                        setStudents((prev) =>
-                          prev.map((s) => {
-                            const hs = s.xepLoai?.trim();
-                            const gv = val?.trim();
-
-                            let chung = "";
-
-                            // ✅ LOGIC CỦA BẠN (giữ nguyên)
-                            if (!hs && gv) chung = gv;
-                            else if (!gv) chung = hs;
-                            else {
-                              if (hs === "T" && gv === "T") chung = "T";
-                              else if (hs === "H" && gv === "T") chung = "T";
-                              else if (hs === "C" && gv === "T") chung = "H";
-                              else if (hs === "T" && gv === "H") chung = "H";
-                              else if (hs === "H" && gv === "H") chung = "H";
-                              else if (hs === "C" && gv === "H") chung = "H";
-                              else if (hs === "T" && gv === "C") chung = "H";
-                              else if (hs === "H" && gv === "C") chung = "C";
-                              else if (hs === "C" && gv === "C") chung = "C";
-                              else chung = hs;
-                            }
-
-                            return {
-                              ...s,
-                              dgtx_gv: val,                  // ✅ fill GV
-                              dgtx: chung,                  // ✅ cập nhật Mức đạt
-                              nhanXet: chung
-                                ? getNhanXetTuDong(chung)   // ✅ cập nhật nhận xét
-                                : "",
-                            };
-                          })
-                        );
-                      }}
-
-                      renderValue={() => (
-                        <span style={{ fontSize: 18, lineHeight: 1 }}>▾</span>
-                      )}
-                      sx={{
-                        width: 16,
-                        minWidth: 16,
-                        color: "white",
-                        fontSize: 10,
-
-                        "& .MuiSelect-select": {
-                          padding: "0 !important",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        },
-
-                        "& .MuiSelect-icon": {
-                          display: "none",
-                        },
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>-</em>
-                      </MenuItem>
-                      <MenuItem value="T">T</MenuItem>
-                      <MenuItem value="H">H</MenuItem>
-                      <MenuItem value="C">C</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-              </TableCell>
+              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Giáo viên</TableCell>
               <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Mức đạt</TableCell>
               <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 300 }}>Nhận xét</TableCell>
             </TableRow>
@@ -893,204 +811,84 @@ return (
                       );
                     })}
 
-                  <TableCell
-                    align="center"
-                    sx={{
-                      px: 1,
-                      color: student.xepLoai === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main
-                    }}
-                  >
-                    <FormControl
-                      variant="standard"
-                      fullWidth
-                      sx={{
-                        "& .MuiSelect-icon": { opacity: 0, transition: "0.2s" },
-                        "&:hover .MuiSelect-icon": { opacity: 1 },
-                      }}
-                    >
-                      <Select
-                        value={student.xepLoai || ""}
-                        onChange={(e) => {
-                          const newHS = e.target.value;
+                  <TableCell align="center" sx={{ color: student.xepLoai === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>{allWeeksEmpty ? "" : student.xepLoai || ""}</TableCell>
 
-                          setStudents(prev =>
-                            prev.map(s => {
-                              if (s.maDinhDanh !== student.maDinhDanh) return s;
-
-                              const updated = { ...s, xepLoai: newHS };
-
-                              const hs = newHS;
-                              const gv = updated.dgtx_gv;
-
-                              const diemMap = { T: 3, H: 2, C: 1 };
-
-                              let chung = hs || gv;
-
-                              if (hs && gv) {
-                                const avg = (diemMap[hs] + diemMap[gv]) / 2;
-
-                                if (avg >= 2.5) chung = "T";
-                                else if (avg >= 1.5) chung = "H";
-                                else chung = "C";
-                              }
-
-                              updated.dgtx = chung;
-
-                              updated.nhanXet = chung
-                                ? getNhanXetTuDong(chung)
-                                : "";
-
-                              return updated;
-                            })
-                          );
-                        }}
-                        disableUnderline
-                        sx={{
-                          textAlign: "center",
-                          "& .MuiSelect-select": {
-                            py: 0.5,
-                            fontSize: "14px",
-                            color: student.xepLoai === "C"
-                              ? "#dc2626"
-                              : (theme) => theme.palette.primary.main,
-                          },
-                        }}
-                      >
-                        <MenuItem value="">
-                          <em>-</em>
-                        </MenuItem>
-                        <MenuItem value="T">T</MenuItem>
-                        <MenuItem value="H">H</MenuItem>
-                        <MenuItem value="C">C</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </TableCell>
-
-                  <TableCell
-                    align="center"
-                    sx={{
-                      px: 1,
-                      color: student.dgtx_gv === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main
-                    }}
-                  >
-                    <FormControl
-                      variant="standard"
-                      fullWidth
-                      sx={{
+                  <TableCell align="center" sx={{ px: 1, color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>
+                    {allWeeksEmpty ? null : (
+                      <FormControl variant="standard" fullWidth sx={{
                         "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
                         "&:hover .MuiSelect-icon": { opacity: 1 },
-                      }}
-                    >
-                      <Select
-                        value={student.dgtx_gv || ""}
-                        onChange={(e) => {
-                          const newVal = e.target.value;
-
-                          setStudents((prev) =>
-                            prev.map((s) => {
-                              if (s.maDinhDanh !== student.maDinhDanh) return s;
-
-                              const updated = { ...s, dgtx_gv: newVal };
-
-                              const hs = updated.xepLoai?.trim();
-                              const gv = newVal?.trim();
-
-                              let chung = "";
-
-                              // 🔥 THÊM: nếu không có HS → lấy GV
-                              if (!hs && gv) {
-                                chung = gv;
-                              }
-                              // nếu không có GV → lấy HS
-                              else if (!gv) {
-                                chung = hs;
-                              }
-                              // nếu có cả HS và GV → dùng logic cũ
-                              else {
-                                if (hs === "T" && gv === "T") chung = "T";
-                                else if (hs === "H" && gv === "T") chung = "T";
-                                else if (hs === "C" && gv === "T") chung = "H";
-                                else if (hs === "T" && gv === "H") chung = "H";
-                                else if (hs === "H" && gv === "H") chung = "H";
-                                else if (hs === "C" && gv === "H") chung = "H";
-                                else if (hs === "T" && gv === "C") chung = "H";
-                                else if (hs === "H" && gv === "C") chung = "C";
-                                else if (hs === "C" && gv === "C") chung = "C";
-                                else chung = hs;
-                              }
-
-                              // 🔥 LUÔN dùng chung
-                              updated.dgtx = chung;
-
-                              // 🔥 cập nhật nhận xét
-                              updated.nhanXet = chung
-                                ? getNhanXetTuDong(chung)
-                                : "";
-
-                              return updated;
-                            })
-                          );
-                        }}
-                        disableUnderline
-                        id={`teacher-dgtx-${idx}`}
-                        sx={{
-                          textAlign: "center",
-                          px: 1,
-                          "& .MuiSelect-select": {
-                            py: 0.5,
-                            fontSize: "14px",
-                            color: student.dgtx_gv === "C"
-                              ? "#dc2626"
-                              : (theme) => theme.palette.primary.main,
-                          },
-                        }}
-                      >
-                        <MenuItem value="">
-                          <em>-</em>
-                        </MenuItem>
-                        <MenuItem value="T">T</MenuItem>
-                        <MenuItem value="H">H</MenuItem>
-                        <MenuItem value="C">C</MenuItem>
-                      </Select>
-                    </FormControl>
+                      }}>
+                        <Select
+                          value={student.dgtx_gv || ""}
+                          onChange={(e) => {
+                            const newVal = e.target.value;
+                            setStudents((prev) =>
+                              prev.map((s) => {
+                                if (s.maDinhDanh !== student.maDinhDanh) return s;
+                                const updated = { ...s, dgtx_gv: newVal };
+                                const hs = updated.xepLoai;
+                                const gv = newVal;
+                                let chung = "";
+                                if (!gv) chung = hs;
+                                else {
+                                  if (hs === "T" && gv === "T") chung = "T";
+                                  else if (hs === "H" && gv === "T") chung = "T";
+                                  else if (hs === "C" && gv === "T") chung = "H";
+                                  else if (hs === "T" && gv === "H") chung = "H";
+                                  else if (hs === "H" && gv === "H") chung = "H";
+                                  else if (hs === "C" && gv === "H") chung = "H";
+                                  else if (hs === "T" && gv === "C") chung = "H";
+                                  else if (hs === "H" && gv === "C") chung = "C";
+                                  else if (hs === "C" && gv === "C") chung = "C";
+                                  else chung = hs;
+                                }
+                                updated.dgtx = !gv ? hs : chung;
+                                updated.nhanXet = updated.dgtx ? getNhanXetTuDong(updated.dgtx) : "";
+                                return updated;
+                              })
+                            );
+                          }}
+                          disableUnderline
+                          id={`teacher-dgtx-${idx}`}
+                          sx={{
+                            textAlign: "center",
+                            px: 1,
+                            "& .MuiSelect-select": {
+                              py: 0.5,
+                              fontSize: "14px",
+                              color: student.dgtx_gv === "C" ? "#dc2626" : (theme) => theme.palette.primary.main,
+                            },
+                          }}
+                        >
+                          <MenuItem value=""><em>-</em></MenuItem>
+                          <MenuItem value="T">T</MenuItem>
+                          <MenuItem value="H">H</MenuItem>
+                          <MenuItem value="C">C</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
                   </TableCell>
 
-                  <TableCell
-                    align="center"
-                    sx={{
-                      color: student.dgtx === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main
-                    }}
-                  >
-                    {student.dgtx || ""}
-                  </TableCell>
+                  <TableCell align="center" sx={{ color: student.dgtx === "C" ? "#dc2626" : (theme) => theme.palette.primary.main }}>{allWeeksEmpty ? "" : student.dgtx || ""}</TableCell>
 
                   <TableCell align="left" sx={{ px: 1 }}>
-                    <TextField
-                      variant="standard"
-                      multiline
-                      maxRows={4}
-                      fullWidth
-                      value={student.nhanXet || ""}
-                      onChange={(e) =>
-                        handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)
-                      }
-                      id={`nhanXet-${idx}`}
-                      InputProps={{
-                        sx: {
-                          paddingLeft: 1,
-                          paddingRight: 1,
-                          fontSize: "14px",
-                          lineHeight: 1.3,
-                        },
-                        disableUnderline: true,
-                      }}
-                    />
+                    {allWeeksEmpty ? null : (
+                      <TextField
+                        variant="standard"
+                        multiline
+                        maxRows={4}
+                        fullWidth
+                        value={student.nhanXet || ""}
+                        onChange={(e) => handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)}
+                        id={`nhanXet-${idx}`}
+                        onKeyDown={(e) => handleKeyNavigation(e, idx, "nhanXet")}
+                        InputProps={{
+                          sx: { paddingLeft: 1, paddingRight: 1, fontSize: "14px", lineHeight: 1.3 },
+                          disableUnderline: true,
+                        }}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               );
