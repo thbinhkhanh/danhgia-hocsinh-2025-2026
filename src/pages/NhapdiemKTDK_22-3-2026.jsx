@@ -55,7 +55,7 @@ export default function NhapdiemKTDK() {
   const [openLTDialog, setOpenLTDialog] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [ltValue, setLtValue] = useState("");
-  const [fillThucHanh, setFillThucHanh] = useState("");
+
 
   useEffect(() => {
     if (config?.mon && config.mon !== selectedSubject) {
@@ -486,100 +486,106 @@ useEffect(() => {
   };
 
   const handleSaveAll = async () => {
-  if (!students || students.length === 0) return;
+    if (!students || students.length === 0) return;
 
-  const selectedSemester = config.hocKy || "Giữa kỳ I";
+    const selectedSemester = config.hocKy || "Giữa kỳ I";
 
-  const selectedMon = config.mon || "Công nghệ";
-  const isCongNghe = selectedMon === "Công nghệ";
+    // 🔑 GIỮA KỲ → KHÔNG LƯU
+    const isGiuaKy =
+      selectedSemester === "Giữa kỳ I" ||
+      selectedSemester === "Giữa kỳ II";
 
-  // ✅ FIX: mapping đầy đủ (THÊM GKI)
-  let termDoc;
-  switch (selectedSemester) {
-    case "Giữa kỳ I":
-      termDoc = "GKI";
-      break;
-    case "Cuối kỳ I":
-      termDoc = "CKI";
-      break;
-    case "Giữa kỳ II":
-      termDoc = "GKII";
-      break;
-    default:
-      termDoc = "CN";
-      break;
-  }
+    if (isGiuaKy) {
+      setSnackbar({
+        open: true,
+        message: "✅ Lưu thành công!",
+        severity: "success",
+      });
+      return;
+    }
 
-  const classKey = (selectedClass || "").replace(".", "_");
-  const batch = writeBatch(db);
+    /* =====================================================
+      ========== CUỐI KỲ / CẢ NĂM (GIỮ NGUYÊN) ==========
+      ===================================================== */
 
-  students.forEach((s) => {
-    const hsRef = doc(db, "DATA", classKey, "HOCSINH", s.maDinhDanh);
+    const selectedMon = config.mon || "Công nghệ";
+    const isCongNghe = selectedMon === "Công nghệ";
 
-    const ktdkData = {
-      [termDoc]: {
-        dgtx_gv: s.dgtx_mucdat || "",
-        dgtx_mucdat: s.dgtx_mucdat || "",
-        //dgtx_nx: s.nhanXet || "",
+    let termDoc;
+    switch (selectedSemester) {
+      case "Cuối kỳ I":
+        termDoc = "CKI";
+        break;
+      case "Giữa kỳ II":
+        termDoc = "GKII";
+        break;
+      default:
+        termDoc = "CN";
+        break;
+    }
 
-        lyThuyet:
-          s.lyThuyet !== "" &&
-          s.lyThuyet !== null &&
-          s.lyThuyet !== undefined
+    const classKey = (selectedClass || "").replace(".", "_");
+    const batch = writeBatch(db);
+
+    students.forEach((s) => {
+      const hsRef = doc(db, "DATA", classKey, "HOCSINH", s.maDinhDanh);
+
+      const ktdkData = {
+        [termDoc]: {
+          dgtx_gv: s.dgtx_mucdat || "",
+          dgtx_mucdat: s.dgtx_mucdat || "",
+          dgtx_nx: s.nhanXet || "",
+          lyThuyet: s.lyThuyet !== "" && s.lyThuyet !== null && s.lyThuyet !== undefined
             ? Number(s.lyThuyet)
             : null,
 
-        thucHanh: isCongNghe
-          ? s.thucHanh ?? ""
-          : s.thucHanh !== undefined
-          ? Number(s.thucHanh)
-          : null,
-
-        tongCong:
-          s.tongCong !== null && s.tongCong !== undefined
+          thucHanh: isCongNghe
+            ? (s.thucHanh ?? "")
+            : (s.thucHanh !== undefined ? Number(s.thucHanh) : null),
+          tongCong: s.tongCong !== null && s.tongCong !== undefined
             ? Number(s.tongCong)
             : null,
 
-        mucDat: s.mucDat || "",
-        nhanXet: s.nhanXet || "",
-      },
-    };
-
-    batch.set(
-      hsRef,
-      {
-        hoVaTen: s.hoVaTen || "",
-        stt: s.stt || null,
-        [isCongNghe ? "CongNghe" : "TinHoc"]: {
-          ktdk: ktdkData,
+          mucDat: s.mucDat || "",
+          nhanXet: s.nhanXet || "",
         },
-      },
-      { merge: true }
-    );
-  });
+      };
 
-  try {
-    await batch.commit();
+      batch.set(
+        hsRef,
+        {
+          hoVaTen: s.hoVaTen || "",
+          stt: s.stt || null,
+          [isCongNghe ? "CongNghe" : "TinHoc"]: {
+            ktdk: ktdkData,
+          },
+        },
+        { merge: true }
+      );
+    });
 
-    setStudentData((prev) => ({ ...prev, [classKey]: students }));
-    if (typeof setStudentsForClass === "function") {
-      setStudentsForClass(termDoc, classKey, students);
+    try {
+      await batch.commit();
+
+      setStudentData((prev) => ({ ...prev, [classKey]: students }));
+      if (typeof setStudentsForClass === "function") {
+        setStudentsForClass(termDoc, classKey, students);
+      }
+
+      setSnackbar({
+        open: true,
+        message: "✅ Lưu thành công!",
+        severity: "success",
+      });
+    } catch (err) {
+      console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
+      setSnackbar({
+        open: true,
+        message: "❌ Lỗi khi lưu dữ liệu học sinh!",
+        severity: "error",
+      });
     }
-
-    setSnackbar({
-      open: true,
-      message: "✅ Lưu thành công!",
-      severity: "success",
-    });
-  } catch (err) {
-    console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Lỗi khi lưu dữ liệu học sinh!",
-      severity: "error",
-    });
-  }
-};
+  };
 
   // Hàm lưu 1 học sinh
   const handleSaveOne = async (student) => {
@@ -918,121 +924,7 @@ useEffect(() => {
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220, px: 1, whiteSpace: "nowrap" }}>Họ và tên</TableCell>                
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>ĐGTX</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Lí thuyết</TableCell>
-                <TableCell
-                  align="center"
-                  sx={{
-                    backgroundColor: "#1976d2",
-                    color: "white",
-                    width: 80,
-                    px: 0.5,
-                    whiteSpace: "nowrap"
-                  }}
-                >
-                  <Box display="flex" alignItems="center" justifyContent="center" gap={0.3}>
-                    <Typography variant="body2" sx={{ color: "white" }}>
-                      Thực hành
-                    </Typography>
-
-                    {/* 🔥 NÚT FILL ALL */}
-                    <FormControl variant="standard" sx={{ minWidth: 16 }}>
-                      <Select
-                        value={fillThucHanh}
-                        displayEmpty
-                        disableUnderline
-                        onChange={(e) => {
-                          const val = e.target.value;
-
-                          setFillThucHanh(val);
-
-                          setStudents((prev) =>
-                            prev.map((s) => {
-                              let updated = { ...s, thucHanh: val };
-
-                              // ===== TIN HỌC =====
-                              if (selectedSubject === "Tin học") {
-                                const lt = parseFloat(updated.lyThuyet);
-                                const th = parseFloat(val);
-
-                                if (!isNaN(lt) && !isNaN(th)) {
-                                  updated.tongCong = Math.round(lt + th);
-
-                                  if (updated.tongCong >= 9) updated.mucDat = "T";
-                                  else if (updated.tongCong >= 5) updated.mucDat = "H";
-                                  else updated.mucDat = "C";
-
-                                  let loaiLT = "yeu";
-                                  if (lt > 4) loaiLT = "tot";
-                                  else if (lt > 3) loaiLT = "kha";
-                                  else if (lt >= 2.5) loaiLT = "trungbinh";
-
-                                  let loaiTH = "yeu";
-                                  if (th > 4) loaiTH = "tot";
-                                  else if (th > 3) loaiTH = "kha";
-                                  else if (th >= 2.5) loaiTH = "trungbinh";
-
-                                  const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
-                                  const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
-
-                                  const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
-                                  const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
-
-                                  updated.nhanXet = `${nxLT}; ${nxTH}`.trim();
-                                }
-                              }
-
-                              // ===== CÔNG NGHỆ =====
-                              if (selectedSubject === "Công nghệ") {
-                                if (!["T", "H", "C", ""].includes(val)) return s;
-
-                                const lyThuyetNum = parseFloat(updated.lyThuyet);
-
-                                let loaiLyThuyet = "yeu";
-                                if (!isNaN(lyThuyetNum)) {
-                                  if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
-                                  else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
-                                  else loaiLyThuyet = "trungbinh";
-                                }
-
-                                let loaiThucHanh = "yeu";
-                                if (val === "T") loaiThucHanh = "tot";
-                                else if (val === "H") loaiThucHanh = "kha";
-
-                                const arrLT = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
-                                const arrTH = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
-
-                                const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
-                                const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
-
-                                updated.nhanXet = `${nxLT}; ${nxTH}`.trim();
-                              }
-
-                              return updated;
-                            })
-                          );
-
-                          setFillThucHanh(""); // 🔥 reset để chọn lại được
-                        }}
-                        renderValue={() => "▾"}
-                        sx={{
-                          color: "white",
-                          fontSize: 18,
-                          "& .MuiSelect-icon": { display: "none" }
-                        }}
-                      >
-                        {/* 👉 Tuỳ môn */}
-                        {selectedSubject === "Tin học" ? (
-                          [0, 1, 2, 3, 4, 5].map((v) => (
-                            <MenuItem key={v} value={v}>{v}</MenuItem>
-                          ))
-                        ) : (
-                          ["T", "H", "C"].map((v) => (
-                            <MenuItem key={v} value={v}>{v}</MenuItem>
-                          ))
-                        )}
-                      </Select>
-                    </FormControl>
-                  </Box>
-                </TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Thực hành</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Tổng cộng</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Mức đạt</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 500, px: 1, whiteSpace: "nowrap" }}>Nhận xét</TableCell>
