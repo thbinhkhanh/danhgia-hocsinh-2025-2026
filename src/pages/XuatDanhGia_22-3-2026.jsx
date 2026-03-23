@@ -152,12 +152,9 @@ export default function XuatDanhGia() {
             matchCount++;
 
             if (term === "GKI" || term === "GKII") {
-              // Giữa kỳ: xuất mucDat + nhanXet
-              if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.mucDat || "";
-              if (colNX > 0) row.getCell(colNX).value = ktdk.nhanXet || "";
-              // KHÔNG ghi tongCong
+              if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.dgtx_mucdat || "";
+              if (colNX > 0) row.getCell(colNX).value = ktdk.dgtx_nx || "";
             } else {
-              // Cuối kỳ / Cả năm: xuất mucDat + nhanXet + tongCong
               if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.mucDat || "";
               if (colNX > 0) row.getCell(colNX).value = ktdk.nhanXet || "";
               row.getCell(6).value = ktdk.tongCong ?? "";

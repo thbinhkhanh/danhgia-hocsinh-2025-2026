@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+
 import {
   Box,
   Card,
@@ -37,7 +38,13 @@ import EditIcon from "@mui/icons-material/Edit";
 
 import { exportKTDK } from "../utils/exportKTDK";
 import { printKTDK } from "../utils/printKTDK";
-import { nhanXetTinHocCuoiKy, nhanXetCongNgheCuoiKy } from '../utils/nhanXet.js';
+//import { nhanXetTinHocCuoiKy, nhanXetCongNgheCuoiKy } from '../utils/nhanXet.js';
+import {
+  nhanXetTinHocCuoiKy,
+  nhanXetTinHocGiuaKy,
+  nhanXetCongNgheCuoiKy,
+  nhanXetCongNgheGiuaKy
+} from '../utils/nhanXet.js';
 
 export default function NhapdiemKTDK() {
   const { classData, setClassData, studentData, setStudentData } = useContext(StudentContext);
@@ -91,387 +98,382 @@ export default function NhapdiemKTDK() {
     fetchClasses();
   }, [classData, setClassData]);
 
-  const fetchStudentsAndStatus = async (cls) => {
-    const currentClass = cls || selectedClass;
-    if (!currentClass) return;
-
-    try {
-      let termDoc;
-      switch (config.hocKy) {
-        case "Giữa kỳ I": termDoc = "GKI"; break;
-        case "Cuối kỳ I": termDoc = "CKI"; break;
-        case "Giữa kỳ II": termDoc = "GKII"; break;
-        default: termDoc = "CN";
-      }
-
-      const isGiuaKy = termDoc === "GKI" || termDoc === "GKII";
-      const classKey = currentClass.replace(".", "_");
-
-      const hsCollection = collection(db, "DATA", classKey, "HOCSINH");
-      const snap = await getDocs(hsCollection);
-      if (snap.empty) {
-        setStudents([]);
-        return;
-      }
-
-      const studentList = [];
-
-      snap.forEach((docSnap) => {
-        const maHS = docSnap.id;
-        const data = docSnap.data();
-
-        let termData = {};
-        let dgtx_mucdat = "";
-        let dgtx_nx = "";
-        let nhanXet = "";
-        let lyThuyet = null;
-        let thucHanh = null;
-        let tongCong = null;
-        let mucDat = "";
-
-        // ===== CHỌN MÔN =====
-        if (selectedSubject === "Công nghệ") {
-          const congNghe = data.CongNghe || data.dgtx?.CongNghe || {};
-          termData = congNghe.ktdk?.[termDoc] || {};
-          dgtx_mucdat = termData.dgtx_mucdat || "";
-          dgtx_nx = termData.dgtx_nx || "";
-          nhanXet = termData.nhanXet || "";
-          lyThuyet = termData.lyThuyet ?? null;
-          thucHanh = termData.thucHanh ?? null;
-          tongCong =
-            typeof termData.tongCong === "number"
-              ? Math.round(termData.tongCong)
-              : termData.tongCong ?? null;
-
-          mucDat = termData.mucDat || "";
-        } else {
-          const tinHoc = data.TinHoc || data.dgtx?.TinHoc || {};
-          termData = tinHoc.ktdk?.[termDoc] || {};
-          dgtx_mucdat = termData.dgtx_mucdat || "";
-          dgtx_nx = termData.dgtx_nx || "";
-          nhanXet = termData.nhanXet || "";
-          lyThuyet = termData.lyThuyet ?? null;
-          thucHanh = termData.thucHanh ?? null;
-          tongCong = termData.tongCong ?? null;
-          mucDat = termData.mucDat || "";
-        }
-
-        // ===== GIỮ NGUYÊN CẤU TRÚC DGTX =====
-        const tinHocData = data.TinHoc || {};
-        const congNgheData = data.CongNghe || {};
-
-        // ===== ÁP DỤNG LOGIC GIỮA KỲ =====
-        const mucDatFinal = isGiuaKy ? (dgtx_mucdat || "") : (mucDat || "");
-        const nhanXetFinal = isGiuaKy ? (dgtx_nx || "") : (nhanXet || "");
-
-        studentList.push({
-          maDinhDanh: maHS,
-          hoVaTen: data.hoVaTen || "",
-          stt: data.stt || null,
-
-          dgtx_mucdat,
-          mucDat: mucDatFinal,
-          nhanXet: nhanXetFinal,
-
-          lyThuyet,
-          thucHanh,
-          tongCong,
-
-          dgtx: {
-            TinHoc: {
-              ktdk: tinHocData.ktdk || {},
-              tuan: tinHocData.tuan || {},
-            },
-            CongNghe: {
-              ktdk: congNgheData.ktdk || {},
-              tuan: congNgheData.tuan || {},
-            },
-          },
-        });
-      });
-
-      // ===== SẮP XẾP THEO TÊN =====
-      studentList.sort((a, b) => {
-        const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-        const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-        return nameA.localeCompare(nameB, "vi", { sensitivity: "base" });
-      });
-
-      const finalList = studentList.map((s, idx) => ({
-        ...s,
-        stt: idx + 1,
-      }));
-
-      setStudents(finalList);
-      setStudentsForClass(termDoc, classKey, finalList);
-
-    } catch (err) {
-      console.error("❌ Lỗi khi lấy dữ liệu từ DATA:", err);
-      setStudents([]);
-    }
+  const getNhanXetMuc = (subject) => {
+    if (subject === "Công nghệ") return nhanXetCongNgheCuoiKy;
+    return nhanXetTinHocCuoiKy; // mặc định Tin học
   };
 
-
-  const fetchNhanXet = (cls, mon) => {
-  const subject = mon || selectedSubject;
-  if (!students || students.length === 0) return;
-
-  // 🔑 Xác định GIỮA KỲ
-  const isGiuaKy =
-    config.hocKy === "Giữa kỳ I" || config.hocKy === "Giữa kỳ II";
-
-  /* =====================================================
-     ========== GIỮA KỲ: KHÔNG SINH NHẬN XÉT ==========
-     ===================================================== */
-  if (isGiuaKy) {
-    const updatedStudents = students.map((s) => ({
-      ...s,
-      // giữ nguyên nhận xét đã lấy từ dgtx_nx
-      nhanXet: s.nhanXet || "",
-      // mức đạt đã được set = dgtx_mucdat khi fetch
-      mucDat: s.mucDat || s.dgtx_mucdat || "",
-    }));
-
-    setStudents(updatedStudents);
-    return;
+  // ------------------------
+// 🔹 HÀM SINH NHẬN XÉT TỰ ĐỘNG
+// ------------------------
+const generateNhanXet1 = (student, subject, tongCong = null, mucDat = null) => {
+  // Xác định mức đạt nếu chưa có
+  let computedMucDat = mucDat;
+  if (!computedMucDat && subject === "Tin học" && tongCong != null) {
+    computedMucDat = tongCong >= 9 ? "T" : tongCong >= 5 ? "H" : "C";
+  } else if (!computedMucDat && subject === "Công nghệ" && student.thucHanh) {
+    const lt = parseFloat(student.lyThuyet);
+    const ltLoai = !isNaN(lt) ? (lt >= 9 ? "T" : lt >= 5 ? "H" : "C") : "C";
+    computedMucDat = ltLoai; // ưu tiên LT
   }
 
-  /* =====================================================
-     ========== CUỐI KỲ / CẢ NĂM (GIỮ NGUYÊN) ==========
-     ===================================================== */
+  if (!computedMucDat) return student.nhanXet || "";
 
-  const updatedStudents = students.map((s) => {
-    /* ===================== CÔNG NGHỆ ===================== */
-    if (subject === "Công nghệ") {
-      const lyThuyetNum = parseFloat(s.lyThuyet);
-      let loaiLyThuyet = "yeu";
-      if (!isNaN(lyThuyetNum)) {
-        if (lyThuyetNum >= 9) {
-          loaiLyThuyet = "tot";
-        } else if (lyThuyetNum >= 7) {
-          loaiLyThuyet = "kha";
-        } else if (lyThuyetNum >= 5) {
-          loaiLyThuyet = "trungbinh";
-        } else {
-          loaiLyThuyet = "yeu";
+  // Chuyển mức đạt sang loại nhận xét
+  const getLoaiMucDat = (xepLoai) =>
+    xepLoai === "T"
+      ? "tot"
+      : xepLoai === "H"
+      ? "kha"
+      : xepLoai === "C"
+      ? "trungbinh"
+      : "yeu";
+
+  const loai = getLoaiMucDat(computedMucDat);
+
+  // Chọn bộ nhận xét theo môn và theo kỳ
+  let source;
+  const isCuoiKy = tongCong > 0;
+  if (subject === "Công nghệ") {
+    source = isCuoiKy ? nhanXetCongNgheCuoiKy : nhanXetCongNgheGiuaKy;
+  } else {
+    source = isCuoiKy ? nhanXetTinHocCuoiKy : nhanXetTinHocGiuaKy;
+  }
+
+  const pickRandom = (arr) =>
+    arr.length ? arr[Math.floor(Math.random() * arr.length)] : "";
+
+  if (isCuoiKy) {
+    // Cuối kỳ: có lyThuyet và thucHanh
+    const arrLT = source[loai]?.lyThuyet || [];
+    const arrTH = source[loai]?.thucHanh || [];
+    let nxLT = pickRandom(arrLT);
+    let nxTH = pickRandom(arrTH);
+
+    // Luôn đảm bảo đủ 2 vế
+    if (!nxLT && nxTH) nxLT = nxTH;
+    if (!nxTH && nxLT) nxTH = nxLT;
+
+    return nxLT && nxTH ? `${nxLT}; ${nxTH}` : nxLT || nxTH || "";
+  } else {
+    // Giữa kỳ: chỉ cần một câu
+    const arr = source[loai] || [];
+    return pickRandom(arr);
+  }
+};
+
+const generateNhanXet = (student, subject, tongCong = null, mucDat = null) => {
+  // Xác định mức đạt nếu chưa có
+  let computedMucDat = mucDat;
+  if (!computedMucDat && subject === "Tin học" && tongCong != null) {
+    computedMucDat = tongCong >= 9 ? "T" : tongCong >= 5 ? "H" : "C";
+  } else if (!computedMucDat && subject === "Công nghệ" && student.thucHanh) {
+    const lt = parseFloat(student.lyThuyet);
+    const ltLoai = !isNaN(lt) ? (lt >= 9 ? "T" : lt >= 5 ? "H" : "C") : "C";
+    computedMucDat = ltLoai; // ưu tiên LT
+  }
+
+  if (!computedMucDat) return student.nhanXet || "";
+
+  // Chuyển mức đạt sang loại nhận xét
+  const getLoaiMucDat = (xepLoai) =>
+    xepLoai === "T"
+      ? "tot"
+      : xepLoai === "H"
+      ? "kha"
+      : xepLoai === "C"
+      ? "trungbinh"
+      : "yeu";
+
+  const loai = getLoaiMucDat(computedMucDat);
+
+  // Chọn bộ nhận xét theo môn và theo kỳ
+  let source;
+  const isCuoiKy = tongCong > 0;
+  if (subject === "Công nghệ") {
+    source = isCuoiKy ? nhanXetCongNgheCuoiKy : nhanXetCongNgheGiuaKy;
+  } else {
+    source = isCuoiKy ? nhanXetTinHocCuoiKy : nhanXetTinHocGiuaKy;
+  }
+
+  const pickRandom = (arr) =>
+    arr.length ? arr[Math.floor(Math.random() * arr.length)] : "";
+
+  if (subject === "Công nghệ") {
+    if (isCuoiKy) {
+      // Cuối kỳ: vế 1 theo LT, vế 2 theo TH
+      const lt = parseFloat(student.lyThuyet);
+      const th = student.thucHanh;
+
+      const loaiLT =
+        !isNaN(lt) ? (lt >= 9 ? "tot" : lt >= 7 ? "kha" : lt >= 5 ? "trungbinh" : "yeu") : loai;
+      const loaiTH =
+        th === "T" ? "tot" : th === "H" ? "kha" : th === "C" ? "yeu" : loai;
+
+      const arrLT = source[loaiLT]?.lyThuyet || [];
+      const arrTH = source[loaiTH]?.thucHanh || [];
+
+      let nxLT = pickRandom(arrLT);
+      let nxTH = pickRandom(arrTH);
+
+      if (!nxLT && nxTH) nxLT = nxTH;
+      if (!nxTH && nxLT) nxTH = nxLT;
+
+      return nxLT && nxTH ? `${nxLT}; ${nxTH}` : nxLT || nxTH || "";
+    } else {
+      // Giữa kỳ: chỉ cần một câu theo mức đạt
+      const arr = source[loai] || [];
+      return pickRandom(arr);
+    }
+  }
+
+  if (isCuoiKy) {
+    // Tin học cuối kỳ: có lyThuyet và thucHanh
+    const arrLT = source[loai]?.lyThuyet || [];
+    const arrTH = source[loai]?.thucHanh || [];
+    let nxLT = pickRandom(arrLT);
+    let nxTH = pickRandom(arrTH);
+
+    if (!nxLT && nxTH) nxLT = nxTH;
+    if (!nxTH && nxLT) nxTH = nxLT;
+
+    return nxLT && nxTH ? `${nxLT}; ${nxTH}` : nxLT || nxTH || "";
+  } else {
+    // Tin học giữa kỳ: chỉ cần một câu
+    const arr = source[loai] || [];
+    return pickRandom(arr);
+  }
+};
+
+const fetchStudentsAndStatus = async (cls) => {
+  const currentClass = cls || selectedClass;
+  if (!currentClass) return;
+
+  try {
+    let termDoc;
+    switch (config.hocKy) {
+      case "Giữa kỳ I": termDoc = "GKI"; break;
+      case "Cuối kỳ I": termDoc = "CKI"; break;
+      case "Giữa kỳ II": termDoc = "GKII"; break;
+      default: termDoc = "CN";
+    }
+
+    const isGiuaKy = termDoc === "GKI" || termDoc === "GKII";
+    const classKey = currentClass.replace(".", "_");
+
+    const hsCollection = collection(db, "DATA", classKey, "HOCSINH");
+    const snap = await getDocs(hsCollection);
+    if (snap.empty) {
+      setStudents([]);
+      return;
+    }
+
+    const studentList = [];
+
+    snap.forEach((docSnap) => {
+      const maHS = docSnap.id;
+      const data = docSnap.data();
+
+      let termData = {};
+      let dgtx_mucdat = "";
+      let dgtx_nx = "";
+      let nhanXet = "";
+      let lyThuyet = null;
+      let thucHanh = null;
+      let tongCong = null;
+      let mucDat = "";
+
+      if (selectedSubject === "Công nghệ") {
+        const congNghe = data.CongNghe || data.dgtx?.CongNghe || {};
+        termData = congNghe.ktdk?.[termDoc] || {};
+        dgtx_mucdat = termData.dgtx_mucdat || "";
+        dgtx_nx = termData.dgtx_nx || "";
+        nhanXet = termData.nhanXet || "";
+        lyThuyet = termData.lyThuyet ?? null;
+        thucHanh = termData.thucHanh ?? null;
+        tongCong = termData.tongCong ?? null;
+        mucDat = termData.mucDat || "";
+      } else {
+        const tinHoc = data.TinHoc || data.dgtx?.TinHoc || {};
+        termData = tinHoc.ktdk?.[termDoc] || {};
+        dgtx_mucdat = termData.dgtx_mucdat || "";
+        dgtx_nx = termData.dgtx_nx || "";
+        nhanXet = termData.nhanXet || "";
+        lyThuyet = termData.lyThuyet != null ? Number(termData.lyThuyet) : null;
+        thucHanh = termData.thucHanh != null ? Number(termData.thucHanh) : null;
+
+        // ⭐ Tính tổng luôn nếu LT + TH hợp lệ
+        tongCong =
+          lyThuyet != null && !isNaN(lyThuyet) && thucHanh != null && !isNaN(thucHanh)
+            ? Math.round(lyThuyet + thucHanh)
+            : null;
+
+        mucDat = isGiuaKy
+          ? (dgtx_mucdat || "")
+          : tongCong != null
+          ? tongCong >= 9
+            ? "T"
+            : tongCong >= 5
+            ? "H"
+            : "C"
+          : "";
+      }
+
+      // 🔹 Sinh nhận xét tự động nếu nhanXet rỗng
+      if (!nhanXet || nhanXet.trim() === "") {
+        nhanXet = generateNhanXet(
+          { lyThuyet, thucHanh, tongCong, mucDat },
+          selectedSubject,
+          tongCong,
+          mucDat
+        );
+      }
+
+      studentList.push({
+        maDinhDanh: maHS,
+        hoVaTen: data.hoVaTen || "",
+        stt: data.stt || null,
+        dgtx_mucdat,
+        mucDat,
+        nhanXet,
+        nhanXet_goc: nhanXet || "",
+        mucDat_goc: mucDat || "",
+        lyThuyet,
+        thucHanh,
+        tongCong,
+        dgtx: {
+          TinHoc: { ktdk: data.TinHoc?.ktdk || {}, tuan: data.TinHoc?.tuan || {} },
+          CongNghe: { ktdk: data.CongNghe?.ktdk || {}, tuan: data.CongNghe?.tuan || {} },
+        },
+      });
+    });
+
+    // Sắp xếp theo tên
+    studentList.sort((a, b) => {
+      const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+      return nameA.localeCompare(nameB, "vi", { sensitivity: "base" });
+    });
+
+    const finalList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
+
+    setStudents(finalList);
+    setStudentsForClass(termDoc, classKey, finalList);
+  } catch (err) {
+    console.error("❌ Lỗi khi lấy dữ liệu từ DATA:", err);
+    setStudents([]);
+  }
+};
+
+  useEffect(() => {
+    fetchStudentsAndStatus();
+  }, [selectedClass, config.mon, config.hocKy]);
+  
+  // Hàm xử lý thay đổi ô bảng
+  const handleCellChange = (maDinhDanh, field, value) => {
+  setStudents((prev) =>
+    prev.map((s) => {
+      if (s.maDinhDanh !== maDinhDanh) return s;
+
+      const updated = { ...s, [field]: value };
+
+      // =========================
+      // 🧠 1. VALIDATE INPUT
+      // =========================
+      if (selectedSubject === "Tin học") {
+        if ((field === "lyThuyet" || field === "thucHanh") && value !== "") {
+          const num = parseFloat(value);
+          if (isNaN(num) || num < 0 || num > 5) return s;
+          updated[field] = num;
         }
       }
 
-      const thucHanhVal = s.thucHanh;
-      let loaiThucHanh = "yeu";
-      if (thucHanhVal === "T") loaiThucHanh = "tot";
-      else if (thucHanhVal === "H") loaiThucHanh = "kha";
-      else if (thucHanhVal === "C") loaiThucHanh = "yeu";
-
-      const arrLT = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
-      const arrTH = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
-
-      const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
-      const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
-
-      return { ...s, nhanXet: `${nxLT}; ${nxTH}`.trim() };
-    }
-
-    /* ===================== TIN HỌC ===================== */
-
-    // ⭐ LÝ THUYẾT
-    const ltNum = parseFloat(s.lyThuyet);
-    let loaiLT = "yeu";
-    if (!isNaN(ltNum)) {
-      if (ltNum > 4) loaiLT = "tot";
-      else if (ltNum > 3) loaiLT = "kha";
-      else if (ltNum >= 2.5) loaiLT = "trungbinh";
-    }
-
-    // ⭐ THỰC HÀNH
-    const thNum = parseFloat(s.thucHanh);
-    let loaiTH = "yeu";
-    if (!isNaN(thNum)) {
-      if (thNum > 4) loaiTH = "tot";
-      else if (thNum > 3) loaiTH = "kha";
-      else if (thNum >= 2.5) loaiTH = "trungbinh";
-    }
-
-    const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
-    const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
-
-    const nxLT = arrLT[Math.floor(Math.random() * arrLT.length)] || "";
-    const nxTH = arrTH[Math.floor(Math.random() * arrTH.length)] || "";
-
-    return { ...s, nhanXet: `${nxLT}; ${nxTH}.`.trim() };
-  });
-
-  setStudents(updatedStudents);
-};
-
-
-useEffect(() => {
-    fetchStudentsAndStatus();
-  }, [selectedClass, config.mon, config.hocKy]);
-
-  // Hàm lấy nhận xét tự động theo xếp loại
-  const getNhanXetTuDong = (xepLoai) => {
-    if (!xepLoai) return "";
-
-    let loaiNhanXet;
-    if (xepLoai === "T") loaiNhanXet = "tot";
-    else if (xepLoai === "H") loaiNhanXet = "kha";
-    else if (xepLoai === "C") loaiNhanXet = "trungbinh";
-    else loaiNhanXet = "yeu";
-
-    // Chọn bộ nhận xét theo môn
-    const arrNhanXet =
-      selectedSubject === "Công nghệ"
-        ? nhanXetCongNgheCuoiKy[loaiNhanXet].lyThuyet.concat(nhanXetCongNgheCuoiKy[loaiNhanXet].thucHanh)
-        : nhanXetTinHocCuoiKy[loaiNhanXet];
-
-    return arrNhanXet[Math.floor(Math.random() * arrNhanXet.length)];
-  };
-
-  // Hàm xử lý thay đổi ô bảng
-  const handleCellChange = (maDinhDanh, field, value) => {
-    // ✅ Kiểm tra dữ liệu nhập vào Tin học
-    if (selectedSubject === "Tin học" && (field === "lyThuyet" || field === "thucHanh") && value !== "") {
-      const num = parseFloat(value);
-      if (isNaN(num) || num < 0 || num > 5) return; // Chỉ nhận 0–5
-    }
-
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.maDinhDanh !== maDinhDanh) return s;
-
-        const updated = { ...s, [field]: value };
-
-        if (selectedSubject === "Tin học") {
-          // ✅ Nếu chỉnh cột Lí thuyết / Thực hành / GV đánh giá → tính lại
-          if (["lyThuyet", "thucHanh", "dgtx_gv"].includes(field)) {
-            const lt = parseFloat(updated.lyThuyet);
-            const th = parseFloat(updated.thucHanh);
-
-            // Nếu cả hai đều có giá trị hợp lệ
-            if (!isNaN(lt) && !isNaN(th)) {
-              updated.tongCong = Math.round(lt + th);
-
-              const gv = updated.dgtx_gv;
-              // ⚙️ Quy tắc đánh giá Mức đạt
-              if (!gv) {
-                if (updated.tongCong >= 9) updated.mucDat = "T";
-                else if (updated.tongCong >= 5) updated.mucDat = "H";
-                else updated.mucDat = "C";
-              } else {
-                updated.mucDat = gv;
-              }
-
-              // ✅ Cập nhật nhận xét tự động dựa trên LT/TH
-              let loaiLT = "yeu";
-              if (lt > 4) loaiLT = "tot";
-              else if (lt > 3) loaiLT = "kha";
-              else if (lt >= 2.5) loaiLT = "trungbinh";
-
-              let loaiTH = "yeu";
-              if (th > 4) loaiTH = "tot";
-              else if (th > 3) loaiTH = "kha";
-              else if (th >= 2.5) loaiTH = "trungbinh";
-
-              const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
-              const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
-
-              const nxLT = arrLT.length ? arrLT[Math.floor(Math.random() * arrLT.length)] : "";
-              const nxTH = arrTH.length ? arrTH[Math.floor(Math.random() * arrTH.length)] : "";
-
-              updated.nhanXet = `${nxLT}; ${nxTH}`.trim();
-            } else {
-              // Nếu thiếu một trong hai → xóa tổng, mức đạt, nhận xét
-              updated.tongCong = null;
-              updated.mucDat = "";
-              updated.nhanXet = "";
-            }
+      if (selectedSubject === "Công nghệ") {
+        if (field === "lyThuyet") {
+          if (value === "" || isNaN(parseFloat(value))) {
+            updated.tongCong = null;
+          } else {
+            const num = parseFloat(value);
+            if (num < 0 || num > 10) return s;
+            updated.tongCong = Math.round(num);
           }
+        }
+        if (field === "thucHanh" && !["T", "H", "C", ""].includes(value)) return s;
+      }
 
-          // ✅ Nếu chỉnh trực tiếp Mức đạt → tự động cập nhật nhận xét
-          if (field === "mucDat") {
-            if (!updated.mucDat) {
-              updated.nhanXet = "";
-            } else {
-              updated.nhanXet = getNhanXetTuDong(updated.mucDat);
-            }
-          }
-        } else if (selectedSubject === "Công nghệ") {
-            // LY THUYET
-            if (field === "lyThuyet") {
-              if (value === "" || isNaN(parseFloat(value))) {
-                updated.tongCong = null;
-                updated.mucDat = "";
-              } else {
-                const num = parseFloat(value);
-                if (num < 0 || num > 10) return s;
+      // =========================
+      // 💬 1b. NHẬN XÉT THỦ CÔNG
+      // =========================
+      if (field === "nhanXet") {
+        // Cho phép nhập tự do, không sinh lại tự động
+        updated.nhanXet = value;
+        return updated;
+      }
 
-                // ✅ LÀM TRÒN .5 LÊN
-                const tongCongLamTron = Math.round(num);
-                updated.tongCong = tongCongLamTron;
+      // =========================
+      // 🧮 2. TÍNH TỔNG
+      // =========================
+      if (selectedSubject === "Tin học") {
+        const lt = updated.lyThuyet != null ? parseFloat(updated.lyThuyet) : null;
+        const th = updated.thucHanh != null ? parseFloat(updated.thucHanh) : null;
 
-                updated.mucDat =
-                  tongCongLamTron >= 9 ? "T"
-                  : tongCongLamTron >= 5 ? "H"
-                  : "C";
+        updated.tongCong =
+          lt != null && th != null && !isNaN(lt) && !isNaN(th)
+            ? Math.round(lt + th)
+            : null;
+      }
 
-                /*if (
-                  !s.mucDat ||
-                  s.mucDat ===
-                    (s.tongCong != null
-                      ? s.tongCong >= 9
-                        ? "T"
-                        : s.tongCong >= 5
-                        ? "H"
-                        : "C"
-                      : "")
-                ) {
-                  updated.mucDat = mucDatTuDong;
-                }*/
-              }
-            }
+      // =========================
+      // 🎯 3. XÉT THEO TỔNG
+      // =========================
+      const isNoScore =
+        updated.tongCong === null ||
+        updated.tongCong === undefined ||
+        isNaN(updated.tongCong);
 
-            // THUC HANH
-            if (field === "thucHanh") {
-              if (!["T", "H", "C", ""].includes(value)) return s;
-            }
+      // =========================
+      // 🔄 4. RESET VỀ DB
+      // =========================
+      if (isNoScore && field !== "mucDat") {
+        updated.mucDat =
+          s.dgtx_mucdat && s.dgtx_mucdat !== ""
+            ? s.dgtx_mucdat
+            : s.mucDat_goc || "";
 
-            // GV nhập thủ công Mức đạt (không thay đổi gì)
-
-            // ⭐ Cập nhật nhận xét: tách riêng lý thuyết và thực hành
-            if (!updated.mucDat) {
-              // Nếu chưa có mức đạt → nhận xét rỗng
-              updated.nhanXet = "";
-            } else {
-              const lyThuyetNum = parseFloat(updated.lyThuyet);
-              let loaiLyThuyet = "yeu";
-              if (!isNaN(lyThuyetNum)) {
-                if (lyThuyetNum >= 9) loaiLyThuyet = "tot";
-                else if (lyThuyetNum >= 5) loaiLyThuyet = "kha";
-                else loaiLyThuyet = "trungbinh";
-              }
-
-              const thucHanhVal = updated.thucHanh;
-              let loaiThucHanh = "yeu";
-              if (thucHanhVal === "T") loaiThucHanh = "tot";
-              else if (thucHanhVal === "H") loaiThucHanh = "kha";
-              else if (thucHanhVal === "C") loaiThucHanh = "yeu";
-
-              const arrLyThuyet = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
-              const arrThucHanh = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
-
-              const nhanXetLyThuyet = arrLyThuyet.length ? arrLyThuyet[Math.floor(Math.random() * arrLyThuyet.length)] : "";
-              const nhanXetThucHanh = arrThucHanh.length ? arrThucHanh[Math.floor(Math.random() * arrThucHanh.length)] : "";
-
-              updated.nhanXet = `${nhanXetLyThuyet}; ${nhanXetThucHanh}`.trim();
-            }
-          }
-
+        updated.nhanXet =
+          s.dgtx_nx && s.dgtx_nx.trim() !== ""
+            ? s.dgtx_nx
+            : s.nhanXet_goc || "";
 
         return updated;
-      })
-    );
-  };
+      }
+
+      // =========================
+      // 🌟 5. SINH MỨC ĐẠT (nếu không chỉnh thủ công)
+      // =========================
+      if (field !== "mucDat") {
+        updated.mucDat =
+          updated.tongCong >= 9
+            ? "T"
+            : updated.tongCong >= 5
+            ? "H"
+            : "C";
+      }
+
+      // =========================
+      // 💬 6. SINH NHẬN XÉT TỰ ĐỘNG
+      // =========================
+      updated.nhanXet = generateNhanXet(
+        updated,
+        selectedSubject,
+        updated.tongCong,
+        updated.mucDat
+      );
+
+      return updated;
+    })
+  );
+};
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -521,6 +523,7 @@ useEffect(() => {
         dgtx_gv: s.dgtx_mucdat || "",
         dgtx_mucdat: s.dgtx_mucdat || "",
         //dgtx_nx: s.nhanXet || "",
+        dgtx_nx: "",
 
         lyThuyet:
           s.lyThuyet !== "" &&
@@ -542,6 +545,7 @@ useEffect(() => {
 
         mucDat: s.mucDat || "",
         nhanXet: s.nhanXet || "",
+        //nhanXet: "",
       },
     };
 
@@ -744,7 +748,6 @@ useEffect(() => {
     handleCloseLTDialog();
   };
 
-
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
       <Card
@@ -804,7 +807,21 @@ useEffect(() => {
 
           <Tooltip title="Làm mới nhận xét" arrow>
             <IconButton
-              onClick={fetchNhanXet}
+              onClick={() => {
+                setStudents((prev) =>
+                  prev.map((s) => {
+                    return {
+                      ...s,
+                      nhanXet: generateNhanXet(
+                        s,
+                        selectedSubject,
+                        s.tongCong,
+                        s.mucDat
+                      ),
+                    };
+                  })
+                );
+              }}
               sx={{
                 color: "primary.main",
                 bgcolor: "white",
@@ -1054,63 +1071,86 @@ useEffect(() => {
 
                   {/* 🟨 Cột Lí thuyết */}
                   <TableCell align="center" sx={{ px: 1 }}>
-                    {selectedSubject === "Tin học" ? (
-                      <Box
-                        sx={{
-                          position: "relative",
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
+  {selectedSubject === "Tin học" ? (
+    <Box
+      sx={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
 
-                          "& .edit-icon": {
-                            position: "absolute",
-                            right: 4,
-                            opacity: 0,
-                            transition: "opacity 0.2s ease",
-                          },
+        "& .edit-icon": {
+          position: "absolute",
+          right: 4,
+          opacity: 0,
+          transition: "opacity 0.2s ease",
+        },
 
-                          "&:hover .edit-icon": {
-                            opacity: 1,
-                          },
-                        }}
-                      >
-                        {/* 👉 Điểm luôn căn giữa */}
-                        <Typography fontSize={14} textAlign="center">
-                          {student.lyThuyet ?? "-"}
-                        </Typography>
+        "&:hover .edit-icon": {
+          opacity: 1,
+        },
+      }}
+    >
+      {/* ✅ INPUT trực tiếp */}
+      <TextField
+        variant="standard"
+        value={student.lyThuyet ?? ""}
+        onChange={(e) =>
+          handleCellChange(
+            student.maDinhDanh,
+            "lyThuyet",
+            e.target.value
+          )
+        }
+        fullWidth
+        inputProps={{
+          style: {
+            textAlign: "center",
+            paddingRight: 24, // 👈 chừa chỗ cho icon
+          },
+        }}
+        id={`lyThuyet-${idx}`}
+        onKeyDown={(e) =>
+          handleKeyNavigation(e, idx, "lyThuyet")
+        }
+        InputProps={{ disableUnderline: true }}
+      />
 
-                        {/* 👉 Icon không chiếm layout */}
-                        <IconButton
-                          size="small"
-                          className="edit-icon"
-                          onClick={() => handleOpenLTDialog(student)}
-                          sx={{ p: 0.5 }}
-                        >
-                          <EditIcon fontSize="inherit" />
-                        </IconButton>
-                      </Box>
-                    ) : (
-                      <TextField
-                        variant="standard"
-                        value={student.lyThuyet || ""}
-                        onChange={(e) =>
-                          handleCellChange(student.maDinhDanh, "lyThuyet", e.target.value)
-                        }
-                        inputProps={{
-                          style: {
-                            textAlign: "center",
-                            paddingLeft: 2,
-                            paddingRight: 2,
-                          },
-                        }}
-                        id={`lyThuyet-${idx}`}
-                        onKeyDown={(e) =>
-                          handleKeyNavigation(e, idx, "lyThuyet")
-                        }
-                        InputProps={{ disableUnderline: true }}
-                      />
-                    )}
-                  </TableCell>
+      {/* ✏️ Icon hover */}
+      <IconButton
+        size="small"
+        className="edit-icon"
+        onClick={() => handleOpenLTDialog(student)}
+        sx={{ p: 0.5 }}
+      >
+        <EditIcon fontSize="inherit" />
+      </IconButton>
+    </Box>
+  ) : (
+    <TextField
+      variant="standard"
+      value={student.lyThuyet || ""}
+      onChange={(e) =>
+        handleCellChange(
+          student.maDinhDanh,
+          "lyThuyet",
+          e.target.value
+        )
+      }
+      inputProps={{
+        style: {
+          textAlign: "center",
+          paddingLeft: 2,
+          paddingRight: 2,
+        },
+      }}
+      id={`lyThuyet-${idx}`}
+      onKeyDown={(e) =>
+        handleKeyNavigation(e, idx, "lyThuyet")
+      }
+      InputProps={{ disableUnderline: true }}
+    />
+  )}
+</TableCell>
 
 
 

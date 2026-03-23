@@ -69,9 +69,9 @@ export default function TongHopDanhGia() {
   const [selectedSubject, setSelectedSubject] = useState(""); // không mặc định
 
   // Chọn ngẫu nhiên một phần tử trong mảng
-  function randomItem(arr) {
+  /*function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
-  }
+  }*/
 
   // Tính điểm trung bình từ tuần đến tuần, bỏ qua ô trống
   // -> Trả thêm tỉ lệ số T (để xét ưu tiên xếp loại tốt)
@@ -141,15 +141,15 @@ export default function TongHopDanhGia() {
     return { xepLoai };
   }
 
-  function getNhanXetMuc(subject) {
+  /*function getNhanXetMuc(subject) {
     // 🔒 KHÓA CỨNG: luôn lấy nhận xét GIỮA KỲ
     if (subject === "Công nghệ") return nhanXetCongNgheGiuaKy;
     return nhanXetTinHocGiuaKy; // mặc định Tin học
-  }
+  }*/
 
 
   // 🔹 Sinh nhận xét tự động dựa vào xếp loại rút gọn
-  function getNhanXetTuDong(xepLoai) {
+  /*function getNhanXetTuDong(xepLoai) {
     if (!xepLoai) return "";
 
     const nhanXetMuc = getNhanXetMuc(selectedSubject);
@@ -160,7 +160,7 @@ export default function TongHopDanhGia() {
     if (xepLoai === "C") return randomItem(nhanXetMuc.yeu);
 
     return "";
-  }
+  }*/
 
 const [snackbar, setSnackbar] = useState({
   open: false,
@@ -206,9 +206,9 @@ const handleSaveAll = async () => {
     }
 
     // ✅ Nhận xét (ĐÚNG FIELD)
-    if (s.nhanXet !== undefined) {
+    /*if (s.nhanXet !== undefined) {
       termUpdate.dgtx_nx = s.nhanXet;
-    }
+    }*/
 
     // ⛔ Không có gì thì không ghi
     if (Object.keys(termUpdate).length === 0) return;
@@ -411,7 +411,7 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
         // ✅ CỘT CHUẨN
         dgtx_gv: termData.dgtx_gv || "",
         dgtx_mucdat: termData.dgtx_mucdat || "",
-        nhanXet: termData.dgtx_nx?.trim() || "",
+        //nhanXet: termData.dgtx_nx?.trim() || "",
       });
     });
 
@@ -441,18 +441,18 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
         : xepLoai || "";
 
       // ✅ CHỈ SINH NHẬN XÉT NẾU CHƯA CÓ (GKI chưa có dữ liệu)
-      const nhanXetAuto =
+      /*const nhanXetAuto =
         !s.nhanXet && mucDat
           ? getNhanXetTuDong(mucDat)
           : s.nhanXet;
-
+      */
       return {
         ...s,
         ...weekCols,
         dgtx: mucDat,
         //xepLoai: mucDat,
         xepLoai,          // ✅ giữ đúng kết quả tính
-        nhanXet: nhanXetAuto,
+        //nhanXet: nhanXetAuto,
       };
     });
 
@@ -571,9 +571,11 @@ return (
       sx={{
         p: 4,
         borderRadius: 3,
+        width: showWeeks ? "100%" : 600, // 👈 quan trọng
         maxWidth: 1500,
         mx: "auto",
         position: "relative",
+        transition: "all 0.3s ease",
       }}
     >
       {/* 🔹 Nút tải Excel */}
@@ -696,8 +698,8 @@ return (
           stickyHeader
           size="small"
           sx={{
-            tableLayout: "fixed",
-            minWidth: 800,
+            tableLayout: "auto",
+            minWidth: 600,
             borderCollapse: "collapse",
             "& td, & th": { borderRight: "1px solid #e0e0e0", borderBottom: "1px solid #e0e0e0" },
             "& th:last-child, & td:last-child": { borderRight: "none" },
@@ -707,7 +709,7 @@ return (
             {/* HÀNG HEADER 1 — merge tuần */}
             <TableRow>
               <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>STT</TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 200 }}>Họ và tên</TableCell>
+              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220 }}>Họ và tên</TableCell>
 
               {showWeeks &&
                 (() => {
@@ -792,9 +794,10 @@ return (
                               ...s,
                               dgtx_gv: val,                  // ✅ fill GV
                               dgtx: chung,                  // ✅ cập nhật Mức đạt
-                              nhanXet: chung
+                              /*nhanXet: chung
                                 ? getNhanXetTuDong(chung)   // ✅ cập nhật nhận xét
                                 : "",
+                              */
                             };
                           })
                         );
@@ -832,7 +835,7 @@ return (
                 </Box>
               </TableCell>
               <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Mức đạt</TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 300 }}>Nhận xét</TableCell>
+              {/*<TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 300 }}>Nhận xét</TableCell>*/}
             </TableRow>
 
             {/* HÀNG HEADER 2 — HS, GV */}
@@ -862,7 +865,17 @@ return (
               return (
                 <TableRow key={student.maDinhDanh} hover>
                   <TableCell align="center">{student.stt}</TableCell>
-                  <TableCell align="left">{student.hoVaTen}</TableCell>
+                  <TableCell
+                    align="left"
+                    sx={{
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: 220, // phải có để ellipsis hoạt động
+                    }}
+                  >
+                    {student.hoVaTen}
+                  </TableCell>
 
                   {showWeeks &&
                     Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
@@ -938,10 +951,10 @@ return (
 
                               updated.dgtx = chung;
 
-                              updated.nhanXet = chung
+                              /*updated.nhanXet = chung
                                 ? getNhanXetTuDong(chung)
                                 : "";
-
+                              */
                               return updated;
                             })
                           );
@@ -1027,9 +1040,10 @@ return (
                               updated.dgtx = chung;
 
                               // 🔥 cập nhật nhận xét
-                              updated.nhanXet = chung
+                              /*updated.nhanXet = chung
                                 ? getNhanXetTuDong(chung)
                                 : "";
+                              */
 
                               return updated;
                             })
@@ -1070,7 +1084,7 @@ return (
                     {student.dgtx || ""}
                   </TableCell>
 
-                  <TableCell align="left" sx={{ px: 1 }}>
+                  {/*<TableCell align="left" sx={{ px: 1 }}>
                     <TextField
                       variant="standard"
                       multiline
@@ -1091,7 +1105,7 @@ return (
                         disableUnderline: true,
                       }}
                     />
-                  </TableCell>
+                  </TableCell>*/}
                 </TableRow>
               );
             })}
