@@ -902,11 +902,8 @@ useEffect(() => {
                     onChange={(e) => setSemester(e.target.value)}
                     label="Học kỳ"
                   >
-                    {/* Thêm các học kỳ mới */}
-                    <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
-                    <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
-                    <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-                    <MenuItem value="Cả năm">Cả năm</MenuItem>
+                    <MenuItem value="Cuối kỳ I">Học kỳ I</MenuItem>
+                    <MenuItem value="Cả năm">Học kỳ II</MenuItem>
                   </Select>
                 </FormControl>
 

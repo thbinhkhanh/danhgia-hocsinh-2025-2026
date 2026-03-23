@@ -237,6 +237,7 @@ export const autoSubmitQuiz = async ({
 
       await updateDoc(hsRef, {
         [`${subjectKey}.ktdk.${termDoc}.lyThuyet`]: total,
+        //[`${subjectKey}.ktdk.${termDoc}.tongCong`]: total,
         [`${subjectKey}.ktdk.${termDoc}.lyThuyetPhanTram`]: phanTram,
         [`${subjectKey}.ktdk.${termDoc}.ngayKiemTra`]: ngayKiemTra,          // thêm ngày
         [`${subjectKey}.ktdk.${termDoc}.thoiGianLamBai`]: durationStr,       // thêm thời gian làm bài

@@ -98,70 +98,14 @@ export default function NhapdiemKTDK() {
     fetchClasses();
   }, [classData, setClassData]);
 
-  const getNhanXetMuc = (subject) => {
+  /*const getNhanXetMuc = (subject) => {
     if (subject === "Công nghệ") return nhanXetCongNgheCuoiKy;
     return nhanXetTinHocCuoiKy; // mặc định Tin học
-  };
+  };*/
 
   // ------------------------
 // 🔹 HÀM SINH NHẬN XÉT TỰ ĐỘNG
 // ------------------------
-const generateNhanXet1 = (student, subject, tongCong = null, mucDat = null) => {
-  // Xác định mức đạt nếu chưa có
-  let computedMucDat = mucDat;
-  if (!computedMucDat && subject === "Tin học" && tongCong != null) {
-    computedMucDat = tongCong >= 9 ? "T" : tongCong >= 5 ? "H" : "C";
-  } else if (!computedMucDat && subject === "Công nghệ" && student.thucHanh) {
-    const lt = parseFloat(student.lyThuyet);
-    const ltLoai = !isNaN(lt) ? (lt >= 9 ? "T" : lt >= 5 ? "H" : "C") : "C";
-    computedMucDat = ltLoai; // ưu tiên LT
-  }
-
-  if (!computedMucDat) return student.nhanXet || "";
-
-  // Chuyển mức đạt sang loại nhận xét
-  const getLoaiMucDat = (xepLoai) =>
-    xepLoai === "T"
-      ? "tot"
-      : xepLoai === "H"
-      ? "kha"
-      : xepLoai === "C"
-      ? "trungbinh"
-      : "yeu";
-
-  const loai = getLoaiMucDat(computedMucDat);
-
-  // Chọn bộ nhận xét theo môn và theo kỳ
-  let source;
-  const isCuoiKy = tongCong > 0;
-  if (subject === "Công nghệ") {
-    source = isCuoiKy ? nhanXetCongNgheCuoiKy : nhanXetCongNgheGiuaKy;
-  } else {
-    source = isCuoiKy ? nhanXetTinHocCuoiKy : nhanXetTinHocGiuaKy;
-  }
-
-  const pickRandom = (arr) =>
-    arr.length ? arr[Math.floor(Math.random() * arr.length)] : "";
-
-  if (isCuoiKy) {
-    // Cuối kỳ: có lyThuyet và thucHanh
-    const arrLT = source[loai]?.lyThuyet || [];
-    const arrTH = source[loai]?.thucHanh || [];
-    let nxLT = pickRandom(arrLT);
-    let nxTH = pickRandom(arrTH);
-
-    // Luôn đảm bảo đủ 2 vế
-    if (!nxLT && nxTH) nxLT = nxTH;
-    if (!nxTH && nxLT) nxTH = nxLT;
-
-    return nxLT && nxTH ? `${nxLT}; ${nxTH}` : nxLT || nxTH || "";
-  } else {
-    // Giữa kỳ: chỉ cần một câu
-    const arr = source[loai] || [];
-    return pickRandom(arr);
-  }
-};
-
 const generateNhanXet = (student, subject, tongCong = null, mucDat = null) => {
   // Xác định mức đạt nếu chưa có
   let computedMucDat = mucDat;
@@ -291,7 +235,13 @@ const fetchStudentsAndStatus = async (cls) => {
         nhanXet = termData.nhanXet || "";
         lyThuyet = termData.lyThuyet ?? null;
         thucHanh = termData.thucHanh ?? null;
-        tongCong = termData.tongCong ?? null;
+        // ⭐ Nếu DB có tongCong thì lấy, ngược lại tính từ LT
+        tongCong =
+          termData.tongCong != null && !isNaN(termData.tongCong)
+            ? Number(termData.tongCong)
+            : lyThuyet != null && !isNaN(lyThuyet)
+            ? Number(lyThuyet)
+            : null;
         mucDat = termData.mucDat || "";
       } else {
         const tinHoc = data.TinHoc || data.dgtx?.TinHoc || {};
