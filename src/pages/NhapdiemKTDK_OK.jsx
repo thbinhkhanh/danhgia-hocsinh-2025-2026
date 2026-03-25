@@ -731,14 +731,6 @@ const fetchStudentsAndStatus = async (cls) => {
 
   const extraColumns = getExtraColumns();
 
-  const readOnlyCellSx = {
-    px: 1,
-    backgroundColor: "#f5f5f5",
-    color: "text.secondary",
-    //fontStyle: "italic",
-    border: "1px dashed #e0e0e0",
-  };
-
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
       <Card
@@ -1116,20 +1108,6 @@ const fetchStudentsAndStatus = async (cls) => {
                           position: "relative",
                           display: "flex",
                           alignItems: "center",
-                          borderRadius: 1,
-                          transition: "all 0.2s ease",
-
-                          // 🔥 hover = hiện ô nhập rõ
-                          "&:hover": {
-                            backgroundColor: "#f1f8ff",
-                            boxShadow: "inset 0 0 0 1px #1976d2",
-                          },
-
-                          // 🔥 focus = đậm hơn
-                          "&:focus-within": {
-                            backgroundColor: "#e3f2fd",
-                            boxShadow: "inset 0 0 0 2px #1976d2",
-                          },
 
                           "& .edit-icon": {
                             position: "absolute",
@@ -1143,7 +1121,7 @@ const fetchStudentsAndStatus = async (cls) => {
                           },
                         }}
                       >
-                        {/* ✅ INPUT */}
+                        {/* ✅ INPUT trực tiếp */}
                         <TextField
                           variant="standard"
                           value={student.lyThuyet ?? ""}
@@ -1158,16 +1136,14 @@ const fetchStudentsAndStatus = async (cls) => {
                           inputProps={{
                             style: {
                               textAlign: "center",
-                              padding: "4px 24px 4px 6px", // 👈 padding đẹp hơn
+                              paddingRight: 24, // 👈 chừa chỗ cho icon
                             },
                           }}
                           id={`lyThuyet-${idx}`}
                           onKeyDown={(e) =>
                             handleKeyNavigation(e, idx, "lyThuyet")
                           }
-                          InputProps={{
-                            disableUnderline: true,
-                          }}
+                          InputProps={{ disableUnderline: true }}
                         />
 
                         {/* ✏️ Icon hover */}
@@ -1181,172 +1157,101 @@ const fetchStudentsAndStatus = async (cls) => {
                         </IconButton>
                       </Box>
                     ) : (
-                      <Box
-                        sx={{
-                          borderRadius: 1,
-                          transition: "all 0.2s ease",
-
-                          "&:hover": {
-                            backgroundColor: "#f1f8ff",
-                            boxShadow: "inset 0 0 0 1px #1976d2",
-                          },
-
-                          "&:focus-within": {
-                            backgroundColor: "#e3f2fd",
-                            boxShadow: "inset 0 0 0 2px #1976d2",
+                      <TextField
+                        variant="standard"
+                        value={student.lyThuyet || ""}
+                        onChange={(e) =>
+                          handleCellChange(
+                            student.maDinhDanh,
+                            "lyThuyet",
+                            e.target.value
+                          )
+                        }
+                        inputProps={{
+                          style: {
+                            textAlign: "center",
+                            paddingLeft: 2,
+                            paddingRight: 2,
                           },
                         }}
-                      >
-                        <TextField
-                          variant="standard"
-                          value={student.lyThuyet || ""}
-                          onChange={(e) =>
-                            handleCellChange(
-                              student.maDinhDanh,
-                              "lyThuyet",
-                              e.target.value
-                            )
-                          }
-                          fullWidth
-                          inputProps={{
-                            style: {
-                              textAlign: "center",
-                              padding: "4px 6px",
-                            },
-                          }}
-                          id={`lyThuyet-${idx}`}
-                          onKeyDown={(e) =>
-                            handleKeyNavigation(e, idx, "lyThuyet")
-                          }
-                          InputProps={{ disableUnderline: true }}
-                        />
-                      </Box>
+                        id={`lyThuyet-${idx}`}
+                        onKeyDown={(e) =>
+                          handleKeyNavigation(e, idx, "lyThuyet")
+                        }
+                        InputProps={{ disableUnderline: true }}
+                      />
                     )}
                   </TableCell>
                   {/* 🟨 Cột Thực hành */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     {selectedSubject === "Công nghệ" ? (
-                      <Box
+                      <FormControl
+                        variant="standard"
+                        fullWidth
                         sx={{
-                          borderRadius: 1,
-                          transition: "all 0.2s ease",
-
-                          // 🔥 hover
-                          "&:hover": {
-                            backgroundColor: "#f1f8ff",
-                            boxShadow: "inset 0 0 0 1px #1976d2",
-                          },
-
-                          // 🔥 focus
-                          "&:focus-within": {
-                            backgroundColor: "#e3f2fd",
-                            boxShadow: "inset 0 0 0 2px #1976d2",
-                          },
-
-                          // icon dropdown
-                          "& .MuiSelect-icon": {
-                            opacity: 0,
-                            transition: "opacity 0.2s ease",
-                          },
-                          "&:hover .MuiSelect-icon": {
-                            opacity: 1,
-                          },
+                          "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
+                          "&:hover .MuiSelect-icon": { opacity: 1 },
                         }}
                       >
-                        <FormControl variant="standard" fullWidth>
-                          <Select
-                            value={student.thucHanh || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-
-                              if (val === "") {
-                                handleCellChange(student.maDinhDanh, "thucHanh", "");
-
-                                setStudents((prev) =>
-                                  prev.map((s) =>
-                                    s.maDinhDanh === student.maDinhDanh
-                                      ? {
-                                          ...s,
-                                          thucHanh: "",
-                                          tongCong: null,
-                                          mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
-                                          nhanXet: s.nhanXet_goc || "",
-                                        }
-                                      : s
-                                  )
-                                );
-
-                                return;
-                              }
-
-                              handleCellChange(student.maDinhDanh, "thucHanh", val);
-                            }}
-                            disableUnderline
-                            id={`thucHanh-${idx}`}
-                            sx={{
-                              textAlign: "center",
-                              px: 1,
-
-                              "& .MuiSelect-select": {
-                                py: "4px",
-                                fontSize: "14px",
-                                textAlign: "center",
-                              },
-                            }}
-                            onKeyDown={(e) =>
-                              handleKeyNavigation(e, idx, "thucHanh")
-                            }
-                          >
-                            <MenuItem value="">
-                              <em>-</em>
-                            </MenuItem>
-                            <MenuItem value="T">T</MenuItem>
-                            <MenuItem value="H">H</MenuItem>
-                            <MenuItem value="C">C</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Box>
-                    ) : (
-                      <Box
-                        sx={{
-                          borderRadius: 1,
-                          transition: "all 0.2s ease",
-
-                          "&:hover": {
-                            backgroundColor: "#f1f8ff",
-                            boxShadow: "inset 0 0 0 1px #1976d2",
-                          },
-
-                          "&:focus-within": {
-                            backgroundColor: "#e3f2fd",
-                            boxShadow: "inset 0 0 0 2px #1976d2",
-                          },
-                        }}
-                      >
-                        <TextField
-                          variant="standard"
+                        <Select
                           value={student.thucHanh || ""}
-                          onChange={(e) =>
-                            handleCellChange(
-                              student.maDinhDanh,
-                              "thucHanh",
-                              e.target.value
-                            )
-                          }
-                          fullWidth
-                          inputProps={{
-                            style: {
-                              textAlign: "center",
-                              padding: "4px 6px",
-                            },
+                          onChange={(e) => {
+                            const val = e.target.value;
+
+                            // 🔥 Nếu chọn "-" → reset UI cột này
+                            if (val === "") {
+                              handleCellChange(student.maDinhDanh, "thucHanh", "");
+
+                              // reset thêm các cột liên quan (giống logic bạn đang dùng)
+                              setStudents((prev) =>
+                                prev.map((s) =>
+                                  s.maDinhDanh === student.maDinhDanh
+                                    ? {
+                                        ...s,
+                                        thucHanh: "",
+                                        tongCong: null,
+                                        mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
+                                        nhanXet: s.nhanXet_goc || "",
+                                      }
+                                    : s
+                                )
+                              );
+
+                              return;
+                            }
+
+                            // ✅ bình thường
+                            handleCellChange(student.maDinhDanh, "thucHanh", val);
                           }}
+                          disableUnderline
                           id={`thucHanh-${idx}`}
-                          onKeyDown={(e) =>
-                            handleKeyNavigation(e, idx, "thucHanh")
-                          }
-                          InputProps={{ disableUnderline: true }}
-                        />
-                      </Box>
+                          sx={{
+                            textAlign: "center",
+                            px: 1,
+                            "& .MuiSelect-select": { py: 0.5, fontSize: "14px" },
+                          }}
+                          onKeyDown={(e) => handleKeyNavigation(e, idx, "thucHanh")}
+                        >
+                          <MenuItem value="">
+                            <em>-</em>
+                          </MenuItem>
+                          <MenuItem value="T">T</MenuItem>
+                          <MenuItem value="H">H</MenuItem>
+                          <MenuItem value="C">C</MenuItem>
+                        </Select>
+                      </FormControl>
+                    ) : (
+                      <TextField
+                        variant="standard"
+                        value={student.thucHanh || ""}
+                        onChange={(e) =>
+                          handleCellChange(student.maDinhDanh, "thucHanh", e.target.value)
+                        }
+                        inputProps={{ style: { textAlign: "center", paddingLeft: 2, paddingRight: 2 } }}
+                        id={`thucHanh-${idx}`}
+                        onKeyDown={(e) => handleKeyNavigation(e, idx, "thucHanh")}
+                        InputProps={{ disableUnderline: true }}
+                      />
                     )}
                   </TableCell>
 
@@ -1356,7 +1261,7 @@ const fetchStudentsAndStatus = async (cls) => {
                   </TableCell>
                   
                   {/* 🔹 Cột GKI */}
-                  {/*{config.hocKy === "Cuối kỳ I" && (
+                  {config.hocKy === "Cuối kỳ I" && (
                     <TableCell align="center" sx={{ px: 1 }}>
                       {student.mucDat_GKI || "-"}
                     </TableCell>
@@ -1385,109 +1290,49 @@ const fetchStudentsAndStatus = async (cls) => {
                         {student.mucDat_GKII || "-"}
                       </TableCell>
                     </>
-                  )}*/}
-
-                  {config.hocKy === "Cuối kỳ I" && (
-                    <TableCell align="center" sx={readOnlyCellSx}>
-                      {student.mucDat_GKI || "-"}
-                    </TableCell>
-                  )}
-
-                  {config.hocKy === "Giữa kỳ II" && (
-                    <>
-                      <TableCell align="center" sx={readOnlyCellSx}>
-                        {student.mucDat_GKI || "-"}
-                      </TableCell>
-                      <TableCell align="center" sx={readOnlyCellSx}>
-                        {student.mucDat_CKI || "-"}
-                      </TableCell>
-                    </>
-                  )}
-
-                  {config.hocKy === "Cả năm" && (
-                    <>
-                      <TableCell align="center" sx={readOnlyCellSx}>
-                        {student.mucDat_GKI || "-"}
-                      </TableCell>
-                      <TableCell align="center" sx={readOnlyCellSx}>
-                        {student.mucDat_CKI || "-"}
-                      </TableCell>
-                      <TableCell align="center" sx={readOnlyCellSx}>
-                        {student.mucDat_GKII || "-"}
-                      </TableCell>
-                    </>
                   )}
 
                   {/* 🟨 Cột Mức đạt */}
                   <TableCell align="center" sx={{ px: 1 }}>
-                    <Box
+                    <FormControl
+                      variant="standard"
+                      fullWidth
                       sx={{
-                        borderRadius: 1,
-                        transition: "all 0.2s ease",
-
-                        // 🔥 hover
-                        "&:hover": {
-                          backgroundColor: "#f1f8ff",
-                          boxShadow: "inset 0 0 0 1px #1976d2",
-                        },
-
-                        // 🔥 focus
-                        "&:focus-within": {
-                          backgroundColor: "#e3f2fd",
-                          boxShadow: "inset 0 0 0 2px #1976d2",
-                        },
-
-                        // icon dropdown
-                        "& .MuiSelect-icon": {
-                          opacity: 0,
-                          transition: "opacity 0.2s ease",
-                        },
-                        "&:hover .MuiSelect-icon": {
-                          opacity: 1,
-                        },
+                        "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
+                        "&:hover .MuiSelect-icon": { opacity: 1 },
                       }}
                     >
-                      <FormControl variant="standard" fullWidth>
-                        <Select
-                          value={student.mucDat || ""}
-                          onChange={(e) =>
-                            handleCellChange(
-                              student.maDinhDanh,
-                              "mucDat",
-                              e.target.value
-                            )
+                      <Select
+                        value={student.mucDat || ""}
+                        onChange={(e) =>
+                          handleCellChange(student.maDinhDanh, "mucDat", e.target.value)
+                        }
+                        disableUnderline
+                        id={`mucDat-${idx}`}
+                        sx={{
+                          textAlign: "center",
+                          px: 1,
+                          "& .MuiSelect-select": {
+                            py: 0.5,
+                            fontSize: "14px",
+                          },
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const next = document.getElementById(`mucDat-${idx + 1}`);
+                            if (next) next.focus();
                           }
-                          disableUnderline
-                          id={`mucDat-${idx}`}
-                          sx={{
-                            textAlign: "center",
-                            px: 1,
-
-                            "& .MuiSelect-select": {
-                              py: "4px",
-                              fontSize: "14px",
-                              textAlign: "center",
-                            },
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              const next = document.getElementById(
-                                `mucDat-${idx + 1}`
-                              );
-                              if (next) next.focus();
-                            }
-                          }}
-                        >
-                          <MenuItem value="">
-                            <em>-</em>
-                          </MenuItem>
-                          <MenuItem value="T">T</MenuItem>
-                          <MenuItem value="H">H</MenuItem>
-                          <MenuItem value="C">C</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>-</em>
+                        </MenuItem>
+                        <MenuItem value="T">T</MenuItem>
+                        <MenuItem value="H">H</MenuItem>
+                        <MenuItem value="C">C</MenuItem>
+                      </Select>
+                    </FormControl>
                   </TableCell>
 
                   {/* 🟨 Cột Nhận xét */}
