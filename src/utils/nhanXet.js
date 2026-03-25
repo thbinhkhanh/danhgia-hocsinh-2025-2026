@@ -282,7 +282,16 @@ export const nhanXetCongNgheCuoiKy = {
       "Em nên tham khảo thêm tài liệu",
       "Em nên luyện tập thường xuyên"
     ],
-    thucHanh: [] // ❌ không dùng nữa
+    thucHanh: [
+      "cần cố gắng hơn trong thực hành.",
+      "còn lúng túng, cần hỗ trợ thầy cô và bạn bè.",
+      "chưa hoàn thành nhiệm vụ, cần chăm chỉ và cẩn thận.",
+      "thao tác chưa chính xác, cần luyện tập nhiều hơn.",
+      "thiếu chủ động, cần nhắc nhở và hướng dẫn thêm.",
+      "chưa áp dụng kiến thức vào thực hành.",
+      "cần luyện tập đều đặn để nâng cao kỹ năng.",
+      "cần tham khảo hướng dẫn chi tiết để hoàn thành sản phẩm."
+    ]
   },
 
   yeu: {

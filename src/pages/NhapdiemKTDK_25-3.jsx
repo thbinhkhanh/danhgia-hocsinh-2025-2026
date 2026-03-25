@@ -63,7 +63,6 @@ export default function NhapdiemKTDK() {
   const [editingStudent, setEditingStudent] = useState(null);
   const [ltValue, setLtValue] = useState("");
   const [fillThucHanh, setFillThucHanh] = useState("");
-  const [originalStudents, setOriginalStudents] = useState([]);
 
   useEffect(() => {
     if (config?.mon && config.mon !== selectedSubject) {
@@ -228,18 +227,6 @@ const fetchStudentsAndStatus = async (cls) => {
       let tongCong = null;
       let mucDat = "";
 
-      // 🔹 Lấy toàn bộ ktdk để đọc các kỳ khác
-      const ktdkAll =
-        selectedSubject === "Công nghệ"
-          ? (data.CongNghe?.ktdk || {})
-          : (data.TinHoc?.ktdk || {});
-
-      // 🔹 Lấy mức đạt các kỳ
-      const mucDat_GKI = ktdkAll?.GKI?.mucDat || "";
-      const mucDat_CKI = ktdkAll?.CKI?.mucDat || "";
-      const mucDat_GKII = ktdkAll?.GKII?.mucDat || "";
-      const mucDat_CN = ktdkAll?.CN?.mucDat || "";
-
       if (selectedSubject === "Công nghệ") {
         const congNghe = data.CongNghe || data.dgtx?.CongNghe || {};
         termData = congNghe.ktdk?.[termDoc] || {};
@@ -248,14 +235,13 @@ const fetchStudentsAndStatus = async (cls) => {
         nhanXet = termData.nhanXet || "";
         lyThuyet = termData.lyThuyet ?? null;
         thucHanh = termData.thucHanh ?? null;
-
+        // ⭐ Nếu DB có tongCong thì lấy, ngược lại tính từ LT
         tongCong =
           termData.tongCong != null && !isNaN(termData.tongCong)
             ? Number(termData.tongCong)
             : lyThuyet != null && !isNaN(lyThuyet)
             ? Number(lyThuyet)
             : null;
-
         mucDat = termData.mucDat || "";
       } else {
         const tinHoc = data.TinHoc || data.dgtx?.TinHoc || {};
@@ -266,20 +252,24 @@ const fetchStudentsAndStatus = async (cls) => {
         lyThuyet = termData.lyThuyet != null ? Number(termData.lyThuyet) : null;
         thucHanh = termData.thucHanh != null ? Number(termData.thucHanh) : null;
 
+        // ⭐ Tính tổng luôn nếu LT + TH hợp lệ
         tongCong =
-          lyThuyet != null && !isNaN(lyThuyet) &&
-          thucHanh != null && !isNaN(thucHanh)
+          lyThuyet != null && !isNaN(lyThuyet) && thucHanh != null && !isNaN(thucHanh)
             ? Math.round(lyThuyet + thucHanh)
             : null;
 
         mucDat = isGiuaKy
           ? (dgtx_mucdat || "")
           : tongCong != null
-          ? (tongCong >= 9 ? "T" : tongCong >= 5 ? "H" : "C")
+          ? tongCong >= 9
+            ? "T"
+            : tongCong >= 5
+            ? "H"
+            : "C"
           : "";
       }
 
-      // 🔹 Sinh nhận xét nếu rỗng
+      // 🔹 Sinh nhận xét tự động nếu nhanXet rỗng
       if (!nhanXet || nhanXet.trim() === "") {
         nhanXet = generateNhanXet(
           { lyThuyet, thucHanh, tongCong, mucDat },
@@ -301,13 +291,6 @@ const fetchStudentsAndStatus = async (cls) => {
         lyThuyet,
         thucHanh,
         tongCong,
-
-        // 🔹 THÊM MỚI (phục vụ hiển thị bảng)
-        mucDat_GKI,
-        mucDat_CKI,
-        mucDat_GKII,
-        mucDat_CN,
-
         dgtx: {
           TinHoc: { ktdk: data.TinHoc?.ktdk || {}, tuan: data.TinHoc?.tuan || {} },
           CongNghe: { ktdk: data.CongNghe?.ktdk || {}, tuan: data.CongNghe?.tuan || {} },
@@ -315,7 +298,7 @@ const fetchStudentsAndStatus = async (cls) => {
       });
     });
 
-    // 🔹 Sắp xếp theo tên
+    // Sắp xếp theo tên
     studentList.sort((a, b) => {
       const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
       const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
@@ -325,7 +308,6 @@ const fetchStudentsAndStatus = async (cls) => {
     const finalList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
     setStudents(finalList);
-    setOriginalStudents(finalList); // ✅ thêm dòng này
     setStudentsForClass(termDoc, classKey, finalList);
   } catch (err) {
     console.error("❌ Lỗi khi lấy dữ liệu từ DATA:", err);
@@ -339,109 +321,109 @@ const fetchStudentsAndStatus = async (cls) => {
   
   // Hàm xử lý thay đổi ô bảng
   const handleCellChange = (maDinhDanh, field, value) => {
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.maDinhDanh !== maDinhDanh) return s;
+  setStudents((prev) =>
+    prev.map((s) => {
+      if (s.maDinhDanh !== maDinhDanh) return s;
 
-        const updated = { ...s, [field]: value };
+      const updated = { ...s, [field]: value };
 
-        // =========================
-        // 🧠 1. VALIDATE INPUT
-        // =========================
-        if (selectedSubject === "Tin học") {
-          if ((field === "lyThuyet" || field === "thucHanh") && value !== "") {
+      // =========================
+      // 🧠 1. VALIDATE INPUT
+      // =========================
+      if (selectedSubject === "Tin học") {
+        if ((field === "lyThuyet" || field === "thucHanh") && value !== "") {
+          const num = parseFloat(value);
+          if (isNaN(num) || num < 0 || num > 5) return s;
+          updated[field] = num;
+        }
+      }
+
+      if (selectedSubject === "Công nghệ") {
+        if (field === "lyThuyet") {
+          if (value === "" || isNaN(parseFloat(value))) {
+            updated.tongCong = null;
+          } else {
             const num = parseFloat(value);
-            if (isNaN(num) || num < 0 || num > 5) return s;
-            updated[field] = num;
+            if (num < 0 || num > 10) return s;
+            updated.tongCong = Math.round(num);
           }
         }
+        if (field === "thucHanh" && !["T", "H", "C", ""].includes(value)) return s;
+      }
 
-        if (selectedSubject === "Công nghệ") {
-          if (field === "lyThuyet") {
-            if (value === "" || isNaN(parseFloat(value))) {
-              updated.tongCong = null;
-            } else {
-              const num = parseFloat(value);
-              if (num < 0 || num > 10) return s;
-              updated.tongCong = Math.round(num);
-            }
-          }
-          if (field === "thucHanh" && !["T", "H", "C", ""].includes(value)) return s;
-        }
+      // =========================
+      // 💬 1b. NHẬN XÉT THỦ CÔNG
+      // =========================
+      if (field === "nhanXet") {
+        // Cho phép nhập tự do, không sinh lại tự động
+        updated.nhanXet = value;
+        return updated;
+      }
 
-        // =========================
-        // 💬 1b. NHẬN XÉT THỦ CÔNG
-        // =========================
-        if (field === "nhanXet") {
-          // Cho phép nhập tự do, không sinh lại tự động
-          updated.nhanXet = value;
-          return updated;
-        }
+      // =========================
+      // 🧮 2. TÍNH TỔNG
+      // =========================
+      if (selectedSubject === "Tin học") {
+        const lt = updated.lyThuyet != null ? parseFloat(updated.lyThuyet) : null;
+        const th = updated.thucHanh != null ? parseFloat(updated.thucHanh) : null;
 
-        // =========================
-        // 🧮 2. TÍNH TỔNG
-        // =========================
-        if (selectedSubject === "Tin học") {
-          const lt = updated.lyThuyet != null ? parseFloat(updated.lyThuyet) : null;
-          const th = updated.thucHanh != null ? parseFloat(updated.thucHanh) : null;
+        updated.tongCong =
+          lt != null && th != null && !isNaN(lt) && !isNaN(th)
+            ? Math.round(lt + th)
+            : null;
+      }
 
-          updated.tongCong =
-            lt != null && th != null && !isNaN(lt) && !isNaN(th)
-              ? Math.round(lt + th)
-              : null;
-        }
+      // =========================
+      // 🎯 3. XÉT THEO TỔNG
+      // =========================
+      const isNoScore =
+        updated.tongCong === null ||
+        updated.tongCong === undefined ||
+        isNaN(updated.tongCong);
 
-        // =========================
-        // 🎯 3. XÉT THEO TỔNG
-        // =========================
-        const isNoScore =
-          updated.tongCong === null ||
-          updated.tongCong === undefined ||
-          isNaN(updated.tongCong);
+      // =========================
+      // 🔄 4. RESET VỀ DB
+      // =========================
+      if (isNoScore && field !== "mucDat") {
+        updated.mucDat =
+          s.dgtx_mucdat && s.dgtx_mucdat !== ""
+            ? s.dgtx_mucdat
+            : s.mucDat_goc || "";
 
-        // =========================
-        // 🔄 4. RESET VỀ DB
-        // =========================
-        if (isNoScore && field !== "mucDat") {
-          updated.mucDat =
-            s.dgtx_mucdat && s.dgtx_mucdat !== ""
-              ? s.dgtx_mucdat
-              : s.mucDat_goc || "";
-
-          updated.nhanXet =
-            s.dgtx_nx && s.dgtx_nx.trim() !== ""
-              ? s.dgtx_nx
-              : s.nhanXet_goc || "";
-
-          return updated;
-        }
-
-        // =========================
-        // 🌟 5. SINH MỨC ĐẠT (nếu không chỉnh thủ công)
-        // =========================
-        if (field !== "mucDat") {
-          updated.mucDat =
-            updated.tongCong >= 9
-              ? "T"
-              : updated.tongCong >= 5
-              ? "H"
-              : "C";
-        }
-
-        // =========================
-        // 💬 6. SINH NHẬN XÉT TỰ ĐỘNG
-        // =========================
-        updated.nhanXet = generateNhanXet(
-          updated,
-          selectedSubject,
-          updated.tongCong,
-          updated.mucDat
-        );
+        updated.nhanXet =
+          s.dgtx_nx && s.dgtx_nx.trim() !== ""
+            ? s.dgtx_nx
+            : s.nhanXet_goc || "";
 
         return updated;
-      })
-    );
-  };
+      }
+
+      // =========================
+      // 🌟 5. SINH MỨC ĐẠT (nếu không chỉnh thủ công)
+      // =========================
+      if (field !== "mucDat") {
+        updated.mucDat =
+          updated.tongCong >= 9
+            ? "T"
+            : updated.tongCong >= 5
+            ? "H"
+            : "C";
+      }
+
+      // =========================
+      // 💬 6. SINH NHẬN XÉT TỰ ĐỘNG
+      // =========================
+      updated.nhanXet = generateNhanXet(
+        updated,
+        selectedSubject,
+        updated.tongCong,
+        updated.mucDat
+      );
+
+      return updated;
+    })
+  );
+};
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -716,21 +698,6 @@ const fetchStudentsAndStatus = async (cls) => {
     handleCloseLTDialog();
   };
 
-  const getExtraColumns = () => {
-    switch (config.hocKy) {
-      case "Cuối kỳ I":
-        return ["GKI"];
-      case "Giữa kỳ II":
-        return ["GKI", "CKI"];
-      case "Cả năm":
-        return ["GKI", "CKI", "GKII"];
-      default:
-        return [];
-    }
-  };
-
-  const extraColumns = getExtraColumns();
-
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
       <Card
@@ -946,8 +913,7 @@ const fetchStudentsAndStatus = async (cls) => {
 
                           setStudents((prev) =>
                             prev.map((s) => {
-                              // 🔥 nếu chọn "-", reset về rỗng
-                              let updated = { ...s, thucHanh: val === "-" ? "" : val };
+                              let updated = { ...s, thucHanh: val };
 
                               // ===== TIN HỌC =====
                               if (selectedSubject === "Tin học") {
@@ -961,8 +927,15 @@ const fetchStudentsAndStatus = async (cls) => {
                                   else if (updated.tongCong >= 5) updated.mucDat = "H";
                                   else updated.mucDat = "C";
 
-                                  let loaiLT = lt > 4 ? "tot" : lt > 3 ? "kha" : lt >= 2.5 ? "trungbinh" : "yeu";
-                                  let loaiTH = th > 4 ? "tot" : th > 3 ? "kha" : th >= 2.5 ? "trungbinh" : "yeu";
+                                  let loaiLT = "yeu";
+                                  if (lt > 4) loaiLT = "tot";
+                                  else if (lt > 3) loaiLT = "kha";
+                                  else if (lt >= 2.5) loaiLT = "trungbinh";
+
+                                  let loaiTH = "yeu";
+                                  if (th > 4) loaiTH = "tot";
+                                  else if (th > 3) loaiTH = "kha";
+                                  else if (th >= 2.5) loaiTH = "trungbinh";
 
                                   const arrLT = nhanXetTinHocCuoiKy[loaiLT]?.lyThuyet || [];
                                   const arrTH = nhanXetTinHocCuoiKy[loaiTH]?.thucHanh || [];
@@ -976,7 +949,7 @@ const fetchStudentsAndStatus = async (cls) => {
 
                               // ===== CÔNG NGHỆ =====
                               if (selectedSubject === "Công nghệ") {
-                                if (!["-", "T", "H", "C"].includes(val)) return s;
+                                if (!["T", "H", "C", ""].includes(val)) return s;
 
                                 const lyThuyetNum = parseFloat(updated.lyThuyet);
 
@@ -990,8 +963,6 @@ const fetchStudentsAndStatus = async (cls) => {
                                 let loaiThucHanh = "yeu";
                                 if (val === "T") loaiThucHanh = "tot";
                                 else if (val === "H") loaiThucHanh = "kha";
-                                else if (val === "C") loaiThucHanh = "trungbinh";
-                                else if (val === "-") loaiThucHanh = "yeu"; // reset thì coi như rỗng
 
                                 const arrLT = nhanXetCongNgheCuoiKy[loaiLyThuyet]?.lyThuyet || [];
                                 const arrTH = nhanXetCongNgheCuoiKy[loaiThucHanh]?.thucHanh || [];
@@ -1021,7 +992,7 @@ const fetchStudentsAndStatus = async (cls) => {
                             <MenuItem key={v} value={v}>{v}</MenuItem>
                           ))
                         ) : (
-                          ["-", "T", "H", "C"].map((v) => (
+                          ["T", "H", "C"].map((v) => (
                             <MenuItem key={v} value={v}>{v}</MenuItem>
                           ))
                         )}
@@ -1029,60 +1000,8 @@ const fetchStudentsAndStatus = async (cls) => {
                     </FormControl>
                   </Box>
                 </TableCell>
-                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>
-                  Tổng cộng
-                </TableCell>
-
-                {/* 🔹 Cột động theo học kỳ */}
-                {config.hocKy === "Cuối kỳ I" && (
-                  <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}>
-                    GKI
-                  </TableCell>
-                )}
-
-                {config.hocKy === "Giữa kỳ II" && (
-                  <>
-                    <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}>
-                      GKI
-                    </TableCell>
-                    <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}>
-                      CKI
-                    </TableCell>
-                  </>
-                )}
-
-                {config.hocKy === "Cả năm" && (
-                  <>
-                    <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}>
-                      GKI
-                    </TableCell>
-                    <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}>
-                      CKI
-                    </TableCell>
-                    <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}>
-                      GKII
-                    </TableCell>
-                  </>
-                )}
-
-                <TableCell
-                  align="center"
-                  sx={{
-                    backgroundColor: "#1976d2",
-                    color: "white",
-                    width: 70,
-                    px: 1,
-                    whiteSpace: "nowrap"
-                  }}
-                >
-                  {config.hocKy === "Giữa kỳ I"
-                    ? "GKI"
-                    : config.hocKy === "Cuối kỳ I"
-                    ? "CKI"
-                    : config.hocKy === "Giữa kỳ II"
-                    ? "GKII"
-                    : "CN"}
-                </TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Tổng cộng</TableCell>
+                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 70, px: 1, whiteSpace: "nowrap" }}>Mức đạt</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 500, px: 1, whiteSpace: "nowrap" }}>Nhận xét</TableCell>
               </TableRow>
             </TableHead>
@@ -1102,86 +1021,89 @@ const fetchStudentsAndStatus = async (cls) => {
 
                   {/* 🟨 Cột Lí thuyết */}
                   <TableCell align="center" sx={{ px: 1 }}>
-                    {selectedSubject === "Tin học" ? (
-                      <Box
-                        sx={{
-                          position: "relative",
-                          display: "flex",
-                          alignItems: "center",
+  {selectedSubject === "Tin học" ? (
+    <Box
+      sx={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
 
-                          "& .edit-icon": {
-                            position: "absolute",
-                            right: 4,
-                            opacity: 0,
-                            transition: "opacity 0.2s ease",
-                          },
+        "& .edit-icon": {
+          position: "absolute",
+          right: 4,
+          opacity: 0,
+          transition: "opacity 0.2s ease",
+        },
 
-                          "&:hover .edit-icon": {
-                            opacity: 1,
-                          },
-                        }}
-                      >
-                        {/* ✅ INPUT trực tiếp */}
-                        <TextField
-                          variant="standard"
-                          value={student.lyThuyet ?? ""}
-                          onChange={(e) =>
-                            handleCellChange(
-                              student.maDinhDanh,
-                              "lyThuyet",
-                              e.target.value
-                            )
-                          }
-                          fullWidth
-                          inputProps={{
-                            style: {
-                              textAlign: "center",
-                              paddingRight: 24, // 👈 chừa chỗ cho icon
-                            },
-                          }}
-                          id={`lyThuyet-${idx}`}
-                          onKeyDown={(e) =>
-                            handleKeyNavigation(e, idx, "lyThuyet")
-                          }
-                          InputProps={{ disableUnderline: true }}
-                        />
+        "&:hover .edit-icon": {
+          opacity: 1,
+        },
+      }}
+    >
+      {/* ✅ INPUT trực tiếp */}
+      <TextField
+        variant="standard"
+        value={student.lyThuyet ?? ""}
+        onChange={(e) =>
+          handleCellChange(
+            student.maDinhDanh,
+            "lyThuyet",
+            e.target.value
+          )
+        }
+        fullWidth
+        inputProps={{
+          style: {
+            textAlign: "center",
+            paddingRight: 24, // 👈 chừa chỗ cho icon
+          },
+        }}
+        id={`lyThuyet-${idx}`}
+        onKeyDown={(e) =>
+          handleKeyNavigation(e, idx, "lyThuyet")
+        }
+        InputProps={{ disableUnderline: true }}
+      />
 
-                        {/* ✏️ Icon hover */}
-                        <IconButton
-                          size="small"
-                          className="edit-icon"
-                          onClick={() => handleOpenLTDialog(student)}
-                          sx={{ p: 0.5 }}
-                        >
-                          <EditIcon fontSize="inherit" />
-                        </IconButton>
-                      </Box>
-                    ) : (
-                      <TextField
-                        variant="standard"
-                        value={student.lyThuyet || ""}
-                        onChange={(e) =>
-                          handleCellChange(
-                            student.maDinhDanh,
-                            "lyThuyet",
-                            e.target.value
-                          )
-                        }
-                        inputProps={{
-                          style: {
-                            textAlign: "center",
-                            paddingLeft: 2,
-                            paddingRight: 2,
-                          },
-                        }}
-                        id={`lyThuyet-${idx}`}
-                        onKeyDown={(e) =>
-                          handleKeyNavigation(e, idx, "lyThuyet")
-                        }
-                        InputProps={{ disableUnderline: true }}
-                      />
-                    )}
-                  </TableCell>
+      {/* ✏️ Icon hover */}
+      <IconButton
+        size="small"
+        className="edit-icon"
+        onClick={() => handleOpenLTDialog(student)}
+        sx={{ p: 0.5 }}
+      >
+        <EditIcon fontSize="inherit" />
+      </IconButton>
+    </Box>
+  ) : (
+    <TextField
+      variant="standard"
+      value={student.lyThuyet || ""}
+      onChange={(e) =>
+        handleCellChange(
+          student.maDinhDanh,
+          "lyThuyet",
+          e.target.value
+        )
+      }
+      inputProps={{
+        style: {
+          textAlign: "center",
+          paddingLeft: 2,
+          paddingRight: 2,
+        },
+      }}
+      id={`lyThuyet-${idx}`}
+      onKeyDown={(e) =>
+        handleKeyNavigation(e, idx, "lyThuyet")
+      }
+      InputProps={{ disableUnderline: true }}
+    />
+  )}
+</TableCell>
+
+
+
                   {/* 🟨 Cột Thực hành */}
                   <TableCell align="center" sx={{ px: 1 }}>
                     {selectedSubject === "Công nghệ" ? (
@@ -1195,34 +1117,9 @@ const fetchStudentsAndStatus = async (cls) => {
                       >
                         <Select
                           value={student.thucHanh || ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-
-                            // 🔥 Nếu chọn "-" → reset UI cột này
-                            if (val === "") {
-                              handleCellChange(student.maDinhDanh, "thucHanh", "");
-
-                              // reset thêm các cột liên quan (giống logic bạn đang dùng)
-                              setStudents((prev) =>
-                                prev.map((s) =>
-                                  s.maDinhDanh === student.maDinhDanh
-                                    ? {
-                                        ...s,
-                                        thucHanh: "",
-                                        tongCong: null,
-                                        mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
-                                        nhanXet: s.nhanXet_goc || "",
-                                      }
-                                    : s
-                                )
-                              );
-
-                              return;
-                            }
-
-                            // ✅ bình thường
-                            handleCellChange(student.maDinhDanh, "thucHanh", val);
-                          }}
+                          onChange={(e) =>
+                            handleCellChange(student.maDinhDanh, "thucHanh", e.target.value)
+                          }
                           disableUnderline
                           id={`thucHanh-${idx}`}
                           sx={{
@@ -1255,42 +1152,12 @@ const fetchStudentsAndStatus = async (cls) => {
                     )}
                   </TableCell>
 
+
+
                   {/* 🟨 Cột Tổng cộng */}
                   <TableCell align="center" sx={{ px: 1, fontWeight: "bold" }}>
                     {student.tongCong || ""}
                   </TableCell>
-                  
-                  {/* 🔹 Cột GKI */}
-                  {config.hocKy === "Cuối kỳ I" && (
-                    <TableCell align="center" sx={{ px: 1 }}>
-                      {student.mucDat_GKI || "-"}
-                    </TableCell>
-                  )}
-
-                  {config.hocKy === "Giữa kỳ II" && (
-                    <>
-                      <TableCell align="center" sx={{ px: 1 }}>
-                        {student.mucDat_GKI || "-"}
-                      </TableCell>
-                      <TableCell align="center" sx={{ px: 1 }}>
-                        {student.mucDat_CKI || "-"}
-                      </TableCell>
-                    </>
-                  )}
-
-                  {config.hocKy === "Cả năm" && (
-                    <>
-                      <TableCell align="center" sx={{ px: 1 }}>
-                        {student.mucDat_GKI || "-"}
-                      </TableCell>
-                      <TableCell align="center" sx={{ px: 1 }}>
-                        {student.mucDat_CKI || "-"}
-                      </TableCell>
-                      <TableCell align="center" sx={{ px: 1 }}>
-                        {student.mucDat_GKII || "-"}
-                      </TableCell>
-                    </>
-                  )}
 
                   {/* 🟨 Cột Mức đạt */}
                   <TableCell align="center" sx={{ px: 1 }}>
@@ -1334,6 +1201,7 @@ const fetchStudentsAndStatus = async (cls) => {
                       </Select>
                     </FormControl>
                   </TableCell>
+
 
                   {/* 🟨 Cột Nhận xét */}
                   <TableCell align="left" sx={{ px: 1 }}>

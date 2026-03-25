@@ -91,11 +91,13 @@ export default function ThongKe() {
 
             let mucDat = "";
 
-            if (selectedTerm === "GKI" || selectedTerm === "GKII") {
+            /*if (selectedTerm === "GKI" || selectedTerm === "GKII") {
               mucDat = (ktdk.dgtx_mucdat || "").trim();
             } else {
               mucDat = (ktdk.mucDat || "").trim();
-            }
+            }*/
+
+            mucDat = (ktdk.mucDat || "").trim();
 
             if (mucDat === "T") tot++;
             else if (mucDat === "H") hoanThanh++;
