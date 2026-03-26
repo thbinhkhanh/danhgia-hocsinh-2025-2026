@@ -1304,12 +1304,14 @@ const fetchStudentsAndStatus = async (cls) => {
                           transition: "all 0.2s ease",
 
                           "&:hover": {
-                            backgroundColor: "#f1f8ff",
+                            //backgroundColor: "#f1f8ff",
+                            backgroundColor: "#ffffff", // ✅ luôn trắng
                             boxShadow: "inset 0 0 0 1px #1976d2",
                           },
 
                           "&:focus-within": {
-                            backgroundColor: "#e3f2fd",
+                            //backgroundColor: "#e3f2fd",
+                            backgroundColor: "#ffffff", // ✅ luôn trắng
                             boxShadow: "inset 0 0 0 2px #1976d2",
                           },
                         }}
