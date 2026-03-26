@@ -501,11 +501,12 @@ const fetchStudentsAndStatus = async (cls) => {
             ? Number(s.lyThuyet)
             : null,
 
+        // Chỉ sửa thucHanh cho Tin học
         thucHanh: isCongNghe
-          ? s.thucHanh ?? ""
-          : s.thucHanh !== undefined
-          ? Number(s.thucHanh)
-          : null,
+          ? s.thucHanh ?? "" // Công nghệ giữ nguyên
+          : s.thucHanh === "" || s.thucHanh === null || s.thucHanh === undefined
+          ? null             // Tin học: UI rỗng → null
+          : Number(s.thucHanh), // Tin học: còn lại → số (0 vẫn là 0)
 
         tongCong:
           s.tongCong !== null && s.tongCong !== undefined
