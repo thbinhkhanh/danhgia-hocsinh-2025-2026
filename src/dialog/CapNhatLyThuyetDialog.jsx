@@ -78,42 +78,49 @@ const CapNhatLyThuyetDialog = ({
   }, [value, thucHanh]);
 
   const handleSave = async () => {
-    const lt = parseFloat(value);
-    const th = parseFloat(thucHanh);
+    const isEmptyLT = value === "" || value === null || value === undefined;
+    const isEmptyTH = thucHanh === "" || thucHanh === null || thucHanh === undefined;
 
-    if (isNaN(lt) || lt < 0 || lt > 5) {
-        setError("⚠️ Điểm lý thuyết không hợp lệ!");
-        return;
-    }
-    if (!isNaN(th) && (th < 0 || th > 5)) {
-        setError("⚠️ Điểm thực hành không hợp lệ!");
-        return;
+    const lt = isEmptyLT ? null : parseFloat(value);
+    const th = isEmptyTH ? null : parseFloat(thucHanh);
+
+    // ✅ Chỉ validate khi có nhập
+    if (!isEmptyLT && (isNaN(lt) || lt < 0 || lt > 5)) {
+      setError("⚠️ Điểm lý thuyết không hợp lệ!");
+      return;
     }
 
-    const lyThuyetPhanTram = (lt / 5) * 100;
+    if (!isEmptyTH && (isNaN(th) || th < 0 || th > 5)) {
+      setError("⚠️ Điểm thực hành không hợp lệ!");
+      return;
+    }
+
+    // ✅ Nếu rỗng → null, không tính %
+    const lyThuyetPhanTram =
+      lt !== null ? (lt / 5) * 100 : null;
 
     const updatedStudent = {
-        ...student,
-        lyThuyet: lt,
-        lyThuyetPhanTram,
-        thucHanh: !isNaN(th) ? th : null,
-        tongCong,
-        mucDat,
-        nhanXet,
+      ...student,
+      lyThuyet: lt,
+      lyThuyetPhanTram,
+      thucHanh: th,
+      tongCong,
+      mucDat,
+      nhanXet,
     };
 
-    // Cập nhật state tạm trong bảng
+    // ✅ Update UI
     handleCellChange(student.maDinhDanh, "lyThuyet", lt);
     handleCellChange(student.maDinhDanh, "lyThuyetPhanTram", lyThuyetPhanTram);
-    if (!isNaN(th)) handleCellChange(student.maDinhDanh, "thucHanh", th);
+    handleCellChange(student.maDinhDanh, "thucHanh", th);
     handleCellChange(student.maDinhDanh, "tongCong", tongCong);
     handleCellChange(student.maDinhDanh, "mucDat", mucDat);
     handleCellChange(student.maDinhDanh, "nhanXet", nhanXet);
 
     onClose();
 
-    // Lưu Firestore nền, snackbar sẽ được hiển thị ở handleSaveOne
-    onSaveOne(updatedStudent).catch(err => console.error(err));
+    // ✅ Lưu Firestore
+    onSaveOne(updatedStudent).catch((err) => console.error(err));
   };
 
   if (!student) return null;

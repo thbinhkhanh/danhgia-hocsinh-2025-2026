@@ -457,14 +457,113 @@ const fetchStudentsAndStatus = async (cls) => {
   };
 
   const handleSaveAll = async () => {
-  if (!students || students.length === 0) return;
+    if (!students || students.length === 0) return;
+
+    const selectedSemester = config.hocKy || "Giữa kỳ I";
+
+    const selectedMon = config.mon || "Công nghệ";
+    const isCongNghe = selectedMon === "Công nghệ";
+
+    // ✅ FIX: mapping đầy đủ (THÊM GKI)
+    let termDoc;
+    switch (selectedSemester) {
+      case "Giữa kỳ I":
+        termDoc = "GKI";
+        break;
+      case "Cuối kỳ I":
+        termDoc = "CKI";
+        break;
+      case "Giữa kỳ II":
+        termDoc = "GKII";
+        break;
+      default:
+        termDoc = "CN";
+        break;
+    }
+
+    const classKey = (selectedClass || "").replace(".", "_");
+    const batch = writeBatch(db);
+
+    students.forEach((s) => {
+      const hsRef = doc(db, "DATA", classKey, "HOCSINH", s.maDinhDanh);
+
+      const ktdkData = {
+        [termDoc]: {
+          dgtx_gv: s.dgtx_mucdat || "",
+          dgtx_mucdat: s.dgtx_mucdat || "",
+          //dgtx_nx: s.nhanXet || "",
+          dgtx_nx: "",
+
+          lyThuyet:
+            s.lyThuyet !== "" &&
+            s.lyThuyet !== null &&
+            s.lyThuyet !== undefined
+              ? Number(s.lyThuyet)
+              : null,
+
+          // Chỉ sửa thucHanh cho Tin học
+          thucHanh: isCongNghe
+            ? s.thucHanh ?? "" // Công nghệ giữ nguyên
+            : s.thucHanh === "" || s.thucHanh === null || s.thucHanh === undefined
+            ? null             // Tin học: UI rỗng → null
+            : Number(s.thucHanh), // Tin học: còn lại → số (0 vẫn là 0)
+
+          tongCong:
+            s.tongCong !== null && s.tongCong !== undefined
+              ? Number(s.tongCong)
+              : null,
+
+          mucDat: s.mucDat || "",
+          nhanXet: s.nhanXet || "",
+          //nhanXet: "",
+        },
+      };
+
+      batch.set(
+        hsRef,
+        {
+          hoVaTen: s.hoVaTen || "",
+          stt: s.stt || null,
+          [isCongNghe ? "CongNghe" : "TinHoc"]: {
+            ktdk: ktdkData,
+          },
+        },
+        { merge: true }
+      );
+    });
+
+    try {
+      await batch.commit();
+
+      setStudentData((prev) => ({ ...prev, [classKey]: students }));
+      if (typeof setStudentsForClass === "function") {
+        setStudentsForClass(termDoc, classKey, students);
+      }
+
+      setSnackbar({
+        open: true,
+        message: "✅ Lưu thành công!",
+        severity: "success",
+      });
+    } catch (err) {
+      console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
+      setSnackbar({
+        open: true,
+        message: "❌ Lỗi khi lưu dữ liệu học sinh!",
+        severity: "error",
+      });
+    }
+  };
+
+  // Hàm lưu 1 học sinh
+  const handleSaveOne = async (student) => {
+  if (!student) return;
 
   const selectedSemester = config.hocKy || "Giữa kỳ I";
-
   const selectedMon = config.mon || "Công nghệ";
   const isCongNghe = selectedMon === "Công nghệ";
 
-  // ✅ FIX: mapping đầy đủ (THÊM GKI)
+  // ✅ Mapping đầy đủ giống handleSaveAll
   let termDoc;
   switch (selectedSemester) {
     case "Giữa kỳ I":
@@ -483,66 +582,52 @@ const fetchStudentsAndStatus = async (cls) => {
 
   const classKey = (selectedClass || "").replace(".", "_");
   const batch = writeBatch(db);
+  const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
 
-  students.forEach((s) => {
-    const hsRef = doc(db, "DATA", classKey, "HOCSINH", s.maDinhDanh);
+  // ✅ Helper xử lý rỗng → null
+  const toNumberOrNull = (val) =>
+    val === "" || val === null || val === undefined
+      ? null
+      : Number(val);
 
-    const ktdkData = {
-      [termDoc]: {
-        dgtx_gv: s.dgtx_mucdat || "",
-        dgtx_mucdat: s.dgtx_mucdat || "",
-        //dgtx_nx: s.nhanXet || "",
-        dgtx_nx: "",
+  // ✅ Data chuẩn hóa giống handleSaveAll
+  const ktdkData = {
+    [termDoc]: {
+      dgtx_gv: student.dgtx_mucdat ?? "",
+      dgtx_mucdat: student.dgtx_mucdat ?? "",
+      dgtx_nx: "",
 
-        lyThuyet:
-          s.lyThuyet !== "" &&
-          s.lyThuyet !== null &&
-          s.lyThuyet !== undefined
-            ? Number(s.lyThuyet)
-            : null,
+      lyThuyet: toNumberOrNull(student.lyThuyet),
 
-        // Chỉ sửa thucHanh cho Tin học
-        thucHanh: isCongNghe
-          ? s.thucHanh ?? "" // Công nghệ giữ nguyên
-          : s.thucHanh === "" || s.thucHanh === null || s.thucHanh === undefined
-          ? null             // Tin học: UI rỗng → null
-          : Number(s.thucHanh), // Tin học: còn lại → số (0 vẫn là 0)
+      thucHanh: isCongNghe
+        ? (student.thucHanh ?? "")
+        : toNumberOrNull(student.thucHanh),
 
-        tongCong:
-          s.tongCong !== null && s.tongCong !== undefined
-            ? Number(s.tongCong)
-            : null,
+      tongCong: toNumberOrNull(student.tongCong),
 
-        mucDat: s.mucDat || "",
-        nhanXet: s.nhanXet || "",
-        //nhanXet: "",
+      mucDat: student.mucDat ?? "",
+      nhanXet: student.nhanXet ?? "",
+    },
+  };
+
+  batch.set(
+    hsRef,
+    {
+      hoVaTen: student.hoVaTen || "",
+      stt: student.stt ?? null,
+      [isCongNghe ? "CongNghe" : "TinHoc"]: {
+        ktdk: ktdkData,
       },
-    };
-
-    batch.set(
-      hsRef,
-      {
-        hoVaTen: s.hoVaTen || "",
-        stt: s.stt || null,
-        [isCongNghe ? "CongNghe" : "TinHoc"]: {
-          ktdk: ktdkData,
-        },
-      },
-      { merge: true }
-    );
-  });
+    },
+    { merge: true }
+  );
 
   try {
     await batch.commit();
 
-    setStudentData((prev) => ({ ...prev, [classKey]: students }));
-    if (typeof setStudentsForClass === "function") {
-      setStudentsForClass(termDoc, classKey, students);
-    }
-
     setSnackbar({
       open: true,
-      message: "✅ Lưu thành công!",
+      message: "✅ Cập nhật thành công!",
       severity: "success",
     });
   } catch (err) {
@@ -554,84 +639,6 @@ const fetchStudentsAndStatus = async (cls) => {
     });
   }
 };
-
-  // Hàm lưu 1 học sinh
-  const handleSaveOne = async (student) => {
-    if (!student) return;
-
-    const selectedSemester = config.hocKy || "Giữa kỳ I";
-
-    // ❌ Giữa kỳ thì không lưu
-    if (selectedSemester === "Giữa kỳ I" || selectedSemester === "Giữa kỳ II") {
-      setSnackbar({
-        open: true,
-        message: "⚠️ Giữa kỳ không lưu vào hệ thống!",
-        severity: "warning",
-      });
-      return;
-    }
-
-    // ✅ Chỉ lưu Cuối kỳ I / Cuối kỳ II / Cả năm
-    let termDoc;
-    switch (selectedSemester) {
-      case "Cuối kỳ I":
-        termDoc = "CKI";
-        break;
-      case "Cuối kỳ II":
-        termDoc = "CKII";
-        break;
-      default: // Cả năm
-        termDoc = "CN";
-        break;
-    }
-
-    const selectedMon = config.mon || "Công nghệ";
-    const isCongNghe = selectedMon === "Công nghệ";
-    const classKey = (selectedClass || "").replace(".", "_");
-
-    const batch = writeBatch(db);
-    const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
-
-    // Không tính lyThuyetPhanTram ở đây nữa, đã tính trong handleSave
-    const ktdkData = {
-      [termDoc]: {
-        lyThuyet: student.lyThuyet ?? null,
-        thucHanh: isCongNghe
-          ? (student.thucHanh ?? "")
-          : (student.thucHanh !== undefined ? Number(student.thucHanh) : null),
-        tongCong: student.tongCong ?? null,
-        mucDat: student.mucDat ?? "",
-        nhanXet: student.nhanXet ?? "",
-        lyThuyetPhanTram: student.lyThuyetPhanTram ?? null, // giữ giá trị từ handleSave
-      },
-    };
-
-    batch.set(
-      hsRef,
-      {
-        [isCongNghe ? "CongNghe" : "TinHoc"]: {
-          ktdk: ktdkData,
-        },
-      },
-      { merge: true }
-    );
-
-    try {
-      await batch.commit();
-      setSnackbar({
-        open: true,
-        message: "✅ Cập nhật thành công!",
-        severity: "success",
-      });
-    } catch (err) {
-      console.error("❌ Lỗi lưu dữ liệu học sinh:", err);
-      setSnackbar({
-        open: true,
-        message: "❌ Lỗi khi lưu dữ liệu học sinh!",
-        severity: "error",
-      });
-    }
-  };
 
   const handleDownload = async () => {
     try {
@@ -1279,14 +1286,14 @@ const fetchStudentsAndStatus = async (cls) => {
                         />
 
                         {/* ✏️ Icon hover */}
-                        <IconButton
+                        {/*<IconButton
                           size="small"
                           className="edit-icon"
                           onClick={() => handleOpenLTDialog(student)}
                           sx={{ p: 0.5 }}
                         >
                           <EditIcon fontSize="inherit" />
-                        </IconButton>
+                        </IconButton>*/}
                       </Box>
                     ) : (
                       <Box
