@@ -1275,7 +1275,7 @@ const fetchStudentsAndStatus = async (cls) => {
                           inputProps={{
                             style: {
                               textAlign: "center",
-                              padding: "4px 8px"
+                              padding: "4px 24px 4px 6px", // 👈 padding đẹp hơn
                             },
                           }}
                           id={`lyThuyet-${idx}`}
