@@ -63,6 +63,7 @@ export default function NhapdiemKTDK() {
   const [editingStudent, setEditingStudent] = useState(null);
   const [ltValue, setLtValue] = useState("");
   const [fillThucHanh, setFillThucHanh] = useState("");
+  const [fillLyThuyet, setFillLyThuyet] = useState("");
   const [originalStudents, setOriginalStudents] = useState([]);
 
   useEffect(() => {
@@ -925,7 +926,113 @@ const fetchStudentsAndStatus = async (cls) => {
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 50, px: 1, whiteSpace: "nowrap" }}>STT</TableCell>
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220, px: 1, whiteSpace: "nowrap" }}>Họ và tên</TableCell>                
                 <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60, px: 1, whiteSpace: "nowrap" }}>ĐGTX</TableCell>
-                <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60, px: 1, whiteSpace: "nowrap" }}>Lí thuyết</TableCell>
+                <TableCell
+                  align="center"
+                  sx={{
+                    backgroundColor: "#1976d2",
+                    color: "white",
+                    width: 70,
+                    px: 0.5,
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  <Box display="flex" alignItems="center" justifyContent="center" gap={0.3}>
+                    <Typography variant="body2" sx={{ color: "white" }}>
+                      Lí thuyết
+                    </Typography>
+
+                    {/* 🔥 FILL ALL LT */}
+                    <FormControl variant="standard" sx={{ minWidth: 16 }}>
+                      <Select
+                        value={fillLyThuyet}
+                        displayEmpty
+                        disableUnderline
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFillLyThuyet(val);
+
+                          setStudents((prev) =>
+                            prev.map((s) => {
+                              let updated = { ...s };
+
+                              // reset
+                              if (val === "-") {
+                                return {
+                                  ...s,
+                                  lyThuyet: "",
+                                  tongCong: null,
+                                  mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
+                                  nhanXet: s.nhanXet_goc || "",
+                                };
+                              }
+
+                              updated.lyThuyet = val;
+
+                              // ===== TIN HỌC =====
+                              if (selectedSubject === "Tin học") {
+                                const lt = parseFloat(val);
+                                const th = parseFloat(s.thucHanh);
+
+                                if (!isNaN(lt) && !isNaN(th)) {
+                                  updated.tongCong = Math.round(lt + th);
+                                  updated.mucDat =
+                                    updated.tongCong >= 9 ? "T" :
+                                    updated.tongCong >= 5 ? "H" : "C";
+
+                                  updated.nhanXet = generateNhanXet(
+                                    updated,
+                                    selectedSubject,
+                                    updated.tongCong,
+                                    updated.mucDat
+                                  );
+                                }
+                              }
+
+                              // ===== CÔNG NGHỆ =====
+                              if (selectedSubject === "Công nghệ") {
+                                const lt = parseFloat(val);
+
+                                if (!isNaN(lt)) {
+                                  updated.tongCong = Math.round(lt);
+
+                                  updated.mucDat =
+                                    lt >= 9 ? "T" :
+                                    lt >= 5 ? "H" : "C";
+
+                                  updated.nhanXet = generateNhanXet(
+                                    updated,
+                                    selectedSubject,
+                                    updated.tongCong,
+                                    updated.mucDat
+                                  );
+                                }
+                              }
+
+                              return updated;
+                            })
+                          );
+
+                          setFillLyThuyet(""); // reset dropdown
+                        }}
+                        renderValue={() => "▾"}
+                        sx={{
+                          color: "white",
+                          fontSize: 18,
+                          "& .MuiSelect-icon": { display: "none" }
+                        }}
+                      >
+                        {selectedSubject === "Tin học"
+                          ? ["-", 0, 1, 2, 3, 4, 5].map((v) => (
+                              <MenuItem key={v} value={v}>{v}</MenuItem>
+                            ))
+                          : ["-", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                              <MenuItem key={v} value={v}>{v}</MenuItem>
+                            ))
+                        }
+                      </Select>
+                    </FormControl>
+                  </Box>
+                </TableCell>
                 <TableCell
                   align="center"
                   sx={{
@@ -1025,7 +1132,7 @@ const fetchStudentsAndStatus = async (cls) => {
                       >
                         {/* 👉 Tuỳ môn */}
                         {selectedSubject === "Tin học" ? (
-                          [0, 1, 2, 3, 4, 5].map((v) => (
+                          ["-", 0, 1, 2, 3, 4, 5].map((v) => (
                             <MenuItem key={v} value={v}>{v}</MenuItem>
                           ))
                         ) : (
@@ -1255,31 +1362,80 @@ const fetchStudentsAndStatus = async (cls) => {
                       >
                         <FormControl variant="standard" fullWidth>
                           <Select
-                            value={student.thucHanh || ""}
+                            value={student.thucHanh ?? ""}
                             onChange={(e) => {
                               const val = e.target.value;
 
-                              if (val === "") {
-                                handleCellChange(student.maDinhDanh, "thucHanh", "");
+                              setFillThucHanh(val);
 
-                                setStudents((prev) =>
-                                  prev.map((s) =>
-                                    s.maDinhDanh === student.maDinhDanh
-                                      ? {
-                                          ...s,
-                                          thucHanh: "",
-                                          tongCong: null,
-                                          mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
-                                          nhanXet: s.nhanXet_goc || "",
-                                        }
-                                      : s
-                                  )
-                                );
+                              setStudents((prev) =>
+                                prev.map((s) => {
+                                  let updated = { ...s };
 
-                                return;
-                              }
+                                  // 🔥 RESET
+                                  if (val === "-") {
+                                    return {
+                                      ...s,
+                                      thucHanh: "",
+                                      tongCong: null,
+                                      mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
+                                      nhanXet: s.nhanXet_goc || "",
+                                    };
+                                  }
 
-                              handleCellChange(student.maDinhDanh, "thucHanh", val);
+                                  updated.thucHanh = val;
+
+                                  // ===== TIN HỌC =====
+                                  if (selectedSubject === "Tin học") {
+                                    const lt = parseFloat(s.lyThuyet);
+                                    const th = parseFloat(val);
+
+                                    if (!isNaN(lt) && !isNaN(th)) {
+                                      updated.tongCong = Math.round(lt + th);
+
+                                      updated.mucDat =
+                                        updated.tongCong >= 9
+                                          ? "T"
+                                          : updated.tongCong >= 5
+                                          ? "H"
+                                          : "C";
+
+                                      updated.nhanXet = generateNhanXet(
+                                        updated,
+                                        selectedSubject,
+                                        updated.tongCong,
+                                        updated.mucDat
+                                      );
+                                    }
+                                  }
+
+                                  // ===== CÔNG NGHỆ =====
+                                  if (selectedSubject === "Công nghệ") {
+                                    if (!["T", "H", "C"].includes(val)) return s;
+
+                                    const lt = parseFloat(s.lyThuyet);
+
+                                    if (!isNaN(lt)) {
+                                      updated.tongCong = Math.round(lt);
+
+                                      updated.mucDat =
+                                        lt >= 9 ? "T" :
+                                        lt >= 5 ? "H" : "C";
+
+                                      updated.nhanXet = generateNhanXet(
+                                        updated,
+                                        selectedSubject,
+                                        updated.tongCong,
+                                        updated.mucDat
+                                      );
+                                    }
+                                  }
+
+                                  return updated;
+                                })
+                              );
+
+                              setFillThucHanh("");
                             }}
                             disableUnderline
                             id={`thucHanh-${idx}`}
@@ -1325,7 +1481,7 @@ const fetchStudentsAndStatus = async (cls) => {
                       >
                         <TextField
                           variant="standard"
-                          value={student.thucHanh || ""}
+                          value={student.thucHanh ?? ""}
                           onChange={(e) =>
                             handleCellChange(
                               student.maDinhDanh,
