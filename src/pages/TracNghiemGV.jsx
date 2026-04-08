@@ -777,8 +777,46 @@ useEffect(() => {
   };
 
   const handleExportJSON = () => {
-    // 👉 nếu có đề đang mở thì dùng tên đó
-    const defaultName = selectedDoc || "de_trac_nghiem";
+    let defaultName = "Đề_trắc nghiệm";
+
+    // 👉 Ưu tiên lấy từ config hiện tại (chuẩn nhất)
+    if (selectedClass || semester || schoolYear || examLetter) {
+      const subject = selectedSubject || "Tin học";
+      const lop = selectedClass || "";
+      const hk =
+        semester === "Cuối kỳ I"
+          ? "HK1"
+          : semester === "Giữa kỳ I"
+          ? "HK1"
+          : semester === "Giữa kỳ II"
+          ? "HK2"
+          : semester === "Cả năm"
+          ? "CN"
+          : "HK2";
+
+      const year = schoolYear || "";
+      const code = examLetter ? ` (${examLetter.toUpperCase()})` : "";
+
+      defaultName = `Đề_${subject}_${lop}_${hk}_${year}${code}`;
+    }
+
+    // 👉 fallback nếu mở từ Firestore mà chưa có config
+    else if (selectedDoc) {
+      const parts = selectedDoc.split("_");
+
+      // de_tin_hoc_lop_3_hk2_2025-2026_d
+      if (parts.length >= 7) {
+        const subject = "Tin học";
+        const lop = `Lớp ${parts[3]}`;
+        const hk = parts[4].toUpperCase();
+        const year = parts[5];
+        const code = ` (${parts[6].toUpperCase()})`;
+
+        defaultName = `Đề_${subject}_${lop}_${hk}_${year}${code}`;
+      } else {
+        defaultName = selectedDoc;
+      }
+    }
 
     setFileName(defaultName);
     setOpenExportDialog(true);
