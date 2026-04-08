@@ -3,44 +3,28 @@ export const exportQuestionsToJSON = ({
   fileName = "de_trac_nghiem",
 }) => {
   try {
-    // ✅ Chuẩn hóa FULL dữ liệu (KHÔNG làm mất field)
     const exportData = questions.map((q, index) => ({
       id: q.id || `q_${index + 1}`,
-
-      // Nội dung
       question: q.question || "",
       questionImage: q.questionImage || "",
-
-      // Loại câu hỏi
       type: q.type || "single",
-
-      // Các field chung
       options: q.options || [],
       correct: q.correct || [],
       score: q.score ?? 0.5,
-
-      // 🔥 SORT
       sortType: q.sortType || "fixed",
-
-      // 🔥 MATCHING
       pairs: q.pairs || [],
       columnRatio: q.columnRatio || { left: 1, right: 1 },
-
-      // 🔥 FILL BLANK
       answers: q.answers || [],
-
-      // 🔥 TRUE/FALSE fallback
-      // (để tránh mất dữ liệu nếu sau này mở rộng)
     }));
 
     const jsonString = JSON.stringify(exportData, null, 2);
-
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${fileName}_${Date.now()}.json`;
+    // ❌ bỏ Date.now() đi
+    a.download = fileName;
     a.click();
 
     URL.revokeObjectURL(url);

@@ -78,6 +78,9 @@ const [filterYear, setFilterYear] = useState("Tất cả");
 const [semester, setSemester] = useState("Giữa kỳ I");
 
 const fileInputRef = React.useRef(null);
+//const [openDialog, setOpenDialog] = useState(false);
+const [fileName, setFileName] = useState("de_trac_nghiem");
+const [openExportDialog, setOpenExportDialog] = useState(false); // dialog export
 
 useEffect(() => {
   setDeTuan("");
@@ -774,9 +777,38 @@ useEffect(() => {
   };
 
   const handleExportJSON = () => {
+    // 👉 nếu có đề đang mở thì dùng tên đó
+    const defaultName = selectedDoc || "de_trac_nghiem";
+
+    setFileName(defaultName);
+    setOpenExportDialog(true);
+  };
+  
+  const handleConfirmExport = () => {
+    setOpenExportDialog(false); // đóng dialog
+
+    let finalName = fileName.trim();
+
+    if (!finalName) {
+      setSnackbar({
+        open: true,
+        message: "❌ Tên file không được để trống",
+        severity: "error",
+      });
+      return;
+    }
+
+    // 🔥 Xóa hẳn phần: .json_123456
+    finalName = finalName.replace(/\.json_\d+$/, "");
+
+    // 🔥 nếu chưa có .json thì thêm
+    if (!finalName.endsWith(".json")) {
+      finalName += ".json";
+    }
+
     const result = exportQuestionsToJSON({
       questions,
-      fileName: "de_trac_nghiem",
+      fileName: finalName,
     });
 
     if (result.success) {
@@ -1079,6 +1111,49 @@ useEffect(() => {
           handleDeleteSelectedDoc={handleDeleteSelectedDoc}
           fetchQuizList={fetchQuizList}
         />
+
+        <Dialog
+          open={openExportDialog}
+          onClose={() => setOpenExportDialog(false)}
+          fullWidth
+          maxWidth="sm" // sm | md | lg (bạn có thể đổi md nếu muốn rộng hơn nữa)
+        >
+          <DialogTitle sx={{ fontWeight: "bold", pb: 1 }}>
+            📥 Xuất đề kiểm tra
+          </DialogTitle>
+
+          <DialogContent sx={{ pt: 1 }}>
+            <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
+              Nhập tên file để lưu 
+            </Typography>
+
+            <TextField
+              fullWidth
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              label="Tên file"
+              placeholder="vd: de_trac_nghiem_lop_3"
+              autoFocus
+            />
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setOpenExportDialog(false)}
+              variant="outlined"
+            >
+              Hủy
+            </Button>
+
+            <Button
+              onClick={handleConfirmExport}
+              variant="contained"
+              sx={{ px: 3 }}
+            >
+              Xuất file
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* SNACKBAR */}
         <Snackbar
