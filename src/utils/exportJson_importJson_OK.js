@@ -66,39 +66,12 @@ export const importQuestionsFromJSON = (file) => {
           }
 
           const questions = jsonData.map((q, index) => {
-            // 🔥 detect options dạng app1 (string)
-            const isStringOptions =
-              Array.isArray(q.options) &&
-              typeof q.options[0] === "string";
-
-            // 🔥 normalize option (chỉ dùng cho options)
-            const normalizeOption = (opt) => {
-              if (typeof opt === "object" && opt !== null) {
-                return {
-                  text: opt.text || "",
-                  image: opt.image || "",
-                  formats: opt.formats || {},
-                };
-              }
-
-              return {
-                text: opt || "",
-                image: "",
-                formats: {},
-              };
-            };
-
             const base = {
               id: q.id || `q_${Date.now()}_${index}`,
               question: q.question || "",
               questionImage: q.questionImage || "",
               type: q.type || "single",
-
-              // 🔥 chỉ convert options (KHÔNG đụng pairs)
-              options: isStringOptions
-                ? q.options.map(normalizeOption)
-                : q.options || [],
-
+              options: q.options || [],
               correct: q.correct || [],
               score: q.score ?? 0.5,
             };
@@ -107,59 +80,36 @@ export const importQuestionsFromJSON = (file) => {
               case "image":
                 return {
                   ...base,
-                  options: Array.from({ length: 4 }, (_, i) =>
-                    normalizeOption(q.options?.[i])
-                  ),
+                  options: Array.from({ length: 4 }, (_, i) => q.options?.[i] || ""),
                   correct: Array.isArray(q.correct) ? q.correct : [],
                 };
 
               case "truefalse":
                 return {
                   ...base,
-                  options: base.options?.length
-                    ? base.options
-                    : [
-                        { text: "Đúng", image: "", formats: {} },
-                        { text: "Sai", image: "", formats: {} },
-                      ],
+                  options: q.options?.length ? q.options : ["Đúng", "Sai"],
                   correct: q.correct?.length ? q.correct : ["Đúng"],
                 };
 
               case "matching":
                 return {
                   ...base,
-
-                  // 🔥 FIX QUAN TRỌNG: giữ nguyên string (không convert)
-                  pairs: (q.pairs || []).map((p) => ({
-                    left: p.left ?? "",
-                    right: p.right ?? "",
-                  })),
-
+                  pairs: q.pairs || [],
                   columnRatio: q.columnRatio || { left: 1, right: 1 },
                 };
 
               case "sort":
                 return {
                   ...base,
-                  options: base.options?.length
-                    ? base.options
-                    : [
-                        { text: "", image: "", formats: {} },
-                        { text: "", image: "", formats: {} },
-                        { text: "", image: "", formats: {} },
-                        { text: "", image: "", formats: {} },
-                      ],
-                  correct:
-                    q.correct?.length
-                      ? q.correct
-                      : q.options?.map((_, i) => i) || [],
+                  options: q.options || ["", "", "", ""],
+                  correct: q.correct || q.options?.map((_, i) => i) || [],
                   sortType: q.sortType || "fixed",
                 };
 
               case "fillblank":
                 return {
                   ...base,
-                  options: base.options || [],
+                  options: q.options || [],
                   answers: q.answers || [],
                 };
 
@@ -168,14 +118,7 @@ export const importQuestionsFromJSON = (file) => {
               default:
                 return {
                   ...base,
-                  options: base.options?.length
-                    ? base.options
-                    : [
-                        { text: "", image: "", formats: {} },
-                        { text: "", image: "", formats: {} },
-                        { text: "", image: "", formats: {} },
-                        { text: "", image: "", formats: {} },
-                      ],
+                  options: q.options || ["", "", "", ""],
                   correct: q.correct || [],
                 };
             }
