@@ -3,35 +3,66 @@ export const exportQuestionsToJSON = ({
   fileName = "de_trac_nghiem",
 }) => {
   try {
-    const exportData = questions.map((q, index) => ({
-      id: q.id || `q_${index + 1}`,
-      question: q.question || "",
-      questionImage: q.questionImage || "",
-      type: q.type || "single",
-      options: q.options || [],
-      correct: q.correct || [],
-      score: q.score ?? 0.5,
-      sortType: q.sortType || "fixed",
-      pairs: q.pairs || [],
-      columnRatio: q.columnRatio || { left: 1, right: 1 },
-      answers: q.answers || [],
-    }));
+    const exportData = questions.map((q, index) => {
+      // 🔥 FIX MATCHING (giữ đầy đủ ảnh + text)
+      let pairs = [];
+      if (q.type === "matching") {
+        pairs = (q.pairs || []).map((p) => ({
+          left: p.left || "",
+          right: p.right || "",
+          leftImage: p.leftImage || "",
+          rightImage: p.rightImage || "",
+        }));
+      }
 
+      return {
+        id: q.id || `q_${index + 1}`,
+        question: q.question || "",
+        questionImage: q.questionImage || "",
+
+        type: q.type || "single",
+
+        // 🔥 giữ nguyên options (có thể chứa image URL)
+        options: Array.isArray(q.options) ? [...q.options] : [],
+
+        correct: Array.isArray(q.correct) ? [...q.correct] : [],
+
+        score: q.score ?? 0.5,
+
+        sortType: q.sortType || "fixed",
+
+        // 🔥 FIX ở đây
+        pairs,
+
+        columnRatio: q.columnRatio || { left: 1, right: 1 },
+
+        answers: Array.isArray(q.answers) ? [...q.answers] : [],
+      };
+    });
+
+    // 👉 stringify đẹp
     const jsonString = JSON.stringify(exportData, null, 2);
+
+    // 👉 tạo file
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    // ❌ bỏ Date.now() đi
-    a.download = fileName;
+
+    // 🔥 đảm bảo có .json
+    const finalName = fileName.endsWith(".json")
+      ? fileName
+      : `${fileName}.json`;
+
+    a.download = finalName;
     a.click();
 
     URL.revokeObjectURL(url);
 
     return { success: true };
   } catch (err) {
-    console.error("Export JSON error:", err);
+    console.error("❌ Export JSON error:", err);
     return { success: false, error: err.message };
   }
 };
@@ -49,28 +80,27 @@ export const importQuestionsFromJSON = (file) => {
             throw new Error("JSON không đúng format");
           }
 
+          // 🔥 normalize option (giữ image)
+          const normalizeOption = (opt) => {
+            if (typeof opt === "object" && opt !== null) {
+              return {
+                text: opt.text || "",
+                image: opt.image || "",
+                formats: opt.formats || {},
+              };
+            }
+
+            return {
+              text: opt || "",
+              image: "",
+              formats: {},
+            };
+          };
+
           const questions = jsonData.map((q, index) => {
-            // 🔥 detect options dạng app1 (string)
             const isStringOptions =
               Array.isArray(q.options) &&
               typeof q.options[0] === "string";
-
-            // 🔥 normalize option (chỉ dùng cho options)
-            const normalizeOption = (opt) => {
-              if (typeof opt === "object" && opt !== null) {
-                return {
-                  text: opt.text || "",
-                  image: opt.image || "",
-                  formats: opt.formats || {},
-                };
-              }
-
-              return {
-                text: opt || "",
-                image: "",
-                formats: {},
-              };
-            };
 
             const base = {
               id: q.id || `q_${Date.now()}_${index}`,
@@ -78,10 +108,10 @@ export const importQuestionsFromJSON = (file) => {
               questionImage: q.questionImage || "",
               type: q.type || "single",
 
-              // 🔥 chỉ convert options (KHÔNG đụng pairs)
+              // ✅ FIX: giữ image trong options
               options: isStringOptions
                 ? q.options.map(normalizeOption)
-                : q.options || [],
+                : (q.options || []).map(normalizeOption),
 
               correct: q.correct || [],
               score: q.score ?? 0.5,
@@ -100,7 +130,7 @@ export const importQuestionsFromJSON = (file) => {
               case "truefalse":
                 return {
                   ...base,
-                  options: base.options?.length
+                  options: base.options.length
                     ? base.options
                     : [
                         { text: "Đúng", image: "", formats: {} },
@@ -109,14 +139,30 @@ export const importQuestionsFromJSON = (file) => {
                   correct: q.correct?.length ? q.correct : ["Đúng"],
                 };
 
+              // 🔥🔥🔥 FIX QUAN TRỌNG NHẤT Ở ĐÂY
               case "matching":
                 return {
                   ...base,
 
-                  // 🔥 FIX QUAN TRỌNG: giữ nguyên string (không convert)
                   pairs: (q.pairs || []).map((p) => ({
                     left: p.left ?? "",
                     right: p.right ?? "",
+
+                    // ✅ GIỮ ẢNH LEFT
+                    leftImage: p.leftImage?.url
+                      ? {
+                          url: p.leftImage.url,
+                          name: p.leftImage.name || "",
+                        }
+                      : "",
+
+                    // ✅ GIỮ ẢNH RIGHT (nếu có)
+                    rightImage: p.rightImage?.url
+                      ? {
+                          url: p.rightImage.url,
+                          name: p.rightImage.name || "",
+                        }
+                      : "",
                   })),
 
                   columnRatio: q.columnRatio || { left: 1, right: 1 },
@@ -125,7 +171,7 @@ export const importQuestionsFromJSON = (file) => {
               case "sort":
                 return {
                   ...base,
-                  options: base.options?.length
+                  options: base.options.length
                     ? base.options
                     : [
                         { text: "", image: "", formats: {} },
@@ -152,7 +198,7 @@ export const importQuestionsFromJSON = (file) => {
               default:
                 return {
                   ...base,
-                  options: base.options?.length
+                  options: base.options.length
                     ? base.options
                     : [
                         { text: "", image: "", formats: {} },
@@ -167,6 +213,7 @@ export const importQuestionsFromJSON = (file) => {
 
           resolve({ success: true, data: questions });
         } catch (parseErr) {
+          console.error(parseErr);
           resolve({
             success: false,
             error: "❌ File JSON không hợp lệ hoặc sai cấu trúc",
