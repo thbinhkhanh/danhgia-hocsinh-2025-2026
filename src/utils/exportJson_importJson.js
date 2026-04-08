@@ -230,7 +230,7 @@ export const importQuestionsFromJSON = (file) => {
 
       reader.readAsText(file);
     } catch (err) {
-      resolve({ success: false, error: err.message });
+      resolve({ success: false, error: err.message }); 
     }
   });
 };
