@@ -37,6 +37,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import ExportDialog from "../dialog/ExportDialog";
 
 import OpenExamDialog from "../dialog/OpenExamDialog";
 import ExamDeleteConfirmDialog from "../dialog/ExamDeleteConfirmDialog";
@@ -777,7 +778,7 @@ useEffect(() => {
   };
 
   const handleExportJSON = () => {
-    let defaultName = "Đề_trắc nghiệm";
+    let defaultName = "";
 
     // 👉 Ưu tiên lấy từ config hiện tại (chuẩn nhất)
     if (selectedClass || semester || schoolYear || examLetter) {
@@ -797,7 +798,7 @@ useEffect(() => {
       const year = schoolYear || "";
       const code = examLetter ? ` (${examLetter.toUpperCase()})` : "";
 
-      defaultName = `Đề_${subject}_${lop}_${hk}_${year}${code}`;
+      defaultName = `Đề ${subject} ${lop} ${hk} ${year}${code}`;
     }
 
     // 👉 fallback nếu mở từ Firestore mà chưa có config
@@ -1150,48 +1151,13 @@ useEffect(() => {
           fetchQuizList={fetchQuizList}
         />
 
-        <Dialog
+        <ExportDialog
           open={openExportDialog}
           onClose={() => setOpenExportDialog(false)}
-          fullWidth
-          maxWidth="sm" // sm | md | lg (bạn có thể đổi md nếu muốn rộng hơn nữa)
-        >
-          <DialogTitle sx={{ fontWeight: "bold", pb: 1 }}>
-            📥 Xuất đề kiểm tra
-          </DialogTitle>
-
-          <DialogContent sx={{ pt: 1 }}>
-            <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
-              Nhập tên file để lưu 
-            </Typography>
-
-            <TextField
-              fullWidth
-              value={fileName}
-              onChange={(e) => setFileName(e.target.value)}
-              label="Tên file"
-              placeholder="vd: de_trac_nghiem_lop_3"
-              autoFocus
-            />
-          </DialogContent>
-
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button
-              onClick={() => setOpenExportDialog(false)}
-              variant="outlined"
-            >
-              Hủy
-            </Button>
-
-            <Button
-              onClick={handleConfirmExport}
-              variant="contained"
-              sx={{ px: 3 }}
-            >
-              Xuất file
-            </Button>
-          </DialogActions>
-        </Dialog>
+          fileName={fileName}
+          setFileName={setFileName}
+          onConfirm={handleConfirmExport}
+        />
 
         {/* SNACKBAR */}
         <Snackbar
