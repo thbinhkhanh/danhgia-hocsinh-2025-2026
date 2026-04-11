@@ -13,13 +13,32 @@ export function shuffleArray(arr = []) {
   return copy;
 }
 
-export function shuffleUntilDifferent(arr = []) {
+/*export function shuffleUntilDifferent(arr = []) {
   if (arr.length <= 1) return arr;
 
   let shuffled;
   do {
     shuffled = shuffleArray(arr);
   } while (shuffled.every((v, i) => v.idx === arr[i].idx));
+
+  return shuffled;
+}*/
+export function shuffleUntilDifferent(arr = []) {
+  if (arr.length <= 1) return arr;
+
+  let shuffled;
+  let attempts = 0;
+
+  do {
+    shuffled = shuffleArray(arr);
+    attempts++;
+  } while (
+    (
+      shuffled.every((v, i) => v.idx === arr[i].idx) || // giống y chang ban đầu
+      shuffled.every((v, i) => v.idx === i)             // ⚠️ trùng luôn correct order
+    ) &&
+    attempts < 100
+  );
 
   return shuffled;
 }
@@ -115,12 +134,11 @@ export function buildRuntimeQuestions(rawQuestions = []) {
             ? [...q.options]
             : ["", "", "", ""];
 
-        const indexed = options.map((opt, idx) => ({ opt, idx }));
+        // ❗ GIỮ ĐÁP ÁN GỐC (DB ORDER)
+        const correctOrder = options.map((opt, idx) => ({ opt, idx }));
 
-        const processed =
-          q.sortType === "shuffle"
-            ? shuffleUntilDifferent(indexed)
-            : indexed;
+        // ❗ SHUFFLE ĐỂ HIỂN THỊ
+        const shuffled = shuffleArray([...correctOrder]);
 
         return {
           ...q,
@@ -128,9 +146,16 @@ export function buildRuntimeQuestions(rawQuestions = []) {
           type,
           question: questionText,
           image: q.image ?? null,
-          options: processed.map(i => i.opt),
-          initialSortOrder: processed.map(i => i.idx),
+
+          // 🔥 hiển thị đã đảo
+          options: shuffled.map(i => i.opt),
+
+          // 🔥 QUAN TRỌNG: vị trí đúng = DB gốc
+          initialSortOrder: correctOrder.map(i => i.idx),
+
+          // 🔥 đáp án chuẩn để chấm
           correctTexts: options,
+
           score: q.score ?? 1,
         };
       }

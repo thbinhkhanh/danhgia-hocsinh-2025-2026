@@ -33,10 +33,10 @@ export function getQuestionStatus({
 
       case "matching":
         return (
-          Array.isArray(question.correct) &&
+          Array.isArray(question.initialMatchingOrder) &&
           Array.isArray(userAnswer) &&
           JSON.stringify(userAnswer) ===
-            JSON.stringify(question.correct)
+            JSON.stringify(question.initialMatchingOrder)
         );
 
       case "truefalse": {
@@ -105,9 +105,10 @@ export function getQuestionStatus({
       const ca = question.options || [];
       isCorrect =
         ua.length === ca.length &&
-        ca.every((opt, i) =>
-          ua[i]?.trim().toLowerCase() ===
-          opt.text?.trim().toLowerCase()
+        ca.every(
+          (opt, i) =>
+            ua[i]?.trim().toLowerCase() ===
+            opt.text?.trim().toLowerCase()
         );
       break;
     }

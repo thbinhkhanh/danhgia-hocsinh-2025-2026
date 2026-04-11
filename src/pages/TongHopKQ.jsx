@@ -94,6 +94,76 @@ export default function TongHopKQ() {
     setLoading(true);
 
     try {
+      const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
+      const hocKyCode = hocKyMap[config.hocKy];
+
+      // ================== ÔN TẬP ==================
+      if (kieuHienThi === "ONTAP") {
+        const subjectKey =
+          selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
+
+        const colRef = collection(
+          db,
+          "ONTAP",
+          config.hocKy,
+          selectedLop
+        );
+
+        const snapshot = await getDocs(colRef);
+
+        if (snapshot.empty) {
+          setResults([]);
+          setSnackbarSeverity("warning");
+          setSnackbarMessage(`Không có dữ liệu ôn tập lớp ${selectedLop}`);
+          setSnackbarOpen(true);
+          setLoading(false);
+          return;
+        }
+
+        const data = snapshot.docs.map(docSnap => {
+          const d = docSnap.data();
+
+          // ✅ HỖ TRỢ CẢ DATA MỚI + CŨ
+          const subjectData =
+            d?.subjects?.[subjectKey] || d?.[subjectKey] || {};
+
+          return {
+            docId: docSnap.id,
+            hoVaTen: d.hoVaTen || "",
+            diem: subjectData.diem ?? "",
+            soLanLam: subjectData.soLanLam ?? "",
+            ngayHienThi: subjectData.ngayLam ?? "",
+            thoiGianLamBai: subjectData.thoiGianLamBai ?? "",
+          };
+        });
+
+        // sort tên chuẩn VN
+        const compareVietnameseName = (a, b) => {
+          const namePartsA = (a.hoVaTen || "").trim().split(" ").reverse();
+          const namePartsB = (b.hoVaTen || "").trim().split(" ").reverse();
+          const len = Math.max(namePartsA.length, namePartsB.length);
+          for (let i = 0; i < len; i++) {
+            const partA = (namePartsA[i] || "").toLowerCase();
+            const partB = (namePartsB[i] || "").toLowerCase();
+            const cmp = partA.localeCompare(partB);
+            if (cmp !== 0) return cmp;
+          }
+          return 0;
+        };
+
+        data.sort(compareVietnameseName);
+
+        const numberedData = data.map((item, idx) => ({
+          stt: idx + 1,
+          ...item,
+        }));
+
+        setResults(numberedData);
+        setLoading(false);
+        return;
+      }
+
+      // ================== KTĐK ==================
       const classKey = selectedLop.replace(".", "_");
       const colRef = collection(db, "DATA", classKey, "HOCSINH");
       const snapshot = await getDocs(colRef);
@@ -107,39 +177,22 @@ export default function TongHopKQ() {
         return;
       }
 
-      const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
-      const hocKyCode = hocKyMap[config.hocKy];
-
       const data = snapshot.docs.map(docSnap => {
         const studentData = docSnap.data();
         const studentId = docSnap.id;
 
-        let diem, diemTN, ngayHienThi, thoiGianLamBai, nhanXet;
-
-        if (kieuHienThi === "KTĐK") {
-          const ktdkData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
-          diem = ktdkData.lyThuyet ?? "";
-          ngayHienThi = ktdkData.ngayKiemTra ?? "";
-          thoiGianLamBai = ktdkData.thoiGianLamBai ?? "";
-        } else if (kieuHienThi === "ONTAP") {
-          const onTapData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
-          diem = onTapData.lyThuyet_onTap ?? "";
-          ngayHienThi = onTapData.ngayKiemTra_onTap ?? "";
-          thoiGianLamBai = onTapData.thoiGianLamBai_onTap ?? "";
-        }
+        const ktdkData = studentData?.[subjectKey]?.ktdk?.[hocKyCode] || {};
 
         return {
           docId: studentId,
           hoVaTen: studentData.hoVaTen || "",
-          diem,
-          diemTN,
-          ngayHienThi,
-          thoiGianLamBai,
-          nhanXet,
+          diem: ktdkData.lyThuyet ?? "",
+          ngayHienThi: ktdkData.ngayKiemTra ?? "",
+          thoiGianLamBai: ktdkData.thoiGianLamBai ?? "",
         };
       });
 
-      // Sắp xếp tên chuẩn Việt Nam: tên → tên đệm → họ
+      // sort tên
       const compareVietnameseName = (a, b) => {
         const namePartsA = (a.hoVaTen || "").trim().split(" ").reverse();
         const namePartsB = (b.hoVaTen || "").trim().split(" ").reverse();
@@ -155,7 +208,11 @@ export default function TongHopKQ() {
 
       data.sort(compareVietnameseName);
 
-      const numberedData = data.map((item, idx) => ({ stt: idx + 1, ...item }));
+      const numberedData = data.map((item, idx) => ({
+        stt: idx + 1,
+        ...item,
+      }));
+
       setResults(numberedData);
 
     } catch (err) {
@@ -531,28 +588,72 @@ export default function TongHopKQ() {
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 200 }}>Họ và tên</TableCell>
 
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 70 }}>Điểm</TableCell>
+                    {kieuHienThi === "ONTAP" && ( // ⭐ thêm điều kiện
+                      <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 80 }}>
+                        Số lần
+                      </TableCell>
+                    )}
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 70 }}>Thời gian</TableCell>
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 100 }}>Ngày</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(results.length > 0 ? results : Array.from({ length: 5 }, (_, i) => ({
-                    stt: i + 1,
-                    hoVaTen: "",
-                    diem: "",
-                    thoiGianLamBai: "",
-                    ngayHienThi: ""
-                  }))).map(r => (
-                    <TableRow key={r.stt}>
-                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.stt}</TableCell>
-                      <TableCell sx={{ px: 1, textAlign: "left", border: "1px solid rgba(0,0,0,0.12)" }}>{r.hoVaTen}</TableCell>
+  {(() => {
+    const filtered = results.filter(
+      r => r.diem !== "" && r.diem !== null && r.diem !== undefined
+    );
 
-                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)", fontWeight: "bold" }}>{r.diem}</TableCell>
-                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.thoiGianLamBai}</TableCell>
-                      <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>{r.ngayHienThi}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
+    const displayData =
+      filtered.length > 0
+        ? filtered.map((item, idx) => ({
+            ...item,
+            stt: idx + 1, // ✅ đánh lại STT sau khi lọc
+          }))
+        : Array.from({ length: 5 }, (_, i) => ({
+            stt: i + 1,
+            hoVaTen: "",
+            diem: "",
+            thoiGianLamBai: "",
+            ngayHienThi: "",
+          }));
+
+    return displayData.map(r => (
+      <TableRow key={r.stt}>
+        <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
+          {r.stt}
+        </TableCell>
+
+        <TableCell sx={{ px: 1, textAlign: "left", border: "1px solid rgba(0,0,0,0.12)" }}>
+          {r.hoVaTen}
+        </TableCell>
+
+        <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)", fontWeight: "bold" }}>
+          {r.diem}
+        </TableCell>
+
+        {kieuHienThi === "ONTAP" && (
+          <TableCell
+            sx={{
+              px: 1,
+              textAlign: "center",
+              border: "1px solid rgba(0,0,0,0.12)",
+            }}
+          >
+            {r.soLanLam}
+          </TableCell>
+        )}
+
+        <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
+          {r.thoiGianLamBai}
+        </TableCell>
+
+        <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
+          {r.ngayHienThi}
+        </TableCell>
+      </TableRow>
+    ));
+  })()}
+</TableBody>
               </Table>
             </TableContainer>
           </Box>
