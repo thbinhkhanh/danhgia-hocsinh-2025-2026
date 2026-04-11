@@ -283,7 +283,9 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
 
             const deThiSnap = await getDocs(collection(db, "DETHI"));
             const matchedDeThi = deThiSnap.docs.find(d =>
-              d.id.includes(classLabel) && d.id.includes(hocKiCode)
+              d.id.includes(classLabel) &&
+              d.id.includes(hocKiCode) &&
+              d.id.includes(monHocFromConfig) // ✅ thêm môn vào đây
             );
 
             if (!matchedDeThi) {
