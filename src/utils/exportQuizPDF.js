@@ -3,7 +3,7 @@
 
 import jsPDF from "jspdf";
 import "../fonts/DejaVuSans-normal.js";
-
+import { v4 as uuidv4 } from "uuid";
 
 // ================== UTILS ==================
 
@@ -455,7 +455,11 @@ export const exportQuizPDF = async (
   }
 
   // ================== SAVE ==================
-  const code = Date.now();
+  // sinh chuỗi ngẫu nhiên 3 ký tự
+  const code = uuidv4().replace(/-/g, "").substring(0, 3);
+
   const safeName = capitalizeName(studentInfo.name).replace(/\s+/g, "_");
+
   pdf.save(`${className}_${safeName}_${code}.pdf`);
+
 };
