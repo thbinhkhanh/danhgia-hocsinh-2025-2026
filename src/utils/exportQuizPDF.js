@@ -18,6 +18,19 @@ async function getBase64FromUrl(url) {
   });
 }
 
+const getImageSize = (base64) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({
+        width: img.width,
+        height: img.height
+      });
+    };
+    img.src = base64;
+  });
+};
+
 // Chuẩn hoá tên
 const capitalizeName = (name) => {
   if (!name) return "";
@@ -142,12 +155,27 @@ export const exportQuizPDF = async (
       try {
         const img64 = await getBase64FromUrl(q.questionImage);
 
-        const imgSize = 25; // giữ nguyên
-        const xImg = (pageWidth - imgSize) / 2; // ⭐ căn giữa trang
+        const { width, height } = await getImageSize(img64);
 
-        pdf.addImage(img64, "PNG", xImg, y, imgSize, imgSize);
-        //y += 45;
-        y += imgSize + 8;
+        // scale
+        let newWidth = width * 0.4 * 0.264583;
+        let newHeight = height * 0.4 * 0.264583;
+
+        // tránh tràn
+        const maxWidth = pageWidth - 2 * margin;
+        if (newWidth > maxWidth) {
+          const ratio = maxWidth / newWidth;
+          newWidth = maxWidth;
+          newHeight = newHeight * ratio;
+        }
+
+        // 👉 căn giữa
+        const xCenter = (pageWidth - newWidth) / 2;
+
+        pdf.addImage(img64, "PNG", xCenter, y-5, newWidth, newHeight);
+
+        y += newHeight - 2;
+
       } catch {}
     }
 
@@ -228,57 +256,98 @@ export const exportQuizPDF = async (
 
 
       case "image": {
-        const imgSize = 18;     // kích thước ảnh
-        const gap = 40;         // khoảng cách mỗi ảnh
+        const SCALE = 0.5;
+        const gap = 20;
         const maxPerRow = 4;
 
-        const totalRowWidth = gap * maxPerRow;
-        const startX = (pageWidth - totalRowWidth) / 2; // ⭐ căn giữa
+        /* ===== Chuẩn hoá đáp án ===== */
+        const rawAns = answers[q.id];
+        const userIndexes = Array.isArray(rawAns)
+          ? rawAns.map(Number)
+          : rawAns !== undefined && rawAns !== null
+          ? [Number(rawAns)]
+          : [];
 
-        let x = startX;
+        const correctIndexes = (
+          Array.isArray(q.correct) ? q.correct : [q.correct]
+        ).map(Number);
 
-        for (let i = 0; i < q.options.length; i++) {
-          if (i > 0 && i % maxPerRow === 0) {
-            x = startX;
-            y += imgSize + 14;
+        for (let row = 0; row < q.options.length; row += maxPerRow) {
+
+          const rowItems = q.options.slice(row, row + maxPerRow);
+
+          // ===== load tất cả ảnh trước =====
+          const images = await Promise.all(
+            rowItems.map(async (opt) => {
+              const imgUrl = extractImage(opt);
+              if (!imgUrl) return null;
+
+              try {
+                const img64 = await getBase64FromUrl(imgUrl);
+                const { width, height } = await getImageSize(img64);
+
+                let newWidth = width * SCALE * 0.264583;
+                let newHeight = height * SCALE * 0.264583;
+
+                const maxSize = 30;
+                if (newWidth > maxSize) {
+                  const ratio = maxSize / newWidth;
+                  newWidth = maxSize;
+                  newHeight *= ratio;
+                }
+
+                return { img64, newWidth, newHeight };
+              } catch {
+                return null;
+              }
+            })
+          );
+
+          // ===== tính tổng width thật =====
+          const totalWidth =
+            images.reduce((sum, img) => sum + (img?.newWidth || 0), 0) +
+            gap * (images.length - 1);
+
+          let x = (pageWidth - totalWidth) / 2;
+
+          let rowMaxHeight = 0;
+
+          // ===== render từng ảnh =====
+          for (let i = 0; i < images.length; i++) {
+            const img = images[i];
+            const index = row + i;
+
+            const isChosen = userIndexes.includes(index);
+            const isCorrect = correctIndexes.includes(index);
+
+            if (img) {
+              pdf.addImage(img.img64, "PNG", x, y + 5, img.newWidth, img.newHeight);
+
+              // checkbox
+              pdf.text(isChosen ? "[x]" : "[ ]", x, y);
+
+              // ✓ / ✗
+              if (isChosen) {
+                pdf.setTextColor(isCorrect ? 0 : 255, isCorrect ? 128 : 0, 0);
+                pdf.text(
+                  isCorrect ? "✓" : "✗",
+                  x,
+                  y + img.newHeight + 12
+                );
+                pdf.setTextColor(0, 0, 0);
+              }
+
+              if (img.newHeight > rowMaxHeight) {
+                rowMaxHeight = img.newHeight;
+              }
+
+              x += img.newWidth + gap;
+            }
           }
 
-          const imgUrl = extractImage(q.options[i]);
-          const selected = (answers[q.id] || []).includes(i) ? "[x]" : "[ ]";
-
-          // checkbox
-          pdf.text(selected, x + imgSize / 2 - 4, y);
-
-          // ===== ✓ / ✗ =====
-          const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
-          const isChosen = (answers[q.id] || []).includes(i);
-          const isCorrect = isChosen && correctArr.includes(i);
-
-          if (isChosen) {
-            pdf.setTextColor(isCorrect ? 0 : 255, isCorrect ? 128 : 0, 0);
-
-            // vẽ ✓ / ✗ ở góc phải ảnh
-            pdf.text(
-              isCorrect ? "✓" : "✗",
-              x + imgSize - 2,
-              y + imgSize + 8
-            );
-
-            pdf.setTextColor(0, 0, 0);
-          }
-
-          // image
-          if (imgUrl) {
-            try {
-              const img64 = await getBase64FromUrl(imgUrl);
-              pdf.addImage(img64, "PNG", x, y + 4, imgSize, imgSize);
-            } catch {}
-          }
-
-          x += gap;
+          y += rowMaxHeight + 20;
         }
 
-        y += imgSize + 15;
         break;
       }
 
@@ -361,12 +430,37 @@ export const exportQuizPDF = async (
         break;
       }
 
-
-
-      case "fillblank": {
+      /*case "fillblank": {
         const filled = Array.isArray(q.filled) ? q.filled : [];
         const correct = Array.isArray(q.options) ? q.options : [];
 
+        // ===== HIỂN THỊ NỘI DUNG ĐỀ (a, b, c, d) =====
+        if (q.option) {
+          const optionText = q.option
+            .replace(/<\/p>/g, "\n")
+            .replace(/<[^>]*>/g, "")
+            .trim();
+
+          const optionLines = pdf.splitTextToSize(
+            optionText,
+            pageWidth - 2 * margin
+          );
+
+          if (y + optionLines.length * lineHeight > pageBottom) {
+            pdf.addPage();
+            y = margin;
+          }
+
+          // 🔺 TĂNG khoảng cách TRÊN
+          y += 6;
+
+          pdf.text(optionLines, margin, y);
+
+          // 🔻 GIẢM khoảng cách DƯỚI
+          y += optionLines.length * lineHeight - 5;
+        }
+
+        // ===== HIỂN THỊ CÂU TRẢ LỜI =====
         filled.forEach((word, i) => {
           const userWord = (word || "").trim().toLowerCase();
 
@@ -397,54 +491,251 @@ export const exportQuizPDF = async (
         });
 
         break;
-      }
+      }*/
 
+      case "fillblank": {
+        const filled = Array.isArray(q.filled) ? q.filled : [];
+        const options = Array.isArray(q.options) ? q.options : [];
 
-      case "matching": {
-        const userOrder = Array.isArray(answers[q.id]) ? answers[q.id] : [];
-        const correctOrder = Array.isArray(q.correct) ? q.correct : [];
+        // ===== HIỂN THỊ CÂU HỎI =====
+        if (q.option) {
+          let optionText = q.option
+            .replace(/<\/p>/g, "\n")
+            .replace(/<[^>]*>/g, "")
+            .trim();
 
-        const isNotInteracted = userOrder.length === 0;
-
-        q.pairs.forEach((pair, i) => {
-          const left = extractText(pair.left);
-
-          // 👉 Nếu chưa tương tác → hiển thị đáp án đúng
-          const rightIdx = isNotInteracted
-            ? correctOrder[i]
-            : userOrder[i];
-
-          const right = extractText(q.rightOptions?.[rightIdx]);
-
-          const isCorrect = isNotInteracted
-            ? true
-            : rightIdx === correctOrder[i];
-
-          const line = `${left}  →  ${right || "_____"}`;
-
-          const lines = pdf.splitTextToSize(
-            line,
-            pageWidth - 2 * margin
-          );
+          const lines = optionText.split("\n").filter(Boolean);
 
           if (y + lines.length * lineHeight > pageBottom) {
             pdf.addPage();
             y = margin;
           }
 
-          pdf.text(lines, margin + 5, y);
+          lines.forEach((line, i) => {
+            const userVal = filled[i] || "______";
 
-          pdf.setTextColor(isCorrect ? 0 : 255, isCorrect ? 128 : 0, 0);
-          pdf.text(isCorrect ? "✓" : "✗", pageWidth - margin - 10, y);
-          pdf.setTextColor(0, 0, 0);
+            const correctObj = options[i];
+            const correctText =
+              typeof correctObj === "string"
+                ? correctObj
+                : correctObj?.text || "";
 
-          y += lines.length * lineHeight;
-        });
+            const isCorrect =
+              userVal &&
+              userVal.trim().toLowerCase() ===
+              correctText.trim().toLowerCase();
+
+            const parts = line.split(/\[\.\.\.\]/);
+
+            const before = parts[0] || "";
+            const after = parts[1] || "";
+
+            let x = margin;
+            const yLine = y + i * lineHeight + 5; // 👈 tăng ở đây
+
+            // ===== before =====
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(before, x, yLine);
+            x += pdf.getTextWidth(before);
+
+            // ===== answer (color) =====
+            const answerText = `[${userVal}]`;
+
+            pdf.setTextColor(
+              isCorrect ? 0 : 255,
+              isCorrect ? 150 : 0,
+              0
+            );
+
+            pdf.text(answerText, x, yLine);
+            x += pdf.getTextWidth(answerText);
+
+            // ===== after =====
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(after, x, yLine);
+          });
+
+          y += lines.length * lineHeight + 4;
+        }
+
+        // ❌ ĐÃ XÓA HOÀN TOÀN PHẦN:
+        // filled.forEach(...)  ← KHÔNG HIỂN THỊ DANH SÁCH NỮA
 
         break;
       }
 
+      case "matching": {
+        y -= 4;
+        const SCALE = 0.4;
+        const gapX = 10;
+        const cellPadding = 3;
 
+        const totalWidth = pageWidth - 2 * margin;
+
+        // ===== DÙNG columnRatio =====
+        const ratio = q.columnRatio || {};
+        const leftRatio = Number(ratio.left) || 1;
+        const rightRatio = Number(ratio.right) || 1;
+
+        const totalRatio = leftRatio + rightRatio;
+
+        const leftColWidth = totalWidth * (leftRatio / totalRatio);
+        const rightColWidth = totalWidth * (rightRatio / totalRatio);
+
+        const userOrder = Array.isArray(answers[q.id]) ? answers[q.id] : [];
+        const correctOrder = Array.isArray(q.correct) ? q.correct : [];
+
+        const isNotInteracted = userOrder.length === 0;
+
+        for (let i = 0; i < q.pairs.length; i++) {
+          const pair = q.pairs[i];
+
+          const leftText = extractText(pair.left);
+          const leftImgUrl = pair.leftImage?.url;
+
+          const rightIdx = isNotInteracted ? correctOrder[i] : userOrder[i];
+          const rightPair = q.pairs[rightIdx];
+
+          const rightText = extractText(rightPair?.right);
+
+          const isCorrect = isNotInteracted
+            ? true
+            : rightIdx === correctOrder[i];
+
+          // ===== PAGE BREAK =====
+          if (y + 50 > pageBottom) {
+            pdf.addPage();
+            y = margin;
+          }
+
+          let leftHeight = 0;
+          let imgDrawWidth = 0;
+          let imgDrawHeight = 0;
+          let img64Cache = null;
+
+          // ===== LOAD IMAGE =====
+          if (leftImgUrl) {
+            try {
+              const img64 = await getBase64FromUrl(leftImgUrl);
+              const { width, height } = await getImageSize(img64);
+
+              let newWidth = width * SCALE * 0.264583;
+              let newHeight = height * SCALE * 0.264583;
+
+              const maxSize = leftColWidth - cellPadding * 2;
+
+              if (newWidth > maxSize) {
+                const ratio = maxSize / newWidth;
+                newWidth = maxSize;
+                newHeight *= ratio;
+              }
+
+              imgDrawWidth = newWidth;
+              imgDrawHeight = newHeight;
+              img64Cache = img64;
+
+              leftHeight = newHeight;
+            } catch {}
+          }
+
+          // ===== LEFT TEXT =====
+          let leftLines = [];
+          if (leftText) {
+            leftLines = pdf.splitTextToSize(
+              leftText,
+              leftColWidth - cellPadding * 2
+            );
+
+            leftHeight = Math.max(leftHeight, leftLines.length * lineHeight);
+          }
+
+          // ===== RIGHT TEXT =====
+          const rightLines = pdf.splitTextToSize(
+            rightText || "_____",
+            rightColWidth - cellPadding * 2
+          );
+
+          const rightHeight = rightLines.length * lineHeight;
+
+          const rowHeight =
+            Math.max(leftHeight, rightHeight) + cellPadding * 2;
+
+          // ===== DRAW BORDER =====
+          pdf.rect(margin, y, totalWidth, rowHeight);
+
+          pdf.line(
+            margin + leftColWidth,
+            y,
+            margin + leftColWidth,
+            y + rowHeight
+          );
+
+          // ===== DRAW LEFT (CENTER) =====
+          const contentHeight = Math.max(
+            imgDrawHeight,
+            leftLines.length * lineHeight
+          );
+
+          let leftStartY = y + (rowHeight - contentHeight) / 2;
+
+          // ảnh
+          if (img64Cache) {
+            const imgX =
+              margin + (leftColWidth - imgDrawWidth) / 2;
+
+            pdf.addImage(
+              img64Cache,
+              "PNG",
+              imgX,
+              leftStartY,
+              imgDrawWidth,
+              imgDrawHeight
+            );
+          }
+
+          // text
+          if (leftLines.length > 0) {
+            const textY = img64Cache
+              ? leftStartY + imgDrawHeight + 2
+              : leftStartY;
+
+            pdf.text(
+              leftLines,
+              margin + leftColWidth / 2,
+              textY,
+              { align: "center" }
+            );
+          }
+
+          // ===== DRAW RIGHT (CENTER VERTICAL) =====
+          const rightContentHeight = rightLines.length * lineHeight;
+
+          const rightStartY =
+            y + (rowHeight - rightContentHeight) / 2 + lineHeight / 2;
+
+          pdf.text(
+            rightLines,
+            margin + leftColWidth + gapX,
+            rightStartY
+          );
+
+          // ===== ✓ / ✗ =====
+          pdf.setTextColor(isCorrect ? 0 : 255, isCorrect ? 128 : 0, 0);
+          pdf.text(
+            isCorrect ? "✓" : "✗",
+            pageWidth - margin - 8,
+            y + cellPadding + lineHeight
+          );
+          pdf.setTextColor(0, 0, 0);
+
+          // ===== NEXT ROW =====
+          y += rowHeight;
+        }
+
+        y += 5; // hoặc 15 nếu muốn rộng hơn
+
+        break;
+      }
 
       default:
         pdf.text("(Loại câu hỏi chưa hỗ trợ)", margin + 5, y);
