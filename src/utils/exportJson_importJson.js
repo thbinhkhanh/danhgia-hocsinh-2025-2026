@@ -186,28 +186,85 @@ export const importQuestionsFromJSON = (file) => {
                   sortType: q.sortType || "fixed",
                 };
 
-              case "fillblank":
+              case "fillblank": {
+                // 🔥 detect cấu trúc 2
+                const isStructure2 =
+                  Array.isArray(q.options) &&
+                  q.options.length > 0 &&
+                  typeof q.option === "string";
+
+                if (isStructure2) {
+                  return {
+                    ...base,
+
+                    // ✅ GIỮ NGUYÊN CÂU GỐC CÓ [...]
+                    option: q.option,
+
+                    // normalize options
+                    options: q.options.map(normalizeOption),
+
+                    // ❗ cấu trúc 1 không dùng correct
+                    correct: [],
+                    answers: [],
+                  };
+                }
+
+                // =========================
+                // 🔥 STRUCTURE 1 GIỮ NGUYÊN
+                // =========================
                 return {
                   ...base,
+                  option: q.option || "",   // 🔥 FIX thêm dòng này luôn cho chắc
                   options: base.options || [],
                   answers: q.answers || [],
+                  correct: [],
                 };
+              }
 
               case "multiple":
               case "single":
-              default:
-                return {
-                  ...base,
-                  options: base.options.length
-                    ? base.options
+              default: {
+                // =========================
+                // normalize options (GIỮ INDEX GỐC)
+                // =========================
+                const optionsRaw =
+                  Array.isArray(q.options) && q.options.length
+                    ? q.options
                     : [
                         { text: "", image: "", formats: {} },
                         { text: "", image: "", formats: {} },
                         { text: "", image: "", formats: {} },
                         { text: "", image: "", formats: {} },
-                      ],
-                  correct: q.correct || [],
+                      ];
+
+                const normalizedOptions = optionsRaw.map((opt) =>
+                  normalizeOption(opt)
+                );
+
+                // =========================
+                // FIX QUAN TRỌNG: correct phải là INDEX NUMBER
+                // =========================
+                let correct = q.correct || [];
+
+                // nếu data cũ là string → convert về index an toàn
+                if (!Array.isArray(correct)) correct = [];
+
+                correct = correct
+                  .map((c) => Number(c))
+                  .filter((n) => !isNaN(n));
+
+                return {
+                  ...base,
+
+                  options: normalizedOptions,
+
+                  // 🔥 QUAN TRỌNG: giữ đúng dạng index
+                  correct,
+
+                  // 🔥 thêm flag để shuffle sau này KHÔNG lỗi mapping
+                  sortType: q.sortType || "shuffle",
                 };
+              }
             }
           });
 

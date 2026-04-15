@@ -72,10 +72,10 @@ export function buildRuntimeQuestions(rawQuestions = []) {
       // ================= MATCHING =================
       if (type === "matching") {
         const pairs = Array.isArray(q.pairs) ? q.pairs : [];
-        if (!pairs.length) return null;
+        if (pairs.length === 0) return null;
 
         const leftOptions = pairs.map((p, idx) => {
-          if (p.leftImage?.url) {
+          if (p.leftImage && p.leftImage.url) {
             return {
               type: "image",
               url: p.leftImage.url,
@@ -83,10 +83,13 @@ export function buildRuntimeQuestions(rawQuestions = []) {
             };
           }
 
-          if (typeof p.left === "string" && /^https?:\/\//i.test(p.left)) {
+          if (
+            typeof p.left === "string" &&
+            /^https?:\/\//i.test(p.left.trim())
+          ) {
             return {
               type: "image",
-              url: p.left,
+              url: p.left.trim(),
               name: `img-${idx}`,
             };
           }
@@ -99,8 +102,10 @@ export function buildRuntimeQuestions(rawQuestions = []) {
           idx,
         }));
 
-        // 🔥 FIX: shuffle luôn
-        const processedRight = shuffleArray(rightOriginal);
+        const processedRight =
+          q.sortType === "shuffle"
+            ? shuffleUntilDifferent(rightOriginal)
+            : rightOriginal;
 
         const indexMap = {};
         processedRight.forEach((item, newIndex) => {
@@ -115,10 +120,8 @@ export function buildRuntimeQuestions(rawQuestions = []) {
           type,
           question: questionText,
           image: q.image ?? null,
-
           leftOptions,
           rightOptions: processedRight.map(i => i.opt),
-
           correct,
           score: q.score ?? 1,
         };
@@ -131,21 +134,11 @@ export function buildRuntimeQuestions(rawQuestions = []) {
             ? [...q.options]
             : ["", "", "", ""];
 
-        const correctOrder = options.map((opt, idx) => ({
-          opt,
-          idx
-        }));
+        // ❗ GIỮ ĐÁP ÁN GỐC (DB ORDER)
+        const correctOrder = options.map((opt, idx) => ({ opt, idx }));
 
-        let shuffled;
-        let attempts = 0;
-
-        do {
-          shuffled = shuffleArray([...correctOrder]);
-          attempts++;
-        } while (
-          attempts < 100 &&
-          shuffled.every((v, i) => v.idx === correctOrder[i].idx)
-        );
+        // ❗ SHUFFLE ĐỂ HIỂN THỊ
+        const shuffled = shuffleArray([...correctOrder]);
 
         return {
           ...q,
@@ -154,10 +147,13 @@ export function buildRuntimeQuestions(rawQuestions = []) {
           question: questionText,
           image: q.image ?? null,
 
+          // 🔥 hiển thị đã đảo
           options: shuffled.map(i => i.opt),
 
+          // 🔥 QUAN TRỌNG: vị trí đúng = DB gốc
           initialSortOrder: correctOrder.map(i => i.idx),
 
+          // 🔥 đáp án chuẩn để chấm
           correctTexts: options,
 
           score: q.score ?? 1,
@@ -238,7 +234,8 @@ export function buildRuntimeQuestions(rawQuestions = []) {
             : ["Đúng", "Sai"];
 
         const indexed = options.map((opt, idx) => ({ opt, idx }));
-        const processed = shuffleArray(indexed);
+        const processed =
+          q.sortType === "shuffle" ? shuffleArray(indexed) : indexed;
 
         return {
           ...q,
@@ -246,14 +243,12 @@ export function buildRuntimeQuestions(rawQuestions = []) {
           type,
           question: questionText,
           image: q.image ?? null,
-
           options: processed.map(i => i.opt),
           initialOrder: processed.map(i => i.idx),
-
-          correct: Array.isArray(q.correct)
-            ? q.correct
-            : options.map(() => ""),
-
+          correct:
+            Array.isArray(q.correct) && q.correct.length === options.length
+              ? q.correct
+              : options.map(() => ""),
           score: q.score ?? 1,
         };
       }
