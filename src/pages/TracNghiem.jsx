@@ -4,10 +4,10 @@ import {
   Typography,
   Paper,
   Button,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  Checkbox,
+  //Radio,
+  //RadioGroup,
+  //FormControlLabel,
+  //Checkbox,
   Stack,
   LinearProgress,
   IconButton,
@@ -15,14 +15,14 @@ import {
   Snackbar, 
   Alert,
   Divider,
-  TextField,
-  FormControl,
-  Select,
-  MenuItem,
+  //TextField,
+  //FormControl,
+  //Select,
+  //MenuItem,
   Card, Grid,
 } from "@mui/material";
 import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+//import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 import { db } from "../firebase";
 import { useContext } from "react";
@@ -30,14 +30,14 @@ import { ConfigContext } from "../context/ConfigContext";
 import { exportQuizPDF } from "../utils/exportQuizPDF"; 
 import { handleSubmitQuiz } from "../utils/submitQuiz";
 import { autoSubmitQuiz } from "../utils/autoSubmitQuiz";
-import QuestionOption from "../utils/QuestionOption";
+//import QuestionOption from "../utils/QuestionOption";
 import ImageZoomDialog from "../dialog/ImageZoomDialog";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import CloseIcon from "@mui/icons-material/Close";
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+//import CloseIcon from "@mui/icons-material/Close";
+//import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+//import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -50,8 +50,8 @@ import DialogActions from "@mui/material/DialogActions";*/
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+//import { jsPDF } from "jspdf";
+//import html2canvas from "html2canvas";
 
 import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
 import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
