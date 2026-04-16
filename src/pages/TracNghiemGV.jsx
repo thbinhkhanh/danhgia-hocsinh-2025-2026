@@ -337,7 +337,7 @@ useEffect(() => {
     correct: [],              // đáp án đúng
     sortType: "fixed",        // cho loại sort
     pairs: [],                // cho loại matching
-    answers: [],              // cho loại fillblank
+    //answers: [],              // cho loại fillblank
     questionImage: ""         // cho loại image
   });
 

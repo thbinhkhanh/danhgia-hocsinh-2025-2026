@@ -37,6 +37,8 @@ export const exportQuestionsToJSON = ({
         columnRatio: q.columnRatio || { left: 1, right: 1 },
 
         answers: Array.isArray(q.answers) ? [...q.answers] : [],
+
+        option: q.option || "",
       };
     });
 
