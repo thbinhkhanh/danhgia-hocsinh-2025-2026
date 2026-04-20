@@ -40,8 +40,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
 import ImageZoomDialog from "../dialog/ImageZoomDialog";
 import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
-//import SimpleResultDialog from "../dialog/SimpleResultDialog";
-import ResultDialog from "../dialog/ResultDialog";
+import SimpleResultDialog from "../dialog/SimpleResultDialog";
 
 import QuizQuestion from "../Types/questions/options/QuizQuestion";
 import { buildRuntimeQuestions } from "../utils/buildRuntimeQuestions";
@@ -53,15 +52,6 @@ import { getQuestionStatus } from "../utils/questionStatus";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";*/
-
-import { processQuestions } from "../utils/processQuestions";
-import { getQuizDocId } from "../utils/getQuizDocId";
-import { useQuizTimer } from "../utils/useQuizTimer";
-
-import QuizSidebar from "../components/quiz/QuizSidebar";
-import QuizNavigation from "../components/quiz/QuizNavigation";
-import QuizLoading from "../components/quiz/QuizLoading";
-import QuizDialogs from "../components/quiz/QuizDialogs";
 
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -96,8 +86,8 @@ export default function TracNghiem_OnTap() {
 
   const navigate = useNavigate();
   const [started, setStarted] = useState(false);
-  //const [timeLeft, setTimeLeft] = useState(0);
-  //const [startTime, setStartTime] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [startTime, setStartTime] = useState(null);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
 
   const [hocKi, setHocKi] = useState(config?.hocKy || "Cuối kỳ I");
@@ -133,7 +123,34 @@ export default function TracNghiem_OnTap() {
   const isBelow1024 = useMediaQuery("(max-width:1023px)");
   const [showSidebar, setShowSidebar] = useState(true);
 
-  
+  // Đồng bộ thời gian
+  useEffect(() => {
+    if (config?.timeLimit) setTimeLeft(config.timeLimit * 60);
+  }, [config?.timeLimit]);
+
+  useEffect(() => {
+    if (started && !startTime) {
+      setStartTime(Date.now());
+    }
+  }, [started, startTime]);
+
+  // Timer
+  useEffect(() => {
+    if (!started || submitted) return; // <-- thêm !started
+    if (timeLeft <= 0) {
+      autoSubmit();
+      return;
+    }
+    const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [started, timeLeft, submitted]);
+
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60).toString().padStart(2, "0");
+    const s = (sec % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
   const handleMatchSelect = (questionId, leftIndex, rightIndex) => {
     setAnswers(prev => {
       const prevAns = prev[questionId] ?? [];
@@ -160,8 +177,8 @@ export default function TracNghiem_OnTap() {
     setSubmitted(false);       // reset trạng thái đã nộp
     setStarted(false);
     setScore(0);
-    //setTimeLeft(0);
-    //setStartTime(null);        // reset thời gian bắt đầu
+    setTimeLeft(0);
+    setStartTime(null);        // reset thời gian bắt đầu
     setQuestions([]);
     setProgress(0);
     setLoading(true);
@@ -190,61 +207,57 @@ export default function TracNghiem_OnTap() {
     const fetchQuestions = async () => {
       try {
         setLoading(true);
-        setProgress(0);
+        let prog = 0;
 
-        // ===== CONFIG =====
-        const configSnap = await getDoc(doc(db, "CONFIG", "config"));
+        let collectionName =
+          examType === "kt" ? "NGANHANG_DE" : "BAITAP_TUAN";
+
+        let hocKiFromConfig = "";
+        let monHocFromConfig = "";
+        let timeLimitMinutes = 0;
+
+        // 🔹 LẤY LỚP HỌC SINH TỪ STATE
+        const studentClassFromState = location.state?.lop || "";
+        const classNumber = studentClassFromState.match(/\d+/)?.[0];
+        if (!classNumber) {
+          setLoading(false);
+          return;
+        }
+
+        // 🔹 LẤY CONFIG CHUNG
+        const configRef = doc(db, "CONFIG", "config");
+        const configSnap = await getDoc(configRef);
+        prog += 30;
+        setProgress(prog);
+
         if (!configSnap.exists()) {
           setLoading(false);
           return;
         }
 
         const configData = configSnap.data();
+        hocKiFromConfig = configData.hocKy || "";
+        monHocFromConfig = configData.mon || "";
+        timeLimitMinutes = configData.timeLimit ?? 0;
 
-        setTimeLimitMinutes(configData.timeLimit ?? 0);
+        setTimeLimitMinutes(timeLimitMinutes);
         setChoXemDiem(configData.choXemDiem ?? false);
         setChoXemDapAn(configData.choXemDapAn ?? false);
 
-        setProgress(20);
-
-        // ===== CLASS FROM STATE =====
-        const studentClassFromState = location.state?.lop || "";
-        const classNumber = studentClassFromState.match(/\d+/)?.[0];
-
-        if (!classNumber) {
+        // 🔹 KIỂM TRA ĐỀ ĐƯỢC CHỌN
+        if (!selectedExam) {
           setLoading(false);
           return;
         }
 
-        // ===== GET DOC ID (HÀM CHUNG) =====
-        const result = await getQuizDocId({
-          db,
-          configData,
-          classLabel: `Lớp ${classNumber}`,
-          hocKiFromConfig: configData.hocKy || "",
-          monHocFromConfig: configData.mon || "",
-          studentInfo: {
-            className: studentClassFromState,
-          },
-          setNotFoundMessage: (msg) =>
-            setSnackbar({
-              open: true,
-              message: msg,
-              severity: "error",
-            }),
-        });
+        // 🔹 SET THỜI GIAN LÀM BÀI
+        setTimeLeft(timeLimitMinutes * 60);
 
-        if (!result) {
-          setLoading(false);
-          return;
-        }
-
-        const { docId, collectionName } = result;
-
-        setProgress(60);
-
-        // ===== LOAD QUIZ =====
-        const docSnap = await getDoc(doc(db, collectionName, docId));
+        // 🔹 LẤY DỮ LIỆU ĐỀ
+        const docRef = doc(db, collectionName, selectedExam);
+        const docSnap = await getDoc(docRef);
+        prog += 30;
+        setProgress(prog);
 
         if (!docSnap.exists()) {
           setSnackbar({
@@ -257,28 +270,58 @@ export default function TracNghiem_OnTap() {
         }
 
         const data = docSnap.data();
-
         setQuizClass(data.class || "");
 
-        setHocKi(data.semester || configData.hocKy || "");
-        setMonHoc(data.subject || configData.mon || "");
+        // 🔹 HỌC KỲ & MÔN HỌC (ưu tiên đề)
+        const hocKiFromDoc = data.semester || hocKiFromConfig;
+        const monHocFromDoc = data.subject || monHocFromConfig;
 
-        window.currentHocKi = data.semester || configData.hocKy || "";
-        window.currentMonHoc = data.subject || configData.mon || "";
+        setHocKi(hocKiFromDoc);
+        setMonHoc(monHocFromDoc);
 
-        setProgress(80);
+        window.currentHocKi = hocKiFromDoc;
+        window.currentMonHoc = monHocFromDoc;
 
-        // ===== QUESTIONS (THAY TOÀN BỘ BLOCK FILTER + BUILD) =====
-        processQuestions({
-          data,
-          buildRuntimeQuestions,
-          setQuestions,
-          setStarted,
-          setProgress,
-          setAnswers,
+        // ==============================
+        // ✅ XỬ LÝ CÂU HỎI BẰNG HÀM CHUNG
+        const rawQuestions = Array.isArray(data.questions)
+          ? data.questions
+          : [];
+
+        const runtimeQuestions = buildRuntimeQuestions(rawQuestions);
+
+        // --- Lọc câu hợp lệ ---
+        const validQuestions = runtimeQuestions.filter(q => {
+          if (q.type === "matching")
+            return q.question.trim() && q.leftOptions.length && q.rightOptions.length;
+          if (q.type === "sort")
+            return q.question.trim() && q.options.length;
+          if (["single", "multiple", "image"].includes(q.type))
+            return q.question.trim() && q.options.length && Array.isArray(q.correct);
+          if (q.type === "truefalse")
+            return q.question.trim() && q.options.length >= 2 && Array.isArray(q.correct);
+          if (q.type === "fillblank")
+            return q.question.trim() && q.options.length;
+          return false;
         });
 
+        setQuestions(validQuestions);
         setProgress(100);
+        setStarted(true);
+
+        // ==============================
+        // ✅ TỰ ĐIỀN ANSWERS CHO SORT
+        setAnswers(prev => {
+          const next = { ...prev };
+          validQuestions.forEach(q => {
+            if (q.type === "sort" && Array.isArray(q.initialSortOrder)) {
+              if (!Array.isArray(next[q.id])) {
+                next[q.id] = q.initialSortOrder;
+              }
+            }
+          });
+          return next;
+        });
       } catch (err) {
         console.error("❌ Lỗi khi load câu hỏi:", err);
         setQuestions([]);
@@ -497,20 +540,6 @@ export default function TracNghiem_OnTap() {
 
       exportQuizPDF: () => {}, // autoSubmit không xuất PDF
     });
-  
-    // Đồng bộ thời gian
-  const {
-    timeLeft,
-    setTimeLeft,
-    startTime,
-    formatTime,
-  } = useQuizTimer({
-    started,
-    submitted,
-    initialTime: timeLimitMinutes * 60,
-    onTimeUp: autoSubmit,
-    resetKey: selectedExam, // 👈 cực kỳ quan trọng
-  });
 
 
   const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
@@ -524,6 +553,10 @@ export default function TracNghiem_OnTap() {
     if (decimal < 0.75) return Math.floor(raw) + 0.5;
     return Math.ceil(raw);
   };
+
+  useEffect(() => {
+    if (config.timeLimit) setTimeLeft(config.timeLimit * 60);
+  }, [config.timeLimit]);
 
   function reorder(list, startIndex, endIndex) {
     const result = Array.from(list);
@@ -660,8 +693,10 @@ return (
         display: "flex",
         gap: 3,
         width: "100%",
+
         maxWidth: isSidebarVisible ? 1280 : 1000,
-        mx: "auto",
+        mx: "auto",                         // ✅ LUÔN CĂN GIỮA
+
         flexDirection: { xs: "column", md: "row" },
         alignItems: "stretch",
       }}
@@ -765,12 +800,13 @@ return (
               color: "#1976d2",
             }}
           >
-            {config?.mon
-              ? `ÔN TẬP ${config.mon.toUpperCase()}`
-              : "ÔN TẬP"}
+            {config?.mon ? `ÔN TẬP ${config.mon.toUpperCase()}` : "ÔN TẬP"}
           </Typography>
 
-          <FormControl size="small" sx={{ width: 230 }}>
+          <FormControl
+            size="small"
+            sx={{ width: 230 }} // hoặc "50%", "20rem"
+          >
             <InputLabel>Chọn đề</InputLabel>
             <Select
               value={selectedExam}
@@ -792,8 +828,9 @@ return (
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
+            //mt: 2,
             mb: -3,
-            minHeight: 40,
+            minHeight: 40, // luôn giữ khoảng trống
             width: "100%",
           }}
         >
@@ -819,20 +856,22 @@ return (
             </Box>
           )}
 
-          {/* Gạch ngang luôn giữ layout */}
-          <Box
-            sx={{
-              width: "100%",
-              height: 0,
-              bgcolor: "#e0e0e0",
-              mt: 0,
-              mb: 3,
-            }}
-          />
+          {/* Gạch ngang luôn hiển thị để giữ layout */}
+          <Box sx={{ width: "100%", height: 0, bgcolor: "#e0e0e0", mt: 0, mb: 3 }} />
+
         </Box>
 
         {/* Loading */}
-        <QuizLoading loading={loading} progress={progress} />
+        {loading && (
+          <Box sx={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
+              <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
+              <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
+                🔄 Đang tải... {progress}%
+              </Typography>
+            </Box>
+          </Box>
+        )}
 
         {/* Câu hỏi */}
         {!loading && currentQuestion && (
@@ -859,36 +898,187 @@ return (
 
         {/* Điều hướng */}
         {started && !loading && (
-          <QuizNavigation
-            started={started}
-            loading={loading}
-            currentIndex={currentIndex}
-            questionsLength={questions.length}
-            handlePrev={handlePrev}
-            handleNext={handleNext}
-            handleSubmit={handleSubmit}
-            submitted={submitted}
-            isEmptyQuestion={isEmptyQuestion}
-            isSidebarVisible={isSidebarVisible}
-          />
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            sx={{
+              mt: 2,
+              pt: 2,
+              mb: { xs: "20px", sm: "5px" },
+              borderTop: "1px solid #e0e0e0",
+            }}
+          >
+            {/* ===== CÂU TRƯỚC ===== */}
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBackIcon />}
+              onClick={handlePrev}
+              disabled={currentIndex === 0}
+              sx={{
+                width: 150,
+                bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
+                borderRadius: 1,
+                color: "#0d47a1",
+                "&:hover": {
+                  bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9",
+                },
+              }}
+            >
+              Câu trước
+            </Button>
+
+            {/* ===== CÂU SAU / NỘP BÀI ===== */}
+            <Box sx={{ width: 150, display: "flex", justifyContent: "flex-end" }}>
+              {currentIndex < questions.length - 1 ? (
+                <Button
+                  variant="outlined"
+                  endIcon={<ArrowForwardIcon />}
+                  onClick={handleNext}
+                  sx={{
+                    width: 150,
+                    bgcolor: "#bbdefb",
+                    borderRadius: 1,
+                    color: "#0d47a1",
+                    "&:hover": { bgcolor: "#90caf9" },
+                  }}
+                >
+                  Câu sau
+                </Button>
+              ) : (
+                !isSidebarVisible && (
+                  <Button
+                    variant="contained"
+                    onClick={handleSubmit}
+                    disabled={submitted || isEmptyQuestion}
+                    sx={{ width: 150, borderRadius: 1 }}
+                  >
+                    Nộp bài
+                  </Button>
+                )
+              )}
+            </Box>
+          </Stack>
         )}
       </Paper>
 
       {/* ================= SIDEBAR ================= */}
       {isSidebarVisible && (
-        <QuizSidebar
-          sidebarConfig={sidebarConfig}
-          questions={questions}
-          answers={answers}
-          currentIndex={currentIndex}
-          setCurrentIndex={setCurrentIndex}
-          submitted={submitted}
-          handleSubmit={handleSubmit}
-          navigate={navigate}
-          setOpenExitConfirm={setOpenExitConfirm}
-          getQuestionStatus={getQuestionStatus}
-        />
+        <Box
+          sx={{
+            width: sidebarConfig.width,   // ✅ theo config
+            flexShrink: 0,
+          }}
+        >
+          <Card
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              position: sidebarConfig.width === 260 ? "sticky" : "static", // ✅ chỉ sticky khi >=1200
+              top: 24,
+            }}
+          >
+            <Typography
+              fontWeight="bold"
+              textAlign="center"
+              mb={2}
+              fontSize="1.1rem"
+              color="#0d47a1"
+              sx={{
+                userSelect: "none",        // ✅ CHẶN BÔI ĐEN
+                cursor: "default",
+              }}
+            >
+              Câu hỏi
+            </Typography>
+
+            <Divider sx={{ mt: -1, mb: 3, bgcolor: "#e0e0e0" }} />
+
+            {/* ===== GRID Ô SỐ ===== */}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${sidebarConfig.cols}, 1fr)`, // ✅ 2 / 3 / 5 ô
+                gap: 1.2,
+                justifyItems: "center",
+                mb: !submitted ? 8 : 0,
+              }}
+            >
+              {questions.map((q, index) => {
+                const status = getQuestionStatus({
+                  question: q,
+                  userAnswer: answers[q.id],
+                  submitted,
+                });
+
+                const active = currentIndex === index;
+
+                let bgcolor = "#eeeeee";
+                let border = "1px solid transparent";
+                let textColor = "#0d47a1";
+
+                if (!submitted && status === "answered") bgcolor = "#bbdefb";
+
+                if (submitted) {
+                  if (status === "correct") bgcolor = "#c8e6c9";
+                  else if (status === "wrong") bgcolor = "#ffcdd2";
+                  else {
+                    bgcolor = "#fafafa";
+                    border = "1px dashed #bdbdbd";
+                  }
+                }
+
+                if (active) {
+                  border = "2px solid #9e9e9e";
+                  textColor = "#616161";
+                }
+
+                return (
+                  <IconButton
+                    key={q.id}
+                    onClick={() => setCurrentIndex(index)}
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: "50%",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      bgcolor,
+                      color: textColor,
+                      border,
+                      boxShadow: "none",
+                    }}
+                  >
+                    {index + 1}
+                  </IconButton>
+                );
+              })}
+            </Box>
+
+            {/* ===== ACTION BUTTONS ===== */}
+            {!submitted && (
+              <Button fullWidth variant="contained" onClick={handleSubmit}>
+                Nộp bài
+              </Button>
+            )}
+
+            <Button
+              fullWidth
+              variant="outlined"
+              color="error"
+              sx={{ mt: submitted ? 8 : 1.5 }}
+              onClick={() => {
+                if (submitted) navigate(-1);
+                else setOpenExitConfirm(true);
+              }}
+            >
+              Thoát
+            </Button>
+          </Card>
+        </Box>
       )}
+
+
     </Box>
 
     {/* Dialog cảnh báo chưa làm hết */}
@@ -904,15 +1094,11 @@ return (
       onClose={() => setOpenExitConfirm(false)}
     />
 
-    <ResultDialog
+    <SimpleResultDialog
       open={openResultDialog}
       onClose={() => setOpenResultDialog(false)}
-      dialogMode={null}
-      dialogMessage=""
       studentResult={studentResult}
       choXemDiem={choXemDiem}
-      configData={config}
-      convertPercentToScore={convertPercentToScore}
     />
 
     {/* ===== ZOOM ẢNH ===== */}
@@ -932,6 +1118,7 @@ return (
         {snackbar.message}
       </Alert>
     </Snackbar>
+
   </Box>
 );
 

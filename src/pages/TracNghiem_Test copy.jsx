@@ -54,16 +54,6 @@ import { getQuestionStatus } from "../utils/questionStatus";
 //import DialogContent from "@mui/material/DialogContent";
 //import DialogActions from "@mui/material/DialogActions";
 
-import { processQuestions } from "../utils/processQuestions";
-import { getQuizDocId } from "../utils/getQuizDocId";
-import { useQuizTimer } from "../utils/useQuizTimer";
-
-import QuizHeader from "../components/quiz/QuizHeader";
-import QuizSidebar from "../components/quiz/QuizSidebar";
-import QuizNavigation from "../components/quiz/QuizNavigation";
-import QuizLoading from "../components/quiz/QuizLoading";
-import QuizDialogs from "../components/quiz/QuizDialogs";
-
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
@@ -90,8 +80,8 @@ export default function TracNghiem_Test() {
   const location = useLocation();
   const navigate = useNavigate();
   const [started, setStarted] = useState(false);
-  //const [timeLeft, setTimeLeft] = useState(0);
-  //const [startTime, setStartTime] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [startTime, setStartTime] = useState(null);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
 
   const [hocKi, setHocKi] = useState(config?.hocKy || "Cuối kỳ I");
@@ -133,6 +123,35 @@ export default function TracNghiem_Test() {
     school: school
   };
 
+  // Đồng bộ thời gian
+  useEffect(() => {
+    if (config?.timeLimit) setTimeLeft(config.timeLimit * 60);
+  }, [config?.timeLimit]);
+
+  useEffect(() => {
+    if (started && !startTime) {
+      setStartTime(Date.now());
+    }
+  }, [started, startTime]);
+
+  // Timer
+  useEffect(() => {
+    if (!started || submitted) return; // <-- thêm !started
+    if (timeLeft <= 0) {
+      autoSubmit();
+      return;
+    }
+    const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [started, timeLeft, submitted]);
+
+
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60).toString().padStart(2, "0");
+    const s = (sec % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
   const handleMatchSelect = (questionId, leftIndex, rightIndex) => {
     setAnswers(prev => {
       const prevAns = prev[questionId] ?? [];
@@ -142,52 +161,11 @@ export default function TracNghiem_Test() {
     });
   };
 
-  const {
-    timeLeft,
-    setTimeLeft,
-    startTime,
-    formatTime,
-  } = useQuizTimer({
-    started,
-    submitted,
-    initialTime: timeLimitMinutes * 60,
-    onTimeUp: () => {
-      autoSubmitQuiz({
-        studentName,
-        studentClass: detectedClass,
-        studentId: null,
-        studentInfo: {
-          ...studentInfo,
-          className: detectedClass,
-        },
-        studentResult,
-        setStudentResult,
-        setSnackbar,
-        setSaving,
-        setSubmitted,
-        setOpenAlertDialog,
-        setUnansweredQuestions,
-        setOpenResultDialog,
-        questions,
-        answers,
-        startTime,
-        db: null,
-        config,
-        configData: config,
-        selectedWeek: null,
-        getQuestionMax: (q) => q.score ?? 1,
-        capitalizeName,
-        mapHocKyToDocKey: () => "",
-        formatTime,
-        exportQuizPDF,
-      });
-    },
-  });
-
   useEffect(() => {
     if (!examType) return;
     fetchQuizList(examType);
   }, [examType]);
+
 
   // ⭐ RESET TOÀN BỘ SAU KHI CHỌN ĐỀ MỚI
   useEffect(() => {
@@ -201,7 +179,7 @@ export default function TracNghiem_Test() {
     setStarted(false);
     setScore(0);
     setTimeLeft(0);
-    //setStartTime(null);        // reset thời gian bắt đầu
+    setStartTime(null);        // reset thời gian bắt đầu
     setQuestions([]);
     setProgress(0);
     setLoading(true);
@@ -212,92 +190,106 @@ export default function TracNghiem_Test() {
   }, [selectedExam]);
   
   useEffect(() => {
-    if (!selectedExam) return;
-
     const fetchQuestions = async () => {
-      try {
+        try {
         setLoading(true);
         let prog = 0;
 
-        const collectionName =
+        let docId = null;
+        //let collectionName = "NGANHANG_DE";
+        let collectionName =
           examType === "kt" ? "NGANHANG_DE" : "BAITAP_TUAN";
 
-        // ===== CONFIG =====
-        const configSnap = await getDoc(doc(db, "CONFIG", "config"));
+        let hocKiFromConfig = "";
+        let monHocFromConfig = "";
+        let timeLimitMinutes = 0; // ⬅ để lưu thời gian
+        
+        const configRef = doc(db, "CONFIG", "config");
+        const configSnap = await getDoc(configRef);
+        prog += 30;
+        setProgress(prog);
 
         if (!configSnap.exists()) {
-          setSnackbar({
-            open: true,
-            message: "❌ Không tìm thấy config!",
-            severity: "error",
-          });
-          return;
+        setSnackbar({ open: true, message: "❌ Không tìm thấy config!", severity: "error" });
+        setLoading(false);
+        return;
         }
-
-        prog += 30;
-        setProgress(prog);
 
         const configData = configSnap.data();
-
-        const hocKiFromConfig = configData.hocKy || "";
-        const monHocFromConfig = configData.mon || "";
-        const timeLimitMinutes = configData.timeLimit ?? 0;
-
+        hocKiFromConfig = configData.hocKy || "";
+        monHocFromConfig = configData.mon || "";
+        timeLimitMinutes = configData.timeLimit ?? 0;   // ⬅ lấy timeLimit
         setTimeLimitMinutes(timeLimitMinutes);
         setChoXemDiem(configData.choXemDiem ?? false);
-        setChoXemDapAn(configData.choXemDapAn ?? false);
+        setChoXemDapAn(configData.choXemDapAn ?? false);          
 
-        // ===== DOC ID =====
-        const docId = selectedExam;
-
-        // ===== TIME =====
-        setTimeLeft(timeLimitMinutes * 60);
-
-        // ===== LOAD ĐỀ =====
-        const docSnap = await getDoc(doc(db, collectionName, docId));
-
-        if (!docSnap.exists()) {
-          setSnackbar({
-            open: true,
-            message: "❌ Không tìm thấy đề!",
-            severity: "error",
-          });
-          return;
+        // 🔹 Lấy docId theo đề được chọn từ dropdown (áp dụng cho mọi trường)
+        if (!selectedExam) {
+            //setSnackbar({ open: true, message: "Vui lòng chọn đề!", severity: "warning" });
+            setLoading(false);
+        return;
         }
 
+        docId = selectedExam;
+
+        // 🔹 Set thời gian làm bài (giây)
+        setTimeLeft(timeLimitMinutes * 60);
+
+        // 🔹 Lấy dữ liệu đề
+        const docRef = doc(db, collectionName, docId);
+        const docSnap = await getDoc(docRef);
         prog += 30;
         setProgress(prog);
 
-        const data = docSnap.data();
+        /*if (!docSnap.exists()) {
+            setSnackbar({ open: true, message: "❌ Không tìm thấy đề trắc nghiệm!", severity: "error" });
+            setLoading(false);
+            return;
+        }*/
 
-        // ===== META =====
+        const data = docSnap.data();
         setQuizClass(data.class || "");
 
+        // 🔹 Lấy học kỳ và môn học từ đề nếu có, ưu tiên config
         const hocKiFromDoc = data.semester || hocKiFromConfig;
         const monHocFromDoc = data.subject || monHocFromConfig;
 
         setHocKi(hocKiFromDoc);
         setMonHoc(monHocFromDoc);
 
+        // 🔹 Lưu tạm để submit + xuất PDF
         window.currentHocKi = hocKiFromDoc;
         window.currentMonHoc = monHocFromDoc;
 
-        // ✅ DÙNG HÀM CHUNG
-        processQuestions({
-          data,
-          buildRuntimeQuestions,
-          setQuestions,
-          setStarted,
-          setProgress,
-          setAnswers,
+        // --- Xử lý câu hỏi ---
+        const runtimeQuestions = buildRuntimeQuestions(data.questions);
+        setQuestions(runtimeQuestions);
+        
+        setProgress(100);
+        setStarted(true);
+
+        //============================
+        //Chấm Sort không tương tác
+        setAnswers(prev => {
+          const next = { ...prev };
+
+          runtimeQuestions.forEach(q => {
+            if (q.type === "sort" && Array.isArray(q.initialSortOrder)) {
+              if (!Array.isArray(next[q.id])) {
+                next[q.id] = [...q.initialSortOrder]; // ✅ clone mảng
+              }
+            }
+          });
+
+          return next;
         });
 
-      } catch (err) {
+        } catch (err) {
         console.error("❌ Lỗi khi load câu hỏi:", err);
         setQuestions([]);
-      } finally {
+        } finally {
         setLoading(false);
-      }
+        }
     };
 
     fetchQuestions();
@@ -444,7 +436,7 @@ export default function TracNghiem_Test() {
       questions,
       answers,
       startTime,
-      db,
+      db: null,
       config,
       configData: config,
       selectedWeek: null,
@@ -488,7 +480,7 @@ export default function TracNghiem_Test() {
       exportQuizPDF,
     });
   };
-  
+
   const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
   const handlePrev = () => currentIndex > 0 && setCurrentIndex(currentIndex - 1);
 
@@ -500,6 +492,10 @@ export default function TracNghiem_Test() {
     if (decimal < 0.75) return Math.floor(raw) + 0.5;
     return Math.ceil(raw);
   };
+
+  useEffect(() => {
+    if (config.timeLimit) setTimeLeft(config.timeLimit * 60);
+  }, [config.timeLimit]);
 
   function reorder(list, startIndex, endIndex) {
     const result = Array.from(list);
@@ -616,7 +612,7 @@ const resetQuiz = () => {
   setStarted(false);
   setScore(0);
   setTimeLeft(timeLimitMinutes * 60);
-  //setStartTime(null);
+  setStartTime(null);
   setProgress(0);
   setOpenResultDialog(false);
   setStudentResult(null);
@@ -669,20 +665,13 @@ return (
         }}
       >
         {hasSidebar && (
-          <Tooltip
-            title={
-              showSidebar
-                ? "Thu gọn bảng câu hỏi"
-                : "Mở bảng câu hỏi"
-            }
-            arrow
-          >
+          <Tooltip title={showSidebar ? "Thu gọn bảng câu hỏi" : "Mở bảng câu hỏi"} arrow>
             <IconButton
               onClick={() => setShowSidebar((prev) => !prev)}
               sx={{
                 position: "absolute",
                 top: 12,
-                right: 12,
+                right: 12,              // ✅ GÓC PHẢI
                 bgcolor: "#e3f2fd",
                 border: "1px solid #90caf9",
                 zIndex: 10,
@@ -691,151 +680,158 @@ return (
                 },
               }}
             >
-              {showSidebar ? (
-                <ChevronLeftIcon />
-              ) : (
-                <ChevronRightIcon />
-              )}
+              {showSidebar ? <ChevronLeftIcon /> : <ChevronRightIcon />}
             </IconButton>
           </Tooltip>
         )}
 
-        <Box
+      <Box
+        sx={{
+          width: "60%",
+          maxWidth: 350,
+          mt: 1,
+          mb: 2,
+          ml: "auto",
+          mr: "auto",
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        {/* Tiêu đề */}
+        <Typography
+          variant="h6"
           sx={{
-            width: "60%",
-            maxWidth: 350,
-            mt: 1,
+            fontWeight: "bold",
+            fontSize: "20px",
             mb: 2,
-            ml: "auto",
-            mr: "auto",
-            textAlign: "center",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            mt: -1,
+            color: "#1976d2", // màu xanh
           }}
         >
-          {/* Tiêu đề */}
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: "bold",
-              fontSize: "20px",
-              mb: 2,
-              mt: -1,
-              color: "#1976d2",
-            }}
-          >
-            TEST ĐỀ KIỂM TRA
-          </Typography>
+          TEST ĐỀ KIỂM TRA
+        </Typography>
 
-          {/* Ô chọn đề */}
-          <Stack direction="row" spacing={2} alignItems="center">
-            {/* ================= LOẠI ĐỀ ================= */}
-            <FormControl size="small" sx={{ width: 159 }}>
-              <InputLabel sx={{ fontSize: 16, fontWeight: "bold" }}>
-                Loại đề
-              </InputLabel>
-              <Select
-                value={examType}
-                label="Loại đề"
-                sx={{ fontSize: 16, fontWeight: 500 }}
-                onChange={(e) => {
-                  const type = e.target.value;
-                  setExamType(type);
-                  fetchQuizList(type);
+        {/* Ô chọn đề */}
+        <Stack direction="row" spacing={2} alignItems="center">
+          {/* ================= LOẠI ĐỀ ================= */}
+          <FormControl size="small" sx={{ width: 159 }}>
+            <InputLabel sx={{ fontSize: 16, fontWeight: "bold" }}>
+              Loại đề
+            </InputLabel>
+            <Select
+              value={examType}
+              label="Loại đề"
+              sx={{ fontSize: 16, fontWeight: 500 }}
+              onChange={(e) => {
+                const type = e.target.value;
+                setExamType(type);
+                fetchQuizList(type);
 
-                  if (type === "bt") {
-                    setSelectedClass("4");
-                  } else {
-                    setSelectedClass("");
-                  }
-                }}
-              >
-                <MenuItem value="bt">Bài tập tuần</MenuItem>
-                <MenuItem value="kt">KTĐK</MenuItem>
-              </Select>
-            </FormControl>
+                // 👉 đổi sang KT thì reset lớp
+                if (type === "bt") {
+                  setSelectedClass("4");   // 👈 mặc định Lớp 4
+                } else {
+                  setSelectedClass("");    // KTĐK không dùng lớp
+                }
 
-            {/* ================= CHỌN LỚP ================= */}
-            {examType === "bt" && (
-              <FormControl size="small" sx={{ width: 120 }}>
-                <InputLabel>Lớp</InputLabel>
-                <Select
-                  value={selectedClass}
-                  label="Lớp"
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                >
-                  <MenuItem value="3">Lớp 3</MenuItem>
-                  <MenuItem value="4">Lớp 4</MenuItem>
-                  <MenuItem value="5">Lớp 5</MenuItem>
-                </Select>
-              </FormControl>
-            )}
-
-            {/* ================= CHỌN ĐỀ ================= */}
-            <FormControl size="small" sx={{ width: 220 }}>
-              <InputLabel>Chọn đề</InputLabel>
-              <Select
-                value={selectedExam}
-                label="Chọn đề"
-                onChange={(e) => setSelectedExam(e.target.value)}
-              >
-                {examList.map((exam) => (
-                  <MenuItem key={exam} value={exam}>
-                    {formatQuizTitle(exam)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-        </Box>
-
-        {/* Đồng hồ */}
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            mt: 0.5,
-            mb: 0,
-            minHeight: 40,
-            width: "100%",
-          }}
-        >
-          {started && !loading && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 3,
-                py: 0.5,
-                borderRadius: 2,
-                bgcolor: "#fff",
               }}
             >
-              <AccessTimeIcon sx={{ color: "#d32f2f" }} />
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: "bold", color: "#d32f2f" }}
+              <MenuItem value="bt">Bài tập tuần</MenuItem>
+              <MenuItem value="kt">KTĐK</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* ================= CHỌN LỚP (CHỈ HIỆN KHI BT) ================= */}
+          {examType === "bt" && (
+            <FormControl size="small" sx={{ width: 120 }}>
+              <InputLabel>Lớp</InputLabel>
+              <Select
+                value={selectedClass}
+                label="Lớp"
+                onChange={(e) => setSelectedClass(e.target.value)}
               >
-                {formatTime(timeLeft)}
-              </Typography>
-            </Box>
+
+                <MenuItem value="3">Lớp 3</MenuItem>
+                <MenuItem value="4">Lớp 4</MenuItem>
+                <MenuItem value="5">Lớp 5</MenuItem>
+              </Select>
+            </FormControl>
           )}
 
+          {/* ================= CHỌN ĐỀ ================= */}
+          <FormControl size="small" sx={{ width: 220 }}>
+            <InputLabel>Chọn đề</InputLabel>
+            <Select
+              value={selectedExam}
+              label="Chọn đề"
+              onChange={(e) => setSelectedExam(e.target.value)}
+            >
+              {examList.map((exam) => (
+                <MenuItem key={exam} value={exam}>
+                  {formatQuizTitle(exam)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+      </Box>
+
+      {/* Đồng hồ với vị trí cố định */}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          mt: 0.5,
+          mb: 0,
+          minHeight: 40, // giữ khoảng trống luôn
+          width: "100%",
+        }}
+      >
+        {/* Nội dung đồng hồ chỉ hiển thị khi started && !loading */}
+        {started && !loading && (
           <Box
             sx={{
-              width: "100%",
-              height: 1,
-              bgcolor: "#e0e0e0",
-              mt: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              px: 3,
+              py: 0.5,
+              borderRadius: 2,
+              bgcolor: "#fff", // tùy chỉnh nếu muốn nền
             }}
-          />
-        </Box>
+          >
+            <AccessTimeIcon sx={{ color: "#d32f2f" }} />
+            <Typography variant="h6" sx={{ fontWeight: "bold", color: "#d32f2f" }}>
+              {formatTime(timeLeft)}
+            </Typography>
+          </Box>
+        )}
 
-        {/* Loading */}
-        <QuizLoading loading={loading} progress={progress} />
+        {/* Đường gạch ngang màu xám nhạt luôn hiển thị */}
+        <Box
+          sx={{
+            width: "100%",
+            height: 1,
+            bgcolor: "#e0e0e0", // màu xám nhạt
+            mt: 0,
+          }}
+        />
+      </Box>
+
+      {/* Loading */}
+      {loading && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: -4, width: "100%" }}>
+          <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
+            <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
+            <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
+              🔄 Đang tải... {progress}%
+            </Typography>
+          </Box>
+        </Box>
+      )}
 
         {!loading && currentQuestion && (
           <QuizQuestion
@@ -860,37 +856,196 @@ return (
         <Box sx={{ flexGrow: 1 }} />
 
         {/* ===== NÚT ĐIỀU HƯỚNG ===== */}
-        {started && !loading && (
-          <QuizNavigation
-            started={started}
-            loading={loading}
-            currentIndex={currentIndex}
-            questionsLength={questions.length}
-            handlePrev={handlePrev}
-            handleNext={handleNext}
-            handleSubmit={handleSubmit}
-            submitted={submitted}
-            isEmptyQuestion={isEmptyQuestion}
-            isSidebarVisible={isSidebarVisible}
-          />
-        )}
-      </Paper>
+        <Box sx={{ flexGrow: 1 }} />
+          {started && !loading && (
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              sx={{
+                mt: 2,
+                pt: 2,
+                mb: { xs: "20px", sm: "5px" },
+                borderTop: "1px solid #e0e0e0",
+              }}
+            >
+              {/* ===== CÂU TRƯỚC ===== */}
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBackIcon />}
+                onClick={handlePrev}
+                disabled={currentIndex === 0}
+                sx={{
+                  width: 150,
+                  bgcolor: currentIndex === 0 ? "#e0e0e0" : "#bbdefb",
+                  borderRadius: 1,
+                  color: "#0d47a1",
+                  "&:hover": {
+                    bgcolor: currentIndex === 0 ? "#e0e0e0" : "#90caf9",
+                  },
+                }}
+              >
+                Câu trước
+              </Button>
+
+              {/* ===== CÂU SAU / NỘP BÀI ===== */}
+              {currentIndex < questions.length - 1 ? (
+                <Button
+                  variant="outlined"
+                  endIcon={<ArrowForwardIcon />}
+                  onClick={handleNext}
+                  sx={{
+                    width: 150,
+                    bgcolor: "#bbdefb",
+                    borderRadius: 1,
+                    color: "#0d47a1",
+                    "&:hover": { bgcolor: "#90caf9" },
+                  }}
+                >
+                  Câu sau
+                </Button>
+              ) : (
+                // ✅ CHỈ HIỆN KHI SIDEBAR KHÔNG HIỂN THỊ
+                !isSidebarVisible && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleSubmit}
+                    disabled={submitted || isEmptyQuestion}
+                    sx={{
+                      width: 150,
+                      borderRadius: 1,
+                    }}
+                  >
+                    Nộp bài
+                  </Button>
+                )
+              )}
+            </Stack>
+          )}
+        </Paper>
 
       {/* =================== SIDEBAR =================== */}
       {isSidebarVisible && (
-        <QuizSidebar
-          sidebarConfig={sidebarConfig}
-          questions={questions}
-          answers={answers}
-          currentIndex={currentIndex}
-          setCurrentIndex={setCurrentIndex}
-          submitted={submitted}
-          handleSubmit={handleSubmit}
-          navigate={navigate}
-          setOpenExitConfirm={setOpenExitConfirm}
-          getQuestionStatus={getQuestionStatus}
-        />
+        <Box
+          sx={{
+            width: sidebarConfig.width,
+            flexShrink: 0,
+          }}
+        >
+          <Card
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              position: sidebarConfig.width === 260 ? "sticky" : "static",
+              top: 24,
+            }}
+          >
+            <Typography
+              fontWeight="bold"
+              textAlign="center"
+              mb={2}
+              fontSize="1.1rem"
+              color="#0d47a1"
+              sx={{
+                userSelect: "none",        // ✅ CHẶN BÔI ĐEN
+                cursor: "default",
+              }}
+            >
+              Câu hỏi
+            </Typography>
+
+            <Divider sx={{ mt: -1, mb: 3, bgcolor: "#e0e0e0" }} />
+
+            {/* ===== GRID Ô SỐ ===== */}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${sidebarConfig.cols}, 1fr)`,
+                gap: 1.2,
+                justifyItems: "center",
+                mb: !submitted ? 8 : 0,
+              }}
+            >
+              {questions.map((q, index) => {
+                // ✅ DÙNG HÀM CHUẨN
+                const status = getQuestionStatus({
+                  question: q,
+                  userAnswer: answers[q.id],
+                  submitted,
+                });
+
+                const active = currentIndex === index;
+
+                let bgcolor = "#eeeeee";
+                let border = "1px solid transparent";
+                let textColor = "#0d47a1";
+
+                // ===== TRƯỚC KHI NỘP =====
+                if (!submitted && status === "answered") {
+                  bgcolor = "#bbdefb";
+                }
+
+                // ===== SAU KHI NỘP =====
+                if (submitted) {
+                  if (status === "correct") bgcolor = "#c8e6c9";
+                  else if (status === "wrong") bgcolor = "#ffcdd2";
+                  else {
+                    bgcolor = "#fafafa";
+                    border = "1px dashed #bdbdbd";
+                  }
+                }
+
+                // ===== CÂU ĐANG XEM =====
+                if (active) {
+                  border = "2px solid #9e9e9e";
+                  textColor = "#616161";
+                }
+
+                return (
+                  <IconButton
+                    key={q.id}
+                    onClick={() => setCurrentIndex(index)}
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: "50%",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      bgcolor,
+                      color: textColor,
+                      border,
+                      boxShadow: "none",
+                    }}
+                  >
+                    {index + 1}
+                  </IconButton>
+                );
+              })}
+            </Box>
+
+            {!submitted && (
+              <Button fullWidth variant="contained" onClick={handleSubmit}>
+                Nộp bài
+              </Button>
+            )}
+
+            {/*<Button
+              fullWidth
+              variant="outlined"
+              color="error"
+              sx={{ mt: submitted ? 8 : 1.5 }}
+              onClick={() => {
+                if (submitted) navigate(-1);
+                else setOpenExitConfirm(true);
+              }}
+            >
+              Thoát
+            </Button>*/}
+          </Card>
+        </Box>
       )}
+
     </Box>
 
     {/* Dialog cảnh báo chưa làm hết */}
@@ -918,7 +1073,7 @@ return (
       imageSrc={zoomImage}
       onClose={() => setZoomImage(null)}
     />
-
+    
     {/* Snackbar */}
     <Snackbar
       open={snackbar.open}
