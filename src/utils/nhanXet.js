@@ -216,104 +216,104 @@ export const nhanXetCongNgheGiuaKy = {
 export const nhanXetCongNgheCuoiKy = {
   tot: {
     lyThuyet: [
-      "Học tích cực, hoàn thành tốt sản phẩm",
-      "Có ý thức, chủ động trong lý thuyết",
-      "Tự tin trình bày, nắm chắc kiến thức",
-      "Luôn hoàn thành bài tập đúng hạn",
-      "Hợp tác tốt trong nhóm lý thuyết",
-      "Sáng tạo trình bày và áp dụng kiến thức",
-      "Chủ động đặt câu hỏi thảo luận",
-      "Trình bày lý thuyết rõ ràng, dễ hiểu"
+      "Học tích cực, hoàn thành tốt",
+      "Có ý thức, chủ động học",
+      "Tự tin, nắm chắc kiến thức",
+      "Luôn hoàn thành bài đúng hạn",
+      "Hợp tác tốt khi học nhóm",
+      "Trình bày sáng tạo, áp dụng tốt",
+      "Chủ động hỏi và thảo luận",
+      "Trình bày rõ ràng, dễ hiểu"
     ],
     thucHanh: [
-      "Thực hành đúng, sản phẩm đạt yêu cầu",
-      "Chăm chỉ, giữ dụng cụ an toàn",
-      "Hứng thú, thực hiện đúng hướng dẫn",
-      "Thao tác thành thạo, sản phẩm khoa học",
-      "Vận dụng kiến thức giải quyết tình huống",
-      "Hoàn thành đúng quy trình, sáng tạo",
-      "Sản phẩm đẹp, áp dụng tốt kỹ thuật",
-      "Thực hành chính xác, chú ý từng bước"
+      "thực hành đúng, đạt yêu cầu.",
+      "chăm chỉ, giữ an toàn dụng cụ.",
+      "hứng thú, làm đúng hướng dẫn.",
+      "thao tác tốt, sản phẩm khoa học.",
+      "vận dụng tốt kiến thức học.",
+      "đúng quy trình, có sáng tạo.",
+      "sản phẩm đẹp, đúng kỹ thuật.",
+      "thực hành chính xác, cẩn thận."
     ]
   },
 
   kha: {
     lyThuyet: [
-      "Học tập tốt, hoàn thành nhiệm vụ",
-      "Cần mạnh dạn trình bày ý tưởng",
-      "Nắm kiến thức cơ bản, cần luyện thêm",
-      "Có tiến bộ, cần phát huy chủ động",
-      "Trình bày logic, nên sáng tạo hơn",
-      "Hoàn thành cơ bản, cần tự tin hơn",
-      "Nên luyện thêm kiến thức trọng tâm",
-      "Cần chủ động làm bài, tham khảo tài liệu",
-      "Học đúng, cần tự tin trình bày",
-      "Cần hỗ trợ để áp dụng kiến thức",
-      "Nên luyện tập thường xuyên để nắm chắc"
+      "Học tốt, hoàn thành nhiệm vụ",
+      "Cần mạnh dạn trình bày",
+      "Nắm cơ bản, cần luyện thêm",
+      "Có tiến bộ, cần chủ động",
+      "Trình bày logic, nên sáng tạo",
+      "Hoàn thành cơ bản, thiếu tự tin",
+      "Cần luyện kiến thức trọng tâm",
+      "Cần chủ động làm bài",
+      "Học đúng, cần tự tin hơn",
+      "Cần hỗ trợ áp dụng kiến thức",
+      "Nên luyện tập thường xuyên"
     ],
     thucHanh: [
-      "Thực hành đúng, cần rèn kỹ năng",
-      "Làm cẩn thận, cần cố gắng hơn",
-      "Sử dụng dụng cụ đúng, nên tập trung",
-      "Sản phẩm đủ, cần cải thiện thẩm mỹ",
-      "Thao tác tốt, nên tăng tốc độ",
-      "Tham gia tích cực, cần chủ động hơn",
-      "Sản phẩm đầy đủ, cần thêm sáng tạo",
-      "Cần luyện tập hoàn thiện kỹ năng",
-      "Thực hành đúng, cần cải thiện thẩm mỹ",
-      "Còn lúng túng, cần hỗ trợ thêm",
-      "Thao tác chậm, cần luyện kỹ năng",
-      "Chưa xong nhiệm vụ, cần chú ý",
-      "Cần rèn tính tỉ mỉ hơn",
-      "Cần luyện tập để đạt chuẩn",
-      "Cần cải thiện thao tác chưa đạt",
-      "Cần chú ý kỹ thuật nâng chất lượng"
+      "thực hành đúng, cần luyện thêm.",
+      "làm cẩn thận, cần cố gắng.",
+      "dùng dụng cụ đúng, cần tập trung.",
+      "sản phẩm đủ, cần đẹp hơn.",
+      "thao tác tốt, cần nhanh hơn.",
+      "tham gia tốt, cần chủ động.",
+      "sản phẩm đủ, cần sáng tạo.",
+      "cần luyện để hoàn thiện.",
+      "thực hành đúng, cần cải thiện.",
+      "còn lúng túng, cần hỗ trợ.",
+      "thao tác chậm, cần luyện.",
+      "chưa xong, cần chú ý.",
+      "cần rèn tính tỉ mỉ.",
+      "cần luyện để đạt chuẩn.",
+      "cần cải thiện thao tác.",
+      "cần chú ý kỹ thuật."
     ]
   },
 
   trungbinh: {
     lyThuyet: [
       "Hoàn thành cơ bản, cần cố gắng",
-      "Học còn chậm, cần tập trung hơn",
-      "Nắm kiến thức chính, cần luyện thêm",
-      "Cần chủ động hơn khi làm bài",
-      "Học đúng nhưng còn thiếu tự tin",
-      "Cần hỗ trợ để vận dụng kiến thức",
-      "Em nên tham khảo thêm tài liệu",
-      "Em nên luyện tập thường xuyên"
+      "Học chậm, cần tập trung",
+      "Nắm chính, cần luyện thêm",
+      "Cần chủ động khi làm bài",
+      "Học đúng, thiếu tự tin",
+      "Cần hỗ trợ vận dụng",
+      "Nên tham khảo thêm tài liệu",
+      "Nên luyện tập thường xuyên"
     ],
     thucHanh: [
-      "Cần cố gắng hơn trong thực hành",
-      "Còn lúng túng, cần bạn bè hỗ trợ",
-      "Chưa xong nhiệm vụ, cần chăm chỉ",
-      "Thao tác chưa chuẩn, cần luyện thêm",
-      "Thiếu chủ động, cần hướng dẫn thêm",
-      "Chưa áp dụng kiến thức thực hành",
-      "Nên luyện tập để nâng kỹ năng",
-      "Cần xem hướng dẫn để hoàn thành"
+      "cần cố gắng khi thực hành.",
+      "còn lúng túng, cần hỗ trợ.",
+      "chưa xong, cần chăm chỉ.",
+      "thao tác chưa chuẩn, cần luyện.",
+      "thiếu chủ động, cần hướng dẫn.",
+      "chưa áp dụng kiến thức.",
+      "nên luyện để nâng kỹ năng.",
+      "cần xem hướng dẫn thêm."
     ]
   },
 
   yeu: {
     lyThuyet: [
-      "Em cần cố gắng hơn",
-      "Em gặp khó khăn, cần hỗ trợ",
-      "Chưa đạt yêu cầu, cần chăm chỉ",
-      "Kiến thức yếu, cần kế hoạch học",
-      "Em thiếu tự tin và chủ động",
-      "Cần kèm cặp sát để tiến bộ",
-      "Em nên ôn luyện thường xuyên",
-      "Cần tập trung và chủ động hơn"
+      "Cần cố gắng hơn",
+      "Gặp khó khăn, cần hỗ trợ",
+      "Chưa đạt, cần chăm chỉ",
+      "Kiến thức yếu, cần ôn",
+      "Thiếu tự tin, chưa chủ động",
+      "Cần kèm cặp để tiến bộ",
+      "Nên ôn luyện thường xuyên",
+      "Cần tập trung, chủ động hơn"
     ],
     thucHanh: [
-      "Cần cố gắng hơn trong thực hành",
-      "Còn lúng túng, cần bạn bè hỗ trợ",
-      "Chưa xong nhiệm vụ, cần chăm chỉ",
-      "Thao tác chưa chuẩn, cần luyện thêm",
-      "Thiếu chủ động, cần hướng dẫn thêm",
-      "Chưa áp dụng kiến thức thực hành",
-      "Nên luyện tập để nâng kỹ năng",
-      "Cần xem hướng dẫn để hoàn thành"
+      "cần cố gắng khi thực hành.",
+      "còn lúng túng, cần hỗ trợ.",
+      "chưa xong, cần chăm chỉ.",
+      "thao tác chưa chuẩn, cần luyện.",
+      "thiếu chủ động, cần hướng dẫn.",
+      "chưa áp dụng kiến thức.",
+      "nên luyện để nâng kỹ năng.",
+      "cần xem hướng dẫn thêm."
     ]
   }
 };

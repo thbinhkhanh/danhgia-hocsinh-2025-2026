@@ -1380,14 +1380,15 @@ const fetchStudentsAndStatus = async (cls) => {
                             onChange={(e) => {
                               const val = e.target.value;
 
-                              setFillThucHanh(val);
-
                               setStudents((prev) =>
                                 prev.map((s) => {
+                                  // ✅ CHỈ update đúng học sinh đang chọn
+                                  if (s.maDinhDanh !== student.maDinhDanh) return s;
+
                                   let updated = { ...s };
 
                                   // 🔥 RESET
-                                  if (val === "-") {
+                                  if (val === "") {
                                     return {
                                       ...s,
                                       thucHanh: "",
@@ -1399,34 +1400,8 @@ const fetchStudentsAndStatus = async (cls) => {
 
                                   updated.thucHanh = val;
 
-                                  // ===== TIN HỌC =====
-                                  if (selectedSubject === "Tin học") {
-                                    const lt = parseFloat(s.lyThuyet);
-                                    const th = parseFloat(val);
-
-                                    if (!isNaN(lt) && !isNaN(th)) {
-                                      updated.tongCong = Math.round(lt + th);
-
-                                      updated.mucDat =
-                                        updated.tongCong >= 9
-                                          ? "T"
-                                          : updated.tongCong >= 5
-                                          ? "H"
-                                          : "C";
-
-                                      updated.nhanXet = generateNhanXet(
-                                        updated,
-                                        selectedSubject,
-                                        updated.tongCong,
-                                        updated.mucDat
-                                      );
-                                    }
-                                  }
-
                                   // ===== CÔNG NGHỆ =====
                                   if (selectedSubject === "Công nghệ") {
-                                    if (!["T", "H", "C"].includes(val)) return s;
-
                                     const lt = parseFloat(s.lyThuyet);
 
                                     if (!isNaN(lt)) {
@@ -1448,8 +1423,6 @@ const fetchStudentsAndStatus = async (cls) => {
                                   return updated;
                                 })
                               );
-
-                              setFillThucHanh("");
                             }}
                             disableUnderline
                             id={`thucHanh-${idx}`}
