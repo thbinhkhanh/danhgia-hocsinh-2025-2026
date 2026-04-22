@@ -323,13 +323,12 @@ export default function DeThi() {
     }}
   >
     <Card
-      elevation={6}
       sx={{
         p: 3,
         borderRadius: 3,
-        width: { xs: "95%", sm: "80%", md: "70%" },
-        maxWidth: 600,
-        height: "630px",
+        width: "100%",
+        maxWidth: { xs: "100%", sm: 600 }, // ✅ FIX
+        height: "auto", // ✅ tránh cắt nội dung
       }}
     >
       <Typography
