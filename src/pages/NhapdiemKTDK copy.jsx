@@ -350,93 +350,25 @@ const fetchStudentsAndStatus = async (cls) => {
         // 🧠 1. VALIDATE INPUT
         // =========================
         if (selectedSubject === "Tin học") {
-          if (field === "lyThuyet" || field === "thucHanh") {
-
-            // ✅ cho nhập tạm (tránh bị đơ)
-            if (value === "" || value === "." || value === "-") {
-              updated[field] = value;
-              return updated;
-            }
-
-            let num;
-
-            // ✅ dạng 2 chữ số (45 → 4.5, 43 → 4)
-            if (/^\d{2}$/.test(value)) {
-              const first = parseInt(value[0]);
-              const second = parseInt(value[1]);
-
-              num = second === 5 ? first + 0.5 : first;
-            }
-
-            // ✅ nhập số thập phân trực tiếp
-            else {
-              const raw = parseFloat(value);
-              if (isNaN(raw)) return s;
-
-              const integer = Math.floor(raw);
-              const decimal = raw - integer;
-
-              // 👉 chỉ giữ .5, còn lại bỏ
-              if (decimal === 0.5) {
-                num = integer + 0.5;
-              } else {
-                num = integer;
-              }
-            }
-
-            // ❌ ngoài khoảng 0–5
-            if (num < 0 || num > 5) return s;
-
+          if ((field === "lyThuyet" || field === "thucHanh") && value !== "") {
+            const num = parseFloat(value);
+            if (isNaN(num) || num < 0 || num > 5) return s;
             updated[field] = num;
           }
         }
 
         if (selectedSubject === "Công nghệ") {
           if (field === "lyThuyet") {
-          // ✅ cho nhập tạm
-          if (value === "" || value === "." || value === "-") {
-            updated.lyThuyet = value;
-            updated.tongCong = null;
-            return updated;
-          }
-
-          let num;
-
-          // ✅ giữ nguyên 10
-          if (value === "10") {
-            num = 10;
-          }
-
-          // ✅ dạng 2 chữ số (85 → 8.5, còn lại → 8)
-          else if (/^\d{2}$/.test(value)) {
-            const first = parseInt(value[0]);
-            const second = parseInt(value[1]);
-
-            num = second === 5 ? first + 0.5 : first;
-          }
-
-          // ✅ nhập số thập phân trực tiếp
-          else {
-            const raw = parseFloat(value);
-            if (isNaN(raw)) return s;
-
-            // 👉 chỉ giữ .0 hoặc .5
-            const integer = Math.floor(raw);
-            const decimal = raw - integer;
-
-            if (decimal >= 0.5) {
-              num = integer + 0.5;
+            if (value === "" || isNaN(parseFloat(value))) {
+              updated.tongCong = null;
             } else {
-              num = integer;
+              const num = parseFloat(value);
+              if (num < 0 || num > 10) return s;
+              updated.tongCong = Math.round(num);
             }
           }
-
-          if (num < 0 || num > 10) return s;
-
-          updated.lyThuyet = num;
-          updated.tongCong = Math.round(num);
+          if (field === "thucHanh" && !["T", "H", "C", ""].includes(value)) return s;
         }
-      }
 
         // =========================
         // 💬 1b. NHẬN XÉT THỦ CÔNG
