@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+
 import {
   Box,
   Typography,
@@ -52,6 +53,14 @@ import useInitialQuiz from "../utils/useInitialQuiz";
 import { handleImportQuiz } from "../utils/importQuizJson";
 import { handleExportQuiz, handleConfirmExportQuiz } from "../utils/exportQuizJson";
 
+import ImportSourceDialog from "../dialog/ImportSourceDialog";
+import ImportFromFirestoreDialog from "../dialog/ImportFromFirestoreDialog";
+import ImportModeDialog from "../dialog/ImportModeDialog";
+import { normalizeFirestoreQuiz } from "../utils/normalizeFirestoreQuiz";
+
+//import mammoth from "mammoth";
+import * as mammoth from "mammoth/mammoth.browser";
+
 export default function TracNghiemGV() {
   const { config, setConfig } = useConfig(); 
   //const semester = config?.hocKy || "";
@@ -85,6 +94,13 @@ const fileInputRef = React.useRef(null);
 //const [openDialog, setOpenDialog] = useState(false);
 const [fileName, setFileName] = useState("de_trac_nghiem");
 const [openExportDialog, setOpenExportDialog] = useState(false); // dialog export
+
+const [openImportSourceDialog, setOpenImportSourceDialog] = useState(false);
+const [openFirestoreDialog, setOpenFirestoreDialog] = useState(false);
+const wordInputRef = useRef(null);
+const [openImportModeDialog, setOpenImportModeDialog] = useState(false);
+const [importData, setImportData] = useState([]);
+const [lessonInput, setLessonInput] = useState("");
 
 useEffect(() => {
   setDeTuan("");
@@ -497,7 +513,7 @@ useEffect(() => {
       localStorage.setItem("teacherExamType", examTypeFromCollection);
 
       /* ================== CHUẨN HÓA CÂU HỎI ================== */
-      const fixedQuestions = (data.questions || []).map((q) => {
+      /*const fixedQuestions = (data.questions || []).map((q) => {
         if (q.type === "image") {
           return {
             ...q,
@@ -506,7 +522,9 @@ useEffect(() => {
           };
         }
         return q;
-      });
+      });*/
+
+      const fixedQuestions = normalizeFirestoreQuiz(data.questions || []);
 
       /* ================== SET STATE ================== */
       setQuestions(fixedQuestions);
@@ -692,9 +710,162 @@ useEffect(() => {
   const handleImportJSON = (e) => {
     handleImportQuiz({
       event: e,
-      setQuestions,
+      setQuestions: (data) => {
+        setImportData(data);           // 👈 lưu tạm
+        setOpenImportModeDialog(true); // 👈 mở dialog chọn mode
+      },
       setSnackbar,
     });
+  };
+
+  const handleImportOverwrite = () => {
+    setQuestions(importData);
+
+    setSelectedDoc(null);
+    setIsEditingNewDoc(true);
+
+    setOpenImportModeDialog(false);
+
+    setSnackbar({
+      open: true,
+      message: "✅ Nhập đề thành công!",
+      severity: "success",
+    });
+  };
+
+  const handleImportAppend = () => {
+    setQuestions((prev) => {
+      const isEmpty =
+        prev.length === 1 && !prev[0].question;
+
+      const base = isEmpty ? [] : prev;
+
+      const newData = importData.map(q => ({
+        ...q,
+        id: `q_${Date.now()}_${Math.random()}`
+      }));
+
+      return [...base, ...newData];
+    });
+
+    setOpenImportModeDialog(false);
+    
+    setSnackbar({
+      open: true,
+      message: "✅ Nhập đề thành công!",
+      severity: "success",
+    });
+  };
+
+  const escapeHTML = (str = "") => {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  };
+
+  const handleImportWord = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      const text = result.value;
+
+      console.log("📄 RAW TEXT:", text);
+
+      // ===== SPLIT CÂU HỎI (robust hơn)
+      const blocks = text
+        //.split(/Câu\s*\d+\s*[:\.\-]?/gi)
+        .split(/Câu\s*\d+\s*[:\.\-)]?/gi)
+        .map(b => b.trim())
+        .filter(Boolean);
+
+      const questionsParsed = blocks.map((block, index) => {
+        const lines = block
+          .split("\n")
+          .map(l => l.trim())
+          .filter(Boolean);
+
+        if (lines.length === 0) return null;
+
+        const questionText = lines[0];
+
+        const options = [];
+        const correct = [];
+
+        lines.slice(1).forEach(line => {
+          const match = line.match(/^([A-D])[\.\)\:\-\s]*/i);
+
+          if (match) {
+            let text = line.replace(/^([A-D])[\.\)\:\-\s]*/i, "").trim();
+
+            // 🔥 detect *
+            const isCorrect =
+              /\*$/.test(text) || /^\*/.test(text);
+
+            text = text.replace(/\*/g, "").trim();
+
+            if (isCorrect) {
+              correct.push(options.length);
+            }
+
+            options.push(text);
+          }
+        });
+
+        // đảm bảo đủ 4 đáp án
+        while (options.length < 4) options.push("");
+
+        return {
+          id: `q_${Date.now()}_${index}`,
+          question: `<p>${escapeHTML(questionText)}</p>`,
+          questionImage: "",
+          options: options.slice(0, 4).map(opt => ({
+            text: `<p>${escapeHTML(opt)}</p>`,
+            image: ""
+          })),
+          correct,
+          type: correct.length > 1 ? "multiple" : "single",
+          score: 0.5,
+          sortType: "shuffle",
+          title: "",
+          pairs: []
+        };
+      }).filter(Boolean);
+
+      console.log("✅ Parsed:", questionsParsed);
+
+      const isEmpty =
+        !questions ||
+        questions.length === 0 ||
+        (questions.length === 1 && !questions[0].question);
+
+      if (isEmpty) {
+        setQuestions(questionsParsed);
+        setLessonInput(lesson || "");
+      } else {
+        setImportData(questionsParsed);
+        setOpenImportModeDialog(true);
+      }
+
+      /*setSnackbar({
+        open: true,
+        message: "✅ Import Word thành công",
+        severity: "success",
+      });*/
+
+    } catch (err) {
+      console.error(err);
+      setSnackbar({
+        open: true,
+        message: "❌ Lỗi đọc file Word",
+        severity: "error",
+      });
+    }
+
+    e.target.value = "";
   };
 
   return (
@@ -731,9 +902,9 @@ useEffect(() => {
           </Tooltip>
 
           {/* Import */}
-          <Tooltip title="Nhập đề kiểm tra (JSON)">
+          <Tooltip title="Nhập đề kiểm tra">
             <IconButton
-              onClick={() => fileInputRef.current.click()}
+              onClick={() => setOpenImportSourceDialog(true)}
               sx={{ color: "#ed6c02" }}
             >
               <UploadFileIcon />
@@ -748,6 +919,15 @@ useEffect(() => {
             style={{ display: "none" }}
             onChange={handleImportJSON}
           />
+
+          <input
+            type="file"
+            accept=".docx"
+            ref={wordInputRef}
+            style={{ display: "none" }}
+            onChange={handleImportWord}
+          />
+
         </Stack>
 
         {/* Tiêu đề */}
@@ -981,6 +1161,52 @@ useEffect(() => {
           onConfirm={confirmDeleteSelectedDoc}
         />
 
+        <ImportModeDialog
+          open={openImportModeDialog}
+          onClose={() => setOpenImportModeDialog(false)}
+          onOverwrite={handleImportOverwrite}
+          onAppend={handleImportAppend}
+        />
+
+        <ImportSourceDialog
+            open={openImportSourceDialog}
+            onClose={() => setOpenImportSourceDialog(false)}
+  
+            onSelectJSON={() => {
+              setOpenImportSourceDialog(false);
+              fileInputRef.current?.click();
+            }}
+  
+            onSelectWord={() => {
+              setOpenImportSourceDialog(false);
+              wordInputRef.current?.click(); // 👈 thêm
+            }}
+  
+            onSelectFirestore={() => {
+              setOpenImportSourceDialog(false);
+              setOpenFirestoreDialog(true);
+            }}
+          />
+  
+          <ImportFromFirestoreDialog
+            open={openFirestoreDialog}
+            onClose={() => setOpenFirestoreDialog(false)}
+            onImport={(importedQuestions) => {
+              try {
+                const normalized = normalizeFirestoreQuiz(importedQuestions);
+
+                setImportData(normalized);   // 👈 đã chuẩn hoá
+                setOpenImportModeDialog(true);
+
+              } catch (err) {
+                setSnackbar({
+                  open: true,
+                  message: "❌ Dữ liệu Firestore không hợp lệ",
+                  severity: "error",
+                });
+              }
+            }}
+          />
       </Card>
     </Box>
   );
