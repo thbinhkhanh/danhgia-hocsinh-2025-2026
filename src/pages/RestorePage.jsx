@@ -29,8 +29,8 @@ const BACKUP_KEYS = [
   { key: "BAITAP_TUAN", label: "Bài tập tuần" },
 
   // ===== ĐỀ KIỂM TRA =====
-  { key: "NGANHANG_DE", label: "Đề KTĐK" },
-  { key: "DETHI", label: "Đề thi" },
+  { key: "NGANHANG_DE", label: "Ngân hàng đề KTĐK" },
+  { key: "DETHI", label: "Đề chọn thi" },
   { key: "DATA", label: "Kết quả đánh giá" },
 
   // ===== LUYỆN TẬP =====
@@ -297,239 +297,308 @@ export default function RestorePage({ open, onClose }) {
     </>
   );
 
+  const GROUPS = {
+    HOCSINH: ["DANHSACH", "DATA"],
+    DETHI: ["NGANHANG_DE", "DETHI", "BAITAP_TUAN"],
+    TRACNGHIEM: [
+      "TRACNGHIEM3",
+      "TRACNGHIEM4",
+      "TRACNGHIEM5",
+      "TRACNGHIEM3_New",
+      "TRACNGHIEM4_New",
+      "TRACNGHIEM5_New",
+    ],
+  };
+
+  const getEnabledKeys = (keys) =>
+    keys.filter((k) => !disabledOptions[k]);
+
+  const isGroupChecked = (keys) => {
+    const enabled = getEnabledKeys(keys);
+    return enabled.length > 0 && enabled.every((k) => restoreOptions[k]);
+  };
+
+  const isGroupIndeterminate = (keys) => {
+    const enabled = getEnabledKeys(keys);
+    const checked = enabled.filter((k) => restoreOptions[k]).length;
+
+    return checked > 0 && checked < enabled.length;
+  };
+
+  const toggleGroup = (keys) => {
+    const enabled = getEnabledKeys(keys);
+    const allChecked = enabled.every((k) => restoreOptions[k]);
+
+    const newState = {};
+    enabled.forEach((k) => {
+      newState[k] = !allChecked;
+    });
+
+    setRestoreOptions((prev) => ({ ...prev, ...newState }));
+  };
+
   return (
-  <>
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          p: 3,
-          bgcolor: "#fff",
-          boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
-        },
-      }}
-    >
-      {/* HEADER */}
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-        <Box
-          sx={{
-            bgcolor: "#42a5f5",
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
-          }}
-        >
-          🔄
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 3,
+            bgcolor: "#fff",
+            boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
+          },
+        }}
+      >
+        {/* HEADER */}
+        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+          <Box
+            sx={{
+              bgcolor: "#42a5f5",
+              color: "#fff",
+              borderRadius: "50%",
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mr: 1.5,
+              fontWeight: "bold",
+              fontSize: 18,
+            }}
+          >
+            🔄
+          </Box>
+
+          <DialogTitle
+            sx={{ p: 0, fontWeight: "bold", color: "#1565c0", flex: 1 }}
+          >
+            PHỤC HỒI DỮ LIỆU
+          </DialogTitle>
+
+          <IconButton
+            onClick={onClose}
+            sx={{
+              color: "#f44336",
+              "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
 
-        <DialogTitle
-          sx={{ p: 0, fontWeight: "bold", color: "#1565c0", flex: 1 }}
+        {/* UPLOAD */}
+        <Button
+          variant="outlined"
+          startIcon={<UploadFileIcon />}
+          onClick={() => fileInputRef.current.click()}
+          sx={{ mb: 1 }}
         >
-          PHỤC HỒI DỮ LIỆU
-        </DialogTitle>
+          Chọn file phục hồi (.json)
+        </Button>
 
-        <IconButton
-          onClick={onClose}
-          sx={{
-            color: "#f44336",
-            "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </Box>
+        <input
+          type="file"
+          hidden
+          accept=".json"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+        />
 
-      {/* UPLOAD */}
-      <Button
-        variant="outlined"
-        startIcon={<UploadFileIcon />}
-        onClick={() => fileInputRef.current.click()}
-        sx={{ mb: 1 }}
-      >
-        Chọn file phục hồi (.json)
-      </Button>
+        {selectedFile && (
+          <Typography sx={{ color: "red", fontWeight: "bold", mb: 1 }}>
+            📄 {selectedFile.name}
+          </Typography>
+        )}
 
-      <input
-        type="file"
-        hidden
-        accept=".json"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-      />
-
-      {selectedFile && (
-        <Typography sx={{ color: "red", fontWeight: "bold", mb: 1 }}>
-          📄 {selectedFile.name}
-        </Typography>
-      )}
-
-      {/* CONTENT */}
-      <DialogContent dividers>
-        <Stack spacing={2}>
-          {/* HỌC SINH */}
-          <Box>
-            <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
-              Học sinh
-            </Typography>
-
-            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+        {/* CONTENT */}
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            {/* HỌC SINH */}
+            <Box>
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={restoreOptions["DANHSACH"] || false}
-                    disabled={disabledOptions["DANHSACH"]}
-                    onChange={() => toggleOption("DANHSACH")}
+                    checked={isGroupChecked(GROUPS.HOCSINH)}
+                    indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
+                    onChange={() => toggleGroup(GROUPS.HOCSINH)}
+                    disabled={getEnabledKeys(GROUPS.HOCSINH).length === 0}
                   />
                 }
-                label="Danh sách lớp"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={restoreOptions["DATA"] || false}
-                    disabled={disabledOptions["DATA"]}
-                    onChange={() => toggleOption("DATA")}
-                  />
+                label={
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+                    Học sinh
+                  </Typography>
                 }
-                label="Kết quả đánh giá"
-              />
-            </Box>
-          </Box>
-
-          <Divider />
-
-          {/* ĐỀ KIỂM TRA */}
-          <Box>
-            <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
-              Đề kiểm tra
-            </Typography>
-
-            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={restoreOptions["NGANHANG_DE"] || false}
-                    disabled={disabledOptions["NGANHANG_DE"]}
-                    onChange={() => toggleOption("NGANHANG_DE")}
-                  />
-                }
-                label="Đề KTĐK"
               />
 
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={restoreOptions["DETHI"] || false}
-                    disabled={disabledOptions["DETHI"]}
-                    onChange={() => toggleOption("DETHI")}
-                  />
-                }
-                label="Đề thi"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={restoreOptions["BAITAP_TUAN"] || false}
-                    disabled={disabledOptions["BAITAP_TUAN"]}
-                    onChange={() => toggleOption("BAITAP_TUAN")}
-                  />
-                }
-                label="Bài tập tuần"
-              />
-            </Box>
-          </Box>
-
-          <Divider />
-
-          {/* LUYỆN TẬP */}
-          <Box>
-            <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
-              Luyện tập tin học
-            </Typography>
-
-            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
-              {[
-                "TRACNGHIEM3",
-                "TRACNGHIEM4",
-                "TRACNGHIEM5",
-                "TRACNGHIEM3_New",
-                "TRACNGHIEM4_New",
-                "TRACNGHIEM5_New",
-              ].map((key) => (
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
                 <FormControlLabel
-                  key={key}
                   control={
                     <Checkbox
-                      checked={restoreOptions[key] || false}
-                      disabled={disabledOptions[key]}
-                      onChange={() => toggleOption(key)}
+                      checked={restoreOptions["DANHSACH"] || false}
+                      disabled={disabledOptions["DANHSACH"]}
+                      onChange={() => toggleOption("DANHSACH")}
                     />
                   }
-                  label={
-                    BACKUP_KEYS.find((b) => b.key === key)?.label || key
-                  }
+                  label="Danh sách lớp"
                 />
-              ))}
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={restoreOptions["DATA"] || false}
+                      disabled={disabledOptions["DATA"]}
+                      onChange={() => toggleOption("DATA")}
+                    />
+                  }
+                  label="Kết quả đánh giá"
+                />
+              </Box>
             </Box>
-          </Box>
-        </Stack>
-      </DialogContent>
 
-      {/* PROGRESS */}
-      {loading && (
-        <>
-          <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
-            <LinearProgress variant="determinate" value={progress} />
-          </Box>
-          <Typography
-            variant="body2"
-            align="center"
-            color="text.secondary"
-            sx={{ mt: 0.5 }}
+            <Divider />
+
+            {/* ĐỀ KIỂM TRA */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.DETHI)}
+                    indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
+                    onChange={() => toggleGroup(GROUPS.DETHI)}
+                    disabled={getEnabledKeys(GROUPS.DETHI).length === 0}
+                  />
+                }
+                label={
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+                    Đề kiểm tra
+                  </Typography>
+                }
+              />
+
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={restoreOptions["NGANHANG_DE"] || false}
+                      disabled={disabledOptions["NGANHANG_DE"]}
+                      onChange={() => toggleOption("NGANHANG_DE")}
+                    />
+                  }
+                  label="Ngân hàng đề KTĐK"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={restoreOptions["DETHI"] || false}
+                      disabled={disabledOptions["DETHI"]}
+                      onChange={() => toggleOption("DETHI")}
+                    />
+                  }
+                  label="Đề chọn thi"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={restoreOptions["BAITAP_TUAN"] || false}
+                      disabled={disabledOptions["BAITAP_TUAN"]}
+                      onChange={() => toggleOption("BAITAP_TUAN")}
+                    />
+                  }
+                  label="Bài tập tuần"
+                />
+              </Box>
+            </Box>
+
+            <Divider />
+
+            {/* LUYỆN TẬP */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.TRACNGHIEM)}
+                    indeterminate={isGroupIndeterminate(GROUPS.TRACNGHIEM)}
+                    onChange={() => toggleGroup(GROUPS.TRACNGHIEM)}
+                    disabled={getEnabledKeys(GROUPS.TRACNGHIEM).length === 0}
+                  />
+                }
+                label={
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+                    Luyện tập tin học
+                  </Typography>
+                }
+              />
+
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+                {GROUPS.TRACNGHIEM.map((key) => (
+                  <FormControlLabel
+                    key={key}
+                    control={
+                      <Checkbox
+                        checked={restoreOptions[key] || false}
+                        disabled={disabledOptions[key]}
+                        onChange={() => toggleOption(key)}
+                      />
+                    }
+                    label={
+                      BACKUP_KEYS.find((b) => b.key === key)?.label || key
+                    }
+                  />
+                ))}
+              </Box>
+            </Box>
+          </Stack>
+        </DialogContent>
+
+        {/* PROGRESS */}
+        {loading && (
+          <>
+            <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
+              <LinearProgress variant="determinate" value={progress} />
+            </Box>
+            <Typography
+              variant="body2"
+              align="center"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              Đang phục hồi... {progress}%
+            </Typography>
+          </>
+        )}
+
+        {/* ACTION */}
+        <DialogActions sx={{ justifyContent: "flex-end" }}>
+          <Button onClick={onClose}>Hủy</Button>
+          <Button
+            variant="contained"
+            startIcon={<RestoreIcon />}
+            onClick={handleRestore}
+            disabled={loading || !hasAnyChecked}
           >
-            Đang phục hồi... {progress}%
-          </Typography>
-        </>
-      )}
+            PHỤC HỒI
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* ACTION */}
-      <DialogActions sx={{ justifyContent: "flex-end" }}>
-        <Button onClick={onClose}>Hủy</Button>
-        <Button
-          variant="contained"
-          startIcon={<RestoreIcon />}
-          onClick={handleRestore}
-          disabled={loading || !hasAnyChecked}
-        >
-          PHỤC HỒI
-        </Button>
-      </DialogActions>
-    </Dialog>
-
-    {/* SNACKBAR */}
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={4000}
-      onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-    >
-      <Alert severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
-        {snackbar.message}
-      </Alert>
-    </Snackbar>
-  </>
-);
+      {/* SNACKBAR */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
+  );
 }
