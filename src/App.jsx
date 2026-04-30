@@ -58,6 +58,7 @@ function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true); 
   const account = localStorage.getItem("account"); // thêm dòng này trước <Routes>
+   const [openLogo, setOpenLogo] = useState(false);
 
   // ✅ Lấy trạng thái login ban đầu
   useEffect(() => {
@@ -150,11 +151,13 @@ function AppContent() {
               component="img"
               src="/Logo.png"
               alt="Logo"
+              onClick={() => setOpenLogo(true)}
               sx={{
                 height: 34,
                 flexShrink: 0,
                 ml: { xs: -1, sm: -2 },
                 mr: 1,
+                cursor: "pointer"
               }}
             />
             {navItems.map((item) => (
@@ -241,6 +244,52 @@ function AppContent() {
           )}
         </Toolbar>
       </AppBar>
+
+      {openLogo && (
+        <Box
+          onClick={() => setOpenLogo(false)}
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2000,
+            cursor: "pointer"
+          }}
+        >
+          {/* Khung trắng */}
+          <Box
+            onClick={() => setOpenLogo(false)}
+            sx={{
+              width: "clamp(160px, 50vw, 300px)",   // ✅ responsive
+              height: "clamp(160px, 50vw, 300px)",
+              bgcolor: "white",
+              borderRadius: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+              animation: "zoomIn 0.3s ease"
+            }}
+          >
+            <Box
+              component="img"
+              src="/Logo.png"
+              alt="Logo lớn"
+              sx={{
+                maxWidth: "85%",
+                maxHeight: "85%",
+                objectFit: "contain"
+              }}
+            />
+          </Box>
+        </Box>
+      )}
 
       {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
