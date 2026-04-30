@@ -22,13 +22,23 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
 const BACKUP_KEYS = [
-  { key: "DANHSACH", label: "Danh sách học sinh" },
-  { key: "CONFIG", label: "Cấu hình hệ thống" },
+  // ===== HỌC SINH =====
+  { key: "DANHSACH", label: "Danh sách lớp" },
+  { key: "DATA", label: "Kết quả đánh giá" },
+
+  // ===== ĐỀ KIỂM TRA =====
+  { key: "NGANHANG_DE", label: "Đề KTĐK" },
+  { key: "DETHI", label: "Đề thi" },
   { key: "BAITAP_TUAN", label: "Bài tập tuần" },
-  { key: "NGANHANG_DE", label: "Đề KTĐK Bình Khánh" },
-  { key: "MATKHAU", label: "Mật khẩu tài khoản" },
-  { key: "DETHI", label: "Đề thi Bình Khánh" },
-  { key: "DATA", label: "Kết quả đánh giá" }, // Thay KETQUA_DANH_GIA
+
+  // ===== LUYỆN TẬP =====
+  { key: "TRACNGHIEM3", label: "Lớp 3 (CTST)" },
+  { key: "TRACNGHIEM4", label: "Lớp 4 (CTST)" },
+  { key: "TRACNGHIEM5", label: "Lớp 5 (CTST)" },
+
+  { key: "TRACNGHIEM3_New", label: "Lớp 3 (KNTT)" },
+  { key: "TRACNGHIEM4_New", label: "Lớp 4 (KNTT)" },
+  { key: "TRACNGHIEM5_New", label: "Lớp 5 (KNTT)" },
 ];
 
 export default function BackupPage({ open, onClose }) {
@@ -47,10 +57,11 @@ export default function BackupPage({ open, onClose }) {
     setBackupOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const exportBackupToJson = (data, backupOptions) => {
+  const exportBackupToJson = (data, backupOptions = {}) => {
     if (!data || Object.keys(data).length === 0) return;
 
-    const selectedCollections = Object.keys(backupOptions).filter(
+    // tránh lỗi undefined
+    const selectedCollections = Object.keys(backupOptions || {}).filter(
       (k) => backupOptions[k]
     );
 
@@ -60,110 +71,161 @@ export default function BackupPage({ open, onClose }) {
         : selectedCollections.join("_");
 
     const now = new Date();
+
     const pad = (n) => n.toString().padStart(2, "0");
-    const timestamp = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now
+
+    const dateStr = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now
       .getFullYear()
       .toString()
-      .slice(-2)} (${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
+      .slice(-2)}`;
+
+    const timeStr = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(
       now.getSeconds()
-    )})`;
+    )}`;
+
+    const fileName = `Backup_ĐGHS (${dateStr} ${timeStr}).json`;
 
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
     });
+
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Backup_${collectionsName}_${timestamp}.json`;
+    a.download = fileName;
     a.click();
+
+    URL.revokeObjectURL(url);
   };
 
   const fetchAllBackup = async (onProgress, selectedCollections) => {
-  try {
-    const backupData = {};
-    if (!selectedCollections || selectedCollections.length === 0) return {};
+    const TRACNGHIEM_COLLECTIONS = [
+      "TRACNGHIEM3",
+      "TRACNGHIEM4",
+      "TRACNGHIEM5",
+      "TRACNGHIEM3_New",
+      "TRACNGHIEM4_New",
+      "TRACNGHIEM5_New",
+    ];
 
-    let progressCount = 0;
-    const hasDATA = selectedCollections.includes("DATA");
-    const otherCollections = selectedCollections.filter((c) => c !== "DATA");
+    try {
+      const backupData = {};
+      if (!selectedCollections || selectedCollections.length === 0) return {};
 
-    // Tính phần trăm tiến trình cho từng nhóm
-    const DATA_WEIGHT = hasDATA ? 80 : 0;
-    const OTHERS_WEIGHT = hasDATA ? 20 : 100;
+      let progressCount = 0;
+      const hasDATA = selectedCollections.includes("DATA");
+      const otherCollections = selectedCollections.filter((c) => c !== "DATA");
 
-    const otherStep =
-      otherCollections.length > 0
-        ? OTHERS_WEIGHT / otherCollections.length
-        : 0;
+      // Tính phần trăm tiến trình
+      const DATA_WEIGHT = hasDATA ? 80 : 0;
+      const OTHERS_WEIGHT = hasDATA ? 20 : 100;
 
-    // Duyệt theo thứ tự: các collection khác trước, sau đó DATA (để thanh tiến trình tăng mượt hơn)
-    for (const colName of otherCollections) {
-      // 1️⃣ Quiz
-      if (["BAITAP_TUAN", "NGANHANG_DE"].includes(colName)) {
-        const snap = await getDocs(collection(db, colName));
-        if (!snap.empty) backupData[colName] = {};
-        snap.forEach((d) => (backupData[colName][d.id] = d.data()));
+      const otherStep =
+        otherCollections.length > 0
+          ? OTHERS_WEIGHT / otherCollections.length
+          : 0;
+
+      // ================== NHÓM KHÁC DATA ==================
+      for (const colName of otherCollections) {
+        // 1️⃣ Quiz
+        if (["BAITAP_TUAN", "NGANHANG_DE"].includes(colName)) {
+          const snap = await getDocs(collection(db, colName));
+
+          if (!backupData[colName]) backupData[colName] = {};
+
+          snap.forEach((d) => {
+            backupData[colName][d.id] = d.data();
+          });
+        }
+
+        // 2️⃣ Collection phẳng
+        else if (
+          ["DANHSACH", "DETHI"].includes(colName)
+        ) {
+          const snap = await getDocs(collection(db, colName));
+
+          if (!backupData[colName]) backupData[colName] = {};
+
+          snap.forEach((d) => {
+            backupData[colName][d.id] = d.data();
+          });
+        }
+
+        // 3️⃣ TRẮC NGHIỆM (FIX QUAN TRỌNG)
+        else if (TRACNGHIEM_COLLECTIONS.includes(colName)) {
+          const snap = await getDocs(collection(db, colName));
+
+          if (!backupData[colName]) backupData[colName] = {};
+
+          snap.forEach((d) => {
+            backupData[colName][d.id] = d.data();
+          });
+        }
+
+        // cập nhật tiến trình
+        progressCount += otherStep;
+        if (onProgress)
+          onProgress(Math.min(Math.round(progressCount), 99));
       }
 
-      // 2️⃣ Collection phẳng
-      else if (["DANHSACH", "CONFIG", "MATKHAU", "DETHI"].includes(colName)) {
-        const snap = await getDocs(collection(db, colName));
-        if (!snap.empty) backupData[colName] = {};
-        snap.forEach((d) => (backupData[colName][d.id] = d.data()));
-      }
+      // ================== DATA ==================
+      if (hasDATA) {
+        backupData.DATA = {};
 
-      // Cập nhật tiến trình cho collection này
-      progressCount += otherStep;
-      if (onProgress) onProgress(Math.min(Math.round(progressCount), 99));
-    }
+        const classListSnap = await getDocs(collection(db, "DANHSACH"));
+        const classList = classListSnap.docs.map((d) => d.id);
 
-    // 3️⃣ DATA (Kết quả đánh giá) – chiếm 80% tiến trình
-    if (hasDATA) {
-      backupData.DATA = {};
+        if (classList.length === 0) {
+          progressCount += DATA_WEIGHT;
+          if (onProgress)
+            onProgress(Math.min(Math.round(progressCount), 99));
+        } else {
+          const perClassStep = DATA_WEIGHT / classList.length;
 
-      // Lấy danh sách lớp từ DANHSACH (ví dụ ["4.1","4.2",...])
-      const classListSnap = await getDocs(collection(db, "DANHSACH"));
-      const classList = classListSnap.docs.map((d) => d.id);
+          for (const classId of classList) {
+            const classKey = classId.replace(".", "_");
 
-      // Nếu không có lớp, vẫn cập nhật tiến trình cho phần DATA
-      if (classList.length === 0) {
-        progressCount += DATA_WEIGHT;
-        if (onProgress) onProgress(Math.min(Math.round(progressCount), 99));
-      } else {
-        // Mỗi lớp đóng góp một phần của 80%
-        const perClassStep = DATA_WEIGHT / classList.length;
+            const studentsSnap = await getDocs(
+              collection(db, "DATA", classKey, "HOCSINH")
+            );
 
-        for (const classId of classList) {
-          const classKey = classId.replace(".", "_"); // đổi sang "4_1"
-          const studentsSnap = await getDocs(collection(db, "DATA", classKey, "HOCSINH"));
+            backupData.DATA[classKey] = { HOCSINH: {} };
 
-          backupData.DATA[classKey] = { HOCSINH: {} };
+            for (const studentDoc of studentsSnap.docs) {
+              const studentId = studentDoc.id;
+              const studentData = studentDoc.data();
 
-          for (const studentDoc of studentsSnap.docs) {
-            const studentId = studentDoc.id;
-            const studentData = studentDoc.data();
-            backupData.DATA[classKey].HOCSINH[studentId] = { ...studentData };
+              backupData.DATA[classKey].HOCSINH[studentId] = {
+                ...studentData,
+              };
+            }
+
+            progressCount += perClassStep;
+            if (onProgress)
+              onProgress(Math.min(Math.round(progressCount), 99));
           }
-
-          // Cập nhật tiến trình sau mỗi lớp
-          progressCount += perClassStep;
-          if (onProgress) onProgress(Math.min(Math.round(progressCount), 99));
         }
       }
+
+      // ================== HOÀN TẤT ==================
+      if (onProgress) onProgress(100);
+
+      return backupData;
+    } catch (err) {
+      console.error("❌ Lỗi khi backup:", err);
+      return {};
     }
-
-    // Hoàn tất
-    if (onProgress) onProgress(100);
-    return backupData;
-  } catch (err) {
-    console.error("❌ Lỗi khi backup:", err);
-    return {};
-  }
-};
+  };
 
 
-  const handleBackup = async () => {
-    const selected = Object.keys(backupOptions).filter((k) => backupOptions[k]);
+ const handleBackup = async () => {
+    const VALID_KEYS = BACKUP_KEYS.map(k => k.key);
+
+    const selected = Object.keys(backupOptions).filter(
+      (k) => backupOptions[k] && VALID_KEYS.includes(k)
+    );
+
     if (selected.length === 0) {
       setSnackbar({
         open: true,
@@ -176,13 +238,22 @@ export default function BackupPage({ open, onClose }) {
     try {
       setLoading(true);
       setProgress(0);
+
       const data = await fetchAllBackup(setProgress, selected);
-      exportBackupToJson(data, backupOptions);
+
+      // 🔥 chỉ export đúng những gì đã chọn
+      const filteredOptions = Object.fromEntries(
+        selected.map(k => [k, true])
+      );
+
+      exportBackupToJson(data, filteredOptions);
+
       setSnackbar({
         open: true,
         severity: "success",
         message: "✅ Sao lưu dữ liệu thành công",
       });
+
       onClose();
     } catch (err) {
       console.error(err);
@@ -198,88 +269,62 @@ export default function BackupPage({ open, onClose }) {
   };
 
   return (
-    <>
-      <Dialog
-        open={open}
-        onClose={onClose}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            p: 3,
-            bgcolor: "#fff",
-            boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <Box
-            sx={{
-              bgcolor: "#42a5f5",
-              color: "#fff",
-              borderRadius: "50%",
-              width: 36,
-              height: 36,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              mr: 1.5,
-              fontWeight: "bold",
-              fontSize: 18,
-            }}
-          >
-            🗄️
-          </Box>
-          <DialogTitle
-            sx={{
-              p: 0,
-              fontWeight: "bold",
-              color: "#1565c0",
-              flex: 1,
-            }}
-          >
-            SAO LƯU DỮ LIỆU
-          </DialogTitle>
-
-          <IconButton
-            onClick={onClose}
-            sx={{
-              ml: "auto",
-              color: "#f44336",
-              "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+  <>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 3,
+          bgcolor: "#fff",
+          boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
+        },
+      }}
+    >
+      {/* HEADER */}
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <Box
+          sx={{
+            bgcolor: "#42a5f5",
+            color: "#fff",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mr: 1.5,
+            fontWeight: "bold",
+          }}
+        >
+          🗄️
         </Box>
 
-        <DialogContent dividers>
-          <Stack spacing={1}>
-            {/* ====== Cấu hình ====== */}
-            <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
-              Hệ thống
+        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0", flex: 1 }}>
+          SAO LƯU DỮ LIỆU
+        </DialogTitle>
+
+        <IconButton onClick={onClose}>
+          <CloseIcon />
+        </IconButton>
+      </Box>
+
+      {/* CONTENT */}
+      <DialogContent>
+        <Stack spacing={2}>
+
+          {/* ===== HỌC SINH ===== */}
+          <Box>
+            <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+              Học sinh
             </Typography>
+
             <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
               <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["CONFIG"]}
-                    onChange={() => toggleOption("CONFIG")}
-                  />
-                }
-                label="Cấu hình"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["MATKHAU"]}
-                    onChange={() => toggleOption("MATKHAU")}
-                  />
-                }
-                label="Mật khẩu"
-              />
-              <FormControlLabel
+                sx={{ ml: 0 }}
                 control={
                   <Checkbox
                     checked={backupOptions["DANHSACH"]}
@@ -288,52 +333,9 @@ export default function BackupPage({ open, onClose }) {
                 }
                 label="Danh sách lớp"
               />
-            </Box>
 
-            <Divider sx={{ mt: 1, mb: 1 }} />
-
-            {/* ====== Ngân hàng đề ====== */}
-            <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
-              Ngân hàng đề
-            </Typography>
-            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
               <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["BAITAP_TUAN"]}
-                    onChange={() => toggleOption("BAITAP_TUAN")}
-                  />
-                }
-                label="Bài tập tuần"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["NGANHANG_DE"]}
-                    onChange={() => toggleOption("NGANHANG_DE")}
-                  />
-                }
-                label="Đề KTĐK"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["DETHI"]}
-                    onChange={() => toggleOption("DETHI")}
-                  />
-                }
-                label="Đề thi"
-              />
-            </Box>
-
-            <Divider sx={{ mt: 1, mb: 1 }} />
-
-            {/* ====== Kết quả ====== */}
-            <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
-              Kết quả
-            </Typography>
-            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
-              <FormControlLabel
+                sx={{ ml: 0 }}
                 control={
                   <Checkbox
                     checked={backupOptions["DATA"]}
@@ -343,48 +345,168 @@ export default function BackupPage({ open, onClose }) {
                 label="Kết quả đánh giá"
               />
             </Box>
-          </Stack>
-        </DialogContent>
+          </Box>
 
-        {loading && (
-          <>
-            <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
-              <LinearProgress variant="determinate" value={progress} />
-            </Box>
-            <Typography
-              variant="body2"
-              align="center"
-              color="text.secondary"
-              sx={{ mt: 0.5 }}
-            >
-              Đang sao lưu... {progress}%
+          <Divider />
+
+          {/* ===== ĐỀ KIỂM TRA ===== */}
+          <Box>
+            <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+              Đề kiểm tra
             </Typography>
-          </>
-        )}
 
-        <DialogActions>
-          <Button onClick={onClose}>Hủy</Button>
-          <Button
-            variant="contained"
-            startIcon={<BackupIcon />}
-            onClick={handleBackup}
-            disabled={loading}
-          >
-            Sao lưu
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["NGANHANG_DE"]}
+                    onChange={() => toggleOption("NGANHANG_DE")}
+                  />
+                }
+                label="Đề KTĐK"
+              />
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </>
-  );
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["DETHI"]}
+                    onChange={() => toggleOption("DETHI")}
+                  />
+                }
+                label="Đề thi"
+              />
+
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["BAITAP_TUAN"]}
+                    onChange={() => toggleOption("BAITAP_TUAN")}
+                  />
+                }
+                label="Bài tập tuần"
+              />
+            </Box>
+          </Box>
+
+          <Divider />
+
+          {/* ===== LUYỆN TẬP TIN HỌC ===== */}
+          <Box>
+            <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+              Luyện tập tin học
+            </Typography>
+
+            <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["TRACNGHIEM3"]}
+                    onChange={() => toggleOption("TRACNGHIEM3")}
+                  />
+                }
+                label="Lớp 3 (CTST)"
+              />
+
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["TRACNGHIEM4"]}
+                    onChange={() => toggleOption("TRACNGHIEM4")}
+                  />
+                }
+                label="Lớp 4 (CTST)"
+              />
+
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["TRACNGHIEM5"]}
+                    onChange={() => toggleOption("TRACNGHIEM5")}
+                  />
+                }
+                label="Lớp 5 (CTST)"
+              />
+
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["TRACNGHIEM3_New"]}
+                    onChange={() => toggleOption("TRACNGHIEM3_New")}
+                  />
+                }
+                label="Lớp 3 (KNTT)"
+              />
+
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["TRACNGHIEM4_New"]}
+                    onChange={() => toggleOption("TRACNGHIEM4_New")}
+                  />
+                }
+                label="Lớp 4 (KNTT)"
+              />
+
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={backupOptions["TRACNGHIEM5_New"]}
+                    onChange={() => toggleOption("TRACNGHIEM5_New")}
+                  />
+                }
+                label="Lớp 5 (KNTT)"
+              />
+
+            </Box>
+          </Box>
+
+        </Stack>
+      </DialogContent>
+
+      {/* PROGRESS */}
+      {loading && (
+        <>
+          <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
+            <LinearProgress variant="determinate" value={progress} />
+          </Box>
+          <Typography align="center">{progress}%</Typography>
+        </>
+      )}
+
+      {/* ACTION */}
+      <DialogActions>
+        <Button onClick={onClose}>Hủy</Button>
+        <Button
+          variant="contained"
+          startIcon={<BackupIcon />}
+          onClick={handleBackup}
+          disabled={loading}
+        >
+          Sao lưu
+        </Button>
+      </DialogActions>
+    </Dialog>
+
+    {/* SNACKBAR */}
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={4000}
+      onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+    >
+      <Alert severity={snackbar.severity}>
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+  </>
+);
 }

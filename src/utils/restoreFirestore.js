@@ -13,9 +13,15 @@ export const restoreAllFromJson = async (file, selectedCollections, onProgress) 
     const data = JSON.parse(text);
 
     const QUIZ_ARRAY = [
-      "BAITAP_TUAN",
-      "TRACNGHIEM_BK",
-      "TRACNGHIEM_LVB",
+      //"BAITAP_TUAN",
+      //"TRACNGHIEM_BK",
+      //"TRACNGHIEM_LVB",
+      "TRACNGHIEM3",
+      "TRACNGHIEM4",
+      "TRACNGHIEM5",
+      "TRACNGHIEM3_New",
+      "TRACNGHIEM4_New",
+      "TRACNGHIEM5_New",
     ];
 
     // Lọc collection có trong file và được chọn

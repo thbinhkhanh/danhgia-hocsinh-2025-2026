@@ -14,19 +14,19 @@ export const fetchAllBackup = async (onProgress, selectedCollections) => {
       CONFIG: {},
       KTDK: {},
       DGTX: {},
-
       BAITAP_TUAN: {},
-
       TRACNGHIEM_BK: {},
+      //TRACNGHIEM_LVB: {},
 
       TRACNGHIEM3: {},
       TRACNGHIEM4: {},
       TRACNGHIEM5: {},
-
       TRACNGHIEM3_New: {},
       TRACNGHIEM4_New: {},
       TRACNGHIEM5_New: {},
     };
+
+    const QUIZ_ARRAY = ["BAITAP_TUAN", "TRACNGHIEM_BK", "TRACNGHIEM_LVB"];
 
     if (!selectedCollections || selectedCollections.length === 0) {
       console.warn("⚠️ Không có collection nào được chọn để backup");
@@ -37,16 +37,9 @@ export const fetchAllBackup = async (onProgress, selectedCollections) => {
     const progressStep = Math.floor(100 / selectedCollections.length);
 
     for (const colName of selectedCollections) {
-
-      // ================= QUIZ + BAITAP (CHUNG 1 LOGIC) =================
-      if (
-        colName.startsWith("BAITAP") ||
-        colName.startsWith("TRACNGHIEM")
-      ) {
+      // 1️⃣ QUIZ: questions nằm trong document
+      if (QUIZ_ARRAY.includes(colName)) {
         const snap = await getDocs(collection(db, colName));
-
-        backupData[colName] = {};
-
         snap.forEach(d => {
           backupData[colName][d.id] = d.data();
         });
@@ -56,23 +49,16 @@ export const fetchAllBackup = async (onProgress, selectedCollections) => {
         continue;
       }
 
-      // ================= DGTX =================
+      // 2️⃣ DGTX (nhiều cấp)
       if (colName === "DGTX") {
         const classSnap = await getDocs(collection(db, "DANHSACH"));
         const classIds = classSnap.docs.map(d => d.id);
-        const classIdsWithCN = [
-          ...classIds,
-          ...classIds.map(id => `${id}_CN`)
-        ];
+        const classIdsWithCN = [...classIds, ...classIds.map(id => `${id}_CN`)];
 
         for (const lopId of classIdsWithCN) {
-          const tuanSnap = await getDocs(
-            collection(db, "DGTX", lopId, "tuan")
-          );
-
+          const tuanSnap = await getDocs(collection(db, "DGTX", lopId, "tuan"));
           if (!tuanSnap.empty) {
             backupData.DGTX[lopId] = { tuan: {} };
-
             tuanSnap.forEach(t => {
               backupData.DGTX[lopId].tuan[t.id] = t.data();
             });
@@ -84,12 +70,9 @@ export const fetchAllBackup = async (onProgress, selectedCollections) => {
         continue;
       }
 
-      // ================= KTDK =================
+      // 3️⃣ KTDK
       if (colName === "KTDK") {
         const snap = await getDocs(collection(db, "KTDK"));
-
-        backupData.KTDK = {};
-
         snap.forEach(d => {
           backupData.KTDK[d.id] = d.data();
         });
@@ -99,12 +82,9 @@ export const fetchAllBackup = async (onProgress, selectedCollections) => {
         continue;
       }
 
-      // ================= DANHSACH / CONFIG =================
+      // 4️⃣ Collection phẳng khác (DANHSACH, CONFIG)
       if (["DANHSACH", "CONFIG"].includes(colName)) {
         const snap = await getDocs(collection(db, colName));
-
-        backupData[colName] = {};
-
         snap.forEach(d => {
           backupData[colName][d.id] = d.data();
         });
@@ -115,7 +95,7 @@ export const fetchAllBackup = async (onProgress, selectedCollections) => {
       }
     }
 
-    // ================= CLEAN DGTX =================
+    // Lọc DGTX rỗng nếu được backup
     if (selectedCollections.includes("DGTX")) {
       Object.keys(backupData.DGTX).forEach(lopId => {
         if (
@@ -128,7 +108,7 @@ export const fetchAllBackup = async (onProgress, selectedCollections) => {
     }
 
     if (onProgress) onProgress(100);
-
+    //console.log("✅ Backup hoàn tất");
     return backupData;
 
   } catch (err) {
