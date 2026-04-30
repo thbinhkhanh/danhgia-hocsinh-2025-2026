@@ -266,8 +266,8 @@ function AppContent() {
           <Box
             onClick={() => setOpenLogo(false)}
             sx={{
-              width: "clamp(160px, 50vw, 300px)",   // ✅ responsive
-              height: "clamp(160px, 50vw, 300px)",
+              width: "clamp(180px, 60vw, 320px)",
+              height: "clamp(180px, 60vw, 320px)",
               bgcolor: "white",
               borderRadius: "16px",
               display: "flex",
