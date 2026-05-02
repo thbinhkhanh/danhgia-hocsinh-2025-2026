@@ -980,8 +980,23 @@ useEffect(() => {
       if (!tables[tableIndex]) return null;
 
       const table = tables[tableIndex++];
-      const rows = table.querySelectorAll("tr");
 
+      // ✅ LẤY QUESTION TỪ <p> TRƯỚC TABLE
+      let questionText = "";
+      let prev = table.previousElementSibling;
+
+      while (prev) {
+        if (prev.tagName === "P" && prev.innerText.trim()) {
+          questionText = prev.innerText.trim();
+          break;
+        }
+        prev = prev.previousElementSibling;
+      }
+
+      // 🔥 CẮT "Câu 1."
+      questionText = questionText.replace(/^Câu\s*\d+\s*[:\.\-)]?\s*/i, "");
+
+      const rows = table.querySelectorAll("tr");
       const pairs = [];
 
       rows.forEach(row => {
@@ -1003,7 +1018,10 @@ useEffect(() => {
 
       return {
         id: `q_${Date.now()}_table_${index}`,
-        question: `<p>Câu ghép cột A với cột B</p>`,
+
+        // ✅ DÙNG QUESTION THẬT (đã bỏ "Câu 1.")
+        question: `<p>${escapeHTML(questionText)}</p>`,
+
         type: "matching",
         questionType: "matching",
         pairs,
@@ -1162,6 +1180,7 @@ useEffect(() => {
                 label="Loại đề"
               >
                 <MenuItem value="bt">Bài tập tuần</MenuItem>
+                <MenuItem value="luyentap">Luyện tập tin học</MenuItem>
                 <MenuItem value="ktdk">KTĐK</MenuItem>
               </Select>
             </FormControl>
