@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { doc, getDoc } from "firebase/firestore";
-import { normalizeFirestoreQuiz } from "./normalizeFirestoreQuiz";
 
 export default function useInitialQuiz({
   db,
@@ -11,48 +10,11 @@ export default function useInitialQuiz({
   setSchoolYear,
   setExamLetter,
   setExamType,
-  setLessonName, // 🔥 THÊM
 }) {
   useEffect(() => {
     const fetchInitialQuiz = async () => {
       try {
-        // 🔥 ƯU TIÊN LOAD TỪ LOCAL (FIX LUYỆN TẬP)
-        const savedId = localStorage.getItem("deTracNghiemId");
-        const savedCollection = localStorage.getItem("deTracNghiemCollection");
-
-        if (savedId && savedCollection) {
-          const quizRef = doc(db, savedCollection, savedId);
-          const quizSnap = await getDoc(quizRef);
-
-          if (quizSnap.exists()) {
-            const data = quizSnap.data();
-            const list = Array.isArray(data.questions) ? data.questions : [];
-
-            const normalizedList = normalizeFirestoreQuiz(list);
-
-            setQuestions(normalizedList);
-
-            setSelectedClass(data.class || "");
-            setSelectedSubject(data.subject || "");
-            setSemester(data.semester || "");
-            setSchoolYear(data.schoolYear || "");
-            setExamLetter(data.examLetter || "");
-
-            // 🔥 xác định loại đề
-            if (savedCollection.startsWith("TRACNGHIEM")) {
-              setExamType("luyentap");
-              setLessonName && setLessonName(savedId); // 🔥 thêm
-            } else if (savedCollection === "NGANHANG_DE") {
-              setExamType("ktdk");
-            } else {
-              setExamType("bt");
-            }
-
-            return; // 🔥 DỪNG ở đây (không chạy CONFIG nữa)
-          }
-        }
-
-        // ===== FALLBACK (GIỮ NGUYÊN CODE CŨ) =====
+        // 🔹 load config
         const cfgRef = doc(db, "CONFIG", "config");
         const cfgSnap = await getDoc(cfgRef);
 
@@ -70,6 +32,7 @@ export default function useInitialQuiz({
           return;
         }
 
+        // 🔹 chọn collection
         const collectionName =
           examType === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
 
@@ -84,10 +47,20 @@ export default function useInitialQuiz({
         const data = quizSnap.data();
         const list = Array.isArray(data.questions) ? data.questions : [];
 
-        const normalizedList = normalizeFirestoreQuiz(list);
+        // 🔹 normalize matching
+        const normalizedList = list.map((q) => {
+          if (q.type === "matching") {
+            return {
+              ...q,
+              columnRatio: q.columnRatio || { left: 1, right: 1 },
+            };
+          }
+          return q;
+        });
 
         setQuestions(normalizedList);
 
+        // 🔹 sync state
         setSelectedClass(data.class || "");
         setSelectedSubject(data.subject || "");
         setSemester(data.semester || "");
@@ -95,6 +68,7 @@ export default function useInitialQuiz({
         setExamLetter(data.examLetter || "");
         setExamType(examType);
 
+        // 🔹 localStorage
         localStorage.setItem("teacherQuiz", JSON.stringify(list));
         localStorage.setItem(
           "teacherConfig",

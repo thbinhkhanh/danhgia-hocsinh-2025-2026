@@ -27,6 +27,7 @@ const formatExamTitle = (examName = "") => {
   const classPart = parts.find((p) => p.toLowerCase().includes("lớp")) || "";
   const classNumber = classPart.match(/\d+/)?.[0] || "";
   const classIndex = parts.indexOf(classPart);
+  
 
   let subjectPart = "";
   for (let i = classIndex + 1; i < parts.length; i++) {
@@ -116,6 +117,13 @@ const OpenExamDialog = ({
   handleDeleteSelectedDoc,
   fetchQuizList,
 }) => {
+
+  console.log("🟡 OpenExamDialog PROPS:");
+  console.log("dialogExamType:", dialogExamType);
+  console.log("filterYear:", filterYear);
+  console.log("filterClass:", filterClass);
+  const [filterSubject, setFilterSubject] = React.useState("tin"); // ✅ đúng chỗ
+  
   const years = [
     "2025-2026",
     "2026-2027",
@@ -124,139 +132,227 @@ const OpenExamDialog = ({
     "2029-2030",
   ];
 
+  
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          boxShadow: 6,
-          bgcolor: "#f9f9f9",
-          overflow: "hidden",
-        },
+  <Dialog
+    open={open}
+    onClose={onClose}
+    maxWidth="sm"
+    fullWidth
+    PaperProps={{
+      sx: {
+        borderRadius: 3,
+        boxShadow: 6,
+        bgcolor: "#f9f9f9",
+        overflow: "hidden",
+      },
+    }}
+  >
+    {/* ===== HEADER ===== */}
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: "linear-gradient(to right, #1976d2, #42a5f5)",
+        color: "#fff",
+        px: 2,
+        py: 2,
       }}
     >
-      {/* ===== HEADER ===== */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "linear-gradient(to right, #1976d2, #42a5f5)",
-          color: "#fff",
-          px: 2,
-          py: 2,
-        }}
-      >
-        <Typography fontWeight="bold">📂 Danh sách đề</Typography>
-        <IconButton onClick={onClose} sx={{ color: "#fff" }}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Box>
+      <Typography fontWeight="bold">📂 Danh sách đề</Typography>
+      <IconButton onClick={onClose} sx={{ color: "#fff" }}>
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </Box>
 
-      {/* ===== CONTENT ===== */}
-      <DialogContent
-        dividers
-        sx={{
-          height: 380,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
-        {/* FILTER */}
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel>Loại đề</InputLabel>
+    {/* ===== CONTENT ===== */}
+    <DialogContent
+      dividers
+      sx={{
+        height: 380,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      {/* FILTER */}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Loại đề</InputLabel>
+          <Select
+            value={dialogExamType}
+            label="Loại đề"
+            onChange={(e) => {
+              const type = e.target.value;
+              setDialogExamType(type);
+              fetchQuizList(type, filterYear, filterClass);
+            }}
+          >
+            <MenuItem value="bt">Bài tập tuần</MenuItem>
+            <MenuItem value="ktdk">KTĐK</MenuItem>
+            <MenuItem value="luyentap">Luyện tập tin học</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>Lọc lớp</InputLabel>
+          <Select
+            value={filterClass}
+            label="Lọc lớp"
+            onChange={(e) => {
+              const newClass = e.target.value;
+              setFilterClass(newClass);
+              fetchQuizList(dialogExamType, filterYear, newClass);
+            }}
+          >
+            {classes
+              .filter((lop) => {
+                const n = parseInt(lop.replace(/\D/g, ""));
+                return n >= 3 && n <= 5;
+              })
+              .map((lop) => (
+                <MenuItem key={lop} value={lop}>
+                  {lop}
+                </MenuItem>
+              ))}
+          </Select>
+        </FormControl>
+
+        {/* NĂM HỌC */}
+        {(dialogExamType === "ktdk" || dialogExamType === "luyentap") && (
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Năm học</InputLabel>
             <Select
-              value={dialogExamType || "bt"}
-              label="Loại đề"
+              value={filterYear}
+              label="Năm học"
               onChange={(e) => {
-                const type = e.target.value;
-                setDialogExamType(type);
-                if (type !== "ktdk") setFilterYear("Tất cả");
-                fetchQuizList(type);
+                const newYear = e.target.value;
+                setFilterYear(newYear);
+                fetchQuizList(dialogExamType, newYear, filterClass);
               }}
             >
-              <MenuItem value="bt">Bài tập tuần</MenuItem>
-              <MenuItem value="ktdk">KTĐK</MenuItem>
-              <MenuItem value="luyentap">Luyện tập tin học</MenuItem>
+              {years.map((y) => (
+                <MenuItem key={y} value={y}>
+                  {y}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
+        )}
 
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Lọc lớp</InputLabel>
+        {/* ===== MÔN (CHỈ HIỆN KHI BÀI TẬP) ===== */}
+        {dialogExamType === "bt" && (
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Môn</InputLabel>
             <Select
-              value={filterClass}
-              label="Lọc lớp"
-              onChange={(e) => setFilterClass(e.target.value)}
+              value={filterSubject || "all"}
+              label="Môn"
+              onChange={(e) => setFilterSubject(e.target.value)}
             >
-              <MenuItem value="Tất cả">Tất cả</MenuItem>
-              {classes
-                .filter((lop) => {
-                  const n = parseInt(lop.replace(/\D/g, ""));
-                  return n >= 3 && n <= 5;
-                })
-                .map((lop) => (
-                  <MenuItem key={lop} value={lop}>
-                    {lop}
-                  </MenuItem>
-                ))}
+              <MenuItem value="all">Tất cả</MenuItem>
+              <MenuItem value="tin">Tin học</MenuItem>
+              <MenuItem value="congnghe">Công nghệ</MenuItem>
             </Select>
           </FormControl>
+        )}
+      </Stack>
 
-          {dialogExamType === "ktdk" && (
-            <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>Năm học</InputLabel>
-              <Select
-                value={filterYear}
-                label="Năm học"
-                onChange={(e) => setFilterYear(e.target.value)}
-              >
-                <MenuItem value="Tất cả">Tất cả</MenuItem>
-                {years.map((y) => (
-                  <MenuItem key={y} value={y}>
-                    {y}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-        </Stack>
+      {/* LIST */}
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: "auto",
+          border: "1px solid #ccc",
+          borderRadius: 2,
+        }}
+      >
+        {loadingList ? (
+          <Typography align="center" sx={{ p: 2 }}>
+            ⏳ Đang tải danh sách đề...
+          </Typography>
+        ) : (
+          (() => {
+            const normalize = (s = "") =>
+              s
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
 
-        {/* LIST */}
-        <Box sx={{ flex: 1, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2 }}>
-          {loadingList ? (
-            <Typography align="center" sx={{ p: 2 }}>
-              ⏳ Đang tải danh sách đề...
-            </Typography>
-          ) : (
-            docList
-              // lọc theo loại đề
+            const getNumber = (text = "") => {
+              const weekMatch = text.match(/tuần\s*(\d+)/i);
+              if (weekMatch) return parseInt(weekMatch[1], 10);
+
+              const baiMatch = text.match(/bài\s*(\d+)/i);
+              if (baiMatch) return parseInt(baiMatch[1], 10);
+
+              const any = text.match(/\d+/);
+              return any ? parseInt(any[0], 10) : 9999;
+            };
+
+            const getGroup = (t) => {
+              if (t.includes("bai") || t.includes("tuan")) return 1;
+              if (t.includes("on tap hoc ki")) return 2;
+              if (t.includes("on tap cuoi nam")) return 3;
+              return 4;
+            };
+
+            return docList
               .filter((doc) => isDocMatchType(doc, dialogExamType))
-              // lọc theo lớp (BT, KTĐK & LUYỆN TẬP)
               .filter((doc) => {
-                if (filterClass === "Tất cả") return true;
-
                 if (dialogExamType === "luyentap") {
                   return (
-                    getClassFromLuyenTapCollection(doc.collection) ===
-                    filterClass
+                    getClassFromLuyenTapCollection(doc.collection) === filterClass
                   );
                 }
-
                 return doc.class === filterClass;
               })
-              // lọc năm (chỉ KTĐK)
               .filter((doc) => {
                 if (dialogExamType !== "ktdk") return true;
-                return filterYear === "Tất cả"
-                  ? true
-                  : getExamYearFromId(doc.id) === filterYear;
+                return getExamYearFromId(doc.id) === filterYear;
               })
+
+              // ===== FILTER MÔN (CHỈ BT) =====
+              .filter((doc) => {
+                if (dialogExamType !== "bt") return true;
+                if (!filterSubject || filterSubject === "all") return true;
+
+                const subject = (doc.subject || doc.mon || "").toLowerCase();
+
+                if (filterSubject === "tin") return subject.includes("tin");
+                if (filterSubject === "congnghe")
+                  return subject.includes("công") || subject.includes("cong");
+
+                return true;
+              })
+
+              .sort((a, b) => {
+                const titleA =
+                  dialogExamType === "ktdk"
+                    ? formatExamTitle(a.id)
+                    : dialogExamType === "bt"
+                    ? formatBtTitle(a.id)
+                    : a.id;
+
+                const titleB =
+                  dialogExamType === "ktdk"
+                    ? formatExamTitle(b.id)
+                    : dialogExamType === "bt"
+                    ? formatBtTitle(b.id)
+                    : b.id;
+
+                const tA = normalize(titleA);
+                const tB = normalize(titleB);
+
+                const groupA = getGroup(tA);
+                const groupB = getGroup(tB);
+
+                if (groupA !== groupB) return groupA - groupB;
+
+                return getNumber(titleA) - getNumber(titleB);
+              })
+
               .map((doc) => (
                 <Box
                   key={doc.id}
@@ -266,7 +362,8 @@ const OpenExamDialog = ({
                     px: 1,
                     py: 0.5,
                     cursor: "pointer",
-                    bgcolor: selectedDoc === doc.id ? "#E3F2FD" : "transparent",
+                    bgcolor:
+                      selectedDoc === doc.id ? "#E3F2FD" : "transparent",
                     "&:hover": { bgcolor: "#f5f5f5" },
                   }}
                 >
@@ -276,31 +373,33 @@ const OpenExamDialog = ({
                     {dialogExamType === "luyentap" && doc.id}
                   </Typography>
                 </Box>
-              ))
-          )}
-        </Box>
-      </DialogContent>
+              ));
+          })()
+        )}
+      </Box>
+    </DialogContent>
 
-      {/* ===== ACTIONS ===== */}
-      <DialogActions sx={{ justifyContent: "center", gap: 2 }}>
-        <Button
-          variant="contained"
-          disabled={!selectedDoc}
-          onClick={() => handleOpenSelectedDoc(selectedDoc)}
-        >
-          Mở đề
-        </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          disabled={!selectedDoc}
-          onClick={handleDeleteSelectedDoc}
-        >
-          Xóa đề
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
+    {/* ===== ACTIONS ===== */}
+    <DialogActions sx={{ justifyContent: "center", gap: 2 }}>
+      <Button
+        variant="contained"
+        disabled={!selectedDoc}
+        onClick={() => handleOpenSelectedDoc(selectedDoc)}
+      >
+        Mở đề
+      </Button>
+
+      <Button
+        variant="outlined"
+        color="error"
+        disabled={!selectedDoc}
+        onClick={handleDeleteSelectedDoc}
+      >
+        Xóa đề
+      </Button>
+    </DialogActions>
+  </Dialog>
+);
 };
 
 export default OpenExamDialog;

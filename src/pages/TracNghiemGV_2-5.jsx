@@ -16,7 +16,9 @@ import {
   InputLabel,
   Card,
   Tooltip,
-  TextField
+  //Radio, 
+  //Checkbox,
+  //Grid,
 } from "@mui/material";
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
@@ -72,7 +74,7 @@ export default function TracNghiemGV() {
   const [isEditingNewDoc, setIsEditingNewDoc] = useState(true);
 
   // ⚙️ Bộ lọc lớp
-  const [filterClass, setFilterClass] = useState("Lớp 4");
+  const [filterClass, setFilterClass] = useState("Tất cả");
 
   // ⚙️ CẤU HÌNH ĐỀ THI – ĐÚNG CHUẨN FIRESTORE
   const savedConfig = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
@@ -85,7 +87,7 @@ const [examLetter, setExamLetter] = useState(savedConfig.examLetter || "");
 const [examType, setExamType] = useState("bt");
 const [dialogExamType, setDialogExamType] = useState("");
 const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-const [filterYear, setFilterYear] = useState("2025-2026");
+const [filterYear, setFilterYear] = useState("Tất cả");
 const [semester, setSemester] = useState("Giữa kỳ I");
 
 const fileInputRef = React.useRef(null);
@@ -99,16 +101,20 @@ const wordInputRef = useRef(null);
 const [openImportModeDialog, setOpenImportModeDialog] = useState(false);
 const [importData, setImportData] = useState([]);
 const [lessonInput, setLessonInput] = useState("");
-const [lessonName, setLessonName] = useState("");
+
+useEffect(() => {
+  setDeTuan("");
+  localStorage.removeItem("deTuan");
+}, [config?.hocKy]);
+
 
 useEffect(() => {
   if (openDialog) {
     const savedExamType = localStorage.getItem("teacherExamType") || "bt";
-
     setDialogExamType(savedExamType);
-    fetchQuizList(savedExamType, filterYear, filterClass);
+    fetchQuizList(savedExamType);
   }
-}, [openDialog]); // 👈 CHỈ mở dialog mới chạy
+}, [openDialog]);
 
 // State tuần riêng cho TracNghiemGV
 const [deTuan, setDeTuan] = useState(
@@ -142,14 +148,10 @@ const hocKyMap = {
 
   useEffect(() => {
     const savedId = localStorage.getItem("deTracNghiemId");
-    const savedCollection = localStorage.getItem("deTracNghiemCollection"); // 🔥 thêm
-
     if (savedId) {
-      updateQuizConfig({ 
-        deTracNghiem: savedId,
-        collection: savedCollection // 🔥 thêm
-      });
+      updateQuizConfig({ deTracNghiem: savedId });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useInitialQuiz({
@@ -161,7 +163,6 @@ const hocKyMap = {
     setSchoolYear,
     setExamLetter,
     setExamType,
-    setLessonName,
   });
 
 
@@ -351,112 +352,100 @@ useEffect(() => {
   }
 
   const handleSaveAll = () => {
-    saveAllQuestions({
-      questions,
-      //isQuestionValid,
-      db,
-      selectedClass,
-      selectedSubject,
-      semester,
-      schoolYear,
-      examLetter,
-      examType,
-      week: quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1",
-      quizConfig,
-      updateQuizConfig,
-      setDeTuan,
-      setSnackbar,
-      setIsEditingNewDoc,
-      lessonName, // ✅ THÊM DÒNG NÀY
-    });
-  };
+  saveAllQuestions({
+    questions,
+    //isQuestionValid,
+    db,
+    selectedClass,
+    selectedSubject,
+    semester,
+    schoolYear,
+    examLetter,
+    examType,
+    week: quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1",
+    quizConfig,
+    updateQuizConfig,
+    setDeTuan,
+    setSnackbar,
+    setIsEditingNewDoc,
+  });
+};
 
 
   // --- Hàm mở dialog và fetch danh sách document ---
  // Mở dialog với mặc định loại đề "Bài tập tuần"
   const handleOpenDialog = () => {
     setSelectedDoc(null);
-    setFilterClass("Lớp 4");
-
-    const defaultType = "bt";
-    fetchQuizList(defaultType, filterYear, filterClass);
+    setFilterClass("Tất cả"); // reset về "Tất cả"
+    
+    const defaultType = "bt";       // mặc định Bài tập tuần
+    fetchQuizList(defaultType);      // load danh sách đề
   };
 
 
   // 🔹 Hàm lấy danh sách đề trong Firestore
-  const fetchQuizList = async (type, year = filterYear, cls = filterClass) => {
-  setLoadingList(true);
+  const fetchQuizList = async (type) => {
+    setLoadingList(true);
+    setFilterClass("Tất cả");
+    setDialogExamType(type);
 
-  try {
-    let docs = [];
+    try {
+      let docs = [];
 
-    // ===== GIỮ NGUYÊN BT / KTĐK =====
-    if (type !== "luyentap") {
-      const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
+      // ===== GIỮ NGUYÊN BT / KTĐK =====
+      if (type !== "luyentap") {
+        const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
+        const snap = await getDocs(collection(db, colName));
 
-      const snap = await getDocs(collection(db, colName));
+        docs = snap.docs.map((d) => ({
+          id: d.id,
+          name: d.id,
+          collection: colName,
+          ...d.data(),
+        }));
+      }
 
-      docs = snap.docs.map((d) => ({
-        id: d.id,
-        name: d.id,
-        collection: colName,
-        ...d.data(),
-      }));
-    }
+      // ===== LUYỆN TẬP TIN HỌC =====
+      else {
+        const collections = [
+          "TRACNGHIEM1",
+          "TRACNGHIEM2",
+          "TRACNGHIEM3",
+          "TRACNGHIEM4",
+          "TRACNGHIEM5",
+        ];
 
-    // ===== LUYỆN TẬP TIN HỌC =====
-    else {
-      const baseCollections = [
-        //"TRACNGHIEM1",
-        //"TRACNGHIEM2",
-        "TRACNGHIEM3",
-        "TRACNGHIEM4",
-        "TRACNGHIEM5",
-      ];
-
-      const suffix = year === "2025-2026" ? "" : "_New";
-
-      const collections = baseCollections.map((c) => c + suffix);
-
-      docs = [];
-
-      for (const colName of collections) {
-        try {
+        for (const colName of collections) {
           const snap = await getDocs(collection(db, colName));
 
           const colDocs = snap.docs.map((d) => ({
-            id: d.id,
-            name: d.id,
-            collection: colName,
-            lop: `Lớp ${colName.match(/\d+/)?.[0]}`,
-            year,
+            id: d.id,                 // ✅ VD: "Bài 10. Trang trình chiếu của em"
+            name: d.id,               // ✅ TÊN ĐỀ CHÍNH LÀ ID
+            collection: colName,      // TRACNGHIEM3
+            lop: colName.replace("TRACNGHIEM", ""), // 👉 lớp 3
             ...d.data(),
           }));
 
           docs.push(...colDocs);
-        } catch (err) {
-          console.warn("Missing:", colName);
         }
       }
+
+      setDocList(docs);
+
+      if (docs.length > 0) setSelectedDoc(docs[0].id);
+
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy danh sách đề:", err);
+      setSnackbar({
+        open: true,
+        message: "❌ Không thể tải danh sách đề!",
+        severity: "error",
+      });
+    } finally {
+      setLoadingList(false);
+      setOpenDialog(true);
     }
-
-    setDocList(docs);
-
-    if (docs.length > 0) setSelectedDoc(docs[0].id);
-
-  } catch (err) {
-    console.error("❌ Lỗi khi lấy danh sách đề:", err);
-
-    setSnackbar({
-      open: true,
-      message: "❌ Không thể tải danh sách đề!",
-      severity: "error",
-    });
-  } finally {
-    setLoadingList(false);
-    setOpenDialog(true);
-  }
-};
+  };
 
 
   // 🔹 Hàm mở đề được chọn
@@ -486,9 +475,6 @@ useEffect(() => {
           throw new Error("Không xác định được collection của đề luyện tập");
         }
         collectionName = currentDoc.collection; // TRACNGHIEM1..5
-
-        localStorage.setItem("deTracNghiemCollection", currentDoc.collection);
-        localStorage.setItem("deTracNghiemId", selectedDoc);
       }
 
       const docRef = doc(db, collectionName, selectedDoc);
@@ -504,13 +490,6 @@ useEffect(() => {
       }
 
       const data = docSnap.data();
-
-      // 🔥 Lấy tên bài học cho luyện tập
-      if (dialogExamType === "luyentap") {
-        setLessonName(selectedDoc);
-      } else {
-        setLessonName("");
-      }
 
       /* ================== TUẦN (chỉ BT) ================== */
       const weekFromFile = data.week || 1;
@@ -1101,14 +1080,8 @@ useEffect(() => {
   e.target.value = "";
 };
 
-const isLT = examType === "luyentap";
-const isKTDK = examType === "ktdk";
 
-const getSx = (ltWidth) => {
-  if (isLT) return { flex: 1, minWidth: ltWidth };   // giữ nguyên LTTH
-  if (isKTDK) return { flex: 1, minWidth: 130 };     // 👈 giảm cho KTĐK
-  return { flex: 1, minWidth: 160 };                 // BT
-};
+
 
   return (
     <Box sx={{ minHeight: "100vh", p: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
@@ -1196,16 +1169,13 @@ const getSx = (ltWidth) => {
 
         {/* FORM LỚP / MÔN / HỌC KỲ / NĂM HỌC / ĐỀ */}
         <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            flexWrap="wrap"
-          >
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} flexWrap="wrap">
+            
             {/* Loại đề */}
-            <FormControl size="small" sx={getSx(150)}>
+            <FormControl size="small" sx={{ flex: 1, minWidth: 150 }}>
               <InputLabel>Loại đề</InputLabel>
               <Select
-                value={examType || "bt"}
+                value={examType || "bt"} // mặc định BT tuần
                 onChange={(e) => setExamType(e.target.value)}
                 label="Loại đề"
               >
@@ -1216,64 +1186,55 @@ const getSx = (ltWidth) => {
             </FormControl>
 
             {/* Lớp */}
-            <FormControl size="small" sx={getSx(120)}>
+            <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
               <InputLabel>Lớp</InputLabel>
               <Select
                 value={selectedClass || ""}
                 onChange={(e) => setSelectedClass(e.target.value)}
                 label="Lớp"
               >
-                <MenuItem value="">Chọn</MenuItem>
+                <MenuItem value="">Chọn</MenuItem>   {/* 🔹 thêm dòng này */}
                 {classes.map((lop) => (
-                  <MenuItem key={lop} value={lop}>
-                    {lop}
-                  </MenuItem>
+                  <MenuItem key={lop} value={lop}>{lop}</MenuItem>
                 ))}
               </Select>
             </FormControl>
 
-            {/* Môn học / Tên bài học */}
-            {examType === "luyentap" ? (
-              <TextField
-                size="small"
-                label="Tên bài học"
-                value={lessonName || ""}
-                sx={getSx(500)}
-                InputProps={{
-                  readOnly: true,
-                }}
-              />
-            ) : (
-              <FormControl size="small" sx={getSx(500)}>
-                <InputLabel>Môn học</InputLabel>
-                <Select
-                  value={selectedSubject || ""}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  label="Môn học"
-                >
-                  {subjects?.map((mon) => (
-                    <MenuItem key={mon} value={mon}>
-                      {mon}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
+            {/* Môn học */}
+            <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+              <InputLabel>Môn học</InputLabel>
+              <Select
+                value={selectedSubject || ""}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                label="Môn học"
+              >
+                {subjects?.map((mon) => (
+                  <MenuItem key={mon} value={mon}>{mon}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-            {/* Bài tập tuần */}
+            {/* Nếu là BT tuần */}
             {examType === "bt" && (
-              <FormControl size="small" sx={getSx(120)}>
+              <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
                 <InputLabel>Tuần</InputLabel>
                 <Select
-                  value={deTuan || ""}
-                  label="Tuần"
+                  value={deTuan || ""} // fallback rỗng khi reset
                   onChange={(e) => {
-                    const value = Number(e.target.value);
-                    setDeTuan(value);
-                    localStorage.setItem("deTuan", value);
+                    const w = e.target.value === "" ? "" : Number(e.target.value);
+                    setDeTuan(w);
+                    if (w !== "") {
+                      localStorage.setItem("deTuan", w);
+                    } else {
+                      localStorage.removeItem("deTuan");
+                    }
                   }}
+                  label="Tuần"
                 >
+                  {/* MenuItem mặc định */}
                   <MenuItem value="">Chọn tuần</MenuItem>
+
+                  {/* List cứng từ 1 đến 35 */}
                   {Array.from({ length: 35 }, (_, i) => i + 1).map((t) => (
                     <MenuItem key={t} value={t}>
                       Tuần {t}
@@ -1282,13 +1243,18 @@ const getSx = (ltWidth) => {
                 </Select>
               </FormControl>
             )}
-
-            {/* KTĐK */}
+            
+            {/* Nếu là KTĐK */}
             {examType === "ktdk" && (
               <>
-                <FormControl size="small" sx={getSx(120)}>
+                <FormControl size="small" sx={{ flex: 1 }}>
                   <InputLabel>Học kỳ</InputLabel>
-                  <Select value={semester} label="Học kỳ">
+                  <Select
+                    value={semester}
+                    onChange={(e) => setSemester(e.target.value)}
+                    label="Học kỳ"
+                  >
+                    {/* Thêm các học kỳ mới */}
                     <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
                     <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
                     <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
@@ -1296,24 +1262,28 @@ const getSx = (ltWidth) => {
                   </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={getSx(120)}>
+                <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
                   <InputLabel>Năm học</InputLabel>
-                  <Select value={schoolYear || ""} label="Năm học">
+                  <Select
+                    value={schoolYear || ""}
+                    onChange={(e) => setSchoolYear(e.target.value)}
+                    label="Năm học"
+                  >
                     {years.map((y) => (
-                      <MenuItem key={y} value={y}>
-                        {y}
-                      </MenuItem>
+                      <MenuItem key={y} value={y}>{y}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={getSx(120)}>
+                <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
                   <InputLabel>Đề</InputLabel>
-                  <Select value={examLetter || ""} label="Đề">
+                  <Select
+                    value={examLetter || ""}
+                    onChange={(e) => setExamLetter(e.target.value)}
+                    label="Đề"
+                  >
                     {["A", "B", "C", "D"].map((d) => (
-                      <MenuItem key={d} value={d}>
-                        {d}
-                      </MenuItem>
+                      <MenuItem key={d} value={d}>{d}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -1348,7 +1318,6 @@ const getSx = (ltWidth) => {
                   setDeTuan,
                   setSnackbar,
                   setIsEditingNewDoc,
-                  lessonName, // ✅ THÊM DÒNG NÀY
                 })
               }
             />

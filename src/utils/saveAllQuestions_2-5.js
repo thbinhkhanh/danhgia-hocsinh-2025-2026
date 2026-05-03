@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 
 export const saveAllQuestions = async ({
   questions,
@@ -16,7 +16,6 @@ export const saveAllQuestions = async ({
   setDeTuan,
   setSnackbar,
   setIsEditingNewDoc,
-  lessonName, // ✅ đã truyền từ ngoài
 }) => {
   try {
     const weekValue =
@@ -25,7 +24,7 @@ export const saveAllQuestions = async ({
         : quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1";
 
     const uploadImage = async (file) => {
-      if (!(file instanceof File)) return file;
+      if (!(file instanceof File)) return file; // nếu đã là URL thì giữ nguyên
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", "tracnghiem_upload");
@@ -39,21 +38,24 @@ export const saveAllQuestions = async ({
       return data.secure_url;
     };
 
+    // ✅ Chuẩn hóa options: thêm text, formats, image
     const normalizeOptions = async (options) => {
       if (!options) return [];
       return Promise.all(
         options.map(async (opt) => {
+          // Nếu opt là string → wrap lại
           if (typeof opt === "string") {
             return { text: opt, formats: {}, image: "" };
           }
           if (opt && typeof opt === "object") {
+            // Upload image nếu là File
             let imageUrl = opt.image;
             if (opt.image instanceof File) {
               imageUrl = await uploadImage(opt.image);
             }
             return {
               text: opt.text || "",
-              formats: opt.formats || {},
+              formats: opt.formats || {}, // { bold, italic, underline }
               image: imageUrl || "",
             };
           }
@@ -72,9 +74,14 @@ export const saveAllQuestions = async ({
           : {}),
       };
 
+
+
+
+      // Chuẩn hóa options trước khi xử lý
       updatedQ.options = await normalizeOptions(q.options);
 
       if (q.type === "image") {
+        // Nếu là type image thì options chính là danh sách ảnh
         const uploadedOptions = await Promise.all(
           updatedQ.options.map(async (opt) =>
             opt.image instanceof File ? await uploadImage(opt.image) : opt.image
@@ -101,95 +108,37 @@ export const saveAllQuestions = async ({
       questionsToSave.push(updatedQ);
     }
 
+    // Lưu vào localStorage
     localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
     localStorage.setItem(
       "teacherConfig",
       JSON.stringify({ selectedClass, selectedSubject, semester })
     );
 
-    if (examType === "luyentap") {
-      if (!selectedClass) {
-        throw new Error("Vui lòng chọn lớp trước khi lưu");
-      }
-    } else {
-      if (!selectedClass || !selectedSubject) {
-        throw new Error("Vui lòng chọn lớp và môn trước khi lưu");
-      }
+    if (!selectedClass || !selectedSubject) {
+      throw new Error("Vui lòng chọn lớp và môn trước khi lưu");
     }
 
     let collectionName, docId;
 
-    // ===== LUYỆN TẬP =====
-    if (examType === "luyentap") {
-      const classNumber = selectedClass.match(/\d+/)?.[0];
-
-      if (!classNumber) {
-        throw new Error("Không xác định được lớp cho luyện tập");
-      }
-
-      // ✅ Ưu tiên theo thứ tự
-      let docName =
-        lessonName || // 🥇 tên bài đang mở
-        quizConfig?.deTracNghiem || // 🥈 context
-        localStorage.getItem("deTracNghiemId"); // 🥉 local
-
-      // 🔥 fallback nếu tạo mới chưa có tên
-      if (!docName) {
-        docName = `Bài_${Date.now()}`;
-      }
-
-      // 🔥 LẤY NĂM HỌC TỪ CONFIG
-      let configYear = "";
-
-      try {
-        const configRef = doc(db, "CONFIG", "config");
-        const snap = await getDoc(configRef);
-
-        if (snap.exists()) {
-          configYear = snap.data()?.namHoc || "";
-        }
-      } catch (err) {
-        console.error("❌ Lỗi đọc CONFIG (namHoc):", err);
-      }
-
-      // 🔥 normalize để tránh lỗi dấu cách / dấu –
-      const normalizeYear = (y = "") =>
-        y.replace(/–/g, "-").replace(/\s/g, "").trim();
-
-      const isOldYear = normalizeYear(configYear) === "2025-2026";
-
-      collectionName = isOldYear
-        ? `TRACNGHIEM${classNumber}`
-        : `TRACNGHIEM${classNumber}_New`;
-
-      docId = docName; // ✅ FIX CHUẨN
-    }
-
-    // ===== KTĐK =====
-    else if (examType === "ktdk") {
+    if (examType === "ktdk") {
       collectionName = "NGANHANG_DE";
-
       const semesterMap = {
         "Giữa kỳ I": "GKI",
         "Cuối kỳ I": "CKI",
         "Giữa kỳ II": "GKII",
         "Cả năm": "CN",
       };
-
       const shortSchoolYear = (year) => {
         const parts = year.split("-");
         return parts.length === 2
           ? parts[0].slice(2) + "-" + parts[1].slice(2)
           : year;
       };
-
       docId = `quiz_${selectedClass}_${selectedSubject}_${semesterMap[semester]}_${shortSchoolYear(
         schoolYear
       )} (${examLetter})`;
-    }
-
-    // ===== BÀI TẬP TUẦN =====
-    else {
+    } else {
       collectionName = "BAITAP_TUAN";
       docId = `quiz_${selectedClass}_${selectedSubject}_${weekValue}`;
     }
@@ -206,6 +155,7 @@ export const saveAllQuestions = async ({
       questions: questionsToSave,
     });
 
+    // Cập nhật CONFIG
     try {
       const configRef = doc(db, "CONFIG", "config");
       await setDoc(
@@ -217,6 +167,7 @@ export const saveAllQuestions = async ({
       console.error("❌ Lỗi khi ghi CONFIG:", err);
     }
 
+    // Cập nhật context
     const newDoc = {
       id: docId,
       class: selectedClass,
@@ -226,13 +177,11 @@ export const saveAllQuestions = async ({
       examType,
       questions: questionsToSave,
     };
-
     setDeTuan(weekValue);
     localStorage.setItem("deTuan", weekValue);
 
     const existed = quizConfig.quizList?.some((d) => d.id === docId);
-    if (!existed)
-      updateQuizConfig({ quizList: [...(quizConfig.quizList || []), newDoc] });
+    if (!existed) updateQuizConfig({ quizList: [...(quizConfig.quizList || []), newDoc] });
 
     setSnackbar({ open: true, message: "✅ Đã lưu thành công!", severity: "success" });
     setIsEditingNewDoc(false);
