@@ -310,7 +310,31 @@ export default function TracNghiem_Test() {
       const colRef = collection(db, colName);
       const snap = await getDocs(colRef);
 
-      const exams = snap.docs.map((d) => d.id);
+      const exams = snap.docs
+        .map((d) => d.id)
+        .sort((a, b) => {
+          // ===== TÁCH TUẦN =====
+          const getWeek = (str) => {
+            const match = str.match(/_(\d+)$/);
+            return match ? Number(match[1]) : 999;
+          };
+
+          // ===== FORMAT TITLE =====
+          const titleA = formatQuizTitle(a);
+          const titleB = formatQuizTitle(b);
+
+          // ===== TÊN KHÔNG CÓ TUẦN =====
+          const baseA = titleA.replace(/– Tuần \d+/i, "").trim();
+          const baseB = titleB.replace(/– Tuần \d+/i, "").trim();
+
+          // ===== SORT THEO TÊN =====
+          if (baseA !== baseB) {
+            return baseA.localeCompare(baseB, "vi");
+          }
+
+          // ===== SORT THEO TUẦN =====
+          return getWeek(a) - getWeek(b);
+        });
 
       setAllExamList(exams);
 

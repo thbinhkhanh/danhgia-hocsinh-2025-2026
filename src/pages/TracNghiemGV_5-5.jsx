@@ -16,9 +16,7 @@ import {
   InputLabel,
   Card,
   Tooltip,
-  //Radio, 
-  //Checkbox,
-  //Grid,
+  TextField
 } from "@mui/material";
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
@@ -74,7 +72,7 @@ export default function TracNghiemGV() {
   const [isEditingNewDoc, setIsEditingNewDoc] = useState(true);
 
   // ⚙️ Bộ lọc lớp
-  const [filterClass, setFilterClass] = useState("Tất cả");
+  const [filterClass, setFilterClass] = useState("Lớp 4");
 
   // ⚙️ CẤU HÌNH ĐỀ THI – ĐÚNG CHUẨN FIRESTORE
   const savedConfig = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
@@ -87,7 +85,7 @@ const [examLetter, setExamLetter] = useState(savedConfig.examLetter || "");
 const [examType, setExamType] = useState("bt");
 const [dialogExamType, setDialogExamType] = useState("");
 const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-const [filterYear, setFilterYear] = useState("Tất cả");
+const [filterYear, setFilterYear] = useState("2025-2026");
 const [semester, setSemester] = useState("Giữa kỳ I");
 
 const fileInputRef = React.useRef(null);
@@ -101,20 +99,16 @@ const wordInputRef = useRef(null);
 const [openImportModeDialog, setOpenImportModeDialog] = useState(false);
 const [importData, setImportData] = useState([]);
 const [lessonInput, setLessonInput] = useState("");
-
-useEffect(() => {
-  setDeTuan("");
-  localStorage.removeItem("deTuan");
-}, [config?.hocKy]);
-
+const [lessonName, setLessonName] = useState("");
 
 useEffect(() => {
   if (openDialog) {
     const savedExamType = localStorage.getItem("teacherExamType") || "bt";
+
     setDialogExamType(savedExamType);
-    fetchQuizList(savedExamType);
+    fetchQuizList(savedExamType, filterYear, filterClass);
   }
-}, [openDialog]);
+}, [openDialog]); // 👈 CHỈ mở dialog mới chạy
 
 // State tuần riêng cho TracNghiemGV
 const [deTuan, setDeTuan] = useState(
@@ -148,10 +142,14 @@ const hocKyMap = {
 
   useEffect(() => {
     const savedId = localStorage.getItem("deTracNghiemId");
+    const savedCollection = localStorage.getItem("deTracNghiemCollection"); // 🔥 thêm
+
     if (savedId) {
-      updateQuizConfig({ deTracNghiem: savedId });
+      updateQuizConfig({ 
+        deTracNghiem: savedId,
+        collection: savedCollection // 🔥 thêm
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useInitialQuiz({
@@ -163,6 +161,7 @@ const hocKyMap = {
     setSchoolYear,
     setExamLetter,
     setExamType,
+    setLessonName,
   });
 
 
@@ -352,100 +351,112 @@ useEffect(() => {
   }
 
   const handleSaveAll = () => {
-  saveAllQuestions({
-    questions,
-    //isQuestionValid,
-    db,
-    selectedClass,
-    selectedSubject,
-    semester,
-    schoolYear,
-    examLetter,
-    examType,
-    week: quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1",
-    quizConfig,
-    updateQuizConfig,
-    setDeTuan,
-    setSnackbar,
-    setIsEditingNewDoc,
-  });
-};
+    saveAllQuestions({
+      questions,
+      //isQuestionValid,
+      db,
+      selectedClass,
+      selectedSubject,
+      semester,
+      schoolYear,
+      examLetter,
+      examType,
+      week: quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1",
+      quizConfig,
+      updateQuizConfig,
+      setDeTuan,
+      setSnackbar,
+      setIsEditingNewDoc,
+      lessonName, // ✅ THÊM DÒNG NÀY
+    });
+  };
 
 
   // --- Hàm mở dialog và fetch danh sách document ---
  // Mở dialog với mặc định loại đề "Bài tập tuần"
   const handleOpenDialog = () => {
     setSelectedDoc(null);
-    setFilterClass("Tất cả"); // reset về "Tất cả"
-    
-    const defaultType = "bt";       // mặc định Bài tập tuần
-    fetchQuizList(defaultType);      // load danh sách đề
+    setFilterClass("Lớp 4");
+
+    const defaultType = "bt";
+    fetchQuizList(defaultType, filterYear, filterClass);
   };
 
 
   // 🔹 Hàm lấy danh sách đề trong Firestore
-  const fetchQuizList = async (type) => {
-    setLoadingList(true);
-    setFilterClass("Tất cả");
-    setDialogExamType(type);
+  const fetchQuizList = async (type, year = filterYear, cls = filterClass) => {
+  setLoadingList(true);
 
-    try {
-      let docs = [];
+  try {
+    let docs = [];
 
-      // ===== GIỮ NGUYÊN BT / KTĐK =====
-      if (type !== "luyentap") {
-        const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
-        const snap = await getDocs(collection(db, colName));
+    // ===== GIỮ NGUYÊN BT / KTĐK =====
+    if (type !== "luyentap") {
+      const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
 
-        docs = snap.docs.map((d) => ({
-          id: d.id,
-          name: d.id,
-          collection: colName,
-          ...d.data(),
-        }));
-      }
+      const snap = await getDocs(collection(db, colName));
 
-      // ===== LUYỆN TẬP TIN HỌC =====
-      else {
-        const collections = [
-          "TRACNGHIEM1",
-          "TRACNGHIEM2",
-          "TRACNGHIEM3",
-          "TRACNGHIEM4",
-          "TRACNGHIEM5",
-        ];
+      docs = snap.docs.map((d) => ({
+        id: d.id,
+        name: d.id,
+        collection: colName,
+        ...d.data(),
+      }));
+    }
 
-        for (const colName of collections) {
+    // ===== LUYỆN TẬP TIN HỌC =====
+    else {
+      const baseCollections = [
+        //"TRACNGHIEM1",
+        //"TRACNGHIEM2",
+        "TRACNGHIEM3",
+        "TRACNGHIEM4",
+        "TRACNGHIEM5",
+      ];
+
+      const suffix = year === "2025-2026" ? "" : "_New";
+
+      const collections = baseCollections.map((c) => c + suffix);
+
+      docs = [];
+
+      for (const colName of collections) {
+        try {
           const snap = await getDocs(collection(db, colName));
 
           const colDocs = snap.docs.map((d) => ({
-            id: d.id,                 // ✅ VD: "Bài 10. Trang trình chiếu của em"
-            name: d.id,               // ✅ TÊN ĐỀ CHÍNH LÀ ID
-            collection: colName,      // TRACNGHIEM3
-            lop: colName.replace("TRACNGHIEM", ""), // 👉 lớp 3
+            id: d.id,
+            name: d.id,
+            collection: colName,
+            lop: `Lớp ${colName.match(/\d+/)?.[0]}`,
+            year,
             ...d.data(),
           }));
 
           docs.push(...colDocs);
+        } catch (err) {
+          console.warn("Missing:", colName);
         }
       }
-
-      setDocList(docs);
-
-      if (docs.length > 0) setSelectedDoc(docs[0].id);
-
-    } catch (err) {
-      console.error("❌ Lỗi khi lấy danh sách đề:", err);
-      setSnackbar({
-        open: true,
-        message: "❌ Không thể tải danh sách đề!",
-        severity: "error",
-      });
-    } finally {
-      setLoadingList(false);
-      setOpenDialog(true);
     }
-  };
+
+    setDocList(docs);
+
+    if (docs.length > 0) setSelectedDoc(docs[0].id);
+
+  } catch (err) {
+    console.error("❌ Lỗi khi lấy danh sách đề:", err);
+
+    setSnackbar({
+      open: true,
+      message: "❌ Không thể tải danh sách đề!",
+      severity: "error",
+    });
+  } finally {
+    setLoadingList(false);
+    setOpenDialog(true);
+  }
+};
 
 
   // 🔹 Hàm mở đề được chọn
@@ -475,6 +486,9 @@ useEffect(() => {
           throw new Error("Không xác định được collection của đề luyện tập");
         }
         collectionName = currentDoc.collection; // TRACNGHIEM1..5
+
+        localStorage.setItem("deTracNghiemCollection", currentDoc.collection);
+        localStorage.setItem("deTracNghiemId", selectedDoc);
       }
 
       const docRef = doc(db, collectionName, selectedDoc);
@@ -490,6 +504,13 @@ useEffect(() => {
       }
 
       const data = docSnap.data();
+
+      // 🔥 Lấy tên bài học cho luyện tập
+      if (dialogExamType === "luyentap") {
+        setLessonName(selectedDoc);
+      } else {
+        setLessonName("");
+      }
 
       /* ================== TUẦN (chỉ BT) ================== */
       const weekFromFile = data.week || 1;
@@ -763,110 +784,331 @@ useEffect(() => {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
   };
-
+  
   const handleImportWord = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      const text = result.value;
+      const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
+      const html = htmlResult.value;
 
-      console.log("📄 RAW TEXT:", text);
+      const textResult = await mammoth.extractRawText({ arrayBuffer });
+      const text = textResult.value;
 
-      // ===== SPLIT CÂU HỎI (robust hơn)
-      const blocks = text
-        //.split(/Câu\s*\d+\s*[:\.\-]?/gi)
-        .split(/Câu\s*\d+\s*[:\.\-)]?/gi)
-        .map(b => b.trim())
-        .filter(Boolean);
+      const escapeHTML = (str = "") =>
+        str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
 
-      const questionsParsed = blocks.map((block, index) => {
-        const lines = block
-          .split("\n")
-          .map(l => l.trim())
-          .filter(Boolean);
+      // ===== Detect type =====
+      const detectType = (block) => {
+        const normalized = block.replace(/\s+/g, " ");
+        const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
 
-        if (lines.length === 0) return null;
+        // ✅ FIX: fillblank ưu tiên cao nhất
+        if (
+          /\[\s*\.\.\.\s*\]/.test(block) ||   // [...]
+          /\[…\]/.test(block) ||             // […] (Unicode)
+          /…/.test(block)                    // ellipsis
+        ) {
+          return "fillblank";
+        }
 
-        const questionText = lines[0];
+        if (lines.some(l => /^[A-D][\.\)]/.test(l))) return "choice";
+        if (lines.some(l => /^\d+\./.test(l))) return "sort";
+        if (lines.some(l => /^[ĐS][\.\)]/.test(l))) return "truefalse";
 
+        return "matching";
+      };
+
+      // ===== Choice parser =====
+      const parseChoice = (block, index) => {
+        const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+        if (!lines.length) return null;
+
+        const questionText = lines[0].replace(/^Câu\s*\d+\s*[:\.\-)]?\s*/i, "");
         const options = [];
         const correct = [];
 
         lines.slice(1).forEach(line => {
           const match = line.match(/^([A-D])[\.\)\:\-\s]*/i);
-
           if (match) {
             let text = line.replace(/^([A-D])[\.\)\:\-\s]*/i, "").trim();
-
-            // 🔥 detect *
-            const isCorrect =
-              /\*$/.test(text) || /^\*/.test(text);
+            const isCorrect = /\*/.test(text);
 
             text = text.replace(/\*/g, "").trim();
 
-            if (isCorrect) {
-              correct.push(options.length);
-            }
+            if (isCorrect) correct.push(options.length);
 
-            options.push(text);
+            options.push({
+              text: `<p>${escapeHTML(text)}</p>`,
+              image: ""
+            });
           }
         });
 
-        // đảm bảo đủ 4 đáp án
-        while (options.length < 4) options.push("");
+        while (options.length < 4) {
+          options.push({ text: "", image: "" });
+        }
 
         return {
           id: `q_${Date.now()}_${index}`,
           question: `<p>${escapeHTML(questionText)}</p>`,
-          questionImage: "",
-          options: options.slice(0, 4).map(opt => ({
-            text: `<p>${escapeHTML(opt)}</p>`,
-            image: ""
-          })),
-          correct,
           type: correct.length > 1 ? "multiple" : "single",
+          options: options.slice(0, 4),
+          correct,
           score: 0.5,
           sortType: "shuffle",
-          title: "",
           pairs: []
         };
-      }).filter(Boolean);
+      };
 
-      console.log("✅ Parsed:", questionsParsed);
+      // ===== Sort parser =====
+      const parseSort = (block, index) => {
+        const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+        const questionText = lines[0].replace(/^Câu\s*\d+\s*[:\.\-)]?\s*/i, "");
+        const items = [];
 
-      const isEmpty =
-        !questions ||
-        questions.length === 0 ||
-        (questions.length === 1 && !questions[0].question);
+        lines.slice(1).forEach(line => {
+          const match = line.match(/^\d+\.\s*(.+)/);
+          if (match) {
+            items.push({
+              text: `<p>${escapeHTML(match[1])}</p>`,
+              image: ""
+            });
+          }
+        });
 
-      if (isEmpty) {
-        setQuestions(questionsParsed);
-        setLessonInput(lesson || "");
-      } else {
-        setImportData(questionsParsed);
-        setOpenImportModeDialog(true);
+        if (items.length < 2) return null;
+
+        return {
+          id: `q_${Date.now()}_${index}`,
+          question: `<p>${escapeHTML(questionText)}</p>`,
+          type: "sort",
+          options: items,
+          correct: [],
+          sortType: "shuffle",
+          pairs: []
+        };
+      };
+
+      // ===== True/False parser =====
+      const parseTrueFalse = (block, index) => {
+        const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+        if (!lines.length) return null;
+
+        const questionText = lines[0].replace(/^Câu\s*\d+\s*[:\.\-)]?\s*/i, "");
+        const options = [];
+        const correct = [];
+
+        lines.slice(1).forEach(line => {
+          const match = line.match(/^([ĐS])[\.\)\:\-\s]*/i);
+          if (match) {
+            let text = line.replace(/^([ĐS])[\.\)\:\-\s]*/i, "").trim();
+            text = text.replace(/\*/g, "").trim();
+
+            options.push({
+              text: `<p>${escapeHTML(text)}</p>`,
+              image: ""
+            });
+
+            correct.push(match[1].toUpperCase());
+          }
+        });
+
+        return {
+          id: `q_${Date.now()}_${index}`,
+          question: `<p>${escapeHTML(questionText)}</p>`,
+          type: "truefalse",
+          options,
+          correct,
+          score: 0.5,
+          sortType: "shuffle",
+          pairs: []
+        };
+      };
+
+      // ===== FillBlank parser (FIXED) =====
+      const parseFillBlank = (block, index) => {
+        const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+        if (!lines.length) return null;
+
+        let rawText = lines.join(" ");
+
+        // ===== 1. REMOVE "Từ cần điền" =====
+        rawText = rawText.split(/Từ cần điền/i)[0].trim();
+
+        // ===== 2. TÁCH ":" =====
+        const colonIndex = rawText.indexOf(":");
+
+        let questionText = "";
+        let optionText = "";
+
+        if (colonIndex !== -1) {
+          questionText = rawText.slice(0, colonIndex + 1).trim();
+          optionText = rawText.slice(colonIndex + 1).trim();
+        } else {
+          questionText = rawText;
+          optionText = "";
+        }
+
+        // ===== 3. FIX TRIỆT ĐỂ BLANK (QUAN TRỌNG NHẤT) =====
+        optionText = optionText.replace(/\[\s*(?:\.{3,}|…)\s*\]/g, "[...]");
+
+        // ===== 4. LẤY ĐÁP ÁN =====
+        const answerLine = lines.find(l => /^Từ cần điền/i.test(l)) || "";
+
+        const answers = answerLine
+          .replace(/^Từ cần điền\s*:\s*/i, "")
+          .split("/")
+          .map(a => a.replace(/\u00a0/g, " ").trim())
+          .filter(Boolean);
+
+        return {
+          id: `q_${Date.now()}_${index}`,
+
+          question: `<p>${escapeHTML(questionText)}</p>`,
+
+          type: "fillblank",
+
+          option: `<p>${escapeHTML(optionText)}</p>`,
+
+          options: answers.map(a => ({
+            text: a,
+            image: "",
+            formats: {}
+          })),
+
+          correct: answers,
+          score: 0.5,
+          sortType: "shuffle",
+          pairs: [],
+          title: "",
+          questionImage: ""
+        };
+      };
+
+    // ===== Matching parser =====
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const tables = doc.querySelectorAll("table");
+    let tableIndex = 0;
+
+    const parseMatchingFromTable = (index) => {
+      if (!tables[tableIndex]) return null;
+
+      const table = tables[tableIndex++];
+
+      // ✅ LẤY QUESTION TỪ <p> TRƯỚC TABLE
+      let questionText = "";
+      let prev = table.previousElementSibling;
+
+      while (prev) {
+        if (prev.tagName === "P" && prev.innerText.trim()) {
+          questionText = prev.innerText.trim();
+          break;
+        }
+        prev = prev.previousElementSibling;
       }
 
-      /*setSnackbar({
-        open: true,
-        message: "✅ Import Word thành công",
-        severity: "success",
-      });*/
+      // 🔥 CẮT "Câu 1."
+      questionText = questionText.replace(/^Câu\s*\d+\s*[:\.\-)]?\s*/i, "");
 
-    } catch (err) {
-      console.error(err);
-      setSnackbar({
-        open: true,
-        message: "❌ Lỗi đọc file Word",
-        severity: "error",
+      const rows = table.querySelectorAll("tr");
+      const pairs = [];
+
+      rows.forEach(row => {
+        const cells = row.querySelectorAll("td, th");
+        if (cells.length < 2) return;
+
+        const l = cells[0].innerText.trim();
+        const r = cells[1].innerText.trim();
+
+        if (!l || !r) return;
+
+        pairs.push({
+          left: `<p>${escapeHTML(l)}</p>`,
+          right: `<p>${escapeHTML(r)}</p>`
+        });
       });
+
+      if (pairs.length < 2) return null;
+
+      return {
+        id: `q_${Date.now()}_table_${index}`,
+
+        // ✅ DÙNG QUESTION THẬT (đã bỏ "Câu 1.")
+        question: `<p>${escapeHTML(questionText)}</p>`,
+
+        type: "matching",
+        questionType: "matching",
+        pairs,
+        options: [],
+        correct: [],
+        sortType: "shuffle",
+        score: 0.5
+      };
+    };
+
+    // ===== Split blocks =====
+    const blocks = text
+      .split(/Câu\s*\d+\s*[:\.\-)]?/gi)
+      .map(b => b.trim())
+      .filter(Boolean);
+
+    // ===== Parse all =====
+    const finalQuestions = blocks
+      .map((block, index) => {
+        const type = detectType(block);
+
+        if (type === "choice") return parseChoice(block, index);
+        if (type === "sort") return parseSort(block, index);
+        if (type === "truefalse") return parseTrueFalse(block, index);
+        if (type === "fillblank") return parseFillBlank(block, index);
+        if (type === "matching") return parseMatchingFromTable(index);
+
+        return null;
+      })
+      .filter(Boolean);
+
+    console.log("✅ FINAL:", finalQuestions);
+
+    const isEmpty =
+      !questions ||
+      questions.length === 0 ||
+      (questions.length === 1 && !questions[0].question);
+
+    if (isEmpty) {
+      setQuestions(finalQuestions);
+      setLessonInput(lesson || "");
+    } else {
+      setImportData(finalQuestions);
+      setOpenImportModeDialog(true);
     }
 
-    e.target.value = "";
-  };
+  } catch (err) {
+    console.error(err);
+    setSnackbar({
+      open: true,
+      message: "❌ Lỗi đọc file Word",
+      severity: "error"
+    });
+  }
+
+  e.target.value = "";
+};
+
+const isLT = examType === "luyentap";
+const isKTDK = examType === "ktdk";
+
+const getSx = (ltWidth) => {
+  if (isLT) return { flex: 1, minWidth: ltWidth };   // giữ nguyên LTTH
+  if (isKTDK) return { flex: 1, minWidth: 130 };     // 👈 giảm cho KTĐK
+  return { flex: 1, minWidth: 160 };                 // BT
+};
 
   return (
     <Box sx={{ minHeight: "100vh", p: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
@@ -954,71 +1196,84 @@ useEffect(() => {
 
         {/* FORM LỚP / MÔN / HỌC KỲ / NĂM HỌC / ĐỀ */}
         <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} flexWrap="wrap">
-            
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            flexWrap="wrap"
+          >
             {/* Loại đề */}
-            <FormControl size="small" sx={{ flex: 1, minWidth: 150 }}>
+            <FormControl size="small" sx={getSx(150)}>
               <InputLabel>Loại đề</InputLabel>
               <Select
-                value={examType || "bt"} // mặc định BT tuần
+                value={examType || "bt"}
                 onChange={(e) => setExamType(e.target.value)}
                 label="Loại đề"
               >
                 <MenuItem value="bt">Bài tập tuần</MenuItem>
+                <MenuItem value="luyentap">Luyện tập tin học</MenuItem>
                 <MenuItem value="ktdk">KTĐK</MenuItem>
               </Select>
             </FormControl>
 
             {/* Lớp */}
-            <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+            <FormControl size="small" sx={getSx(120)}>
               <InputLabel>Lớp</InputLabel>
               <Select
                 value={selectedClass || ""}
                 onChange={(e) => setSelectedClass(e.target.value)}
                 label="Lớp"
               >
-                <MenuItem value="">Chọn</MenuItem>   {/* 🔹 thêm dòng này */}
+                <MenuItem value="">Chọn</MenuItem>
                 {classes.map((lop) => (
-                  <MenuItem key={lop} value={lop}>{lop}</MenuItem>
+                  <MenuItem key={lop} value={lop}>
+                    {lop}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
 
-            {/* Môn học */}
-            <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
-              <InputLabel>Môn học</InputLabel>
-              <Select
-                value={selectedSubject || ""}
-                onChange={(e) => setSelectedSubject(e.target.value)}
-                label="Môn học"
-              >
-                {subjects?.map((mon) => (
-                  <MenuItem key={mon} value={mon}>{mon}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {/* Môn học / Tên bài học */}
+            {examType === "luyentap" ? (
+              <TextField
+                size="small"
+                label="Tên bài học"
+                value={lessonName || ""}
+                sx={getSx(500)}
+                InputProps={{
+                  readOnly: true,
+                }}
+              />
+            ) : (
+              <FormControl size="small" sx={getSx(500)}>
+                <InputLabel>Môn học</InputLabel>
+                <Select
+                  value={selectedSubject || ""}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  label="Môn học"
+                >
+                  {subjects?.map((mon) => (
+                    <MenuItem key={mon} value={mon}>
+                      {mon}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
 
-            {/* Nếu là BT tuần */}
+            {/* Bài tập tuần */}
             {examType === "bt" && (
-              <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+              <FormControl size="small" sx={getSx(120)}>
                 <InputLabel>Tuần</InputLabel>
                 <Select
-                  value={deTuan || ""} // fallback rỗng khi reset
-                  onChange={(e) => {
-                    const w = e.target.value === "" ? "" : Number(e.target.value);
-                    setDeTuan(w);
-                    if (w !== "") {
-                      localStorage.setItem("deTuan", w);
-                    } else {
-                      localStorage.removeItem("deTuan");
-                    }
-                  }}
+                  value={deTuan || ""}
                   label="Tuần"
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setDeTuan(value);
+                    localStorage.setItem("deTuan", value);
+                  }}
                 >
-                  {/* MenuItem mặc định */}
                   <MenuItem value="">Chọn tuần</MenuItem>
-
-                  {/* List cứng từ 1 đến 35 */}
                   {Array.from({ length: 35 }, (_, i) => i + 1).map((t) => (
                     <MenuItem key={t} value={t}>
                       Tuần {t}
@@ -1027,18 +1282,13 @@ useEffect(() => {
                 </Select>
               </FormControl>
             )}
-            
-            {/* Nếu là KTĐK */}
+
+            {/* KTĐK */}
             {examType === "ktdk" && (
               <>
-                <FormControl size="small" sx={{ flex: 1 }}>
+                <FormControl size="small" sx={getSx(120)}>
                   <InputLabel>Học kỳ</InputLabel>
-                  <Select
-                    value={semester}
-                    onChange={(e) => setSemester(e.target.value)}
-                    label="Học kỳ"
-                  >
-                    {/* Thêm các học kỳ mới */}
+                  <Select value={semester} label="Học kỳ">
                     <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
                     <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
                     <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
@@ -1046,28 +1296,24 @@ useEffect(() => {
                   </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+                <FormControl size="small" sx={getSx(120)}>
                   <InputLabel>Năm học</InputLabel>
-                  <Select
-                    value={schoolYear || ""}
-                    onChange={(e) => setSchoolYear(e.target.value)}
-                    label="Năm học"
-                  >
+                  <Select value={schoolYear || ""} label="Năm học">
                     {years.map((y) => (
-                      <MenuItem key={y} value={y}>{y}</MenuItem>
+                      <MenuItem key={y} value={y}>
+                        {y}
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={{ flex: 1, minWidth: 120 }}>
+                <FormControl size="small" sx={getSx(120)}>
                   <InputLabel>Đề</InputLabel>
-                  <Select
-                    value={examLetter || ""}
-                    onChange={(e) => setExamLetter(e.target.value)}
-                    label="Đề"
-                  >
+                  <Select value={examLetter || ""} label="Đề">
                     {["A", "B", "C", "D"].map((d) => (
-                      <MenuItem key={d} value={d}>{d}</MenuItem>
+                      <MenuItem key={d} value={d}>
+                        {d}
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -1102,6 +1348,7 @@ useEffect(() => {
                   setDeTuan,
                   setSnackbar,
                   setIsEditingNewDoc,
+                  lessonName, // ✅ THÊM DÒNG NÀY
                 })
               }
             />

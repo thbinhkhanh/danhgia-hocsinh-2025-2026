@@ -993,15 +993,20 @@ export default function QuizQuestion({
 
               {/* Text */}
               <Typography
-                component="span"
-                variant="body1"
-                sx={{
-                  mr: 0.5,
-                  fontSize: "1.1rem",
-                  "& p, & div": { display: "inline", margin: 0 },
-                }}
-                dangerouslySetInnerHTML={{ __html: part }}
-              />
+  component="span"
+  variant="body1"
+  sx={{
+    mr: 0.5,
+    fontSize: "1.1rem",
+    "& p, & div": { display: "inline", margin: 0 },
+  }}
+  dangerouslySetInnerHTML={{
+    __html: part.replace(
+      /<\/p>\s*<p>/g,
+      "</p><p><br></p><p><br></p><p>"
+    ),
+  }}
+/>
 
               {/* Blank */}
               {idx < currentQuestion.option.split("[...]").length - 1 && (

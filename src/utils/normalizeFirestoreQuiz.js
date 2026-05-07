@@ -23,6 +23,9 @@ export const normalizeFirestoreQuiz = (data = []) => {
       score: q.score ?? 0.5,
     };
 
+    // =========================
+    // IMAGE
+    // =========================
     if (q.type === "image") {
       return {
         ...base,
@@ -32,6 +35,9 @@ export const normalizeFirestoreQuiz = (data = []) => {
       };
     }
 
+    // =========================
+    // TRUEFALSE
+    // =========================
     if (q.type === "truefalse") {
       return {
         ...base,
@@ -41,43 +47,102 @@ export const normalizeFirestoreQuiz = (data = []) => {
               { text: "Đúng", image: "", formats: {} },
               { text: "Sai", image: "", formats: {} },
             ],
-        correct: base.correct.length ? base.correct : ["Đúng"],
+        correct: q.correct?.length ? q.correct : ["Đúng"],
       };
     }
 
+    // =========================
+    // MATCHING (🔥 FIX QUAN TRỌNG NHẤT)
+    // =========================
     if (q.type === "matching") {
       return {
         ...base,
+
         pairs: (q.pairs || []).map((p) => ({
           left: p.left ?? "",
           right: p.right ?? "",
+
+          // 🔥 GIỮ ẢNH LEFT (Firestore + JSON thống nhất)
+          leftImage: p.leftImage?.url
+            ? {
+                url: p.leftImage.url,
+                name: p.leftImage.name || "",
+              }
+            : p.leftImage?.url
+              ? p.leftImage
+              : "",
+
+          // 🔥 GIỮ ẢNH RIGHT
+          rightImage: p.rightImage?.url
+            ? {
+                url: p.rightImage.url,
+                name: p.rightImage.name || "",
+              }
+            : "",
         })),
+
+        columnRatio: q.columnRatio || { left: 1, right: 1 },
       };
     }
 
+    // =========================
+    // SORT
+    // =========================
     if (q.type === "sort") {
       return {
         ...base,
-        correct: base.correct.length
-          ? base.correct
-          : rawOptions.map((_, i) => i),
+        options: base.options.length
+          ? base.options
+          : [
+              { text: "", image: "", formats: {} },
+              { text: "", image: "", formats: {} },
+              { text: "", image: "", formats: {} },
+              { text: "", image: "", formats: {} },
+            ],
+        correct:
+          q.correct?.length
+            ? q.correct
+            : q.options?.map((_, i) => i) || [],
         sortType: q.sortType || "fixed",
       };
     }
 
+    // =========================
+    // FILLBLANK
+    // =========================
     if (q.type === "fillblank") {
+      const isStructure2 =
+        Array.isArray(q.options) &&
+        q.options.length > 0 &&
+        typeof q.option === "string";
+
+      if (isStructure2) {
+        return {
+          ...base,
+          option: q.option,
+          options: q.options.map(normalizeOption),
+          correct: [],
+          answers: [],
+        };
+      }
+
       return {
         ...base,
         option: q.option || "",
-        answers: Array.isArray(q.answers) ? q.answers : [],
+        options: base.options || [],
+        answers: q.answers || [],
         correct: [],
       };
     }
 
-    // single + multiple
+    // =========================
+    // SINGLE / MULTIPLE
+    // =========================
     return {
       ...base,
-      correct: base.correct.map(Number).filter((n) => !isNaN(n)),
+      correct: (q.correct || [])
+        .map((c) => Number(c))
+        .filter((n) => !isNaN(n)),
       sortType: q.sortType || "shuffle",
     };
   });

@@ -20,7 +20,6 @@ import { db } from "../firebase";
 import { useContext } from "react";
 import { ConfigContext } from "../context/ConfigContext";
 import DeleteConfirmDialog from "../dialog/DeleteConfirmDialog";
-import { exportWordFile } from "../utils/exportWordFile";
 
 export default function DeThi() {
   const account = localStorage.getItem("account") || "";
@@ -28,16 +27,12 @@ export default function DeThi() {
   const [examList, setExamList] = useState([]);
   const [selectedExam, setSelectedExam] = useState([]);
 
-  //const [pendingExam, setPendingExam] = useState(null);
   const [pendingSelectedExam, setPendingSelectedExam] = useState(null);
 
   const [selectedExamToDelete, setSelectedExamToDelete] = useState(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedExamsToCombine, setSelectedExamsToCombine] = useState([]); // các đề được chọn để kết hợp
-  //const [combinedExams, setCombinedExams] = useState([]); // **state cho đề kết hợp**
 
-  //const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  //const [examToDelete, setExamToDelete] = useState(null);
   const [selectedExamIds, setSelectedExamIds] = useState([]);
   
   const [snackbar, setSnackbar] = useState({
@@ -100,26 +95,6 @@ export default function DeThi() {
     fetchSelected();
   }, []);
 
-  /*useEffect(() => {
-    const fetchCombinedExams = async () => {
-      try {
-        const snap = await getDocs(collection(db, "TRACNGHIEM_ONTAP"));
-
-        const list = snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-
-        setCombinedExams(list); // đổ vào state để hiển thị
-      } catch (err) {
-        console.error("Lỗi load đề kết hợp:", err);
-      }
-    };
-
-    fetchCombinedExams();
-  }, []);*/
-
-
   const addExamToFirestore = async (ex) => {
     try {
       await setDoc(doc(db, "DETHI", ex.id), { name: ex.tenDe || ex.id });
@@ -174,51 +149,6 @@ export default function DeThi() {
       setSnackbar({
         open: true,
         message: `❌ Lỗi khi xóa đề: ${err.message}`,
-        severity: "error",
-      });
-    }
-  };
-
-  // ⭐ HÀM XUẤT FILE WORD ⭐
-  const handleExportWord = async () => {
-    if (selectedExamIds.length === 0) {
-      setSnackbar({
-        open: true,
-        message: "Vui lòng tick chọn ít nhất một đề để xuất!",
-        severity: "warning",
-      });
-      return;
-    }
-
-    try {
-      const folder = "NGANHANG_DE";
-
-      for (let examId of selectedExamIds) {
-        const snap = await getDoc(doc(db, folder, examId));
-        if (!snap.exists()) continue;
-
-        const data = snap.data();
-        const questions = Array.isArray(data.questions) ? data.questions : [];
-        if (questions.length === 0) continue;
-
-        await exportWordFile({
-          title: data.tenDe || examId,
-          namHoc: selectedYear,
-          questions,
-        });
-
-      }
-
-      setSnackbar({
-        open: true,
-        message: `📄 Đã xuất ${selectedExamIds.length} đề ra file Word!`,
-        severity: "success",
-      });
-    } catch (err) {
-      console.error("Lỗi xuất đề:", err);
-      setSnackbar({
-        open: true,
-        message: "Lỗi khi xuất đề!",
         severity: "error",
       });
     }
@@ -462,14 +392,6 @@ export default function DeThi() {
               Xóa đề
             </Button>
 
-            <Button
-              variant="contained"
-              color="info"
-              sx={{ flex: 1 }}
-              onClick={handleExportWord}
-            >
-              Xuất đề
-            </Button>
           </Stack>
         </Box>
 

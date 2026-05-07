@@ -15,6 +15,8 @@ import {
   MenuItem,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { useConfig } from "../context/ConfigContext";
+
 
 /* ===================== FORMAT TITLE ===================== */
 
@@ -27,7 +29,8 @@ const formatExamTitle = (examName = "") => {
   const classPart = parts.find((p) => p.toLowerCase().includes("lớp")) || "";
   const classNumber = classPart.match(/\d+/)?.[0] || "";
   const classIndex = parts.indexOf(classPart);
-  
+  const { config } = useConfig();
+    
 
   let subjectPart = "";
   for (let i = classIndex + 1; i < parts.length; i++) {
@@ -72,7 +75,13 @@ const formatBtTitle = (examName = "") => {
     "";
   const weekNumber = parts[parts.length - 1];
 
-  return `${subjectPart} ${classNumber} (tuần ${weekNumber})`;
+  const shortSubject =
+    subjectPart.toLowerCase().includes("công") ||
+    subjectPart.toLowerCase().includes("cong")
+      ? "CN"
+      : "TH";
+
+  return `${shortSubject} (tuần ${weekNumber})`;
 };
 
 // Lấy năm học từ ID
@@ -118,11 +127,15 @@ const OpenExamDialog = ({
   fetchQuizList,
 }) => {
 
-  console.log("🟡 OpenExamDialog PROPS:");
-  console.log("dialogExamType:", dialogExamType);
-  console.log("filterYear:", filterYear);
-  console.log("filterClass:", filterClass);
+
+  const { config } = useConfig();
   const [filterSubject, setFilterSubject] = React.useState("tin"); // ✅ đúng chỗ
+
+  React.useEffect(() => {
+    if (config?.namHoc) {
+      setFilterYear(config.namHoc);
+    }
+  }, [config?.namHoc]);
   
   const years = [
     "2025-2026",
@@ -131,8 +144,6 @@ const OpenExamDialog = ({
     "2028-2029",
     "2029-2030",
   ];
-
-  
 
   return (
   <Dialog

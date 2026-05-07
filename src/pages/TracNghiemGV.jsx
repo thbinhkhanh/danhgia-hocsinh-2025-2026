@@ -56,6 +56,9 @@ import ImportFromFirestoreDialog from "../dialog/ImportFromFirestoreDialog";
 import ImportModeDialog from "../dialog/ImportModeDialog";
 import { normalizeFirestoreQuiz } from "../utils/normalizeFirestoreQuiz";
 
+import ExportSourceDialog from "../dialog/ExportSourceDialog";
+import { exportQuestionsToWord } from "../utils/exportQuizWORD";
+
 //import mammoth from "mammoth";
 import * as mammoth from "mammoth/mammoth.browser";
 
@@ -100,6 +103,8 @@ const [openImportModeDialog, setOpenImportModeDialog] = useState(false);
 const [importData, setImportData] = useState([]);
 const [lessonInput, setLessonInput] = useState("");
 const [lessonName, setLessonName] = useState("");
+
+const [openExport, setOpenExport] = useState(false);
 
 useEffect(() => {
   if (openDialog) {
@@ -545,7 +550,19 @@ useEffect(() => {
         return q;
       });*/
 
-      const fixedQuestions = normalizeFirestoreQuiz(data.questions || []);
+      let rawQuestions = data.questions || [];
+
+      // CHỈ normalize khi mở từ dialog OpenExamDialog
+      // (đây là luồng Firestore mở đề)
+      if (
+        dialogExamType === "bt" ||
+        dialogExamType === "ktdk" ||
+        dialogExamType === "luyentap"
+      ) {
+        rawQuestions = normalizeFirestoreQuiz(rawQuestions);
+      }
+
+      const fixedQuestions = rawQuestions;
 
       /* ================== SET STATE ================== */
       setQuestions(fixedQuestions);
@@ -1110,6 +1127,51 @@ const getSx = (ltWidth) => {
   return { flex: 1, minWidth: 160 };                 // BT
 };
 
+const handleExportWord = (fileName) => {
+  if (!fileName || !fileName.trim()) {
+    fileName = "questions";
+  }
+
+  exportQuestionsToWord(questions, fileName.trim());
+  setOpenExport(false);
+};
+
+const getDefaultName = () => {
+  const cls = selectedClass || "";
+  const les = (lesson || lessonInput || "").trim();
+
+  return `${cls} - ${les}`;
+};
+
+const buildExportFileName = () => {
+  const lop = selectedClass?.replace("Lớp ", "") || "";
+  const mon = selectedSubject || "";
+  const nam = schoolYear || "";
+  const ky = semester || "";
+  const de = examLetter || "";
+
+  if (examType === "ktdk") {
+    const kyShort =
+      ky === "Cả năm" ? "CN"
+      : ky === "Giữa kỳ I" ? "GK1"
+      : ky === "Cuối kỳ I" ? "CK1"
+      : ky === "Giữa kỳ II" ? "GK2"
+      : ky;
+
+    return `KTĐK_${mon} ${lop}_${kyShort}_${nam} (${de})`;
+  }
+
+  if (examType === "bt") {
+    return `BaiTap_${mon} ${lop}_Tuan ${deTuan || ""}`;
+  }
+
+  if (examType === "luyentap") {
+    return `LTTH_${mon} ${lop}_${lessonInput || lessonName || "Bai"}`;
+  }
+
+  return `DE_${mon}_${lop}`;
+};
+
   return (
     <Box sx={{ minHeight: "100vh", p: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
       <Card elevation={4} sx={{ width: "100%", maxWidth: 970, p: 3, borderRadius: 3, position: "relative" }}>
@@ -1137,8 +1199,11 @@ const getSx = (ltWidth) => {
           </Tooltip>
 
           {/* Export */}
-          <Tooltip title="Xuất đề kiểm tra (JSON)">
-            <IconButton onClick={handleExportJSON} sx={{ color: "#2e7d32" }}>
+          <Tooltip title="Xuất đề kiểm tra">
+            <IconButton
+              onClick={() => setOpenExport(true)}
+              sx={{ color: "#2e7d32" }}
+            >
               <DownloadIcon />
             </IconButton>
           </Tooltip>
@@ -1454,7 +1519,42 @@ const getSx = (ltWidth) => {
               }
             }}
           />
-      </Card>
-    </Box>
-  );
-}
+
+          <ExportSourceDialog
+            open={openExport}
+            onClose={() => setOpenExport(false)}
+
+            onSelectJSON={() => {
+              setOpenExport(false);
+
+              handleConfirmExportQuiz({
+                fileName: buildExportFileName() || "de_trac_nghiem",
+                questions,
+                setSnackbar,
+              });
+
+              setSnackbar({
+                open: true,
+                message: "✅ Xuất JSON thành công",
+                severity: "success",
+              });
+            }}
+
+            onSelectWord={() => {
+              const fileName = buildExportFileName();
+
+              setOpenExport(false);
+
+              handleExportWord(fileName);
+
+              setSnackbar({
+                open: true,
+                message: "📄 Xuất Word thành công",
+                severity: "success",
+              });
+            }}
+          />
+                </Card>
+              </Box>
+            );
+          }
