@@ -108,11 +108,14 @@ const ImageOptions = ({ q, qi, update }) => {
         alignItems="center"
       >
         {(q.options || []).map((option, oi) => {
-          const imageUrl =
+          /*const imageUrl =
             typeof option?.text === "string" &&
             option.text.startsWith("http")
               ? option.text
-              : "";
+              : "";*/
+          const imageUrl =
+            option?.image ||
+            (typeof option?.text === "string" ? option.text : "");
 
           const isChecked = q.correct?.includes(oi) || false;
 
