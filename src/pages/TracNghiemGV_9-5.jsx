@@ -953,22 +953,44 @@ useEffect(() => {
         const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
         if (!lines.length) return null;
 
-        // Tìm dòng "Từ cần điền"
-        const answerLine = lines.find(l => /^Từ cần điền/i.test(l)) || "";
+        let rawText = lines.join("\n");
 
-        // Phần question là dòng đầu tiên (dẫn nhập)
-        const questionText = lines[0].replace(/^Câu\s*\d+\s*[:\.\-)]?\s*/i, "");
+        rawText = rawText.split(/Từ cần điền/i)[0].trim();
 
-        // Phần option là các dòng còn lại (trừ dòng "Từ cần điền")
-        const optionLines = lines.slice(1).filter(l => !/^Từ cần điền/i.test(l));
-        let optionText = optionLines.join("\n");
+        const colonIndex = rawText.indexOf(":");
 
+        let questionText = "";
+        let optionText = "";
+
+        if (colonIndex !== -1) {
+          questionText = rawText.slice(0, colonIndex + 1).trim();
+          optionText = rawText.slice(colonIndex + 1).trim();
+        } else {
+          questionText = rawText;
+          optionText = "";
+        }
+
+        // ===== FIX GỐC LỖI DÍNH DÒNG + TÁCH CHỮ =====
         optionText = optionText
           .replace(/\[\s*(?:\.{3,}|…)\s*\]/g, "[...]")
+
+          // 🔥 FIX quan trọng: gộp chữ bị Word cắt dòng (hơ\nn → hơn)
           .replace(/([a-zà-ỹ])\s*\n\s*([a-zà-ỹ])/gi, "$1$2")
+
+          // tách theo #
           .replace(/\s*#\s*/g, "\n")
+
           .replace(/\n{2,}/g, "\n")
           .trim();
+
+        const optionLines = optionText
+          .split("\n")
+          .map(l => l.trim())
+          .filter(Boolean);
+
+        optionText = optionLines.join("\n");
+
+        const answerLine = lines.find(l => /^Từ cần điền/i.test(l)) || "";
 
         const answers = answerLine
           .replace(/^Từ cần điền\s*:\s*/i, "")
@@ -981,7 +1003,11 @@ useEffect(() => {
           question: `<p>${escapeHTML(questionText)}</p>`,
           type: "fillblank",
           option: `<p>${escapeHTML(optionText).replace(/\n/g, "<br>")}</p>`,
-          options: answers.map(a => ({ text: a, image: "", formats: {} })),
+          options: answers.map(a => ({
+            text: a,
+            image: "",
+            formats: {}
+          })),
           correct: answers,
           score: 0.5,
           sortType: "shuffle",
@@ -997,10 +1023,15 @@ useEffect(() => {
     const tables = doc.querySelectorAll("table");
     let tableIndex = 0;
 
-    const parseMatchingFromTable = (table, index) => {
+    const parseMatchingFromTable = (index) => {
+      if (!tables[tableIndex]) return null;
+
+      const table = tables[tableIndex++];
+
       // ✅ LẤY QUESTION TỪ <p> TRƯỚC TABLE
       let questionText = "";
       let prev = table.previousElementSibling;
+
       while (prev) {
         if (prev.tagName === "P" && prev.innerText.trim()) {
           questionText = prev.innerText.trim();
@@ -1020,17 +1051,26 @@ useEffect(() => {
         if (cells.length < 2) return;
 
         const getCellContent = (cell) => {
+          // lấy text
           let text = cell.innerText.trim();
+
+          // nếu có img thì lấy alt hoặc đánh dấu
           const img = cell.querySelector("img");
+
           if (img) {
             const alt = img.getAttribute("alt")?.trim();
+
+            // nếu có alt thì dùng alt, không thì đánh dấu [Hình]
             text = alt ? `[Hình: ${alt}]` : "[Hình]";
           }
+
           return text;
         };
 
         const l = getCellContent(cells[0]);
         const r = getCellContent(cells[1]);
+
+        // ❌ chỉ bỏ nếu cả 2 đều rỗng
         if (!l && !r) return;
 
         pairs.push({
@@ -1043,7 +1083,10 @@ useEffect(() => {
 
       return {
         id: `q_${Date.now()}_table_${index}`,
+
+        // ✅ DÙNG QUESTION THẬT (đã bỏ "Câu 1.")
         question: `<p>${escapeHTML(questionText)}</p>`,
+
         type: "matching",
         questionType: "matching",
         pairs,
@@ -1054,36 +1097,26 @@ useEffect(() => {
       };
     };
 
-    // ===== Parse theo thứ tự DOM =====
-    const elements = [...doc.body.querySelectorAll("p, table")];
-    const finalQuestions = [];
-    let index = 0;
+    // ===== Split blocks =====
+    const blocks = text
+      .split(/Câu\s*\d+\s*[:\.\-)]?/gi)
+      .map(b => b.trim())
+      .filter(Boolean);
 
-    elements.forEach(el => {
-      if (el.tagName === "P") {
-        const textBlock = el.innerText.trim();
-        if (!/^Câu\s*\d+/i.test(textBlock)) return;
-
-        let block = textBlock;
-        let next = el.nextElementSibling;
-        while (next && next.tagName === "P" && !/^Câu\s*\d+/i.test(next.innerText)) {
-          block += "\n" + next.innerText.trim();
-          next = next.nextElementSibling;
-        }
-
+    // ===== Parse all =====
+    const finalQuestions = blocks
+      .map((block, index) => {
         const type = detectType(block);
-        if (type === "choice") finalQuestions.push(parseChoice(block, index++));
-        else if (type === "sort") finalQuestions.push(parseSort(block, index++));
-        else if (type === "truefalse") finalQuestions.push(parseTrueFalse(block, index++));
-        else if (type === "fillblank") finalQuestions.push(parseFillBlank(block, index++));
-      }
 
-      if (el.tagName === "TABLE") {
-        const q = parseMatchingFromTable(el, index++);
-        if (q) finalQuestions.push(q);
-      }
-    });
+        if (type === "choice") return parseChoice(block, index);
+        if (type === "sort") return parseSort(block, index);
+        if (type === "truefalse") return parseTrueFalse(block, index);
+        if (type === "fillblank") return parseFillBlank(block, index);
+        if (type === "matching") return parseMatchingFromTable(index);
 
+        return null;
+      })
+      .filter(Boolean);
 
     console.log("✅ FINAL:", finalQuestions);
 
@@ -1094,14 +1127,7 @@ useEffect(() => {
 
     if (isEmpty) {
       setQuestions(finalQuestions);
-      setLessonInput("");
-
-      setSnackbar({
-        open: true,
-        message: "✅ Nhập đề thành công!",
-        severity: "success",
-      });
-      
+      setLessonInput(lesson || "");
     } else {
       setImportData(finalQuestions);
       setOpenImportModeDialog(true);

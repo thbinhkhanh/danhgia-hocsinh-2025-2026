@@ -55,6 +55,38 @@ const ExportSourceDialog = ({
         </Typography>
 
         <Stack spacing={2}>
+          {/* WORD */}
+          <Paper
+            elevation={2}
+            onClick={() => {
+              onClose();
+              onSelectWord?.();
+            }}
+            sx={{
+              p: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              cursor: "pointer",
+              borderRadius: 2,
+              transition: "0.2s",
+              "&:hover": {
+                backgroundColor: "#e8f5e9",
+                transform: "translateY(-2px)",
+              },
+            }}
+          >
+            <DescriptionIcon sx={{ fontSize: 36, color: "#2e7d32" }} />
+            <Box>
+              <Typography fontWeight="bold">
+                Xuất file Word
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                File .docx để in hoặc chia sẻ
+              </Typography>
+            </Box>
+          </Paper>
+          
           {/* JSON */}
           <Paper
             elevation={2}
@@ -84,38 +116,6 @@ const ExportSourceDialog = ({
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Lưu trữ hoặc import lại hệ thống
-              </Typography>
-            </Box>
-          </Paper>
-
-          {/* WORD */}
-          <Paper
-            elevation={2}
-            onClick={() => {
-              onClose();
-              onSelectWord?.();
-            }}
-            sx={{
-              p: 2,
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              cursor: "pointer",
-              borderRadius: 2,
-              transition: "0.2s",
-              "&:hover": {
-                backgroundColor: "#e8f5e9",
-                transform: "translateY(-2px)",
-              },
-            }}
-          >
-            <DescriptionIcon sx={{ fontSize: 36, color: "#2e7d32" }} />
-            <Box>
-              <Typography fontWeight="bold">
-                Xuất file Word
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                File .docx để in hoặc chia sẻ
               </Typography>
             </Box>
           </Paper>

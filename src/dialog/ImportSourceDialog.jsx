@@ -59,38 +59,6 @@ const ImportSourceDialog = ({
         </Typography>
 
         <Stack spacing={2}>
-          {/* JSON */}
-          <Paper
-            elevation={2}
-            onClick={() => {
-              onClose();
-              onSelectJSON?.();
-            }}
-            sx={{
-              p: 2,
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              cursor: "pointer",
-              borderRadius: 2,
-              transition: "0.2s",
-              "&:hover": {
-                backgroundColor: "#e8f5e9",
-                transform: "translateY(-2px)",
-              },
-            }}
-          >
-            <UploadFileIcon sx={{ fontSize: 36, color: "#2e7d32" }} />
-            <Box>
-              <Typography fontWeight="bold">
-                Import từ file JSON
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Tải file từ máy tính
-              </Typography>
-            </Box>
-          </Paper>
-
           {/* WORD */}
           <Paper
             elevation={2}
@@ -119,6 +87,38 @@ const ImportSourceDialog = ({
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Hỗ trợ .docx (trắc nghiệm)
+              </Typography>
+            </Box>
+          </Paper>
+          
+          {/* JSON */}
+          <Paper
+            elevation={2}
+            onClick={() => {
+              onClose();
+              onSelectJSON?.();
+            }}
+            sx={{
+              p: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              cursor: "pointer",
+              borderRadius: 2,
+              transition: "0.2s",
+              "&:hover": {
+                backgroundColor: "#e8f5e9",
+                transform: "translateY(-2px)",
+              },
+            }}
+          >
+            <UploadFileIcon sx={{ fontSize: 36, color: "#2e7d32" }} />
+            <Box>
+              <Typography fontWeight="bold">
+                Import từ file JSON
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Tải file từ máy tính
               </Typography>
             </Box>
           </Paper>

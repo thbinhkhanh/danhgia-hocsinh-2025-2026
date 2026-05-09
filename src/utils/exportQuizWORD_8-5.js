@@ -15,24 +15,14 @@ import { saveAs } from "file-saver";
 // ===== helper =====
 const stripHTML = (html = "") => {
   return String(html || "")
-    // ✅ đổi <br> thành xuống dòng
-    .replace(/<br\s*\/?>/gi, "\n")
-
-    // optional: xuống dòng sau </p>
-    .replace(/<\/p>/gi, "\n")
-
     // bỏ tag HTML
     .replace(/<[^>]*>/g, "")
-
-    // đổi nbsp
+    // đổi &nbsp; và khoảng trắng không phá vỡ
     .replace(/&nbsp;|\u00A0/g, " ")
-
-    // giữ nguyên newline nhưng gộp space
-    .replace(/[ \t]+/g, " ")
-
-    // bỏ nhiều dòng trống
-    .replace(/\n{3,}/g, "\n\n")
-
+    // xóa các đoạn ".     " kiểu bạn gặp
+    .replace(/\.\s+/g, ". ")
+    // gộp nhiều khoảng trắng
+    .replace(/\s+/g, " ")
     .trim();
 };
 
@@ -76,39 +66,21 @@ const fetchImage = async (url) => {
 // ===== CONST =====
 const FONT_SIZE = 24; // ~13pt
 
-const createText = (text, bold = false, align = "left") => {
-  const lines = String(text).split("\n");
-
-  const children = [];
-
-  lines.forEach((line, index) => {
-    children.push(
-      new TextRun({
-        text: line,
-        bold,
-        size: FONT_SIZE,
-        font: "Times New Roman",
-      })
-    );
-
-    // ✅ xuống dòng trong Word
-    if (index < lines.length - 1) {
-      children.push(
-        new TextRun({
-          break: 1,
-        })
-      );
-    }
-  });
-
-  return new Paragraph({
+const createText = (text, bold = false, align = "left") =>
+  new Paragraph({
     alignment:
       align === "center"
         ? AlignmentType.CENTER
         : AlignmentType.LEFT,
-    children,
+    children: [
+      new TextRun({
+        text,
+        bold,
+        size: FONT_SIZE,
+        font: "Times New Roman",
+      }),
+    ],
   });
-};
 
 // ===== MAIN =====
 export const exportQuestionsToWord = async (
@@ -387,24 +359,14 @@ export const exportQuestionsToWord = async (
           ? q.option.text
           : "";
 
-      const option = stripHTML(rawOption)
-        .replace(/\r\n/g, "\n")
-        // 🔥 đảm bảo a), b), c) luôn xuống dòng
-        .replace(/([a-zA-Z]\))\s*/g, "\n$1 ")
-        .trim();
+      const option = stripHTML(rawOption);
 
       // ❌ KHÔNG export lại q.question nữa
+      // children.push(createText(question));
 
-      // ✅ tách từng dòng để giữ break chuẩn
+      // ✅ chỉ export phần nội dung điền khuyết
       if (option) {
-        const optionLines = option
-          .split("\n")
-          .map(l => l.trim())
-          .filter(Boolean);
-
-        optionLines.forEach(line => {
-          children.push(createText(line));
-        });
+        children.push(createText(option));
       }
 
       // ===== FIX: lấy đáp án an toàn =====
@@ -423,7 +385,10 @@ export const exportQuestionsToWord = async (
 
       if (cleanAnswers.length > 0) {
         children.push(
-          createText(`Từ cần điền: ${cleanAnswers.join(" / ")}`, true)
+          createText(
+            `Từ cần điền: ${cleanAnswers.join(" / ")}`,
+            true
+          )
         );
       }
     }
