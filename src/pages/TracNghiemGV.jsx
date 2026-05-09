@@ -1079,6 +1079,73 @@ useEffect(() => {
       }
 
       if (el.tagName === "TABLE") {
+        const rows = el.querySelectorAll("tr");
+
+        // lấy số cột tối đa
+        let maxCols = 0;
+        rows.forEach(r => {
+          const cols = r.querySelectorAll("td, th").length;
+          if (cols > maxCols) maxCols = cols;
+        });
+
+        // ====== CASE: IMAGE TABLE (> 2 cột) ======
+        if (maxCols > 2) {
+          const images = [];
+
+          rows.forEach(row => {
+            const cells = row.querySelectorAll("td, th");
+            if (!cells.length) return;
+
+            cells.forEach(cell => {
+              const img = cell.querySelector("img");
+              if (img) {
+                images.push({
+                  text: img.src || img.getAttribute("data-src") || "",
+                  alt: img.alt || "",
+                });
+              }
+            });
+          });
+
+          // ===== lấy câu hỏi thực tế (giống matching) =====
+          let questionText = "";
+          let prev = el.previousElementSibling;
+
+          while (prev) {
+            if (prev.tagName === "P" && prev.innerText.trim()) {
+              questionText = prev.innerText.trim();
+              break;
+            }
+            prev = prev.previousElementSibling;
+          }
+
+          if (!questionText) {
+            questionText = "Câu hỏi hình ảnh";
+          }
+
+          // clean "Câu 5: ..."
+          questionText = questionText.replace(/^Câu\s*\d+\s*[:\.\-)]?\s*/i, "");
+
+          if (images.length) {
+            finalQuestions.push({
+              id: `q_${Date.now()}_image_${index++}`,
+              question: `<p>${escapeHTML(questionText)}</p>`,
+              type: "image",
+              options: images.map(img => ({
+                text: "",
+                image: img.text
+              })),
+              correct: [],
+              score: 0.5,
+              sortType: "shuffle",
+              pairs: []
+            });
+          }
+
+          return; // ⛔ skip matching parser
+        }
+
+        // ====== NORMAL MATCHING ======
         const q = parseMatchingFromTable(el, index++);
         if (q) finalQuestions.push(q);
       }
