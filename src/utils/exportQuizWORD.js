@@ -110,6 +110,30 @@ const createText = (text, bold = false, align = "left") => {
   });
 };
 
+const getImageBufferWithSize = async (url, maxHeight = 120) => {
+  const buffer = await fetchImage(url);
+  if (!buffer) return null;
+
+  // tạo object URL để lấy kích thước gốc
+  const blob = new Blob([buffer]);
+  const imgEl = new Image();
+  const objectUrl = URL.createObjectURL(blob);
+
+  return new Promise((resolve) => {
+    imgEl.onload = () => {
+      const ratio = imgEl.width / imgEl.height;
+
+      // cố định chiều cao, tính chiều rộng theo tỉ lệ
+      const height = maxHeight;
+      const width = Math.round(height * ratio);
+
+      URL.revokeObjectURL(objectUrl);
+      resolve({ buffer, width, height });
+    };
+    imgEl.src = objectUrl;
+  });
+};
+
 // ===== MAIN =====
 export const exportQuestionsToWord = async (
   questions = [],
@@ -160,15 +184,15 @@ export const exportQuestionsToWord = async (
 
     // ===== IMAGE QUESTION =====
     if (q.questionImage) {
-      const img = await fetchImage(q.questionImage);
-      if (img) {
+      const result = await getImageBufferWithSize(q.questionImage, 120);
+      if (result) {
         children.push(
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
               new ImageRun({
-                data: img,
-                transformation: { width: 300, height: 200 },
+                data: result.buffer,
+                transformation: { width: result.width, height: result.height },
               }),
             ],
           })
@@ -272,8 +296,8 @@ export const exportQuestionsToWord = async (
                     new ImageRun({
                       data: img,
                       transformation: {
-                        width: 90,
-                        height: 90,
+                        width: 70,
+                        height: 70,
                       },
                     }),
                   ],
