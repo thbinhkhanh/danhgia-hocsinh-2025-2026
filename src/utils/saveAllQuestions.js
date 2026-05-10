@@ -220,62 +220,76 @@ export const saveAllQuestions = async ({
   // =========================
   // MATCHING
   // =========================
-  if (q.type === "matching") {
-    updatedQ.pairs = await Promise.all(
-      (q.pairs || []).map(async (p) => {
-        let img = p?.leftImage?.url;
+  // =========================
+// MATCHING
+// =========================
+if (q.type === "matching") {
+  updatedQ.pairs = await Promise.all(
+    (q.pairs || []).map(async (p) => {
+      // ================= LEFT IMAGE =================
+      let leftImg = p?.leftImage?.url || "";
 
-        if (!img) {
-          return {
-            ...p,
-            leftImage: p.leftImage || { url: "" },
-          };
-        }
+      if (leftImg instanceof File) {
+        leftImg = await uploadImage(leftImg);
+      }
 
-        // =========================
-        // CLOUDINARY → GIỮ NGUYÊN
-        // =========================
-        if (isCloudinaryUrl(img)) {
-          return {
-            ...p,
-            leftImage: {
-              ...p.leftImage,
-              url: img,
-            },
-          };
-        }
+      if (
+        typeof leftImg === "string" &&
+        leftImg.startsWith("data:")
+      ) {
+        const res = await fetch(leftImg);
+        const blob = await res.blob();
 
-        // =========================
-        // FILE → UPLOAD
-        // =========================
-        if (img instanceof File) {
-          img = await uploadImage(img);
-        }
-
-        // =========================
-        // BASE64 → UPLOAD
-        // =========================
-        if (typeof img === "string" && img.startsWith("data:")) {
-          const res = await fetch(img);
-          const blob = await res.blob();
-          const file = new File([blob], "image.png", {
+        leftImg = await uploadImage(
+          new File([blob], "left.png", {
             type: blob.type,
-          });
-          img = await uploadImage(file);
-        }
+          })
+        );
+      }
 
-        return {
-          ...p,
-          leftImage: {
-            ...p.leftImage,
-            url: img,
-          },
-        };
-      })
-    );
+      // ================= RIGHT IMAGE =================
+      let rightImg = p?.rightImage?.url || "";
 
-    updatedQ.correct = updatedQ.pairs.map((_, i) => i);
-  }
+      if (rightImg instanceof File) {
+        rightImg = await uploadImage(rightImg);
+      }
+
+      if (
+        typeof rightImg === "string" &&
+        rightImg.startsWith("data:")
+      ) {
+        const res = await fetch(rightImg);
+        const blob = await res.blob();
+
+        rightImg = await uploadImage(
+          new File([blob], "right.png", {
+            type: blob.type,
+          })
+        );
+      }
+
+      return {
+        ...p,
+
+        // ===== LEFT =====
+        left: p.left || "",
+        leftImage: {
+          ...(p.leftImage || {}),
+          url: leftImg || "",
+        },
+
+        // ===== RIGHT =====
+        right: p.right || "",
+        rightImage: {
+          ...(p.rightImage || {}),
+          url: rightImg || "",
+        },
+      };
+    })
+  );
+
+  updatedQ.correct = updatedQ.pairs.map((_, i) => i);
+}
 
   // =========================
   // SORT

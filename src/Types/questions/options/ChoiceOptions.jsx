@@ -10,8 +10,11 @@ import {
 } from "@mui/material";
 
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
-import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
-import DeleteIcon from "@mui/icons-material/Delete";
+//import InsertPhotoIcon from "@mui/icons-material/InsertPhoto";
+//import InsertPhotoOutlinedIcon from "@mui/icons-material/InsertPhotoOutlined";
+import InsertPhotoIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
+import InsertPhotoOutlinedIcon from "@mui/icons-material/Image";
+
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
@@ -119,10 +122,13 @@ const ChoiceOptions = ({ q, qi, update }) => {
                 src={opt.image}
                 alt=""
                 sx={{
-                  height: "2em",
-                  width: "auto",
+                  height: 50,          // = chiều cao option
+                  width: "auto",       // tự co theo tỉ lệ
+                  //maxWidth: 120,       // tránh ảnh quá dài
                   objectFit: "contain",
+                  borderRadius: 1,
                   flexShrink: 0,
+                  display: "block",
                 }}
               />
             )}
@@ -164,7 +170,11 @@ const ChoiceOptions = ({ q, qi, update }) => {
                     : fileInputRefs.current[oi]?.click()
                 }
               >
-                {opt.image ? <DeleteIcon /> : <PhotoCameraIcon />}
+                {opt.image ? (
+                    <InsertPhotoIcon sx={{ color: "#ff9800" }} />
+                  ) : (
+                    <InsertPhotoOutlinedIcon sx={{ color: "#2196f3" }} />
+                  )}
               </IconButton>
             </Tooltip>
 

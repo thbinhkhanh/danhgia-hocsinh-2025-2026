@@ -1,12 +1,8 @@
 import React, { useRef, useState } from "react";
 import { Stack, IconButton, Button, Box, Tooltip, FormControl, Select, MenuItem, InputLabel } from "@mui/material";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
-
-//import InsertPhotoIcon from "@mui/icons-material/InsertPhoto";
-//import InsertPhotoOutlinedIcon from "@mui/icons-material/InsertPhotoOutlined";
-import InsertPhotoIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
-import InsertPhotoOutlinedIcon from "@mui/icons-material/Image";
-
+import PhotoCamera from "@mui/icons-material/PhotoCamera";
+import DeleteIcon from "@mui/icons-material/Delete";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
@@ -148,7 +144,7 @@ const MatchingOptions = ({ q, qi, update }) => {
                       src={pair.leftIconImage.url}
                       alt={pair.leftIconImage.name}
                       sx={{
-                        maxHeight: 50,
+                        maxHeight: 40,
                         width: "auto",
                         objectFit: "contain",
                         mr: 1,
@@ -191,10 +187,10 @@ const MatchingOptions = ({ q, qi, update }) => {
                 <Tooltip title="Chèn hình trước text">
                   <IconButton
                     size="small"
-                    sx={{ color: "#1976d2" }}
+                    sx={{ color: "#1976d2", border: "1px solid #1976d2" }}
                     onClick={() => fileInputs.current[`icon-${pi}`]?.click()}
                   >
-                    <InsertPhotoOutlinedIcon />
+                    <PhotoCamera />
                     <input
                       hidden
                       type="file"
@@ -221,14 +217,14 @@ const MatchingOptions = ({ q, qi, update }) => {
                 <Tooltip title="Xóa hình trước text">
                   <IconButton
                     size="small"
-                    sx={{ color: "#ff9800" }}
+                    sx={{ color: "#ff9800", border: "1px solid #ff9800" }}
                     onClick={() => {
                       const newPairs = [...q.pairs];
                       newPairs[pi].leftIconImage = null;
                       update(qi, { pairs: newPairs });
                     }}
                   >
-                    <InsertPhotoIcon />
+                    <DeleteIcon />
                   </IconButton>
                 </Tooltip>
               )}
@@ -237,10 +233,10 @@ const MatchingOptions = ({ q, qi, update }) => {
                 <Tooltip title="Chèn hình thay text">
                   <IconButton
                     size="small"
-                    sx={{ color: "#64b5f6" }}
+                    sx={{ color: "#64b5f6", border: "1px solid #64b5f6" }}
                     onClick={() => fileInputs.current[`img-${pi}`]?.click()}
                   >
-                    <InsertPhotoOutlinedIcon />
+                    <PhotoCamera />
                     <input
                       hidden
                       type="file"
@@ -268,14 +264,14 @@ const MatchingOptions = ({ q, qi, update }) => {
                 <Tooltip title="Xóa hình thay text">
                   <IconButton
                     size="small"
-                    sx={{ color: "#ff9800" }}
+                    sx={{ color: "#ff9800", border: "1px solid #ff9800" }}
                     onClick={() => {
                       const newPairs = [...q.pairs];
                       newPairs[pi].leftImage = null;
                       update(qi, { pairs: newPairs });
                     }}
                   >
-                    <InsertPhotoIcon />
+                    <DeleteIcon />
                   </IconButton>
                 </Tooltip>
               )}
@@ -286,196 +282,23 @@ const MatchingOptions = ({ q, qi, update }) => {
               sx={{
                 flexGrow: ratio.right,
                 flexBasis: 0,
-                display: "flex",
-                alignItems: "center",
-                minWidth: 0,
               }}
             >
-
-              {/* ================= CONTENT ================= */}
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  flex: 1,
-                  minWidth: 0,
-                }}
-              >
-                {/* ===== IMAGE REPLACE TEXT ===== */}
-                {pair.rightImage ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      mr: 1,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <img
-                      src={pair.rightImage.url}
-                      alt={pair.rightImage.name}
-                      style={{
-                        maxHeight: 50,
-                        width: "auto",
-                        height: "auto",
-                        objectFit: "contain",
-                        display: "block",
-                      }}
-                    />
-                  </Box>
-                ) : (
-                  <>
-                    {/* ICON BEFORE TEXT */}
-                    {pair.rightIconImage && (
-                      <Box
-                        component="img"
-                        src={pair.rightIconImage.url}
-                        alt={pair.rightIconImage.name}
-                        sx={{
-                          maxHeight: 50,
-                          mr: 1,
-                          flexShrink: 0,
-                        }}
-                      />
-                    )}
-
-                    {/* TEXT EDITOR */}
-                    <Box sx={{ width: "100%", minWidth: 0 }}>
-                      <ReactQuill
-                        ref={(el) =>
-                          (quillRefs.current[`${pi}-right`] = el)
-                        }
-                        theme="snow"
-                        value={pair.right || ""}
-                        modules={quillModules}
-                        formats={quillFormats}
-                        className="choice-option-editor"
-                        placeholder={`B ${pi + 1}`}
-                        onFocus={() =>
-                          setFocused({ pairIndex: pi, side: "right" })
-                        }
-                        onChange={(value) => {
-                          const newPairs = [...q.pairs];
-                          newPairs[pi].right = value;
-                          update(qi, { pairs: newPairs });
-                        }}
-                      />
-                    </Box>
-                  </>
-                )}
-              </Box>
-
-              {/* ================= FIXED GAP ================= */}
-              <Box sx={{ width: 8, flexShrink: 0 }} />
-
-              {/* ================= ICON COLUMN (CỐ ĐỊNH THẲNG HÀNG) ================= */}
-              <Stack
-                direction="row"
-                spacing={0.5}
-                sx={{
-                  width: 90,
-                  minWidth: 90,
-                  justifyContent: "flex-end",
-                  flexShrink: 0,
-                }}
-              >
-                {/* ===== ICON BEFORE TEXT ===== */}
-                {!pair.rightIconImage ? (
-                  <Tooltip title="Chèn hình trước text">
-                    <IconButton
-                      size="small"
-                      sx={{ color: "#1976d2" }}
-                      onClick={() =>
-                        fileInputs.current[`ricon-${pi}`]?.click()
-                      }
-                    >
-                      <InsertPhotoOutlinedIcon />
-                    </IconButton>
-                  </Tooltip>
-                ) : (
-                  <Tooltip title="Xóa hình trước text">
-                    <IconButton
-                      size="small"
-                      sx={{ color: "#ff9800" }}
-                      onClick={() => {
-                        const newPairs = [...q.pairs];
-                        newPairs[pi].rightIconImage = null;
-                        update(qi, { pairs: newPairs });
-                      }}
-                    >
-                      <InsertPhotoIcon />
-                    </IconButton>
-                  </Tooltip>
-                )}
-
-                {/* ===== ICON REPLACE TEXT ===== */}
-                {!pair.rightImage ? (
-                  <Tooltip title="Chèn hình thay text">
-                    <IconButton
-                      size="small"
-                      sx={{ color: "#64b5f6" }}
-                      onClick={() =>
-                        fileInputs.current[`rimg-${pi}`]?.click()
-                      }
-                    >
-                      <InsertPhotoOutlinedIcon />
-                    </IconButton>
-                  </Tooltip>
-                ) : (
-                  <Tooltip title="Xóa hình thay text">
-                    <IconButton
-                      size="small"
-                      sx={{ color: "#ff9800" }}
-                      onClick={() => {
-                        const newPairs = [...q.pairs];
-                        newPairs[pi].rightImage = null;
-                        newPairs[pi].right = "";
-                        update(qi, { pairs: newPairs });
-                      }}
-                    >
-                      <InsertPhotoIcon />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </Stack>
-
-              {/* ================= FILE INPUTS (STABLE, KHÔNG MẤT EVENT) ================= */}
-              <input
-                type="file"
-                hidden
-                ref={(el) => (fileInputs.current[`ricon-${pi}`] = el)}
-                onChange={async (e) => {
-                  if (!e.target.files?.[0]) return;
-
-                  const url = await uploadToCloudinary(e.target.files[0]);
-
+              <ReactQuill
+                ref={(el) => (quillRefs.current[`${pi}-right`] = el)}
+                theme="snow"
+                value={pair.right || ""}
+                modules={quillModules}
+                formats={quillFormats}
+                className="choice-option-editor"
+                placeholder={`B ${pi + 1}`}
+                onFocus={() =>
+                  setFocused({ pairIndex: pi, side: "right" })
+                }
+                onChange={(value) => {
+                  if (value === pair.right) return;
                   const newPairs = [...q.pairs];
-                  newPairs[pi].rightIconImage = {
-                    url,
-                    name: e.target.files[0].name,
-                  };
-
-                  update(qi, { pairs: newPairs });
-                }}
-              />
-
-              <input
-                type="file"
-                hidden
-                ref={(el) => (fileInputs.current[`rimg-${pi}`] = el)}
-                onChange={async (e) => {
-                  if (!e.target.files?.[0]) return;
-
-                  const url = await uploadToCloudinary(e.target.files[0]);
-
-                  const newPairs = [...q.pairs];
-                  newPairs[pi].rightImage = {
-                    url,
-                    name: e.target.files[0].name,
-                  };
-
-                  newPairs[pi].right = "";
-
+                  newPairs[pi].right = value;
                   update(qi, { pairs: newPairs });
                 }}
               />
