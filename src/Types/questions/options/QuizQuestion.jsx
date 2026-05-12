@@ -152,7 +152,7 @@ export default function QuizQuestion({
                             cursor: submitted || !started ? "default" : "grab",
                             boxShadow: "none",
                             transition: "background-color 0.2s ease, border-color 0.2s ease",
-                            minHeight: 40,
+                            minHeight: 50,
                             py: 0.5,
                             px: 1,
                             display: "flex",
@@ -173,7 +173,7 @@ export default function QuizQuestion({
                                 maxHeight: 50,
                                 width: "auto",
                                 objectFit: "contain",
-                                borderRadius: 1,
+                                borderRadius: 2,
                                 flexShrink: 0,
                               }}
                             />
@@ -211,20 +211,22 @@ export default function QuizQuestion({
 
   const renderMatching = () => (
     <Box sx={{ width: "100%" }}>
-      {/* ================= HÌNH MINH HỌA ================= */}
+      {/* ================= HÌNH MINH HỌA DƯỚI CÂU HỎI ================= */}
       {currentQuestion.questionImage && (
-        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            mb: 2,
+          }}
+        >
           <Box
             sx={{
-              maxHeight: 150,
-              maxWidth: "100%",
-              overflow: "hidden",
-              borderRadius: 2,
-              border: "1px solid #ddd",
-              display: "flex",
-              justifyContent: "center",
+              display: "inline-flex",
               alignItems: "center",
-              bgcolor: "#fafafa",
+              justifyContent: "center",
+              maxHeight: 150, // 🔥 đổi 100 nếu bạn muốn
+              overflow: "hidden",
             }}
           >
             <img
@@ -233,11 +235,15 @@ export default function QuizQuestion({
               style={{
                 maxHeight: 150,
                 maxWidth: "100%",
+                height: "auto",
                 objectFit: "contain",
+                borderRadius: 8,
+                display: "block",
                 cursor: "zoom-in",
               }}
               onClick={() => setZoomImage(currentQuestion.questionImage)}
             />
+
           </Box>
         </Box>
       )}
@@ -267,24 +273,17 @@ export default function QuizQuestion({
           {currentQuestion.pairs.map((pair, i) => {
             const optionText = pair.left || "";
             const optionImage =
-              pair.leftIconImage?.url ||
-              pair.leftImage?.url ||
-              null;
+              pair.leftImage?.url || pair.leftIconImage?.url || null;
 
             const userOrder =
               answers[currentQuestion.id] ??
-              currentQuestion.pairs.map((_, idx) => idx);
+              currentQuestion.rightOptions.map((_, idx) => idx);
 
             const rightIdx = userOrder[i];
-
-            // 🔥 FIX QUAN TRỌNG: lấy từ pairs thay vì rightOptions
-            const rightItem = currentQuestion.pairs[rightIdx];
-
+            const rightVal = currentQuestion.rightOptions[rightIdx];
+            const rightText = typeof rightVal === "string" ? rightVal : "";
             const rightImage =
-              rightItem?.rightIconImage?.url ||
-              rightItem?.rightImage?.url ||
-              null;
-            const rightText = rightItem?.right || "";
+              typeof rightVal === "object" ? rightVal?.url : null;
 
             const isCorrect =
               submitted && userOrder[i] === currentQuestion.correct[i];
@@ -293,39 +292,33 @@ export default function QuizQuestion({
               <Stack
                 key={i}
                 direction="row"
-                spacing={1.5}
+                spacing={2}
                 alignItems="stretch"
-                sx={{
-                  minHeight: 40,
-                  width: "100%",
-                }}
+                sx={{ minHeight: 50 }}
               >
                 {/* ================= LEFT ================= */}
                 <Paper
                   sx={{
+                    //flex: 1,
                     flexGrow: ratio.left,
                     flexBasis: 0,
-                    width: "100%",
                     display: "flex",
                     alignItems: "center",
-                    gap: 1,
+                    gap: 1.5,
                     px: 1,
-                    py: 0.25,
-                    minHeight: 40,
+                    py: 0.5,
                     border: "1px solid #64b5f6",
                     borderRadius: 1,
                     boxShadow: "none",
                   }}
                 >
-                  {/* ================= LEFT IMAGE ================= */}
                   {optionImage && (
                     <Box
                       sx={{
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        height: "100%",
-                        maxHeight: 50,
+                        maxHeight: 40,      // khung tối đa 40
                         mr: 1,
                         flexShrink: 0,
                         overflow: "hidden",
@@ -335,7 +328,7 @@ export default function QuizQuestion({
                         src={optionImage}
                         alt={`left-${i}`}
                         style={{
-                          maxHeight: "100%",
+                          maxHeight: 50,    // ⭐ QUAN TRỌNG: trùng với Box
                           width: "auto",
                           height: "auto",
                           objectFit: "contain",
@@ -346,16 +339,15 @@ export default function QuizQuestion({
                     </Box>
                   )}
 
-                  {/* ================= LEFT TEXT ================= */}
                   {optionText && (
                     <Typography
                       component="div"
                       sx={{
-                        fontSize: "1.05rem",
+                        fontSize: "1.1rem",
                         flex: 1,
-                        lineHeight: 1.4,
                         wordBreak: "break-word",
                         whiteSpace: "pre-wrap",
+                        lineHeight: 1.5,
                         "& p": { margin: 0 },
                       }}
                       dangerouslySetInnerHTML={{ __html: optionText }}
@@ -369,17 +361,12 @@ export default function QuizQuestion({
                     <Stack
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      sx={{
-                        flexGrow: ratio.right,
-                        flexBasis: 0,
-                        width: "100%",
-                        minWidth: 120,
-                      }}
+                      sx={{ flexGrow: ratio.right, flexBasis: 0, }}
                     >
                       <Draggable
-                        key={`right-${rightIdx}`}
-                        draggableId={`right-${rightIdx}`}
-                        index={0}
+                        key={rightIdx}
+                        draggableId={String(rightIdx)}
+                        index={i}
                         isDragDisabled={submitted || !started}
                       >
                         {(provided) => (
@@ -388,54 +375,47 @@ export default function QuizQuestion({
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                             sx={{
-                              width: "100%",
-
+                              flex: 1,
                               display: "flex",
                               alignItems: "center",
-
-                              gap: 1,
+                              gap: 1.5,
                               px: 1,
-                              py: 0.25,
-
-                              minHeight: 40,
-
+                              py: 0.5,
                               border: "1px solid #90caf9",
                               borderRadius: 1,
                               boxShadow: "none",
-
                               cursor:
                                 submitted || !started ? "default" : "grab",
-
                               bgcolor:
                                 submitted && choXemDapAn
                                   ? isCorrect
                                     ? "#c8e6c9"
                                     : "#ffcdd2"
                                   : "transparent",
-
                               transition:
-                                "background-color 0.2s ease",
+                                "background-color 0.2s ease, border-color 0.2s ease",
+                              "&:hover": {
+                                borderColor: "#1976d2",
+                                bgcolor: "#f5f5f5",
+                              },
                             }}
                           >
-                            {/* ================= RIGHT IMAGE ================= */}
                             {rightImage && (
                               <Box
                                 sx={{
                                   display: "inline-flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  height: "100%",
-                                  maxHeight: 50,
+                                  maxHeight: 40,
                                   mr: 1,
                                   flexShrink: 0,
-                                  overflow: "hidden",
                                 }}
                               >
                                 <img
                                   src={rightImage}
                                   alt={`right-${rightIdx}`}
                                   style={{
-                                    maxHeight: "100%",
+                                    maxHeight: 40,
                                     width: "auto",
                                     height: "auto",
                                     objectFit: "contain",
@@ -446,16 +426,15 @@ export default function QuizQuestion({
                               </Box>
                             )}
 
-                            {/* ================= RIGHT TEXT ================= */}
                             {rightText && (
                               <Typography
                                 component="div"
                                 sx={{
-                                  fontSize: "1.05rem",
+                                  fontSize: "1.1rem",
                                   flex: 1,
-                                  lineHeight: 1.4,
                                   wordBreak: "break-word",
                                   whiteSpace: "pre-wrap",
+                                  lineHeight: 1.5,
                                   "& p": { margin: 0 },
                                 }}
                                 dangerouslySetInnerHTML={{
@@ -466,7 +445,6 @@ export default function QuizQuestion({
                           </Paper>
                         )}
                       </Draggable>
-
                       {provided.placeholder}
                     </Stack>
                   )}
@@ -562,7 +540,7 @@ export default function QuizQuestion({
                     : "transparent"   // 👈 nền mặc định trong suốt
                   : "transparent",
               border: "1px solid #90caf9",
-              minHeight: 40,
+              minHeight: 50,
               py: 0.5,
               px: 1,
               boxShadow: "none",          // 👈 bỏ đổ bóng
@@ -586,7 +564,7 @@ export default function QuizQuestion({
                   maxHeight: 50,
                   maxWidth: "auto",
                   objectFit: "contain",
-                  borderRadius: 1,
+                  borderRadius: 2,
                   flexShrink: 0,
                 }}
               />
@@ -685,7 +663,7 @@ export default function QuizQuestion({
                     : "transparent"   // 👈 nền mặc định trong suốt
                   : "transparent",
               border: "1px solid #90caf9",
-              minHeight: 40,
+              minHeight: 50,
               py: 0.5,
               px: 1,
               gap: 1,
@@ -712,10 +690,9 @@ export default function QuizQuestion({
                 alt={`option-${optIdx}`}
                 sx={{
                   maxHeight: 50,
-                  //maxWidth: 40,
-                  width: "auto",
+                  maxWidth: "auto",
                   objectFit: "contain",
-                  borderRadius: 1,
+                  borderRadius: 2,
                   flexShrink: 0,
                 }}
               />
@@ -809,7 +786,7 @@ export default function QuizQuestion({
             alignItems: "center",
             gap: 1,
             borderRadius: 1,
-            minHeight: 40,
+            minHeight: 50,
             py: 0.5,
             px: 1,
             bgcolor: isCorrect
@@ -829,7 +806,7 @@ export default function QuizQuestion({
               sx={{
                 maxHeight: 50,
                 objectFit: "contain",
-                borderRadius: 1,
+                borderRadius: 2,
                 flexShrink: 0,
               }}
             />

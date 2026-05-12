@@ -82,7 +82,7 @@ export const nhanXetTinHocCuoiKy = {
       "vận dụng kiến thức thực hành tốt.",
       "thao tác tự tin, ít sai sót.",
       "thực hành sáng tạo, có cải tiến.",
-      "dùng máy tính an toàn, đúng quy."
+      "dùng máy tính an toàn, đúng quy định."
     ]
   },
 

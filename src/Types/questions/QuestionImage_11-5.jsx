@@ -2,21 +2,44 @@ import React from "react";
 import { Box, IconButton, Button } from "@mui/material";
 
 const QuestionImage = ({ q, qi, update }) => {
-  // Lấy src: nếu là string thì dùng trực tiếp, nếu là object thì lấy preview/url
-  const getImageSrc = () => {
-    if (!q.questionImage) return "";
-    if (typeof q.questionImage === "string") return q.questionImage;
-    return q.questionImage.preview || q.questionImage.url || "";
+  // ---- Upload Cloudinary ----
+  const uploadToCloudinary = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "tracnghiem_upload");
+    formData.append("folder", "questions");
+
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dxzpfljv4/image/upload",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!res.ok) throw new Error("Upload hình thất bại");
+
+    const data = await res.json();
+    return data.secure_url;
   };
 
-  const src = getImageSrc();
+  // ---- Khi chọn hình ----
+  const handleImageChange = async (file) => {
+    try {
+      const url = await uploadToCloudinary(file);
+      update(qi, { questionImage: url });
+    } catch (err) {
+      console.error(err);
+      alert("Upload hình thất bại!");
+    }
+  };
 
   return (
     <Box sx={{ mt: -1, mb: 2 }}>
-      {src ? (
+      {q.questionImage ? (
         <Box sx={{ position: "relative", display: "inline-block" }}>
           <img
-            src={src}
+            src={q.questionImage}
             alt="question"
             style={{
               maxWidth: "100%",
@@ -36,7 +59,7 @@ const QuestionImage = ({ q, qi, update }) => {
               right: 4,
               backgroundColor: "#fff",
             }}
-            onClick={() => update(qi, { questionImage: null })}
+            onClick={() => update(qi, { questionImage: "" })}
           >
             ✕
           </IconButton>
@@ -48,22 +71,9 @@ const QuestionImage = ({ q, qi, update }) => {
             type="file"
             accept="image/*"
             hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const previewUrl = URL.createObjectURL(file);
-
-              update(qi, {
-                questionImage: {
-                  preview: previewUrl,
-                  file,
-                  name: file.name,
-                  url: "", // sẽ upload khi lưu
-                },
-              });
-
-              e.target.value = "";
-            }}
+            onChange={(e) =>
+              e.target.files?.[0] && handleImageChange(e.target.files[0])
+            }
           />
         </Button>
       )}

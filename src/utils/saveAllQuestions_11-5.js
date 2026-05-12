@@ -84,21 +84,39 @@ export const saveAllQuestions = async ({
           }
 
           if (opt && typeof opt === "object") {
-            let imageUrl = "";
+            let imageUrl = opt.image;
 
-            // Ưu tiên upload từ imageFile
-            if (opt.imageFile) {
-              imageUrl = await uploadImage(opt.imageFile);
+            // =========================
+            // 1. ĐÃ LÀ CLOUDINARY → GIỮ NGUYÊN
+            // =========================
+            if (isCloudinaryUrl(imageUrl)) {
+              return {
+                text: opt.text || "",
+                formats: opt.formats || {},
+                image: imageUrl,
+              };
             }
-            // Nếu đã là Cloudinary URL thì giữ nguyên
-            else if (isCloudinaryUrl(opt.image)) {
-              imageUrl = opt.image;
+
+            // =========================
+            // 2. FILE → UPLOAD CLOUDINARY
+            // =========================
+            if (imageUrl instanceof File) {
+              imageUrl = await uploadImage(imageUrl);
             }
-            // Nếu có preview base64 thì upload
-            else if (typeof opt.imagePreview === "string" && opt.imagePreview.startsWith("data:")) {
-              const res = await fetch(opt.imagePreview);
+
+            // =========================
+            // 3. BASE64 (data:) → UPLOAD CLOUDINARY
+            // =========================
+            if (
+              typeof imageUrl === "string" &&
+              imageUrl.startsWith("data:")
+            ) {
+              const res = await fetch(imageUrl);
               const blob = await res.blob();
-              const file = new File([blob], "option.png", { type: blob.type });
+              const file = new File([blob], "image.png", {
+                type: blob.type,
+              });
+
               imageUrl = await uploadImage(file);
             }
 
@@ -113,7 +131,6 @@ export const saveAllQuestions = async ({
         })
       );
     };
-
 
     const normalizeMatchingPairs = async (pairs) => {
       if (!pairs) return [];
@@ -161,202 +178,153 @@ export const saveAllQuestions = async ({
     const questionsToSave = [];
 
     for (let q of questions) {
-
-  // =========================
-  // QUESTION IMAGE
-  // =========================
-  const normalizedQuestionImage = await normalizeImage(
-    typeof q.questionImage === "string"
-      ? q.questionImage
-      : q.questionImage?.file || q.questionImage?.url || ""
-  );
-
       let updatedQ = {
         ...q,
-
-        // lưu field gốc
-        questionImage: normalizedQuestionImage,
-
-        // CHỈ thêm image cho type=image
-        ...(q.type === "image"
-          ? { image: normalizedQuestionImage }
-          : {}),
-
+        questionImage: await normalizeImage(q.questionImage), // 🔥 THÊM DÒNG NÀY
         ...(q.type === "matching" && !("columnRatio" in q)
           ? { columnRatio: { left: 1, right: 1 } }
           : {}),
       };
 
-      // =========================
-      // IMAGE QUESTION
-      // =========================
+  // =========================
+  // IMAGE QUESTION
+  // =========================
+  if (q.type === "image") {
+    const uploadedOptions = await Promise.all(
+      (q.options || []).map(async (opt) => {
+        let img = opt.image;
 
-      updatedQ.options = await Promise.all(
-        (q.options || []).map(async (opt) => {
+        if (isCloudinaryUrl(img)) return img;
 
-          // =========================
-          // STRING
-          // =========================
-          if (typeof opt === "string") {
+        if (img instanceof File) {
+          img = await uploadImage(img);
+        }
 
-            // URL cũ
-            if (opt.startsWith("http")) {
-              return opt;
-            }
+        if (typeof img === "string" && img.startsWith("data:")) {
+          const res = await fetch(img);
+          const blob = await res.blob();
+          const file = new File([blob], "image.png", {
+            type: blob.type,
+          });
+          img = await uploadImage(file);
+        }
 
-            // base64
-            if (opt.startsWith("data:")) {
-              const res = await fetch(opt);
-              const blob = await res.blob();
+        return img; // ✅ CHỈ RETURN URL
+      })
+    );
 
-              return await uploadImage(
-                new File([blob], "option.png", {
-                  type: blob.type,
-                })
-              );
-            }
+    updatedQ.options = uploadedOptions; // ✅ ARRAY STRING
+    updatedQ.correct = updatedQ.correct || [];
+  }
 
-            return opt || "";
-          }
+  // =========================
+  // MATCHING
+  // =========================
+  // =========================
+// MATCHING
+// =========================
+if (q.type === "matching") {
+  updatedQ.pairs = await Promise.all(
+    (q.pairs || []).map(async (p) => {
+      // ================= LEFT IMAGE =================
+      let leftImg = p?.leftImage?.url || "";
 
-          // =========================
-          // OBJECT
-          // =========================
-          if (opt && typeof opt === "object") {
+      if (leftImg instanceof File) {
+        leftImg = await uploadImage(leftImg);
+      }
 
-            // 1. file mới
-            if (opt.file instanceof File) {
-              return await uploadImage(opt.file);
-            }
+      if (
+        typeof leftImg === "string" &&
+        leftImg.startsWith("data:")
+      ) {
+        const res = await fetch(leftImg);
+        const blob = await res.blob();
 
-            // 2. image đã có URL
-            if (
-              typeof opt.image === "string" &&
-              opt.image.startsWith("http")
-            ) {
-              return opt.image;
-            }
-
-            // 3. preview URL
-            if (
-              typeof opt.preview === "string" &&
-              opt.preview.startsWith("http")
-            ) {
-              return opt.preview;
-            }
-
-            // 4. text chứa URL
-            if (
-              typeof opt.text === "string" &&
-              opt.text.startsWith("http")
-            ) {
-              return opt.text;
-            }
-
-            // 5. base64 preview
-            if (
-              typeof opt.preview === "string" &&
-              opt.preview.startsWith("data:")
-            ) {
-              const res = await fetch(opt.preview);
-              const blob = await res.blob();
-
-              return await uploadImage(
-                new File([blob], "option.png", {
-                  type: blob.type,
-                })
-              );
-            }
-
-            // 6. blob url => giữ nguyên image cũ nếu có
-            if (
-              typeof opt.preview === "string" &&
-              opt.preview.startsWith("blob:")
-            ) {
-              return opt.image || "";
-            }
-
-            // 7. fallback giữ image cũ
-            return opt.image || opt.text || "";
-          }
-
-          return "";
-        })
-      );
-
-      // =========================
-      // MATCHING (chỉ xử lý hình cột trái)
-      // =========================
-      if (q.type === "matching") {
-        updatedQ.pairs = await Promise.all(
-          (q.pairs || []).map(async (p) => {
-            let leftImg = p?.leftImage?.file || p?.leftImage?.url || "";
-
-            if (leftImg instanceof File) {
-              leftImg = await uploadImage(leftImg);
-            }
-
-            if (typeof leftImg === "string" && leftImg.startsWith("data:")) {
-              const res = await fetch(leftImg);
-              const blob = await res.blob();
-              leftImg = await uploadImage(
-                new File([blob], "left.png", {
-                  type: blob.type,
-                })
-              );
-            }
-
-            return {
-              left: p.left || "",
-              right: p.right || "",
-              leftImage: {
-                url: leftImg || "",
-                name: p.leftImage?.name || "",
-              },
-            };
+        leftImg = await uploadImage(
+          new File([blob], "left.png", {
+            type: blob.type,
           })
         );
-
-        updatedQ.correct = updatedQ.pairs.map((_, i) => i);
       }
 
-      // =========================
-      // SORT
-      // =========================
-      if (q.type === "sort") {
-        updatedQ.correct = q.options.map((_, i) => i);
-        updatedQ.options = await normalizeOptions(q.options);
+      // ================= RIGHT IMAGE =================
+      let rightImg = p?.rightImage?.url || "";
+
+      if (rightImg instanceof File) {
+        rightImg = await uploadImage(rightImg);
       }
 
-      // =========================
-      // SINGLE
-      // =========================
-      if (q.type === "single") {
-        updatedQ.options = await normalizeOptions(q.options);
-        updatedQ.correct = q.correct?.length ? q.correct : [0];
+      if (
+        typeof rightImg === "string" &&
+        rightImg.startsWith("data:")
+      ) {
+        const res = await fetch(rightImg);
+        const blob = await res.blob();
+
+        rightImg = await uploadImage(
+          new File([blob], "right.png", {
+            type: blob.type,
+          })
+        );
       }
 
-      // =========================
-      // MULTIPLE
-      // =========================
-      if (q.type === "multiple") {
-        updatedQ.options = await normalizeOptions(q.options);
-        updatedQ.correct = q.correct || [];
-      }
+      return {
+        ...p,
 
-      // =========================
-      // TRUEFALSE
-      // =========================
-      if (q.type === "truefalse") {
-        updatedQ.options = await normalizeOptions(q.options);
-        updatedQ.correct =
-          q.correct?.length === q.options?.length
-            ? q.correct
-            : q.options.map(() => "");
-      }
+        // ===== LEFT =====
+        left: p.left || "",
+        leftImage: {
+          ...(p.leftImage || {}),
+          url: leftImg || "",
+        },
 
-      questionsToSave.push(updatedQ);
-    }
+        // ===== RIGHT =====
+        right: p.right || "",
+        rightImage: {
+          ...(p.rightImage || {}),
+          url: rightImg || "",
+        },
+      };
+    })
+  );
+
+  updatedQ.correct = updatedQ.pairs.map((_, i) => i);
+}
+
+  // =========================
+  // SORT
+  // =========================
+  if (q.type === "sort") {
+    updatedQ.correct = q.options.map((_, i) => i);
+    updatedQ.options = q.options;
+  }
+
+  // =========================
+  // SINGLE
+  // =========================
+  if (q.type === "single") {
+    updatedQ.correct = q.correct?.length ? q.correct : [0];
+  }
+
+  // =========================
+  // MULTIPLE
+  // =========================
+  if (q.type === "multiple") {
+    updatedQ.correct = q.correct || [];
+  }
+
+  // =========================
+  // TRUEFALSE
+  // =========================
+  if (q.type === "truefalse") {
+    updatedQ.correct =
+      q.correct?.length === q.options?.length
+        ? q.correct
+        : q.options.map(() => "");
+  }
+
+  questionsToSave.push(updatedQ);
+}
 
     localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
     localStorage.setItem(

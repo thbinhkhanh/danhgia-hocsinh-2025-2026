@@ -56,9 +56,6 @@ import ImportFromFirestoreDialog from "../dialog/ImportFromFirestoreDialog";
 import ImportModeDialog from "../dialog/ImportModeDialog";
 import { normalizeFirestoreQuiz } from "../utils/normalizeFirestoreQuiz";
 
-import ExportSourceDialog from "../dialog/ExportSourceDialog";
-import { exportQuestionsToWord } from "../utils/exportQuizWORD";
-
 //import mammoth from "mammoth";
 import * as mammoth from "mammoth/mammoth.browser";
 
@@ -103,8 +100,6 @@ const [openImportModeDialog, setOpenImportModeDialog] = useState(false);
 const [importData, setImportData] = useState([]);
 const [lessonInput, setLessonInput] = useState("");
 const [lessonName, setLessonName] = useState("");
-
-const [openExport, setOpenExport] = useState(false);
 
 useEffect(() => {
   if (openDialog) {
@@ -550,19 +545,7 @@ useEffect(() => {
         return q;
       });*/
 
-      let rawQuestions = data.questions || [];
-
-      // CHỈ normalize khi mở từ dialog OpenExamDialog
-      // (đây là luồng Firestore mở đề)
-      if (
-        dialogExamType === "bt" ||
-        dialogExamType === "ktdk" ||
-        dialogExamType === "luyentap"
-      ) {
-        rawQuestions = normalizeFirestoreQuiz(rawQuestions);
-      }
-
-      const fixedQuestions = rawQuestions;
+      const fixedQuestions = normalizeFirestoreQuiz(data.questions || []);
 
       /* ================== SET STATE ================== */
       setQuestions(fixedQuestions);
@@ -953,10 +936,12 @@ useEffect(() => {
         const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
         if (!lines.length) return null;
 
-        let rawText = lines.join("\n");
+        let rawText = lines.join(" ");
 
+        // ===== 1. REMOVE "Từ cần điền" =====
         rawText = rawText.split(/Từ cần điền/i)[0].trim();
 
+        // ===== 2. TÁCH ":" =====
         const colonIndex = rawText.indexOf(":");
 
         let questionText = "";
@@ -970,26 +955,10 @@ useEffect(() => {
           optionText = "";
         }
 
-        // ===== FIX GỐC LỖI DÍNH DÒNG + TÁCH CHỮ =====
-        optionText = optionText
-          .replace(/\[\s*(?:\.{3,}|…)\s*\]/g, "[...]")
+        // ===== 3. FIX TRIỆT ĐỂ BLANK (QUAN TRỌNG NHẤT) =====
+        optionText = optionText.replace(/\[\s*(?:\.{3,}|…)\s*\]/g, "[...]");
 
-          // 🔥 FIX quan trọng: gộp chữ bị Word cắt dòng (hơ\nn → hơn)
-          .replace(/([a-zà-ỹ])\s*\n\s*([a-zà-ỹ])/gi, "$1$2")
-
-          // tách theo #
-          .replace(/\s*#\s*/g, "\n")
-
-          .replace(/\n{2,}/g, "\n")
-          .trim();
-
-        const optionLines = optionText
-          .split("\n")
-          .map(l => l.trim())
-          .filter(Boolean);
-
-        optionText = optionLines.join("\n");
-
+        // ===== 4. LẤY ĐÁP ÁN =====
         const answerLine = lines.find(l => /^Từ cần điền/i.test(l)) || "";
 
         const answers = answerLine
@@ -1000,14 +969,19 @@ useEffect(() => {
 
         return {
           id: `q_${Date.now()}_${index}`,
+
           question: `<p>${escapeHTML(questionText)}</p>`,
+
           type: "fillblank",
-          option: `<p>${escapeHTML(optionText).replace(/\n/g, "<br>")}</p>`,
+
+          option: `<p>${escapeHTML(optionText)}</p>`,
+
           options: answers.map(a => ({
             text: a,
             image: "",
             formats: {}
           })),
+
           correct: answers,
           score: 0.5,
           sortType: "shuffle",
@@ -1050,28 +1024,10 @@ useEffect(() => {
         const cells = row.querySelectorAll("td, th");
         if (cells.length < 2) return;
 
-        const getCellContent = (cell) => {
-          // lấy text
-          let text = cell.innerText.trim();
+        const l = cells[0].innerText.trim();
+        const r = cells[1].innerText.trim();
 
-          // nếu có img thì lấy alt hoặc đánh dấu
-          const img = cell.querySelector("img");
-
-          if (img) {
-            const alt = img.getAttribute("alt")?.trim();
-
-            // nếu có alt thì dùng alt, không thì đánh dấu [Hình]
-            text = alt ? `[Hình: ${alt}]` : "[Hình]";
-          }
-
-          return text;
-        };
-
-        const l = getCellContent(cells[0]);
-        const r = getCellContent(cells[1]);
-
-        // ❌ chỉ bỏ nếu cả 2 đều rỗng
-        if (!l && !r) return;
+        if (!l || !r) return;
 
         pairs.push({
           left: `<p>${escapeHTML(l)}</p>`,
@@ -1154,51 +1110,6 @@ const getSx = (ltWidth) => {
   return { flex: 1, minWidth: 160 };                 // BT
 };
 
-const handleExportWord = (fileName) => {
-  if (!fileName || !fileName.trim()) {
-    fileName = "questions";
-  }
-
-  exportQuestionsToWord(questions, fileName.trim());
-  setOpenExport(false);
-};
-
-const getDefaultName = () => {
-  const cls = selectedClass || "";
-  const les = (lesson || lessonInput || "").trim();
-
-  return `${cls} - ${les}`;
-};
-
-const buildExportFileName = () => {
-  const lop = selectedClass?.replace("Lớp ", "") || "";
-  const mon = selectedSubject || "";
-  const nam = schoolYear || "";
-  const ky = semester || "";
-  const de = examLetter || "";
-
-  if (examType === "ktdk") {
-    const kyShort =
-      ky === "Cả năm" ? "CN"
-      : ky === "Giữa kỳ I" ? "GK1"
-      : ky === "Cuối kỳ I" ? "CK1"
-      : ky === "Giữa kỳ II" ? "GK2"
-      : ky;
-
-    return `KTĐK_${mon} ${lop}_${kyShort}_${nam} (${de})`;
-  }
-
-  if (examType === "bt") {
-    return `BaiTap_${mon} ${lop}_Tuan ${deTuan || ""}`;
-  }
-
-  if (examType === "luyentap") {
-    return `LTTH_${mon} ${lop}_${lessonInput || lessonName || "Bai"}`;
-  }
-
-  return `DE_${mon}_${lop}`;
-};
-
   return (
     <Box sx={{ minHeight: "100vh", p: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
       <Card elevation={4} sx={{ width: "100%", maxWidth: 970, p: 3, borderRadius: 3, position: "relative" }}>
@@ -1226,11 +1137,8 @@ const buildExportFileName = () => {
           </Tooltip>
 
           {/* Export */}
-          <Tooltip title="Xuất đề kiểm tra">
-            <IconButton
-              onClick={() => setOpenExport(true)}
-              sx={{ color: "#2e7d32" }}
-            >
+          <Tooltip title="Xuất đề kiểm tra (JSON)">
+            <IconButton onClick={handleExportJSON} sx={{ color: "#2e7d32" }}>
               <DownloadIcon />
             </IconButton>
           </Tooltip>
@@ -1546,42 +1454,7 @@ const buildExportFileName = () => {
               }
             }}
           />
-
-          <ExportSourceDialog
-            open={openExport}
-            onClose={() => setOpenExport(false)}
-
-            onSelectJSON={() => {
-              setOpenExport(false);
-
-              handleConfirmExportQuiz({
-                fileName: buildExportFileName() || "de_trac_nghiem",
-                questions,
-                setSnackbar,
-              });
-
-              setSnackbar({
-                open: true,
-                message: "✅ Xuất JSON thành công",
-                severity: "success",
-              });
-            }}
-
-            onSelectWord={() => {
-              const fileName = buildExportFileName();
-
-              setOpenExport(false);
-
-              handleExportWord(fileName);
-
-              setSnackbar({
-                open: true,
-                message: "📄 Xuất Word thành công",
-                severity: "success",
-              });
-            }}
-          />
-                </Card>
-              </Box>
-            );
-          }
+      </Card>
+    </Box>
+  );
+}
