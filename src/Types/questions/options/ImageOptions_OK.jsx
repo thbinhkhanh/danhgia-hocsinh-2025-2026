@@ -39,25 +39,25 @@ const ImageOptions = ({ q, qi, update }) => {
   /* =========================
      KHI CHỌN HÌNH
   ========================== */
-  const handleImageChange = async (index, file) => {
-    try {
-      const url = await uploadToCloudinary(file);
+  /* =========================
+   KHI CHỌN HÌNH (chỉ lưu preview + file, không upload ngay)
+========================== */
+  const handleImageChange = (index, file) => {
+    const previewUrl = URL.createObjectURL(file);
 
-      const newOptions = [...(q.options || [])];
+    const newOptions = [...(q.options || [])];
+    newOptions[index] = {
+      ...(newOptions[index] || {}),
+      preview: previewUrl,   // ✅ chỉ lưu preview
+      file,                  // ✅ giữ file để sau này upload
+      text: "",
+      image: "",
+      formats: newOptions[index]?.formats || {},
+    };
 
-      newOptions[index] = {
-        ...(newOptions[index] || {}),
-        text: url,          // ✅ URL nằm ở text
-        image: "",
-        formats: newOptions[index]?.formats || {},
-      };
-
-      update(qi, { options: newOptions });
-    } catch (err) {
-      console.error(err);
-      alert("Upload hình thất bại!");
-    }
+    update(qi, { options: newOptions });
   };
+
 
   /* =========================
      THÊM Ô HÌNH
@@ -108,14 +108,11 @@ const ImageOptions = ({ q, qi, update }) => {
         alignItems="center"
       >
         {(q.options || []).map((option, oi) => {
-          /*const imageUrl =
-            typeof option?.text === "string" &&
-            option.text.startsWith("http")
-              ? option.text
-              : "";*/
           const imageUrl =
-            option?.image ||
+            option?.preview || // preview khi vừa chọn file
+            option?.image ||   // nếu có trường image
             (typeof option?.text === "string" ? option.text : "");
+
 
           const isChecked = q.correct?.includes(oi) || false;
 

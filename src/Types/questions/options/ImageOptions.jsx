@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   Box,
   Paper,
@@ -34,6 +34,35 @@ const ImageOptions = ({ q, qi, update }) => {
 
     const data = await res.json();
     return data.secure_url;
+  };
+
+  const fileInputRef = useRef(null);
+
+  const handleAddImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAddImageFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+
+    const newOptions = [
+      ...(q.options || []),
+      {
+        preview: previewUrl,
+        file,
+        text: "",
+        image: "",
+        formats: {},
+      },
+    ];
+
+    update(qi, { options: newOptions });
+
+    // reset input để chọn lại được file giống nhau
+    e.target.value = "";
   };
 
   /* =========================
@@ -129,26 +158,35 @@ const ImageOptions = ({ q, qi, update }) => {
                   position: "relative",
                 }}
               >
-                {imageUrl ? (
-                  <>
-                    <img
-                      src={imageUrl}
-                      alt={`option-${oi}`}
-                      style={{
-                        maxWidth: "60%",
-                        maxHeight: "60%",
-                        objectFit: "contain",
-                      }}
-                    />
+                {/* ICON X LUÔN HIỆN */}
+                <IconButton
+                  size="small"
+                  sx={{
+                    position: "absolute",
+                    top: 2,
+                    right: 2,
+                    zIndex: 2,
+                    bgcolor: "white",
+                    color: "red", // 👈 màu đỏ
+                    "&:hover": {
+                      bgcolor: "#eee",
+                    },
+                  }}
+                  onClick={() => removeOption(oi)}
+                >
+                  ✕
+                </IconButton>
 
-                    <IconButton
-                      size="small"
-                      sx={{ position: "absolute", top: 2, right: 2 }}
-                      onClick={() => removeOption(oi)}
-                    >
-                      ✕
-                    </IconButton>
-                  </>
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={`option-${oi}`}
+                    style={{
+                      maxWidth: "60%",
+                      maxHeight: "60%",
+                      objectFit: "contain",
+                    }}
+                  />
                 ) : (
                   <label
                     style={{
@@ -203,17 +241,26 @@ const ImageOptions = ({ q, qi, update }) => {
 
         {/* Nút thêm hình */}
         <Button
-          variant="outlined"
-          onClick={addOption}
-          sx={{
-            height: 120,
-            width: 120,
-            borderRadius: 2,
-            borderStyle: "dashed",
-          }}
-        >
-          + Thêm hình
-        </Button>
+            variant="outlined"
+            onClick={handleAddImageClick}
+            sx={{
+              height: 120,
+              width: 120,
+              borderRadius: 2,
+              borderStyle: "dashed",
+            }}
+          >
+            + Thêm hình
+          </Button>
+
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            ref={fileInputRef}
+            onChange={handleAddImageFile}
+          />
+
       </Stack>
     </Stack>
   );

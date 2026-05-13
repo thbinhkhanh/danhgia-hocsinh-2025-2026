@@ -4,16 +4,67 @@ import { Stack, FormControl, TextField, InputLabel, Select, MenuItem } from "@mu
 
 
 const QuestionTypeSelector = ({ q, qi, update }) => {
-const handleChange = (type) => {
-let patch = { type };
-if (type === "sort") patch.correct = q.options.map((_, i) => i);
-if (type === "matching") patch.pairs = q.pairs?.length ? q.pairs : Array.from({ length: 4 }, () => ({ left: "", right: "" }));
-if (type === "single") patch.correct = [0];
-if (type === "multiple") patch.correct = [];
-if (type === "image") patch.options = ["", "", "", ""];
-if (type === "fillblank") { patch.options = []; patch.answers = []; }
-update(qi, patch);
-};
+  const handleChange = (type) => {
+    let patch = { type };
+
+    // ===== SORT =====
+    if (
+      type === "sort" &&
+      (!q.correct || q.correct.length === 0)
+    ) {
+      patch.correct = q.options?.map((_, i) => i) || [];
+    }
+
+    // ===== MATCHING =====
+    if (
+      type === "matching" &&
+      (!q.pairs || q.pairs.length === 0)
+    ) {
+      patch.pairs = Array.from({ length: 4 }, () => ({
+        left: "",
+        right: "",
+      }));
+    }
+
+    // ===== SINGLE =====
+    if (
+      type === "single" &&
+      (!q.correct || q.correct.length === 0)
+    ) {
+      patch.correct = [0];
+    }
+
+    // ===== MULTIPLE =====
+    if (type === "multiple" && !q.correct) {
+      patch.correct = [];
+    }
+
+    // ===== IMAGE =====
+    if (
+      type === "image" &&
+      (!q.options || q.options.length === 0)
+    ) {
+      patch.options = [
+        { text: "", image: "" },
+        { text: "", image: "" },
+        { text: "", image: "" },
+        { text: "", image: "" },
+      ];
+    }
+
+    // ===== FILLBLANK =====
+    if (type === "fillblank") {
+      if (!q.option) {
+        patch.option = "";
+      }
+
+      if (!q.answers) {
+        patch.answers = [];
+      }
+    }
+
+    update(qi, patch);
+  };
 
 
 return (

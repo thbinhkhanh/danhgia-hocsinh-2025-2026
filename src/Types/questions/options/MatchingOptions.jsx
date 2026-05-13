@@ -116,7 +116,7 @@ const MatchingOptions = ({ q, qi, update }) => {
                     src={pair.leftImage.preview || pair.leftImage.url}
                     alt={pair.leftImage.name || ""}
                     style={{
-                      maxHeight: 60,
+                      maxHeight: 50,
                       width: "auto",
                       objectFit: "contain",
                       display: "block",
