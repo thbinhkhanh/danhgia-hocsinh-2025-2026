@@ -111,24 +111,17 @@ const ChoiceOptions = ({ q, qi, update }) => {
               <ReactQuill
                 ref={(el) => (quillRefs.current[oi] = el)}
                 theme="snow"
-                value={opt?.text || ""}
+                value={opt.text || ""}
                 modules={quillModules}
                 formats={quillFormats}
                 className="choice-option-editor"
                 onFocus={() => setActiveIndex(oi)}
                 onChange={(value) => {
-                  const current = q.options?.[oi]?.text || "";
-
-                  // 🔥 CHẶN LOOP
-                  if (value === current) return;
-
-                  const newOptions = q.options.map((o) => ({ ...o }));
-
+                  const newOptions = [...q.options];
                   newOptions[oi] = {
                     ...newOptions[oi],
                     text: value,
                   };
-
                   update(qi, { options: newOptions });
                 }}
               />
@@ -138,31 +131,31 @@ const ChoiceOptions = ({ q, qi, update }) => {
           {/* ================= IMAGE ACTION ================= */}
           <Stack direction="row" spacing={0.5} alignItems="center">
             <Tooltip title={(opt.imagePreview || opt.image) ? "Xóa hình" : "Chèn hình"}>
-  <IconButton
-    size="small"
-    sx={{ color: (opt.imagePreview || opt.image) ? "#ff9800" : "#2196f3" }}
-    onClick={() => {
-      if (opt.imagePreview || opt.image) {
-        const newOptions = [...q.options];
-        newOptions[oi] = {
-          ...newOptions[oi],
-          imagePreview: "",
-          imageFile: null,
-          image: "", // xoá luôn URL Cloudinary nếu có
-        };
-        update(qi, { options: newOptions });
-      } else {
-        fileInputRefs.current[oi]?.click();
-      }
-    }}
-  >
-    {(opt.imagePreview || opt.image) ? (
-      <InsertPhotoIcon sx={{ color: "#ff9800" }} />
-    ) : (
-      <InsertPhotoOutlinedIcon sx={{ color: "#2196f3" }} />
-    )}
-  </IconButton>
-</Tooltip>
+              <IconButton
+                size="small"
+                sx={{ color: (opt.imagePreview || opt.image) ? "#ff9800" : "#2196f3" }}
+                onClick={() => {
+                  if (opt.imagePreview || opt.image) {
+                    const newOptions = [...q.options];
+                    newOptions[oi] = {
+                      ...newOptions[oi],
+                      imagePreview: "",
+                      imageFile: null,
+                      image: "", // xoá luôn URL Cloudinary nếu có
+                    };
+                    update(qi, { options: newOptions });
+                  } else {
+                    fileInputRefs.current[oi]?.click();
+                  }
+                }}
+              >
+                {(opt.imagePreview || opt.image) ? (
+                  <InsertPhotoIcon sx={{ color: "#ff9800" }} />
+                ) : (
+                  <InsertPhotoOutlinedIcon sx={{ color: "#2196f3" }} />
+                )}
+              </IconButton>
+            </Tooltip>
 
 
             {/* input file */}

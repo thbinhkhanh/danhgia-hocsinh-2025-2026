@@ -1,28 +1,24 @@
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 
 export const saveAllQuestions = async ({
   questions,
-  isQuestionValid,
   db,
   selectedClass,
-  selectedSubject,
   semester,
   schoolYear,
   examLetter,
-  examType,
-  week,
   quizConfig,
   updateQuizConfig,
-  setDeTuan,
+  setQuizCache,
   setSnackbar,
   setIsEditingNewDoc,
-  lessonName, // ✅ đã truyền từ ngoài
 }) => {
   try {
-    const weekValue =
-      typeof week !== "undefined" && week !== null
-        ? week
-        : quizConfig?.deTuan ?? localStorage.getItem("deTuan") ?? "1";
+    if (!selectedClass || !semester || !schoolYear) {
+      throw new Error("Vui lòng chọn đầy đủ lớp, học kỳ và năm học");
+    }
+
+    const SUBJECT = "Tin học";
 
     /* =========================
        UPLOAD IMAGE (THEO HÀM MẪU 1)
@@ -301,8 +297,6 @@ for (let q of questions) {
       correct: q.correct || [],
       score: q.score || 1,
     };
-    
-    delete updatedQ.image;    //khắc phục lỗi 2 hình trong Question Image
   }
 
   // =========================
@@ -311,143 +305,81 @@ for (let q of questions) {
   questionsToSave.push(updatedQ);
 }
 
-    localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
-    localStorage.setItem(
-      "teacherConfig",
-      JSON.stringify({ selectedClass, selectedSubject, semester })
-    );
+    /* =========================
+       ID ĐỀ
+    ========================== */
+    const semesterMap = {
+      "Giữa kỳ I": "GKI",
+      "Cuối kỳ I": "CKI",
+      "Giữa kỳ II": "GKII",
+      "Cả năm": "CN",
+    };
 
-    if (examType === "luyentap") {
-      if (!selectedClass) {
-        throw new Error("Vui lòng chọn lớp trước khi lưu");
-      }
-    } else {
-      if (!selectedClass || !selectedSubject) {
-        throw new Error("Vui lòng chọn lớp và môn trước khi lưu");
-      }
-    }
+    const shortSchoolYear = (year) => {
+      const [y1, y2] = year.split("-");
+      return `${y1.slice(2)}-${y2.slice(2)}`;
+    };
 
-    let collectionName, docId;
+    const docId = `quiz_${selectedClass}_${SUBJECT}_${
+      semesterMap[semester]
+    }_${shortSchoolYear(schoolYear)}${
+      examLetter ? ` (${examLetter})` : ""
+    }`;
 
-    // ===== LUYỆN TẬP =====
-    if (examType === "luyentap") {
-      const classNumber = selectedClass.match(/\d+/)?.[0];
+    /* =========================
+       FIRESTORE
+    ========================== */
+    const quizRef = doc(db, "NGANHANG_DE", docId);
 
-      if (!classNumber) {
-        throw new Error("Không xác định được lớp cho luyện tập");
-      }
-
-      // ✅ Ưu tiên theo thứ tự
-      let docName =
-        lessonName || // 🥇 tên bài đang mở
-        quizConfig?.deTracNghiem || // 🥈 context
-        localStorage.getItem("deTracNghiemId"); // 🥉 local
-
-      // 🔥 fallback nếu tạo mới chưa có tên
-      if (!docName) {
-        docName = `Bài_${Date.now()}`;
-      }
-
-      // 🔥 LẤY NĂM HỌC TỪ CONFIG
-      let configYear = "";
-
-      try {
-        const configRef = doc(db, "CONFIG", "config");
-        const snap = await getDoc(configRef);
-
-        if (snap.exists()) {
-          configYear = snap.data()?.namHoc || "";
-        }
-      } catch (err) {
-        console.error("❌ Lỗi đọc CONFIG (namHoc):", err);
-      }
-
-      // 🔥 normalize để tránh lỗi dấu cách / dấu –
-      const normalizeYear = (y = "") =>
-        y.replace(/–/g, "-").replace(/\s/g, "").trim();
-
-      const isOldYear = normalizeYear(configYear) === "2025-2026";
-
-      collectionName = isOldYear
-        ? `TRACNGHIEM${classNumber}`
-        : `TRACNGHIEM${classNumber}_New`;
-
-      docId = docName; // ✅ FIX CHUẨN
-    }
-
-    // ===== KTĐK =====
-    else if (examType === "ktdk") {
-      collectionName = "NGANHANG_DE";
-
-      const semesterMap = {
-        "Giữa kỳ I": "GKI",
-        "Cuối kỳ I": "CKI",
-        "Giữa kỳ II": "GKII",
-        "Cả năm": "CN",
-      };
-
-      const shortSchoolYear = (year) => {
-        const parts = year.split("-");
-        return parts.length === 2
-          ? parts[0].slice(2) + "-" + parts[1].slice(2)
-          : year;
-      };
-
-      docId = `quiz_${selectedClass}_${selectedSubject}_${semesterMap[semester]}_${shortSchoolYear(
-        schoolYear
-      )} (${examLetter})`;
-    }
-
-    // ===== BÀI TẬP TUẦN =====
-    else {
-      collectionName = "BAITAP_TUAN";
-      docId = `quiz_${selectedClass}_${selectedSubject}_${weekValue}`;
-    }
-
-    const quizRef = doc(db, collectionName, docId);
     await setDoc(quizRef, {
       class: selectedClass,
-      subject: selectedSubject,
+      subject: SUBJECT,
       semester,
       schoolYear,
       examLetter,
-      week: weekValue,
-      examType,
       questions: questionsToSave,
+      updatedAt: Date.now(),
     });
 
-    try {
-      const configRef = doc(db, "CONFIG", "config");
-      await setDoc(
-        configRef,
-        { deTracNghiem: docId, tenDe: docId, deTuan: weekValue },
-        { merge: true }
-      );
-    } catch (err) {
-      console.error("❌ Lỗi khi ghi CONFIG:", err);
-    }
+    /* =========================
+       CONFIG
+    ========================== */
+    await setDoc(
+      doc(db, "CONFIG", "config"),
+      { deTracNghiem: docId },
+      { merge: true }
+    );
 
+    /* =========================
+       CONTEXT
+    ========================== */
     const newDoc = {
       id: docId,
       class: selectedClass,
-      subject: selectedSubject,
+      subject: SUBJECT,
       semester,
-      week: weekValue,
-      examType,
-      questions: questionsToSave,
+      schoolYear,
+      examLetter,
     };
 
-    setDeTuan(weekValue);
-    localStorage.setItem("deTuan", weekValue);
-
     const existed = quizConfig.quizList?.some((d) => d.id === docId);
-    if (!existed)
-      updateQuizConfig({ quizList: [...(quizConfig.quizList || []), newDoc] });
+    if (!existed) {
+      updateQuizConfig({
+        quizList: [...(quizConfig.quizList || []), newDoc],
+      });
+    }
 
-    setSnackbar({ open: true, message: "✅ Đã lưu thành công!", severity: "success" });
+    localStorage.setItem("teacherQuiz", JSON.stringify(questionsToSave));
+
+    setSnackbar({
+      open: true,
+      message: "✅ Đã lưu đề thành công!",
+      severity: "success",
+    });
+
     setIsEditingNewDoc(false);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Lỗi khi lưu đề:", err);
     setSnackbar({
       open: true,
       message: `❌ Lỗi khi lưu đề: ${err.message}`,

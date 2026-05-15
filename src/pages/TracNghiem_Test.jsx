@@ -815,7 +815,7 @@ return (
         </Box>
 
         {/* Đồng hồ */}
-        <Box
+        {/*<Box
           sx={{
             display: "flex",
             flexDirection: "column",
@@ -856,7 +856,7 @@ return (
               mt: 0,
             }}
           />
-        </Box>
+        </Box>*/}
 
         {/* Loading */}
         <QuizLoading loading={loading} progress={progress} />

@@ -1048,14 +1048,9 @@ const buildExportFileName = () => {
             {/* KTĐK */}
             {examType === "ktdk" && (
               <>
-                {/* Học kỳ */}
                 <FormControl size="small" sx={getSx(120)}>
                   <InputLabel>Học kỳ</InputLabel>
-                  <Select
-                    value={semester}
-                    label="Học kỳ"
-                    onChange={(e) => setSemester(e.target.value)}
-                  >
+                  <Select value={semester} label="Học kỳ">
                     <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
                     <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
                     <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
@@ -1063,14 +1058,9 @@ const buildExportFileName = () => {
                   </Select>
                 </FormControl>
 
-                {/* Năm học */}
                 <FormControl size="small" sx={getSx(120)}>
                   <InputLabel>Năm học</InputLabel>
-                  <Select
-                    value={schoolYear || ""}
-                    label="Năm học"
-                    onChange={(e) => setSchoolYear(e.target.value)}
-                  >
+                  <Select value={schoolYear || ""} label="Năm học">
                     {years.map((y) => (
                       <MenuItem key={y} value={y}>
                         {y}
@@ -1079,14 +1069,9 @@ const buildExportFileName = () => {
                   </Select>
                 </FormControl>
 
-                {/* Đề */}
                 <FormControl size="small" sx={getSx(120)}>
                   <InputLabel>Đề</InputLabel>
-                  <Select
-                    value={examLetter || ""}
-                    label="Đề"
-                    onChange={(e) => setExamLetter(e.target.value)}
-                  >
+                  <Select value={examLetter || ""} label="Đề">
                     {["A", "B", "C", "D"].map((d) => (
                       <MenuItem key={d} value={d}>
                         {d}
