@@ -18,73 +18,6 @@ async function getBase64FromUrl(url) {
   });
 }
 
-const getImageType = (base64) => {
-  const match = base64.match(/^data:image\/(\w+);base64,/i);
-  if (!match) return "JPEG";
-
-  const type = match[1].toLowerCase();
-
-  switch (type) {
-    case "png":
-      return "PNG";
-    case "jpg":
-    case "jpeg":
-      return "JPEG";
-    case "webp":
-      return "WEBP";
-    default:
-      return "JPEG";
-  }
-};
-
-// convert webp -> png
-const convertToPng = (base64) => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.src = base64;
-  });
-};
-
-// add image an toàn (fix lỗi + webp + ảnh hỏng)
-const addImageAuto = async (pdf, base64, x, y, w, h) => {
-  try {
-    if (!base64 || !base64.startsWith("data:image/")) return;
-
-    let img = base64;
-    let type = getImageType(img);
-
-    // WEBP → PNG
-    if (type === "WEBP") {
-      img = await convertToPng(img);
-      type = "PNG";
-    }
-
-    // check ảnh lỗi
-    await new Promise((resolve, reject) => {
-      const test = new Image();
-      test.onload = resolve;
-      test.onerror = reject;
-      test.src = img;
-    });
-
-    // ✅ CHỖ ĐÚNG PHẢI LÀ addImage
-    pdf.addImage(img, type, x, y, w, h);
-
-  } catch {
-    return;
-  }
-};
-
 const getImageSize = (base64) => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -257,7 +190,7 @@ export const exportQuizPDF = async (
         const xCenter = (pageWidth - newWidth) / 2;
 
         // 📌 vẽ ảnh
-        await addImageAuto(pdf, img64, xCenter, y, newWidth, newHeight);
+        pdf.addImage(img64, "PNG", xCenter, y, newWidth, newHeight);
 
         // 📌 đẩy con trỏ xuống đúng chuẩn
         y += newHeight + 7;
@@ -358,7 +291,7 @@ export const exportQuizPDF = async (
             // 👇 canh cùng lề với text option (giống pdf.text margin + 5)
             const x = margin + 5;
 
-            await addImageAuto(pdf, img64, x, currentY - 5, w, h);
+            pdf.addImage(img64, "PNG", x, currentY - 5, w, h);
 
             currentY += h + 3;
           }
@@ -455,7 +388,7 @@ export const exportQuizPDF = async (
           if (img64) {
             const x = margin + 5; // canh cùng text
 
-            await addImageAuto(pdf, img64, x, currentY - 5, w, h);
+            pdf.addImage(img64, "PNG", x, currentY - 5, w, h);
 
             // 🔥 GIẢM khoảng cách giữa option và ảnh
             currentY += h + 1;   // (trước là +3 → giờ sát hơn)
@@ -543,7 +476,7 @@ export const exportQuizPDF = async (
           if (img64) {
             const x = margin + 5;
 
-            await addImageAuto(pdf, img64, x, currentY - 5, w, h);
+            pdf.addImage(img64, "PNG", x, currentY - 5, w, h);
 
             currentY += h + 1; // giảm khoảng cách
           }
@@ -624,7 +557,7 @@ export const exportQuizPDF = async (
             const isCorrect = correctIndexes.includes(index);
 
             if (img) {
-              await addImageAuto(pdf, img.img64, x, y + 5, img.newWidth, img.newHeight);
+              pdf.addImage(img.img64, "PNG", x, y + 5, img.newWidth, img.newHeight);
 
               // checkbox
               pdf.text(isChosen ? "[x]" : "[ ]", x, y);
@@ -745,7 +678,7 @@ export const exportQuizPDF = async (
           if (img64) {
             const x = margin + 5;
 
-            await addImageAuto(pdf, img64, x, currentY - 5, w, h);
+            pdf.addImage(img64, "PNG", x, currentY - 5, w, h);
 
             currentY += h + 1; // 🔥 giảm khoảng cách
           }
@@ -1005,7 +938,14 @@ export const exportQuizPDF = async (
             // 🟢 IMAGE: CENTER BOTH AXES
             const imgX = margin + (leftColWidth - imgW) / 2;
 
-            await addImageAuto(pdf, img64, imgX, leftBlockY, imgW, imgH);
+            pdf.addImage(
+              img64,
+              "PNG",
+              imgX,
+              leftBlockY,
+              imgW,
+              imgH
+            );
           } else {
             // 🟢 TEXT: LEFT ALIGN + VERTICAL CENTER
             pdf.text(

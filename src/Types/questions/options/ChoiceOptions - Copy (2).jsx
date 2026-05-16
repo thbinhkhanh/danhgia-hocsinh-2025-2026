@@ -17,8 +17,6 @@ import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 
-import UnsupportedImageDialog from "../../../dialog/UnsupportedImageDialog";
-
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
@@ -34,19 +32,6 @@ const ChoiceOptions = ({ q, qi, update }) => {
   const fileInputRefs = useRef([]);
   const quillRefs = useRef([]);
   const [activeIndex, setActiveIndex] = useState(null);
-
-  const [openDialog, setOpenDialog] = useState(false);
-
-  const ALLOWED_TYPES = [
-    "image/png",
-    "image/jpeg",
-    "image/jpg",
-    "image/webp",
-  ];
-
-  const showUnsupportedDialog = () => {
-    setOpenDialog(true);
-  };
 
   /* ---------- Format ---------- */
   const applyFormat = (format) => {
@@ -153,31 +138,31 @@ const ChoiceOptions = ({ q, qi, update }) => {
           {/* ================= IMAGE ACTION ================= */}
           <Stack direction="row" spacing={0.5} alignItems="center">
             <Tooltip title={(opt.imagePreview || opt.image) ? "Xóa hình" : "Chèn hình"}>
-              <IconButton
-                size="small"
-                sx={{ color: (opt.imagePreview || opt.image) ? "#ff9800" : "#2196f3" }}
-                onClick={() => {
-                  if (opt.imagePreview || opt.image) {
-                    const newOptions = [...q.options];
-                    newOptions[oi] = {
-                      ...newOptions[oi],
-                      imagePreview: "",
-                      imageFile: null,
-                      image: "", // xoá luôn URL Cloudinary nếu có
-                    };
-                    update(qi, { options: newOptions });
-                  } else {
-                    fileInputRefs.current[oi]?.click();
-                  }
-                }}
-              >
-                {(opt.imagePreview || opt.image) ? (
-                  <InsertPhotoIcon sx={{ color: "#ff9800" }} />
-                ) : (
-                  <InsertPhotoOutlinedIcon sx={{ color: "#2196f3" }} />
-                )}
-              </IconButton>
-            </Tooltip>
+  <IconButton
+    size="small"
+    sx={{ color: (opt.imagePreview || opt.image) ? "#ff9800" : "#2196f3" }}
+    onClick={() => {
+      if (opt.imagePreview || opt.image) {
+        const newOptions = [...q.options];
+        newOptions[oi] = {
+          ...newOptions[oi],
+          imagePreview: "",
+          imageFile: null,
+          image: "", // xoá luôn URL Cloudinary nếu có
+        };
+        update(qi, { options: newOptions });
+      } else {
+        fileInputRefs.current[oi]?.click();
+      }
+    }}
+  >
+    {(opt.imagePreview || opt.image) ? (
+      <InsertPhotoIcon sx={{ color: "#ff9800" }} />
+    ) : (
+      <InsertPhotoOutlinedIcon sx={{ color: "#2196f3" }} />
+    )}
+  </IconButton>
+</Tooltip>
 
 
             {/* input file */}
@@ -189,13 +174,6 @@ const ChoiceOptions = ({ q, qi, update }) => {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-
-                // ❌ check format
-                if (!ALLOWED_TYPES.includes(file.type)) {
-                  showUnsupportedDialog();
-                  e.target.value = "";
-                  return;
-                }
 
                 const previewUrl = URL.createObjectURL(file);
 
@@ -245,11 +223,6 @@ const ChoiceOptions = ({ q, qi, update }) => {
       >
         Thêm mục
       </Button>
-
-      <UnsupportedImageDialog
-        open={openDialog}
-        onClose={() => setOpenDialog(false)}
-      />
     </Stack>
   );
 };

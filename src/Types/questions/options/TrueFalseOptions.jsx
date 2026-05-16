@@ -18,6 +18,7 @@ import InsertPhotoOutlinedIcon from "@mui/icons-material/Image";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
+import UnsupportedImageDialog from "../../../dialog/UnsupportedImageDialog";
 
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -29,6 +30,20 @@ const TrueFalseOptions = ({ q, qi, update }) => {
   const quillRefs = useRef([]);
   const fileInputRefs = useRef([]);
   const [activeIndex, setActiveIndex] = useState(null);
+
+  const [openDialog, setOpenDialog] = useState(false);
+
+  const ALLOWED_TYPES = [
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+  ];
+
+  const showUnsupportedDialog = () => {
+    setOpenDialog(true);
+  };
+
 
   const applyFormat = (format) => {
     if (activeIndex === null) return;
@@ -146,13 +161,23 @@ const TrueFalseOptions = ({ q, qi, update }) => {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+
+                // ❌ validate ảnh
+                if (!ALLOWED_TYPES.includes(file.type)) {
+                  showUnsupportedDialog();
+                  e.target.value = "";
+                  return;
+                }
+
                 const previewUrl = URL.createObjectURL(file);
+
                 const newOptions = [...q.options];
                 newOptions[oi] = {
                   ...newOptions[oi],
                   imagePreview: previewUrl,
                   imageFile: file,
                 };
+
                 update(qi, { options: newOptions });
                 e.target.value = "";
               }}
@@ -189,6 +214,12 @@ const TrueFalseOptions = ({ q, qi, update }) => {
       >
         Thêm mục
       </Button>
+
+      <UnsupportedImageDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+      />
+
     </Stack>
   );
 };

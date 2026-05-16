@@ -17,7 +17,6 @@ import InsertPhotoOutlinedIcon from "@mui/icons-material/Image";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
-import UnsupportedImageDialog from "../../../dialog/UnsupportedImageDialog";
 
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -31,19 +30,6 @@ const MatchingOptions = ({ q, qi, update }) => {
   const quillRefs = useRef({});
   const [focused, setFocused] = useState({ pairIndex: null, side: null });
   const ratio = q.columnRatio || { left: 1, right: 1 };
-
-  const [openDialog, setOpenDialog] = useState(false);
-  
-  const ALLOWED_TYPES = [
-    "image/png",
-    "image/jpeg",
-    "image/jpg",
-    "image/webp",
-  ];
-
-  const showUnsupportedDialog = () => {
-    setOpenDialog(true);
-  };
 
   /* ================= Toolbar chung ================= */
   const applyFormat = (format) => {
@@ -60,7 +46,6 @@ const MatchingOptions = ({ q, qi, update }) => {
     quill.format(format, !current[format]);
   };
 
-  
   return (
     <Stack spacing={1} sx={{ mb: 2 }}>
       {/* ===== Toolbar chung ===== */}
@@ -212,14 +197,6 @@ const MatchingOptions = ({ q, qi, update }) => {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-
-                  // ❌ check format
-                  if (!ALLOWED_TYPES.includes(file.type)) {
-                    showUnsupportedDialog();
-                    e.target.value = "";
-                    return;
-                  }
-
                   const previewUrl = URL.createObjectURL(file);
 
                   const newPairs = [...q.pairs];
@@ -227,10 +204,9 @@ const MatchingOptions = ({ q, qi, update }) => {
                     preview: previewUrl,
                     file,
                     name: file.name,
-                    url: "",
+                    url: "", // sẽ upload khi lưu
                   };
                   newPairs[pi].left = "";
-
                   update(qi, { pairs: newPairs });
                   e.target.value = "";
                 }}
@@ -258,11 +234,6 @@ const MatchingOptions = ({ q, qi, update }) => {
       >
         Thêm cặp
       </Button>
-
-      <UnsupportedImageDialog
-        open={openDialog}
-        onClose={() => setOpenDialog(false)}
-      />
     </Stack>
   );
 };
