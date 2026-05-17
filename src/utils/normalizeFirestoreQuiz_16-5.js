@@ -39,23 +39,17 @@ export const normalizeFirestoreQuiz = (data = []) => {
     // TRUEFALSE
     // =========================
     if (q.type === "truefalse") {
-      const trueLabel = q.trueLabel || "Đúng";
-      const falseLabel = q.falseLabel || "Sai";
-
       return {
         ...base,
-        trueLabel,
-        falseLabel,
         options: base.options.length
           ? base.options
           : [
-              { text: trueLabel, image: "", formats: {} },
-              { text: falseLabel, image: "", formats: {} },
+              { text: "Đúng", image: "", formats: {} },
+              { text: "Sai", image: "", formats: {} },
             ],
-        correct: Array.isArray(q.correct) ? q.correct : [],
+        correct: q.correct?.length ? q.correct : ["Đúng"],
       };
     }
-
 
     // =========================
     // MATCHING (🔥 FIX QUAN TRỌNG NHẤT)

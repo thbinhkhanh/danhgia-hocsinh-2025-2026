@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 
-const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
+const DeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
   return (
     <Dialog
       open={open}
@@ -22,7 +22,7 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
         sx: {
           borderRadius: 3,
           p: 1,
-          // ❌ bỏ bgcolor để đúng style system dialog như mẫu
+          //bgcolor: "#e3f2fd", // giữ nền giống dialog hệ thống
         },
       }}
     >
@@ -44,7 +44,7 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
           </Box>
 
           <Typography fontWeight={600} color="#d32f2f">
-            Xác nhận xóa đề thi
+            Xác nhận xóa
           </Typography>
         </Stack>
       </DialogTitle>
@@ -105,4 +105,4 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
   );
 };
 
-export default ExamDeleteConfirmDialog;
+export default DeleteConfirmDialog;

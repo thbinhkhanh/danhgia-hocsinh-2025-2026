@@ -22,6 +22,7 @@ const UnsupportedImageDialog = ({ open, onClose }) => {
         sx: {
           borderRadius: 3,
           p: 1,
+          //bgcolor: "#e3f2fd", // giữ nền giống dialog hệ thống
         },
       }}
     >

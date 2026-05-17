@@ -1,4 +1,3 @@
-// src/dialog/ExitConfirmDialog.jsx
 import React from "react";
 import {
   Dialog,
@@ -8,7 +7,9 @@ import {
   Button,
   Typography,
   Box,
+  Stack,
 } from "@mui/material";
+import InfoRoundedIcon from "@mui/icons-material/InfoRounded";
 import { useNavigate } from "react-router-dom";
 
 const ExitConfirmDialog = ({ open, onClose }) => {
@@ -23,58 +24,84 @@ const ExitConfirmDialog = ({ open, onClose }) => {
       PaperProps={{
         sx: {
           borderRadius: 3,
-          p: 3,
-          bgcolor: "#e3f2fd",
-          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+          p: 1,
         },
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-        <Box
+      {/* HEADER */}
+      <DialogTitle>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "rgba(66, 165, 245, 0.12)",
+            }}
+          >
+            <InfoRoundedIcon sx={{ color: "#42a5f5" }} />
+          </Box>
+
+          <Typography fontWeight={600} color="#1565c0">
+            Thông báo
+          </Typography>
+        </Stack>
+      </DialogTitle>
+
+      {/* CONTENT */}
+      <DialogContent>
+        <Typography
+          variant="body2"
           sx={{
-            bgcolor: "#42a5f5",
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
+            color: "text.secondary",
+            lineHeight: 1.6,
+            mt: 1,
           }}
         >
-          ℹ️
-        </Box>
-        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
-          Thông báo
-        </DialogTitle>
-      </Box>
-
-      <DialogContent>
-        <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
-          Bạn có chắc chắn muốn thoát khỏi bài trắc nghiệm?<br />
-          Mọi tiến trình chưa nộp sẽ bị mất.
+          Bạn có chắc chắn muốn thoát khỏi bài trắc nghiệm?
+          <br />
+          Mọi tiến trình chưa nộp sẽ{" "}
+          <Box component="span" sx={{ fontWeight: 600 }}>
+            bị mất
+          </Box>
+          .
         </Typography>
       </DialogContent>
 
-      <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
-        <Button
-          variant="outlined"
-          onClick={onClose}
-          sx={{ borderRadius: 2, px: 3 }}
-        >
-          Hủy
-        </Button>
-        <Button
-          variant="contained"
-          color="error"
-          onClick={() => navigate(-1)}
-          sx={{ borderRadius: 2, px: 3 }}
-        >
-          Thoát
-        </Button>
+      {/* ACTIONS */}
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Stack direction="row" spacing={1} width="100%">
+          <Button
+            onClick={onClose}
+            variant="outlined"
+            fullWidth
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+            }}
+          >
+            Hủy
+          </Button>
+
+          <Button
+            onClick={() => navigate(-1)}
+            variant="contained"
+            color="error"
+            fullWidth
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              boxShadow: "none",
+            }}
+          >
+            Thoát
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );

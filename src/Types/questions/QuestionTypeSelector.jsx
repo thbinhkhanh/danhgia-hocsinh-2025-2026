@@ -5,7 +5,13 @@ import { Stack, FormControl, TextField, InputLabel, Select, MenuItem } from "@mu
 
 const QuestionTypeSelector = ({ q, qi, update }) => {
   const handleChange = (type) => {
-    let patch = { type };
+    let patch = {
+      type,
+
+      // giữ label đã lưu
+      trueLabel: q.trueLabel || "Đúng",
+      falseLabel: q.falseLabel || "Sai",
+    };
 
     // ===== SORT =====
     if (
@@ -63,39 +69,44 @@ const QuestionTypeSelector = ({ q, qi, update }) => {
       }
     }
 
+    // ===== TRUE/FALSE =====
+    if (type === "truefalse") {
+      patch.trueLabel = q.trueLabel ?? "Đúng";
+      patch.falseLabel = q.falseLabel ?? "Sai";
+    }
+
     update(qi, patch);
   };
 
-
 return (
-<Stack direction="row" spacing={2} sx={{ mb: -2 }}>
-<FormControl size="small" sx={{ width: 180 }}>
-<InputLabel>Loại câu hỏi</InputLabel>
-<Select value={q.type} label="Loại câu hỏi" onChange={(e) => handleChange(e.target.value)}>
-<MenuItem value="truefalse">Đúng – Sai</MenuItem>
-<MenuItem value="single">Một lựa chọn</MenuItem>
-<MenuItem value="multiple">Nhiều lựa chọn</MenuItem>
-<MenuItem value="matching">Ghép đôi</MenuItem>
-<MenuItem value="image">Hình ảnh</MenuItem>
-<MenuItem value="sort">Sắp xếp</MenuItem>
-<MenuItem value="fillblank">Điền khuyết</MenuItem>
-</Select>
-</FormControl>
+  <Stack direction="row" spacing={2} sx={{ mb: -2 }}>
+  <FormControl size="small" sx={{ width: 180 }}>
+  <InputLabel>Loại câu hỏi</InputLabel>
+  <Select value={q.type} label="Loại câu hỏi" onChange={(e) => handleChange(e.target.value)}>
+  <MenuItem value="truefalse">Đúng – Sai</MenuItem>
+  <MenuItem value="single">Một lựa chọn</MenuItem>
+  <MenuItem value="multiple">Nhiều lựa chọn</MenuItem>
+  <MenuItem value="matching">Ghép đôi</MenuItem>
+  <MenuItem value="image">Hình ảnh</MenuItem>
+  <MenuItem value="sort">Sắp xếp</MenuItem>
+  <MenuItem value="fillblank">Điền khuyết</MenuItem>
+  </Select>
+  </FormControl>
 
-<TextField
-  label="Điểm"
-  type="number"
-  size="small"
-  value={q.score}
-  inputProps={{ step: 0.5 }}     // ⭐ Bước tăng 0.5
-  onChange={(e) => {
-    const v = e.target.value;
-    update(qi, { score: v === "" ? "" : parseFloat(v) });
-  }}
-  sx={{ width: 80 }}
-/>
+  <TextField
+    label="Điểm"
+    type="number"
+    size="small"
+    value={q.score}
+    inputProps={{ step: 0.5 }}     // ⭐ Bước tăng 0.5
+    onChange={(e) => {
+      const v = e.target.value;
+      update(qi, { score: v === "" ? "" : parseFloat(v) });
+    }}
+    sx={{ width: 80 }}
+  />
 
-</Stack>
-);
+  </Stack>
+  );
 };
 export default QuestionTypeSelector;

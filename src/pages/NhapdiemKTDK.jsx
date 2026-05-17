@@ -33,7 +33,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import PrintIcon from "@mui/icons-material/Print";
-import CapNhatLyThuyetDialog from "../dialog/CapNhatLyThuyetDialog";
+//import CapNhatLyThuyetDialog from "../dialog/CapNhatLyThuyetDialog";
 import EditIcon from "@mui/icons-material/Edit";
 
 import { exportKTDK } from "../utils/exportKTDK";
@@ -1758,7 +1758,7 @@ const fetchStudentsAndStatus = async (cls) => {
         </Alert>
       </Snackbar>
 
-      <CapNhatLyThuyetDialog
+      {/*<CapNhatLyThuyetDialog
         open={openLTDialog}
         onClose={handleCloseLTDialog}
         student={editingStudent}
@@ -1767,7 +1767,7 @@ const fetchStudentsAndStatus = async (cls) => {
         setValue={setLtValue}
         handleCellChange={handleCellChange}
         onSaveOne={handleSaveOne} 
-      />
+      />*/}
     </Box>
   );
 

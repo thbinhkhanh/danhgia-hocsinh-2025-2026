@@ -55,6 +55,7 @@ import { handleImportWordQuiz } from "../utils/importWordQuiz";
 import ImportSourceDialog from "../dialog/ImportSourceDialog";
 import ImportFromFirestoreDialog from "../dialog/ImportFromFirestoreDialog";
 import ImportModeDialog from "../dialog/ImportModeDialog";
+import DeleteQuestionDialog from "../dialog/DeleteQuestionDialog";
 import { normalizeFirestoreQuiz } from "../utils/normalizeFirestoreQuiz";
 
 import ExportSourceDialog from "../dialog/ExportSourceDialog";
@@ -106,6 +107,8 @@ const [lessonInput, setLessonInput] = useState("");
 const [lessonName, setLessonName] = useState("");
 
 const [openExport, setOpenExport] = useState(false);
+const [openDelete, setOpenDelete] = useState(false);
+const [deleteIndex, setDeleteIndex] = useState(null);
 
 useEffect(() => {
   if (openDialog) {
@@ -291,9 +294,8 @@ useEffect(() => {
   const handleAddQuestion = () => setQuestions((prev) => [...prev, createEmptyQuestion()]);
 
   const handleDeleteQuestion = (index) => {
-    if (window.confirm(`Bạn có chắc muốn xóa câu hỏi ${index + 1}?`)) {
-      setQuestions((prev) => prev.filter((_, i) => i !== index));
-    }
+    setDeleteIndex(index);
+    setOpenDelete(true);
   };
 
   const updateQuestionAt = (index, patch) => {
@@ -869,6 +871,15 @@ const buildExportFileName = () => {
   return `DE_${mon}_${lop}`;
 };
 
+const confirmDelete = () => {
+  setQuestions((prev) =>
+    prev.filter((_, i) => i !== deleteIndex)
+  );
+
+  setOpenDelete(false);
+  setDeleteIndex(null);
+};
+
   return (
     <Box sx={{ minHeight: "100vh", p: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
       <Card elevation={4} sx={{ width: "100%", maxWidth: 970, p: 3, borderRadius: 3, position: "relative" }}>
@@ -1266,7 +1277,14 @@ const buildExportFileName = () => {
               });
             }}
           />
-                </Card>
-              </Box>
-            );
-          }
+
+          <DeleteQuestionDialog
+            open={openDelete}
+            onClose={() => setOpenDelete(false)}
+            onConfirm={confirmDelete}
+            index={deleteIndex}
+          />
+      </Card>
+    </Box>
+  );
+}

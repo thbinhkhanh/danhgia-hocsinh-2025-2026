@@ -19,7 +19,7 @@ import { collection, getDoc, getDocs, deleteDoc, setDoc, doc } from "firebase/fi
 import { db } from "../firebase";
 import { useContext } from "react";
 import { ConfigContext } from "../context/ConfigContext";
-import DeleteConfirmDialog from "../dialog/DeleteConfirmDialog";
+import DeleteExamDialog from "../dialog/DeleteExamDialog";
 
 export default function DeThi() {
   const account = localStorage.getItem("account") || "";
@@ -467,7 +467,7 @@ export default function DeThi() {
       </Alert>
     </Snackbar>
 
-    <DeleteConfirmDialog
+    <DeleteExamDialog
       open={openDeleteDialog}
       onClose={() => setOpenDeleteDialog(false)}
       onConfirm={confirmDeleteExam}

@@ -1,4 +1,3 @@
-// src/dialog/IncompleteAnswersDialog.jsx
 import React from "react";
 import {
   Dialog,
@@ -8,7 +7,9 @@ import {
   Button,
   Typography,
   Box,
+  Stack,
 } from "@mui/material";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 
 const IncompleteAnswersDialog = ({ open, onClose, unansweredQuestions }) => {
   return (
@@ -20,50 +21,72 @@ const IncompleteAnswersDialog = ({ open, onClose, unansweredQuestions }) => {
       PaperProps={{
         sx: {
           borderRadius: 3,
-          p: 3,
+          p: 1,
           bgcolor: "#e3f2fd",
         },
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-        <Box
+      {/* HEADER */}
+      <DialogTitle>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "rgba(255, 152, 0, 0.12)",
+            }}
+          >
+            <WarningAmberRoundedIcon sx={{ color: "#ff9800" }} />
+          </Box>
+
+          <Typography fontWeight={600} color="#e65100">
+            Chưa hoàn thành
+          </Typography>
+        </Stack>
+      </DialogTitle>
+
+      {/* CONTENT */}
+      <DialogContent>
+        <Typography
+          variant="body2"
           sx={{
-            bgcolor: "#ffc107",
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
+            color: "text.secondary",
+            lineHeight: 1.6,
+            mt: 1,
           }}
         >
-          ⚠️
-        </Box>
-        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#ff6f00" }}>
-          Chưa hoàn thành
-        </DialogTitle>
-      </Box>
-
-      <DialogContent>
-        <Typography sx={{ fontSize: 16, color: "#6b4c00" }}>
-          Bạn chưa chọn đáp án cho câu: {unansweredQuestions.join(", ")}.<br />
+          Bạn chưa chọn đáp án cho câu:{" "}
+          <Box component="span" sx={{ fontWeight: 600 }}>
+            {unansweredQuestions.join(", ")}
+          </Box>
+          .
+          <br />
           Vui lòng trả lời tất cả câu hỏi trước khi nộp.
         </Typography>
       </DialogContent>
 
-      <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
-        <Button
-          variant="contained"
-          color="warning"
-          onClick={onClose}
-          sx={{ borderRadius: 2, px: 4 }}
-        >
-          OK
-        </Button>
+      {/* ACTIONS */}
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Stack direction="row" spacing={1} width="100%">
+          <Button
+            onClick={onClose}
+            variant="contained"
+            color="warning"
+            fullWidth
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              boxShadow: "none",
+            }}
+          >
+            Tiếp tục làm
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );

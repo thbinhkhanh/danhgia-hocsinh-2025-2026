@@ -19,7 +19,6 @@ import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import UnsupportedImageDialog from "../../../dialog/UnsupportedImageDialog";
-import EditTrueFalseDialog from "../../../dialog/EditTrueFalseDialog";
 
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -37,10 +36,7 @@ const TrueFalseOptions = ({ q, qi, update }) => {
   const [tempLabel, setTempLabel] = useState("");
   const trueLabel = q.trueLabel ?? "Đúng";
   const falseLabel = q.falseLabel ?? "Sai";
-  const [openEdit, setOpenEdit] = useState(false);
-  const [editTrue, setEditTrue] = useState("");
-  const [editFalse, setEditFalse] = useState("");
- 
+  
 
   const ALLOWED_TYPES = [
     "image/png",
@@ -120,58 +116,160 @@ const TrueFalseOptions = ({ q, qi, update }) => {
           {/* True/False Select */}
         
           <FormControl size="small" sx={{ width: 140 }}>
-            <Select
-              value={q.correct?.[oi] || ""}
-              displayEmpty
-              onChange={(e) => {
-                const value = e.target.value;
+                <Select
+                  value={q.correct?.[oi] || ""}
+                  displayEmpty
+                  onChange={(e) => {
+                    const value = e.target.value;
 
-                // nếu chọn chỉnh sửa thì không update value
-                if (value === "__edit_labels__") {
-                  setEditTrue(trueLabel);
-                  setEditFalse(falseLabel);
-                  setOpenEdit(true);
-                  return;
-                }
+                    // bỏ qua edit option
+                    if (
+                      value === "__edit_true__" ||
+                      value === "__edit_false__"
+                    ) {
+                      return;
+                    }
 
-                const newCorrect = [...(q.correct || [])];
-                newCorrect[oi] = value;
+                    const newCorrect = [...(q.correct || [])];
 
-                update(qi, {
-                  ...q,
-                  correct: newCorrect,
-                });
-              }}
-              renderValue={(selected) => {
-                if (!selected) return "Chọn";
+                    // CHỈ update value, KHÔNG sort, KHÔNG transform
+                    newCorrect[oi] = value;
 
-                if (selected === "Đ") return trueLabel;
-                if (selected === "S") return falseLabel;
+                    update(qi, {
+                      ...q,
+                      correct: newCorrect,
+                    });
+                  }}
+                  renderValue={(selected) => {
+                    if (!selected) return "Chọn";
 
-                return selected;
-              }}
-            >
-              <MenuItem value="">Chọn</MenuItem>
+                    if (selected === "Đ") return trueLabel;
+                    if (selected === "S") return falseLabel;
 
-              <MenuItem value="Đ">{trueLabel}</MenuItem>
+                    return selected;
+                  }}
+                >
+                  <MenuItem value="">Chọn</MenuItem>
 
-              <MenuItem value="S">{falseLabel}</MenuItem>
+                  {/* TRUE */}
+                  <MenuItem
+                    value="Đ"
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    {editingLabel === "true" ? (
+                      <input
+                        autoFocus
+                        value={tempLabel}
+                        onChange={(e) => setTempLabel(e.target.value)}
+                        onBlur={() => {
+                          update(qi, {
+                            ...q,
+                            trueLabel: tempLabel || "Đúng",
+                          });
 
-              {/* 👇 MENU CHỈNH SỬA */}
-              <MenuItem
-                value="__edit_labels__"
-                sx={{
-                  borderTop: "1px solid #eee",
-                  mt: 1,
-                  pt: 1,
-                  color: "primary.main",
-                  fontWeight: 500,
-                }}
-              >
-                Chỉnh sửa nhãn…
-              </MenuItem>
-            </Select>
-          </FormControl>
+                          setEditingLabel(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            update(qi, {
+                              ...q,
+                              trueLabel: tempLabel || "Đúng",
+                            });
+
+                            setEditingLabel(null);
+                          }
+                        }}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          outline: "none",
+                          background: "transparent",
+                          fontSize: "14px",
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <span>{trueLabel}</span>
+
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            setEditingLabel("true");
+                            setTempLabel(trueLabel);
+                          }}
+                        >
+                          ✏️
+                        </IconButton>
+                      </>
+                    )}
+                  </MenuItem>
+
+                  {/* FALSE */}
+                  <MenuItem
+                    value="S"
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    {editingLabel === "false" ? (
+                      <input
+                        autoFocus
+                        value={tempLabel}
+                        onChange={(e) => setTempLabel(e.target.value)}
+                        onBlur={() => {
+                          update(qi, {
+                            ...q,
+                            falseLabel: tempLabel || "Sai",
+                          });
+
+                          setEditingLabel(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            update(qi, {
+                              ...q,
+                              falseLabel: tempLabel || "Sai",
+                            });
+
+                            setEditingLabel(null);
+                          }
+                        }}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          outline: "none",
+                          background: "transparent",
+                          fontSize: "14px",
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <span>{falseLabel}</span>
+
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            setEditingLabel("false");
+                            setTempLabel(falseLabel);
+                          }}
+                        >
+                          ✏️
+                        </IconButton>
+                      </>
+                    )}
+                  </MenuItem>
+                </Select>
+              </FormControl>
 
           {/* Image buttons */}
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -267,24 +365,6 @@ const TrueFalseOptions = ({ q, qi, update }) => {
       <UnsupportedImageDialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
-      />
-
-      <EditTrueFalseDialog
-        open={openEdit}
-        onClose={() => setOpenEdit(false)}
-        editTrue={editTrue}
-        setEditTrue={setEditTrue}
-        editFalse={editFalse}
-        setEditFalse={setEditFalse}
-        onSave={() => {
-          update(qi, {
-            ...q,
-            trueLabel: editTrue || "Đúng",
-            falseLabel: editFalse || "Sai",
-          });
-
-          setOpenEdit(false);
-        }}
       />
 
     </Stack>

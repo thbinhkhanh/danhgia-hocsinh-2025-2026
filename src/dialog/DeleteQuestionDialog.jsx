@@ -11,7 +11,12 @@ import {
 } from "@mui/material";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 
-const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
+const ConfirmDeleteDialog = ({
+  open,
+  onClose,
+  onConfirm,
+  index,
+}) => {
   return (
     <Dialog
       open={open}
@@ -22,7 +27,7 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
         sx: {
           borderRadius: 3,
           p: 1,
-          // ❌ bỏ bgcolor để đúng style system dialog như mẫu
+          //bgcolor: "#e3f2fd", // giữ nền giống dialog hệ thống
         },
       }}
     >
@@ -37,14 +42,14 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: "rgba(244, 67, 54, 0.12)",
+              bgcolor: "rgba(255, 152, 0, 0.12)",
             }}
           >
-            <WarningAmberRoundedIcon sx={{ color: "#f44336" }} />
+            <WarningAmberRoundedIcon sx={{ color: "#ff9800" }} />
           </Box>
 
-          <Typography fontWeight={600} color="#d32f2f">
-            Xác nhận xóa đề thi
+          <Typography fontWeight={600}>
+            Xác nhận xoá
           </Typography>
         </Stack>
       </DialogTitle>
@@ -59,13 +64,12 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
             mt: 1,
           }}
         >
-          Bạn có chắc chắn muốn xóa đề thi này?
-          <br />
-          Hành động này{" "}
+          Bạn có chắc chắn muốn xoá câu hỏi{" "}
           <Box component="span" sx={{ fontWeight: 600 }}>
-            không thể hoàn tác
+            #{index + 1}
           </Box>
-          .
+          ?<br />
+          Hành động này không thể hoàn tác.
         </Typography>
       </DialogContent>
 
@@ -82,7 +86,7 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
               fontWeight: 600,
             }}
           >
-            Hủy
+            Huỷ
           </Button>
 
           <Button
@@ -94,10 +98,9 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
               borderRadius: 2,
               textTransform: "none",
               fontWeight: 600,
-              boxShadow: "none",
             }}
           >
-            Xóa
+            Xoá
           </Button>
         </Stack>
       </DialogActions>
@@ -105,4 +108,4 @@ const ExamDeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
   );
 };
 
-export default ExamDeleteConfirmDialog;
+export default ConfirmDeleteDialog;
