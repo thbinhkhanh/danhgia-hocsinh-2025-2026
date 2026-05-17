@@ -635,7 +635,7 @@ useEffect(() => {
       return;
     }
 
-    setOpenDialog(false);       // đóng dialog danh sách đề
+    setOpenDialog(true);       // đóng dialog danh sách đề
     setOpenDeleteDialog(true);  // mở dialog xác nhận xóa
   };
 
