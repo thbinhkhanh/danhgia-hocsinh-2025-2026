@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 
+// ================= MUI =================
 import {
   Box,
   Card,
@@ -23,48 +24,64 @@ import {
   Alert,
 } from "@mui/material";
 
+// ================= FIREBASE =================
 import { db } from "../firebase";
-import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  getDocs,
+  collection,
+  setDoc,
+  writeBatch
+} from "firebase/firestore";
+
+// ================= CONTEXT =================
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentKTDKContext } from "../context/StudentKTDKContext";
 
+// ================= ICONS =================
 import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import PrintIcon from "@mui/icons-material/Print";
-//import CapNhatLyThuyetDialog from "../dialog/CapNhatLyThuyetDialog";
 import EditIcon from "@mui/icons-material/Edit";
 
+// ================= UTILS =================
 import { exportKTDK } from "../utils/exportKTDK";
 import { printKTDK } from "../utils/printKTDK";
-//import { nhanXetTinHocCuoiKy, nhanXetCongNgheCuoiKy } from '../utils/nhanXet.js';
 import {
   nhanXetTinHocCuoiKy,
   nhanXetTinHocGiuaKy,
   nhanXetCongNgheCuoiKy,
   nhanXetCongNgheGiuaKy
-} from '../utils/nhanXet.js';
+} from "../utils/nhanXet.js";
 
 export default function NhapdiemKTDK() {
   const { classData, setClassData, studentData, setStudentData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
   const { getStudentsForClass, setStudentsForClass } = useContext(StudentKTDKContext);
 
+  // ================= CLASS / DATA STATE =================
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
-  
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const [originalStudents, setOriginalStudents] = useState([]);
 
+  // ================= SUBJECT =================
   const [selectedSubject, setSelectedSubject] = useState(() => config?.mon || "Tin học");
 
+  // ================= UI / RESPONSIVE =================
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  // ================= DIALOG STATE =================
   const [openLTDialog, setOpenLTDialog] = useState(false);
+
+  // ================= EDITING STATE =================
   const [editingStudent, setEditingStudent] = useState(null);
   const [ltValue, setLtValue] = useState("");
   const [fillThucHanh, setFillThucHanh] = useState("");
   const [fillLyThuyet, setFillLyThuyet] = useState("");
-  const [originalStudents, setOriginalStudents] = useState([]);
 
   useEffect(() => {
     if (config?.mon && config.mon !== selectedSubject) {
@@ -799,7 +816,7 @@ const fetchStudentsAndStatus = async (cls) => {
         return ["GKI"];
       case "Giữa kỳ II":
         return ["GKI", "CKI"];
-      case "Cả năm":
+      case "Cuối năm":
         return ["GKI", "CKI", "GKII"];
       default:
         return [];
@@ -1242,7 +1259,7 @@ const fetchStudentsAndStatus = async (cls) => {
                   </>
                 )}
 
-                {config.hocKy === "Cả năm" && (
+                {config.hocKy === "Cuối năm" && (
                   <>
                     <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 40 }}>
                       GKI
@@ -1586,7 +1603,7 @@ const fetchStudentsAndStatus = async (cls) => {
                     </>
                   )}
 
-                  {config.hocKy === "Cả năm" && (
+                  {config.hocKy === "Cuối năm" && (
                     <>
                       <TableCell align="center" sx={{ px: 1 }}>
                         {student.mucDat_GKI || "-"}
@@ -1617,7 +1634,7 @@ const fetchStudentsAndStatus = async (cls) => {
                     </>
                   )}
 
-                  {config.hocKy === "Cả năm" && (
+                  {config.hocKy === "Cuối năm" && (
                     <>
                       <TableCell align="center" sx={readOnlyCellSx}>
                         {student.mucDat_GKI || "-"}

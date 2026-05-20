@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
+
+// ================= MUI =================
 import {
   Box,
   Card,
@@ -23,50 +25,70 @@ import {
   LinearProgress,
   useMediaQuery,
   TextField,
-  Snackbar, 
+  Snackbar,
   Alert,
 } from "@mui/material";
 
+// ================= FIREBASE =================
 import { db } from "../firebase";
+import {
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  collection,
+  writeBatch
+} from "firebase/firestore";
+
+// ================= CONTEXT =================
 import { StudentDataContext } from "../context/StudentDataContext";
 import { ConfigContext } from "../context/ConfigContext";
-import { doc, getDoc, getDocs, setDoc, collection, writeBatch } from "firebase/firestore";
 
+// ================= ICONS =================
 import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 
-import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
-import { nhanXetTinHocGiuaKy, nhanXetCongNgheGiuaKy } from '../utils/nhanXet.js';
+// ================= UTILS =================
+import {
+  exportEvaluationToExcelFromTable
+} from "../utils/exportExcelFromTable";
 
+import {
+  nhanXetTinHocGiuaKy,
+  nhanXetCongNgheGiuaKy
+} from "../utils/nhanXet.js";
 
 export default function TongHopDanhGia() {
-  // --- Context ---
-  //const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
-  const { studentData, setStudentData, classData, setClassData } = useContext(StudentDataContext);
+  // ================= CONTEXT =================
+  const { studentData, setStudentData, classData, setClassData } =
+    useContext(StudentDataContext);
 
   const { config, setConfig } = useContext(ConfigContext);
   const selectedSemester = config.hocKy || "Giữa kỳ I";
 
-  // --- State ---
+  // ================= CLASS / DATA =================
   const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedClass, setSelectedClass] = useState([]);
   const [students, setStudents] = useState([]);
-  
+
+  // ================= WEEK RANGE =================
   const [weekFrom, setWeekFrom] = useState(1);
   const [weekTo, setWeekTo] = useState(9);
 
-  //const [selectedWeek, setSelectedWeek] = useState(1);
-  const [isTeacherChecked, setIsTeacherChecked] = useState(false);
+  // ================= SUBJECT =================
+  const [selectedSubject, setSelectedSubject] = useState("");
 
+  // ================= FLAGS =================
+  const [isTeacherChecked, setIsTeacherChecked] = useState(false);
+  const [showWeeks, setShowWeeks] = useState(true);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  // ================= LOADING =================
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
-
-  const isMobile = useMediaQuery("(max-width: 768px)");
-  const [showWeeks, setShowWeeks] = useState(true);
-  const [selectedSubject, setSelectedSubject] = useState(""); // không mặc định
 
   // Chọn ngẫu nhiên một phần tử trong mảng
   /*function randomItem(arr) {
@@ -180,7 +202,7 @@ const handleSaveAll = async () => {
     "Giữa kỳ I": "GKI",
     "Cuối kỳ I": "CKI",
     "Giữa kỳ II": "GKII",
-    "Cả năm": "CN",
+    "Cuối năm": "CN",
   };
 
   const termDoc = mapTerm[selectedSemester] || "CN";
@@ -330,7 +352,7 @@ const hocKyMap = {
   "Giữa kỳ I": { from: 1, to: 9 },
   "Cuối kỳ I": { from: 10, to: 18 },
   "Giữa kỳ II": { from: 19, to: 27 },
-  "Cả năm": { from: 28, to: 35 },
+  "Cuối năm": { from: 28, to: 35 },
 };
 
 const fetchStudents = async ({ forceReload = false } = {}) => {
@@ -345,7 +367,7 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
       "Giữa kỳ I": "GKI",
       "Cuối kỳ I": "CKI",
       "Giữa kỳ II": "GKII",
-      "Cả năm": "CN",
+      "Cuối năm": "CN",
     };
 
     const semester = selectedSemester || config.hocKy;

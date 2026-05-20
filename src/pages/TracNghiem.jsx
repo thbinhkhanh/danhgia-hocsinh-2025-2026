@@ -1,120 +1,135 @@
-import React, { useState, useEffect } from "react";
+// ================= REACT =================
+import React, { useState, useEffect, useContext } from "react";
+
+// ================= MUI =================
 import {
   Box,
-  //Typography,
   Paper,
-  //Button,
-  //Stack,
-  //LinearProgress,
-  //IconButton,
-  //Tooltip,
-  //Snackbar, 
-  //Alert,
-  //Divider,
-  //Card, Grid,
+  Stack,
+  Typography,
+  IconButton,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
-import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
+
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+
+// ================= FIREBASE =================
+import {
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  collection,
+  updateDoc,
+} from "firebase/firestore";
 
 import { db } from "../firebase";
-import { useContext } from "react";
+
+// ================= CONTEXT =================
 import { ConfigContext } from "../context/ConfigContext";
-import { exportQuizPDF } from "../utils/exportQuizPDF"; 
+
+// ================= ROUTER =================
+import { useLocation, useNavigate } from "react-router-dom";
+
+// ================= UTILS =================
+import { exportQuizPDF } from "../utils/exportQuizPDF";
 import { handleSubmitQuiz } from "../utils/submitQuiz";
 import { autoSubmitQuiz } from "../utils/autoSubmitQuiz";
-import ImageZoomDialog from "../dialog/ImageZoomDialog";
-
-//import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-//import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-//import AccessTimeIcon from "@mui/icons-material/AccessTime";
-////import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-
-import { useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-
-import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
-import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
-import ResultDialog from "../dialog/ResultDialog";
-import QuizQuestion from "../Types/questions/options/QuizQuestion";
 import { buildRuntimeQuestions } from "../utils/buildRuntimeQuestions";
-//import { getQuestionStatus } from "../utils/questionStatus";
-import { useTheme, useMediaQuery } from "@mui/material";
-
 import { processQuestions } from "../utils/processQuestions";
 import { getQuizDocId } from "../utils/getQuizDocId";
 import { useQuizTimer } from "../utils/useQuizTimer";
 
+// ================= COMPONENTS =================
 import QuizHeader from "../components/quiz/QuizHeader";
 import QuizSidebar from "../components/quiz/QuizSidebar";
 import QuizNavigation from "../components/quiz/QuizNavigation";
 import QuizLoading from "../components/quiz/QuizLoading";
-//import QuizDialogs from "../components/quiz/QuizDialogs";
+import QuizQuestion from "../Types/questions/options/QuizQuestion";
+
+// ================= DIALOGS =================
+import ImageZoomDialog from "../dialog/ImageZoomDialog";
+import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
+import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
+import ResultDialog from "../dialog/ResultDialog";
 
 export default function TracNghiem() {
-  const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [quizClass, setQuizClass] = useState("");
-  const [score, setScore] = useState(0);
+  // ================= QUIZ STATE =================
+const [questions, setQuestions] = useState([]);
+const [answers, setAnswers] = useState({});
+const [submitted, setSubmitted] = useState(false);
+const [currentIndex, setCurrentIndex] = useState(0);
+const [quizClass, setQuizClass] = useState("");
+const [score, setScore] = useState(0);
 
-  const [openAlertDialog, setOpenAlertDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState(""); 
-  const [unansweredQuestions, setUnansweredQuestions] = useState([]);
+// ================= UI STATE =================
+const [openAlertDialog, setOpenAlertDialog] = useState(false);
+const [dialogMode, setDialogMode] = useState("");
+const [unansweredQuestions, setUnansweredQuestions] = useState([]);
+const [openExitConfirm, setOpenExitConfirm] = useState(false);
+const [openResultDialog, setOpenResultDialog] = useState(false);
+const [zoomImage, setZoomImage] = useState(null);
+const [dialogMessage, setDialogMessage] = useState("");
+const [notFoundMessage, setNotFoundMessage] = useState("");
 
-  const [zoomImage, setZoomImage] = useState(null);
+// ================= LOADING / PROCESS =================
+const [loading, setLoading] = useState(true);
+const [progress, setProgress] = useState(0);
+const [saving, setSaving] = useState(false);
 
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const { config } = useContext(ConfigContext);
-  const [saving, setSaving] = useState(false);
-  const [openExitConfirm, setOpenExitConfirm] = useState(false);
+// ================= CONFIG =================
+const { config } = useContext(ConfigContext);
+const [configData, setConfigData] = useState(null);
+const [hocKi, setHocKi] = useState("");
+const [monHoc, setMonHoc] = useState("");
+const [choXemDiem, setChoXemDiem] = useState(false);
+const [choXemDapAn, setChoXemDapAn] = useState(false);
+const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
+const [selectedExamType, setSelectedExamType] = useState("Giữa kỳ I"); // mặc định
 
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [started, setStarted] = useState(false);
-  //const [timeLeft, setTimeLeft] = useState(0);
-  //const [startTime, setStartTime] = useState(null);
-  const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
+// ================= ROUTER =================
+const location = useLocation();
+const navigate = useNavigate();
+const locationState = location.state || {};
 
-  const [hocKi, setHocKi] = useState("");
-  const [monHoc, setMonHoc] = useState("");
-  const [choXemDiem, setChoXemDiem] = useState(false);
-  const [choXemDapAn, setChoXemDapAn] = useState(false);
+// ================= USER STATE =================
+const [studentId, setStudentId] = useState(locationState.studentId || "HS001");
+const [fullname, setFullname] = useState(locationState.fullname || "Test");
+const [lop, setLop] = useState(locationState.lop || "4.1");
+const [selectedWeek, setSelectedWeek] = useState(locationState.selectedWeek || 13);
+const [mon, setMon] = useState(locationState.mon || "Tin học");
+const [studentResult, setStudentResult] = useState(null);
 
-  const [openResultDialog, setOpenResultDialog] = useState(false);
-  const [studentResult, setStudentResult] = useState(null);
-  const [fillBlankStatus, setFillBlankStatus] = useState({});
-  const [dialogMessage, setDialogMessage] = useState("");
+// derived user info
+const studentInfo = {
+  id: studentId,
+  name: fullname,
+  className: lop,
+  selectedWeek: selectedWeek || 1,
+  mon: mon || config.mon || "Tin học",
+};
 
-  const [notFoundMessage, setNotFoundMessage] = useState(""); 
-  const [selectedExamType, setSelectedExamType] = useState("Giữa kỳ I"); // mặc định
-  const [configData, setConfigData] = useState(null);
-
-  const locationState = location.state || {};
-  const [studentId, setStudentId] = useState(locationState.studentId || "HS001");
-  const [fullname, setFullname] = useState(locationState.fullname || "Test");
-  const [lop, setLop] = useState(locationState.lop || "4.1");
-  const [selectedWeek, setSelectedWeek] = useState(locationState.selectedWeek || 13);
-  const [mon, setMon] = useState(locationState.mon || "Tin học");
-  
-  const theme = useTheme();
-  const isBelow1024 = useMediaQuery("(max-width:1023px)");
-  const [showSidebar, setShowSidebar] = useState(true);
-  
-  const studentInfo = {
-    id: studentId,
-    name: fullname,
-    className: lop,           
-    selectedWeek: selectedWeek || 1,
-    mon: mon || config.mon || "Tin học",
-  };
-
-// Khi cần lấy lớp học sinh
 const studentClass = studentInfo.className;
 const studentName = studentInfo.name;
-const hocKiDisplay = config?.hocKy || "Cuối kỳ I"; // fallback nếu chưa có config
+
+// ================= THEME =================
+const theme = useTheme();
+const isBelow1024 = useMediaQuery("(max-width:1023px)");
+const [showSidebar, setShowSidebar] = useState(true);
+
+// ================= CONTROL =================
+const [started, setStarted] = useState(false);
+
+// ================= DISPLAY =================
+const hocKiDisplay = config?.hocKy || "Cuối kỳ I";
 const monHocDisplay = studentInfo.mon || config?.mon || "Tin học";
+
+// ================= IMPORTANT NOTE =================
+// giữ nguyên phần này của bạn:
+const [fillBlankStatus, setFillBlankStatus] = useState({});
 
 // Kiểm tra dữ liệu học sinh
 if (!studentInfo.id || !studentInfo.name || !studentClass) {
@@ -257,7 +272,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
       case "Giữa kỳ I": return "GKI";
       case "Cuối kỳ I": return "CKI";
       case "Giữa kỳ II": return "GKII";
-      case "Cả năm": return "CN";
+      case "Cuối năm": return "CN";
       default:
         console.warn("❌ Loại kiểm tra không xác định:", loaiKT);
         return "UNKNOWN";
@@ -489,45 +504,155 @@ return (
       background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
       pt: { xs: 2, sm: 3 },
       px: { xs: 1, sm: 2 },
+      display: "flex",
+      justifyContent: "center",
     }}
   >
+    {/* ================= WRAPPER ================= */}
     <Box
       sx={{
         display: "flex",
-        gap: 3,
         width: "100%",
         maxWidth: isSidebarVisible ? 1280 : 1000,
-        mx: "auto",
-        flexDirection: { xs: "column", md: "row" },
+        gap: 2,
+        alignItems: "flex-start",
       }}
     >
-      {/* ===== LEFT ===== */}
-      <Box sx={{ flex: 1, minWidth: 0, maxWidth: 1000 }}>
-        <Paper
+
+      {/* ================= MAIN PAPER ================= */}
+      <Paper
+        sx={{
+          p: 0,
+          borderRadius: 3,
+          width: "100%",
+          minHeight: { xs: "auto", sm: 650 },
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+
+        {/* ================= HEADER XANH ================= */}
+        <Box
           sx={{
-            p: { xs: 2, sm: 4 },
-            borderRadius: 3,
-            minHeight: 650,
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
+            px: 3,
+            py: 1.5,
+            background: "#1976d2",
+            color: "#fff",
           }}
         >
-          {/* HEADER */}
-          <QuizHeader
-            showSidebar={showSidebar}
-            setShowSidebar={setShowSidebar}
-            sidebarConfig={sidebarConfig}
-            studentInfo={studentInfo}
-            capitalizeName={capitalizeName}
-            loading={loading}
-            config={config}
-            hocKiDisplay={hocKiDisplay}
-            monHocDisplay={monHocDisplay}
-            started={started}
-            timeLeft={timeLeft}
-            formatTime={formatTime}
-          />
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            alignItems="center"
+            justifyContent="space-between"
+            spacing={2}
+          >
+
+            {/* LEFT: STUDENT */}
+            <Box>
+              <Typography sx={{ fontSize: 17, fontWeight: 700 }}>
+                {capitalizeName(studentInfo?.name || "Học sinh")}
+              </Typography>
+              <Typography sx={{ fontSize: 15, opacity: 0.9 }}>
+                Lớp: {studentInfo?.class || "4A"}
+              </Typography>
+            </Box>
+
+            {/* CENTER: THÔNG TIN MÔN + KỲ */}
+            {/*<Box sx={{ textAlign: "center" }}>
+              <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
+                KIỂM TRA ĐỊNH KÌ - {(monHocDisplay || "MÔN HỌC").toUpperCase()}
+              </Typography>
+
+              <Typography sx={{ fontSize: 15, opacity: 0.9 }}>
+                {hocKiDisplay
+                  ? `${hocKiDisplay} - ${config?.namHoc || ""}`
+                  : "HỌC KỲ"}
+              </Typography>
+            </Box>*/}
+            <Box sx={{ textAlign: "center" }}>
+              {config?.kiemTraDinhKi ? (
+                <>
+                  <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
+                    KTĐK - {(hocKiDisplay || "CUỐI NĂM").toUpperCase()}
+                  </Typography>
+
+                  <Typography sx={{ fontSize: 15, opacity: 0.9 }}>
+                    Môn: {(monHocDisplay || "TIN HỌC").toUpperCase()}
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
+                    BÀI TẬP TUẦN {selectedWeek}
+                  </Typography>
+
+                  <Typography sx={{ fontSize: 15, opacity: 0.9 }}>
+                    Môn: {(monHocDisplay || "TIN HỌC").toUpperCase()}
+                  </Typography>
+                </>
+              )}
+            </Box>
+
+            {/* RIGHT: TIMER + SIDEBAR */}
+            <Stack direction="row" spacing={1} alignItems="center">
+
+              {/* TIMER */}
+              {started && !loading && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    px: 2,
+                    py: 0.6,
+                    borderRadius: 2,
+                    bgcolor: "#fff",
+                    color: "#d32f2f",
+                    fontWeight: 800,
+                    minWidth: 90,
+                    justifyContent: "center",
+                  }}
+                >
+                  <AccessTimeIcon sx={{ fontSize: 20 }} />
+                  {formatTime(timeLeft)}
+                </Box>
+              )}
+
+              {/* SIDEBAR TOGGLE */}
+              {hasSidebar && (
+                <IconButton
+                  onClick={() => setShowSidebar((p) => !p)}
+                  sx={{
+                    color: "#fff",
+                    bgcolor: "rgba(255,255,255,0.15)",
+                    "&:hover": {
+                      bgcolor: "rgba(255,255,255,0.25)",
+                    },
+                  }}
+                >
+                  {showSidebar ? (
+                    <ChevronLeftIcon />
+                  ) : (
+                    <ChevronRightIcon />
+                  )}
+                </IconButton>
+              )}
+            </Stack>
+
+          </Stack>
+        </Box>
+
+        {/* ================= CONTENT ================= */}
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3 },
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+          }}
+        >
 
           {/* LOADING */}
           <QuizLoading loading={loading} progress={progress} />
@@ -555,22 +680,24 @@ return (
           <Box sx={{ flexGrow: 1 }} />
 
           {/* NAVIGATION */}
-          <QuizNavigation
-            started={started}
-            loading={loading}
-            currentIndex={currentIndex}
-            questionsLength={questions.length}
-            handlePrev={handlePrev}
-            handleNext={handleNext}
-            handleSubmit={handleSubmit}
-            submitted={submitted}
-            isEmptyQuestion={isEmptyQuestion}
-            isSidebarVisible={isSidebarVisible}
-          />
-        </Paper>
-      </Box>
+          {started && !loading && (
+            <QuizNavigation
+              started={started}
+              loading={loading}
+              currentIndex={currentIndex}
+              questionsLength={questions.length}
+              handlePrev={handlePrev}
+              handleNext={handleNext}
+              handleSubmit={handleSubmit}
+              submitted={submitted}
+              isEmptyQuestion={isEmptyQuestion}
+              isSidebarVisible={isSidebarVisible}
+            />
+          )}
+        </Box>
+      </Paper>
 
-      {/* ===== SIDEBAR ===== */}
+      {/* ================= SIDEBAR ================= */}
       {isSidebarVisible && (
         <QuizSidebar
           sidebarConfig={sidebarConfig}
@@ -586,20 +713,18 @@ return (
       )}
     </Box>
 
-    {/* ===== ALERT: CHƯA LÀM HẾT ===== */}
+    {/* ================= DIALOGS ================= */}
     <IncompleteAnswersDialog
       open={openAlertDialog}
       onClose={() => setOpenAlertDialog(false)}
       unansweredQuestions={unansweredQuestions}
     />
 
-    {/* ===== EXIT CONFIRM ===== */}
     <ExitConfirmDialog
       open={openExitConfirm}
       onClose={() => setOpenExitConfirm(false)}
     />
 
-    {/* ===== RESULT ===== */}
     <ResultDialog
       open={openResultDialog}
       onClose={() => setOpenResultDialog(false)}
@@ -611,7 +736,6 @@ return (
       convertPercentToScore={convertPercentToScore}
     />
 
-    {/* ===== IMAGE ZOOM ===== */}
     <ImageZoomDialog
       open={Boolean(zoomImage)}
       imageSrc={zoomImage}

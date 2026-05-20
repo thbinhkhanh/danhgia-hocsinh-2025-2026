@@ -1,6 +1,6 @@
 // src/Types/questions/QuestionHeader.jsx
 import React, { useRef, useState } from "react";
-import { Typography, Box, IconButton } from "@mui/material";
+import { Typography, Box, IconButton, Stack, FormControl, InputLabel, Select, MenuItem, TextField } from "@mui/material";
 
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
@@ -23,19 +23,17 @@ const QuestionHeader = ({ q, qi, update }) => {
     const quill = quillRef.current?.getEditor();
     if (!quill) return;
 
-    // lấy selection chuẩn, tránh mất chọn
     const range = quill.getSelection(true);
     if (!range || range.length === 0) return;
 
     const current = quill.getFormat(range);
-    // áp dụng format cho toàn bộ vùng chọn
     quill.formatText(range.index, range.length, format, !current[format]);
-    // giữ nguyên selection sau khi format
     quill.setSelection(range.index, range.length, "silent");
   };
 
   return (
     <>
+      {/* ===== HEADER ===== */}
       <Box
         sx={{
           display: "flex",
@@ -44,10 +42,47 @@ const QuestionHeader = ({ q, qi, update }) => {
           mb: 1,
         }}
       >
-        <Typography className="question-header-title" fontWeight="bold">
-          Câu hỏi {qi + 1}:
-        </Typography>
+        {/* LEFT: TITLE + 2 Ô MỚI */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Typography className="question-header-title" fontWeight="bold">
+            Câu {qi + 1}:
+          </Typography>
 
+          {/* ===== TYPE ===== */}
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Loại câu hỏi</InputLabel>
+            <Select
+              value={q.type}
+              label="Loại câu hỏi"
+              onChange={(e) => update(qi, { type: e.target.value })}
+            >
+              <MenuItem value="truefalse">Đúng – Sai</MenuItem>
+              <MenuItem value="single">Một lựa chọn</MenuItem>
+              <MenuItem value="multiple">Nhiều lựa chọn</MenuItem>
+              <MenuItem value="matching">Ghép đôi</MenuItem>
+              <MenuItem value="image">Hình ảnh</MenuItem>
+              <MenuItem value="sort">Sắp xếp</MenuItem>
+              <MenuItem value="fillblank">Điền khuyết</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* ===== SCORE ===== */}
+          <TextField
+            label="Điểm"
+            type="number"
+            size="small"
+            value={q.score}
+            inputProps={{ step: 0.5 }}
+            onChange={(e) =>
+              update(qi, {
+                score: e.target.value === "" ? "" : parseFloat(e.target.value),
+              })
+            }
+            sx={{ width: 80 }}
+          />
+        </Box>
+
+        {/* RIGHT: TOOLBAR */}
         <Box sx={{ display: "flex", gap: 1 }}>
           <IconButton
             size="small"
@@ -55,31 +90,36 @@ const QuestionHeader = ({ q, qi, update }) => {
               e.preventDefault();
               applyFormat("bold");
             }}
+            sx={{ p: 0.4 }}
           >
-            <FormatBoldIcon fontSize="small" />
+            <FormatBoldIcon sx={{ fontSize: 20 }} />
           </IconButton>
+
           <IconButton
             size="small"
             onMouseDown={(e) => {
               e.preventDefault();
               applyFormat("italic");
             }}
+            sx={{ p: 0.4 }}
           >
-            <FormatItalicIcon fontSize="small" />
+            <FormatItalicIcon sx={{ fontSize: 20 }} />
           </IconButton>
+
           <IconButton
             size="small"
             onMouseDown={(e) => {
               e.preventDefault();
               applyFormat("underline");
             }}
+            sx={{ p: 0.4 }}
           >
-            <FormatUnderlinedIcon fontSize="small" />
+            <FormatUnderlinedIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Box>
       </Box>
 
-      {/* ReactQuill cho NỘI DUNG CÂU HỎI */}
+      {/* ReactQuill */}
       <ReactQuill
         ref={quillRef}
         theme="snow"
@@ -97,6 +137,7 @@ const QuestionHeader = ({ q, qi, update }) => {
         style={{ marginBottom: 16 }}
       />
 
+      {/* IMAGE */}
       <QuestionImage q={q} qi={qi} update={update} />
     </>
   );

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
+
+// ================= MUI =================
 import {
   Box,
   Paper,
@@ -18,38 +20,62 @@ import {
   Tooltip,
   Snackbar,
   Alert,
-  Dialog, 
+  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import { db } from "../firebase";
-import { collection, getDocs, doc, getDoc, writeBatch, deleteDoc } from "firebase/firestore";
+
+// ================= ICONS =================
 import { Delete, FileDownload } from "@mui/icons-material";
-import { exportKetQuaExcel } from "../utils/exportKetQuaExcel";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+
+// ================= FIREBASE =================
+import { db } from "../firebase";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  writeBatch,
+  deleteDoc
+} from "firebase/firestore";
+
+// ================= CONTEXT =================
 import { ConfigContext } from "../context/ConfigContext";
 
+// ================= UTILS =================
+import { exportKetQuaExcel } from "../utils/exportKetQuaExcel";
+
 export default function TongHopKQ() {
+  // ================= CONTEXT =================
+  const { config } = useContext(ConfigContext);
+
+  // ================= DATA STATE =================
   const [classesList, setClassesList] = useState([]);
   const [selectedLop, setSelectedLop] = useState("");
   const [selectedMon, setSelectedMon] = useState("Tin học");
   const [results, setResults] = useState([]);
+
+  // ================= LOADING / ACTION =================
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // ================= SNACKBAR =================
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
-  const [dialogSeverity, setDialogSeverity] = useState("info");
 
-  const [kieuHienThi, setKieuHienThi] = useState("KTĐK"); 
-
+  // ================= DIALOG =================
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogContent, setDialogContent] = useState("");
   const [dialogAction, setDialogAction] = useState(null);
-  const { config } = useContext(ConfigContext);
+  const [dialogSeverity, setDialogSeverity] = useState("info");
+
+  // ================= VIEW MODE =================
+  const [kieuHienThi, setKieuHienThi] = useState("KTĐK");
 
   const circleIconStyle = {
     bgcolor: "white",
@@ -86,7 +112,7 @@ export default function TongHopKQ() {
     "Giữa kỳ I": "GKI",
     "Cuối kỳ I": "CKI",
     "Giữa kỳ II": "GKII",
-    "Cả năm": "CN",
+    "Cuối năm": "CN",
   };
 
   const loadResults = async () => {

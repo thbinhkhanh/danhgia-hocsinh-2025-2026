@@ -37,7 +37,7 @@ export const exportKetQuaExcel = async (
         .replace(/\s+/g, " ")
         .trim();
 
-    const hocKy = normalizeHocKy(hocKyFromConfig) || "Cả năm";
+    const hocKy = normalizeHocKy(hocKyFromConfig) || "Cuối năm";
 
     // ===============================
     // 🔹 CHUẨN HOÁ MÔN

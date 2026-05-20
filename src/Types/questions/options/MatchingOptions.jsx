@@ -84,19 +84,33 @@ const MatchingOptions = ({ q, qi, update }) => {
           </Select>
         </FormControl>
 
-        <IconButton size="small" onClick={() => applyFormat("bold")}>
-          <FormatBoldIcon fontSize="medium" />
+        <IconButton
+          size="small"
+          onClick={() => applyFormat("bold")}
+          sx={{ p: 0.4 }}
+        >
+          <FormatBoldIcon sx={{ fontSize: 20 }} />
         </IconButton>
-        <IconButton size="small" onClick={() => applyFormat("italic")}>
-          <FormatItalicIcon fontSize="medium" />
+
+        <IconButton
+          size="small"
+          onClick={() => applyFormat("italic")}
+          sx={{ p: 0.4 }}
+        >
+          <FormatItalicIcon sx={{ fontSize: 20 }} />
         </IconButton>
-        <IconButton size="small" onClick={() => applyFormat("underline")}>
-          <FormatUnderlinedIcon fontSize="medium" />
+
+        <IconButton
+          size="small"
+          onClick={() => applyFormat("underline")}
+          sx={{ p: 0.4 }}
+        >
+          <FormatUnderlinedIcon sx={{ fontSize: 20 }} />
         </IconButton>
       </Box>
 
       {q.pairs?.map((pair, pi) => {
-        const rowHeight = pair.leftImage ? 80 : "auto";
+        const rowHeight = pair.leftImage ? 50 : "auto";
 
         return (
           <Stack

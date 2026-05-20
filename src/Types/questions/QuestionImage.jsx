@@ -27,7 +27,7 @@ const QuestionImage = ({ q, qi, update }) => {
   const src = getImageSrc();
 
   return (
-    <Box sx={{ mt: -1, mb: 2 }}>
+    <Box sx={{ mt: -1, mb: -4 }}>
       {src ? (
         <Box sx={{ position: "relative", display: "inline-block" }}>
           <img
@@ -74,7 +74,7 @@ const QuestionImage = ({ q, qi, update }) => {
             py: 1,
           }}
         >
-          Thêm hình minh họa
+          Hình câu hỏi
 
           <input
             type="file"

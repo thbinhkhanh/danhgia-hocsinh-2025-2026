@@ -383,7 +383,7 @@ for (let q of questions) {
         "Giữa kỳ I": "GKI",
         "Cuối kỳ I": "CKI",
         "Giữa kỳ II": "GKII",
-        "Cả năm": "CN",
+        "Cuối năm": "CN",
       };
 
       const shortSchoolYear = (year) => {

@@ -1,10 +1,11 @@
+// ================= REACT =================
 import React, { useState, useEffect, useRef } from "react";
 
+// ================= MUI =================
 import {
   Box,
   Typography,
   Paper,
-  //TextField,
   Button,
   Stack,
   Select,
@@ -16,98 +17,104 @@ import {
   InputLabel,
   Card,
   Tooltip,
-  TextField
+  TextField,
 } from "@mui/material";
-import { collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
-
-import { db } from "../firebase"; // Firestore instance
-
-//import DeleteIcon from "@mui/icons-material/Delete";
-import { useConfig } from "../context/ConfigContext";
-import { useTracNghiem } from "../context/TracNghiemContext";
 
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import SaveIcon from "@mui/icons-material/Save";
-//import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
-import AddIcon from '@mui/icons-material/Add';
-//import CloseIcon from "@mui/icons-material/Close";
-
-//import Dialog from "@mui/material/Dialog";
-//import DialogTitle from "@mui/material/DialogTitle";
-//import DialogContent from "@mui/material/DialogContent";
-//import DialogActions from "@mui/material/DialogActions";
-import ExportDialog from "../dialog/ExportDialog";
-
-import OpenExamDialog from "../dialog/OpenExamDialog";
-import ExamDeleteConfirmDialog from "../dialog/ExamDeleteConfirmDialog";
-import QuestionCard from "../Types/questions/QuestionCard";
-import { saveAllQuestions } from "../utils/saveAllQuestions";
-
+import AddIcon from "@mui/icons-material/Add";
 import DownloadIcon from "@mui/icons-material/Download";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 
+// ================= FIREBASE =================
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
+
+import { db } from "../firebase";
+
+// ================= CONTEXT =================
+import { useConfig } from "../context/ConfigContext";
+import { useTracNghiem } from "../context/TracNghiemContext";
+
+// ================= COMPONENTS =================
+import QuestionCard from "../Types/questions/QuestionCard";
+
+// ================= DIALOGS =================
+import ExportDialog from "../dialog/ExportDialog";
+import OpenExamDialog from "../dialog/OpenExamDialog";
+import ExamDeleteConfirmDialog from "../dialog/ExamDeleteConfirmDialog";
+import ImportSourceDialog from "../dialog/ImportSourceDialog";
+import ImportFromFirestoreDialog from "../dialog/ImportFromFirestoreDialog";
+import ImportModeDialog from "../dialog/ImportModeDialog";
+import DeleteQuestionDialog from "../dialog/DeleteQuestionDialog";
+import ExportSourceDialog from "../dialog/ExportSourceDialog";
+
+// ================= UTILS =================
+import { saveAllQuestions } from "../utils/saveAllQuestions";
 import { uploadImageToCloudinary } from "../utils/uploadCloudinary";
 import useInitialQuiz from "../utils/useInitialQuiz";
 import { handleImportQuiz } from "../utils/importQuizJson";
 import { handleExportQuiz, handleConfirmExportQuiz } from "../utils/exportQuizJson";
 import { handleImportWordQuiz } from "../utils/importWordQuiz";
-
-import ImportSourceDialog from "../dialog/ImportSourceDialog";
-import ImportFromFirestoreDialog from "../dialog/ImportFromFirestoreDialog";
-import ImportModeDialog from "../dialog/ImportModeDialog";
-import DeleteQuestionDialog from "../dialog/DeleteQuestionDialog";
 import { normalizeFirestoreQuiz } from "../utils/normalizeFirestoreQuiz";
-
-import ExportSourceDialog from "../dialog/ExportSourceDialog";
 import { exportQuestionsToWord } from "../utils/exportQuizWORD";
 
-//import mammoth from "mammoth";
+// ================= LIBS =================
 import * as mammoth from "mammoth/mammoth.browser";
 
 export default function TracNghiemGV() {
-  const { config, setConfig } = useConfig(); 
-  //const semester = config?.hocKy || "";
-  const { config: quizConfig, updateConfig: updateQuizConfig } = useTracNghiem();
+  // ================= CONTEXT =================
+const { config, setConfig } = useConfig();
+const { config: quizConfig, updateConfig: updateQuizConfig } = useTracNghiem();
 
-  // ⚙️ State cho dialog mở đề
-  const [openDialog, setOpenDialog] = useState(false);
-  const [docList, setDocList] = useState([]);
-  const [loadingList, setLoadingList] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState(null);
-  const [isEditingNewDoc, setIsEditingNewDoc] = useState(true);
+// ================= LOCAL STORAGE =================
+const savedConfig = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
 
-  // ⚙️ Bộ lọc lớp
-  const [filterClass, setFilterClass] = useState("Lớp 4");
+// ================= FILTER =================
+const [filterClass, setFilterClass] = useState("Lớp 4");
+const [filterYear, setFilterYear] = useState("2025-2026");
+const [semester, setSemester] = useState("Giữa kỳ I");
 
-  // ⚙️ CẤU HÌNH ĐỀ THI – ĐÚNG CHUẨN FIRESTORE
-  const savedConfig = JSON.parse(localStorage.getItem("teacherConfig") || "{}");
-
+// ================= EXAM CONFIG =================
 const [selectedClass, setSelectedClass] = useState(savedConfig.selectedClass || "");
 const [selectedSubject, setSelectedSubject] = useState(savedConfig.selectedSubject || "");
-//const [semester, setSemester] = useState(savedConfig.semester || "");
 const [schoolYear, setSchoolYear] = useState(savedConfig.schoolYear || "2025-2026");
 const [examLetter, setExamLetter] = useState(savedConfig.examLetter || "");
 const [examType, setExamType] = useState("bt");
 const [dialogExamType, setDialogExamType] = useState("");
-const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-const [filterYear, setFilterYear] = useState("2025-2026");
-const [semester, setSemester] = useState("Giữa kỳ I");
 
-const fileInputRef = React.useRef(null);
-//const [openDialog, setOpenDialog] = useState(false);
-const [fileName, setFileName] = useState("de_trac_nghiem");
-const [openExportDialog, setOpenExportDialog] = useState(false); // dialog export
-
-const [openImportSourceDialog, setOpenImportSourceDialog] = useState(false);
-const [openFirestoreDialog, setOpenFirestoreDialog] = useState(false);
-const wordInputRef = useRef(null);
-const [openImportModeDialog, setOpenImportModeDialog] = useState(false);
+// ================= DOCUMENT / DATA =================
+const [docList, setDocList] = useState([]);
+const [loadingList, setLoadingList] = useState(false);
+const [selectedDoc, setSelectedDoc] = useState(null);
+const [isEditingNewDoc, setIsEditingNewDoc] = useState(true);
 const [importData, setImportData] = useState([]);
 const [lessonInput, setLessonInput] = useState("");
 const [lessonName, setLessonName] = useState("");
 
+// ================= FILE =================
+const fileInputRef = React.useRef(null);
+const wordInputRef = useRef(null);
+const [fileName, setFileName] = useState("de_trac_nghiem");
+
+// ================= DIALOGS =================
+const [openDialog, setOpenDialog] = useState(false);
+const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+const [openExportDialog, setOpenExportDialog] = useState(false);
+const [openImportSourceDialog, setOpenImportSourceDialog] = useState(false);
+const [openFirestoreDialog, setOpenFirestoreDialog] = useState(false);
+const [openImportModeDialog, setOpenImportModeDialog] = useState(false);
 const [openExport, setOpenExport] = useState(false);
 const [openDelete, setOpenDelete] = useState(false);
+
+// ================= DELETE CONTROL =================
 const [deleteIndex, setDeleteIndex] = useState(null);
 
 useEffect(() => {
@@ -128,12 +135,12 @@ const hocKyMap = {
   "Giữa kỳ I": { from: 1, to: 9 },
   "Cuối kỳ I": { from: 10, to: 18 },
   "Giữa kỳ II": { from: 19, to: 27 },
-  "Cả năm": { from: 28, to: 35 },
+  "Cuối năm": { from: 28, to: 35 },
 };
 
 
   // ⚙️ Dropdown cố định
-  const semesters = ["Giữa kỳ I", "Cuối kỳ I", "Giữa kỳ II", "Cả năm"];
+  const semesters = ["Giữa kỳ I", "Cuối kỳ I", "Giữa kỳ II", "Cuối năm"];
   const classes = ["Lớp 1", "Lớp 2", "Lớp 3", "Lớp 4", "Lớp 5"];
   const subjects = ["Tin học", "Công nghệ"];
   const years = ["2025-2026", "2026-2027", "2027-2028", "2028-2029", "2029-2030"];
@@ -851,7 +858,7 @@ const buildExportFileName = () => {
 
   if (examType === "ktdk") {
     const kyShort =
-      ky === "Cả năm" ? "CN"
+      ky === "Cuối năm" ? "CN"
       : ky === "Giữa kỳ I" ? "GK1"
       : ky === "Cuối kỳ I" ? "CK1"
       : ky === "Giữa kỳ II" ? "GK2"
@@ -880,107 +887,207 @@ const confirmDelete = () => {
   setDeleteIndex(null);
 };
 
-  return (
-    <Box sx={{ minHeight: "100vh", p: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
-      <Card elevation={4} sx={{ width: "100%", maxWidth: 970, p: 3, borderRadius: 3, position: "relative" }}>
-        {/* Nút New, Mở đề và Lưu đề */}
-        <Stack direction="row" spacing={1} sx={{ position: "absolute", top: 8, left: 8 }}>
-          {/* Icon New: soạn đề mới */}
-          <Tooltip title="Soạn đề mới">
-            <IconButton onClick={handleCreateNewQuiz} sx={{ color: "#1976d2" }}>
-              <AddIcon />
-            </IconButton>
-          </Tooltip>
+const moveQuestionUp = (index) => {
+  if (index === 0) return;
 
-          {/* Icon mở đề */}
-          <Tooltip title="Mở đề">
-            <IconButton onClick={fetchQuizList} sx={{ color: "#1976d2" }}>
-              <FolderOpenIcon />
-            </IconButton>
-          </Tooltip>
+  setQuestions((prev) => {
+    const newArr = [...prev];
+    [newArr[index - 1], newArr[index]] = [newArr[index], newArr[index - 1]];
+    return newArr;
+  });
+};
 
-          {/* Icon lưu đề */}
-          <Tooltip title="Lưu đề">
-            <IconButton onClick={handleSaveAll} sx={{ color: "#1976d2" }}>
-              <SaveIcon />
-            </IconButton>
-          </Tooltip>
+const moveQuestionDown = (index) => {
+  setQuestions((prev) => {
+    if (index === prev.length - 1) return prev;
 
-          {/* Export */}
-          <Tooltip title="Xuất đề kiểm tra">
-            <IconButton
-              onClick={() => setOpenExport(true)}
-              sx={{ color: "#2e7d32" }}
-            >
-              <DownloadIcon />
-            </IconButton>
-          </Tooltip>
+    const newArr = [...prev];
+    [newArr[index + 1], newArr[index]] = [newArr[index], newArr[index + 1]];
+    return newArr;
+  });
+};
 
-          {/* Import */}
-          <Tooltip title="Nhập đề kiểm tra">
-            <IconButton
-              onClick={() => setOpenImportSourceDialog(true)}
-              sx={{ color: "#ed6c02" }}
-            >
-              <UploadFileIcon />
-            </IconButton>
-          </Tooltip>
+const moveQuestionTop = (index) => {
+  setQuestions((prev) => {
+    const arr = [...prev];
+    const item = arr.splice(index, 1)[0];
+    arr.unshift(item);
+    return arr;
+  });
+};
 
-          {/* Input file ẩn */}
-          <input
-            type="file"
-            accept=".json"
-            ref={fileInputRef}
-            style={{ display: "none" }}
-            onChange={handleImportJSON}
-          />
+const moveQuestionBottom = (index) => {
+  setQuestions((prev) => {
+    const arr = [...prev];
+    const item = arr.splice(index, 1)[0];
+    arr.push(item);
+    return arr;
+  });
+};
 
-          <input
-            type="file"
-            accept=".docx"
-            ref={wordInputRef}
-            style={{ display: "none" }}
-            onChange={handleImportWord}
-          />
+const APPBAR_HEIGHT = 10;
 
-        </Stack>
+return (
+  <Box
+    sx={{
+      height: "94vh",
+      bgcolor: "#f4f6f8",
+      display: "flex",
+      justifyContent: "center",
+      overflow: "hidden", // 👈 khóa scroll toàn trang
+    }}
+  >
+    {/* ================= WRAPPER ================= */}
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: 1000,
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        overflow: "hidden",
+      }}
+    >
 
-        {/* Tiêu đề */}
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          textAlign="center"
-          gutterBottom
-          sx={{ textTransform: "uppercase", color: "#1976d2", mt: 3, mb: 1 }}
+      {/* ================= CARD 1 (HEADER + FORM - FIXED) ================= */}
+      <Card
+        elevation={3}
+        sx={{
+          flexShrink: 0,
+          mt: 1,
+          mb: 1,
+          borderRadius: 2,
+          bgcolor: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(14px)",
+          overflow: "visible",
+          border: "1px solid rgba(0,0,0,0.05)",
+        }}
+      >
+
+        {/* ================= HEADER ================= */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 2,
+            py: 1,
+            borderBottom: "1px solid rgba(0,0,0,0.06)",
+            background: "linear-gradient(to right, #ffffff, #f9fbff)",
+          }}
         >
-          Tạo đề kiểm tra
-        </Typography>
 
-        <Typography
-          variant="subtitle1"
-          textAlign="center"
-          fontWeight="bold"
-          sx={{ color: "text.secondary", mb: 3 }}
+          {/* LEFT TOOLBAR */}
+          <Stack direction="row" spacing={0.5} alignItems="center">
+
+            <Tooltip title="Soạn đề mới">
+              <IconButton
+                onClick={handleCreateNewQuiz}
+                sx={{
+                  color: "#1976d2",
+                  "&:hover": { bgcolor: "rgba(25,118,210,0.08)" },
+                }}
+              >
+                <AddIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Mở đề">
+              <IconButton
+                onClick={fetchQuizList}
+                sx={{
+                  color: "#1976d2",
+                  "&:hover": { bgcolor: "rgba(25,118,210,0.08)" },
+                }}
+              >
+                <FolderOpenIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Lưu đề">
+              <IconButton
+                onClick={handleSaveAll}
+                sx={{
+                  color: "#1976d2",
+                  "&:hover": { bgcolor: "rgba(25,118,210,0.08)" },
+                }}
+              >
+                <SaveIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Xuất đề kiểm tra">
+              <IconButton
+                onClick={() => setOpenExport(true)}
+                sx={{
+                  color: "#2e7d32",
+                  "&:hover": { bgcolor: "rgba(46,125,50,0.08)" },
+                }}
+              >
+                <DownloadIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Nhập đề kiểm tra">
+              <IconButton
+                onClick={() => setOpenImportSourceDialog(true)}
+                sx={{
+                  color: "#ed6c02",
+                  "&:hover": { bgcolor: "rgba(237,108,2,0.08)" },
+                }}
+              >
+                <UploadFileIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+
+          {/* RIGHT TITLE */}
+          <Box
+            sx={{
+              px: 1.5,
+              py: 0.5,
+              borderRadius: 2,
+              bgcolor: "rgba(25,118,210,0.08)",
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                color: "#1976d2",
+                letterSpacing: 0.5,
+              }}
+            >
+              TẠO ĐỀ KIỂM TRA
+            </Typography>
+          </Box>
+
+        </Box>
+
+        {/* ================= FORM ================= */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            borderRadius: 0,
+            bgcolor: "transparent",
+          }}
         >
-          {quizConfig.deTracNghiem || localStorage.getItem("deTracNghiemId")
-            ? `📝 Đề: ${selectedSubject || ""} - ${selectedClass || ""}`
-            : "🆕 Đang soạn đề mới"}
-        </Typography>
-
-        {/* FORM LỚP / MÔN / HỌC KỲ / NĂM HỌC / ĐỀ */}
-        <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
           <Stack
             direction={{ xs: "column", md: "row" }}
             spacing={2}
             flexWrap="wrap"
+            sx={{ width: "100%", alignItems: "flex-start" }}
           >
-            {/* Loại đề */}
-            <FormControl size="small" sx={getSx(150)}>
-              <InputLabel>Loại đề</InputLabel>
+
+            <FormControl size="small" sx={getSx(150)} variant="outlined">
+              <InputLabel id="exam-type-label">Loại đề</InputLabel>
               <Select
+                labelId="exam-type-label"
+                id="exam-type"
                 value={examType || "bt"}
-                onChange={(e) => setExamType(e.target.value)}
                 label="Loại đề"
+                onChange={(e) => setExamType(e.target.value)}
               >
                 <MenuItem value="bt">Bài tập tuần</MenuItem>
                 <MenuItem value="luyentap">Luyện tập tin học</MenuItem>
@@ -988,13 +1095,14 @@ const confirmDelete = () => {
               </Select>
             </FormControl>
 
-            {/* Lớp */}
-            <FormControl size="small" sx={getSx(120)}>
-              <InputLabel>Lớp</InputLabel>
+            <FormControl size="small" sx={getSx(120)} variant="outlined">
+              <InputLabel id="class-label">Lớp</InputLabel>
               <Select
+                labelId="class-label"
+                id="class-select"
                 value={selectedClass || ""}
-                onChange={(e) => setSelectedClass(e.target.value)}
                 label="Lớp"
+                onChange={(e) => setSelectedClass(e.target.value)}
               >
                 <MenuItem value="">Chọn</MenuItem>
                 {classes.map((lop) => (
@@ -1005,24 +1113,23 @@ const confirmDelete = () => {
               </Select>
             </FormControl>
 
-            {/* Môn học / Tên bài học */}
             {examType === "luyentap" ? (
               <TextField
                 size="small"
                 label="Tên bài học"
                 value={lessonName || ""}
                 sx={getSx(500)}
-                InputProps={{
-                  readOnly: true,
-                }}
+                InputProps={{ readOnly: true }}
               />
             ) : (
-              <FormControl size="small" sx={getSx(500)}>
-                <InputLabel>Môn học</InputLabel>
+              <FormControl size="small" sx={getSx(500)} variant="outlined">
+                <InputLabel id="subject-label">Môn học</InputLabel>
                 <Select
+                  labelId="subject-label"
+                  id="subject-select"
                   value={selectedSubject || ""}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
                   label="Môn học"
+                  onChange={(e) => setSelectedSubject(e.target.value)}
                 >
                   {subjects?.map((mon) => (
                     <MenuItem key={mon} value={mon}>
@@ -1033,11 +1140,12 @@ const confirmDelete = () => {
               </FormControl>
             )}
 
-            {/* Bài tập tuần */}
             {examType === "bt" && (
-              <FormControl size="small" sx={getSx(120)}>
-                <InputLabel>Tuần</InputLabel>
+              <FormControl size="small" sx={getSx(120)} variant="outlined">
+                <InputLabel id="week-label">Tuần</InputLabel>
                 <Select
+                  labelId="week-label"
+                  id="week-select"
                   value={deTuan || ""}
                   label="Tuần"
                   onChange={(e) => {
@@ -1056,13 +1164,13 @@ const confirmDelete = () => {
               </FormControl>
             )}
 
-            {/* KTĐK */}
             {examType === "ktdk" && (
               <>
-                {/* Học kỳ */}
-                <FormControl size="small" sx={getSx(120)}>
-                  <InputLabel>Học kỳ</InputLabel>
+                <FormControl size="small" sx={getSx(120)} variant="outlined">
+                  <InputLabel id="semester-label">Học kỳ</InputLabel>
                   <Select
+                    labelId="semester-label"
+                    id="semester-select"
                     value={semester}
                     label="Học kỳ"
                     onChange={(e) => setSemester(e.target.value)}
@@ -1070,14 +1178,15 @@ const confirmDelete = () => {
                     <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
                     <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
                     <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-                    <MenuItem value="Cả năm">Cả năm</MenuItem>
+                    <MenuItem value="Cả năm">Cuối năm</MenuItem>
                   </Select>
                 </FormControl>
 
-                {/* Năm học */}
-                <FormControl size="small" sx={getSx(120)}>
-                  <InputLabel>Năm học</InputLabel>
+                <FormControl size="small" sx={getSx(120)} variant="outlined">
+                  <InputLabel id="year-label">Năm học</InputLabel>
                   <Select
+                    labelId="year-label"
+                    id="year-select"
                     value={schoolYear || ""}
                     label="Năm học"
                     onChange={(e) => setSchoolYear(e.target.value)}
@@ -1090,10 +1199,11 @@ const confirmDelete = () => {
                   </Select>
                 </FormControl>
 
-                {/* Đề */}
-                <FormControl size="small" sx={getSx(120)}>
-                  <InputLabel>Đề</InputLabel>
+                <FormControl size="small" sx={getSx(120)} variant="outlined">
+                  <InputLabel id="letter-label">Đề</InputLabel>
                   <Select
+                    labelId="letter-label"
+                    id="letter-select"
                     value={examLetter || ""}
                     label="Đề"
                     onChange={(e) => setExamLetter(e.target.value)}
@@ -1107,184 +1217,157 @@ const confirmDelete = () => {
                 </FormControl>
               </>
             )}
+
           </Stack>
         </Paper>
-
-        {/* DANH SÁCH CÂU HỎI */}
-        <Stack spacing={3}>
-          {questions.map((q, qi) => (
-            <QuestionCard
-              key={q.id || qi}
-              q={q}
-              qi={qi}
-              updateQuestionAt={updateQuestionAt}
-              handleDeleteQuestion={handleDeleteQuestion}
-              handleImageChange={handleImageChange}
-              handleSaveAll={() =>
-                saveAllQuestions({
-                  questions,
-                  db,
-                  selectedClass,
-                  selectedSubject,
-                  semester,
-                  schoolYear,
-                  examLetter,
-                  examType,
-                  week: deTuan,
-                  quizConfig,
-                  updateQuizConfig,
-                  setDeTuan,
-                  setSnackbar,
-                  setIsEditingNewDoc,
-                  lessonName, // ✅ THÊM DÒNG NÀY
-                })
-              }
-            />
-          ))}
-        </Stack>
-
-
-        {/* Nút thêm câu hỏi + nút lưu đề */}
-        <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-          <Button variant="contained" onClick={addQuestion}>Thêm câu hỏi</Button>
-          {/*<Button variant="outlined" color="secondary" onClick={handleSaveAll} disabled={questions.length === 0}>
-            Lưu đề
-          </Button>*/}
-        </Stack>
-
-        {/* DIALOG MỞ ĐỀ */}
-        <OpenExamDialog
-          open={openDialog}
-          onClose={() => setOpenDialog(false)}
-          dialogExamType={dialogExamType}
-          setDialogExamType={setDialogExamType}
-          filterClass={filterClass}
-          setFilterClass={setFilterClass}
-          filterYear={filterYear}          // thêm
-          setFilterYear={setFilterYear}    // thêm
-          classes={classes}
-          loadingList={loadingList}
-          docList={docList}
-          selectedDoc={selectedDoc}
-          setSelectedDoc={setSelectedDoc}
-          handleOpenSelectedDoc={handleOpenSelectedDoc}
-          handleDeleteSelectedDoc={handleDeleteSelectedDoc}
-          fetchQuizList={fetchQuizList}
-        />
-
-        <ExportDialog
-          open={openExportDialog}
-          onClose={() => setOpenExportDialog(false)}
-          fileName={fileName}
-          setFileName={setFileName}
-          onConfirm={handleConfirmExport}
-        />
-
-        {/* SNACKBAR */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={4000}
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
-          <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-        </Snackbar>
-        
-        <ExamDeleteConfirmDialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-          onConfirm={confirmDeleteSelectedDoc}
-        />
-
-        <ImportModeDialog
-          open={openImportModeDialog}
-          onClose={() => setOpenImportModeDialog(false)}
-          onOverwrite={handleImportOverwrite}
-          onAppend={handleImportAppend}
-        />
-
-        <ImportSourceDialog
-            open={openImportSourceDialog}
-            onClose={() => setOpenImportSourceDialog(false)}
-  
-            onSelectJSON={() => {
-              setOpenImportSourceDialog(false);
-              fileInputRef.current?.click();
-            }}
-  
-            onSelectWord={() => {
-              setOpenImportSourceDialog(false);
-              wordInputRef.current?.click(); // 👈 thêm
-            }}
-  
-            onSelectFirestore={() => {
-              setOpenImportSourceDialog(false);
-              setOpenFirestoreDialog(true);
-            }}
-          />
-  
-          <ImportFromFirestoreDialog
-            open={openFirestoreDialog}
-            onClose={() => setOpenFirestoreDialog(false)}
-            onImport={(importedQuestions) => {
-              try {
-                const normalized = normalizeFirestoreQuiz(importedQuestions);
-
-                setImportData(normalized);   // 👈 đã chuẩn hoá
-                setOpenImportModeDialog(true);
-
-              } catch (err) {
-                setSnackbar({
-                  open: true,
-                  message: "❌ Dữ liệu Firestore không hợp lệ",
-                  severity: "error",
-                });
-              }
-            }}
-          />
-
-          <ExportSourceDialog
-            open={openExport}
-            onClose={() => setOpenExport(false)}
-
-            onSelectJSON={() => {
-              setOpenExport(false);
-
-              handleConfirmExportQuiz({
-                fileName: buildExportFileName() || "de_trac_nghiem",
-                questions,
-                setSnackbar,
-              });
-
-              setSnackbar({
-                open: true,
-                message: "✅ Xuất JSON thành công",
-                severity: "success",
-              });
-            }}
-
-            onSelectWord={() => {
-              const fileName = buildExportFileName();
-
-              setOpenExport(false);
-
-              handleExportWord(fileName);
-
-              setSnackbar({
-                open: true,
-                message: "📄 Xuất Word thành công",
-                severity: "success",
-              });
-            }}
-          />
-
-          <DeleteQuestionDialog
-            open={openDelete}
-            onClose={() => setOpenDelete(false)}
-            onConfirm={confirmDelete}
-            index={deleteIndex}
-          />
       </Card>
+
+      {/* ================= CARD 2 (SCROLL AREA ONLY) ================= */}
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: "auto", // 👈 CHỈ CUỘN Ở ĐÂY
+          minHeight: 0,
+        }}
+      >
+        <Card elevation={4} sx={{ p: 3, borderRadius: 2 }}>
+          <Stack spacing={3}>
+            {questions.map((q, qi) => (
+              <QuestionCard
+                key={q.id || qi}
+                q={q}
+                qi={qi}
+                updateQuestionAt={updateQuestionAt}
+                handleDeleteQuestion={handleDeleteQuestion}
+                handleImageChange={handleImageChange}
+                handleSaveAll={() =>
+                  saveAllQuestions({
+                    questions,
+                    db,
+                    selectedClass,
+                    selectedSubject,
+                    semester,
+                    schoolYear,
+                    examLetter,
+                    examType,
+                    week: deTuan,
+                    quizConfig,
+                    updateQuizConfig,
+                    setDeTuan,
+                    setSnackbar,
+                    setIsEditingNewDoc,
+                    lessonName,
+                  })
+                }
+                moveQuestionUp={moveQuestionUp}       // 👈 thêm
+                moveQuestionDown={moveQuestionDown}   // 👈 thêm
+                moveQuestionTop={moveQuestionTop}
+                moveQuestionBottom={moveQuestionBottom}
+                totalQuestions={questions.length}
+              />
+            ))}
+          </Stack>
+
+          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+            <Button variant="contained" onClick={addQuestion}>
+              Thêm câu hỏi
+            </Button>
+          </Stack>
+        </Card>
+      </Box>
+
+      {/* ================= ALL DIALOGS (GIỮ NGUYÊN 100%) ================= */}
+      <OpenExamDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        dialogExamType={dialogExamType}
+        setDialogExamType={setDialogExamType}
+        filterClass={filterClass}
+        setFilterClass={setFilterClass}
+        filterYear={filterYear}
+        setFilterYear={setFilterYear}
+        classes={classes}
+        loadingList={loadingList}
+        docList={docList}
+        selectedDoc={selectedDoc}
+        setSelectedDoc={setSelectedDoc}
+        handleOpenSelectedDoc={handleOpenSelectedDoc}
+        handleDeleteSelectedDoc={handleDeleteSelectedDoc}
+        fetchQuizList={fetchQuizList}
+      />
+
+      <ExportDialog
+        open={openExportDialog}
+        onClose={() => setOpenExportDialog(false)}
+        fileName={fileName}
+        setFileName={setFileName}
+        onConfirm={handleConfirmExport}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
+
+      <ExamDeleteConfirmDialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        onConfirm={confirmDeleteSelectedDoc}
+      />
+
+      <ImportModeDialog
+        open={openImportModeDialog}
+        onClose={() => setOpenImportModeDialog(false)}
+        onOverwrite={handleImportOverwrite}
+        onAppend={handleImportAppend}
+      />
+
+      <ImportSourceDialog
+        open={openImportSourceDialog}
+        onClose={() => setOpenImportSourceDialog(false)}
+        onSelectJSON={() => {
+          setOpenImportSourceDialog(false);
+          fileInputRef.current?.click();
+        }}
+        onSelectWord={() => {
+          setOpenImportSourceDialog(false);
+          wordInputRef.current?.click();
+        }}
+        onSelectFirestore={() => {
+          setOpenFirestoreDialog(true);
+        }}
+      />
+
+      <ExportSourceDialog
+        open={openExport}
+        onClose={() => setOpenExport(false)}
+        onSelectJSON={() => {
+          setOpenExport(false);
+          handleConfirmExportQuiz({
+            fileName: buildExportFileName() || "de_trac_nghiem",
+            questions,
+            setSnackbar,
+          });
+        }}
+        onSelectWord={() => {
+          const fileName = buildExportFileName();
+          setOpenExport(false);
+          handleExportWord(fileName);
+        }}
+      />
+      
+      <DeleteQuestionDialog
+        open={openDelete}
+        onClose={() => setOpenDelete(false)}
+        onConfirm={confirmDelete}
+        index={deleteIndex}
+      />
+
     </Box>
-  );
+  </Box>
+);
 }

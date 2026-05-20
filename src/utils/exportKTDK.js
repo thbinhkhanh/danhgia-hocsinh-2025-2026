@@ -17,7 +17,7 @@ export const exportKTDK = async (students, className, term = "CKI", subject = "T
     GKI: "Giữa kì I",
     CKI: "Cuối kì I",
     GKII: "Giữa kì II",
-    CN: "Cả năm",
+    CN: "Cuối năm",
   };
   const termLabel = termMap[term] || term;
     const subjectLabel =

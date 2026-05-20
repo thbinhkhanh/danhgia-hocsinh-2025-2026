@@ -164,7 +164,7 @@ export default function GiaoVien() {
             "Giữa kỳ I": "GKI",
             "Cuối kỳ I": "CKI",
             "Giữa kỳ II": "GKII",
-            "Cả năm": "CN",
+            "Cuối năm": "CN",
           };
 
           const hocKyCode = hocKyMap[hocKy];
@@ -297,7 +297,7 @@ const handleStatusChange = (maDinhDanh, status) => {
           "Giữa kỳ I": "GKI",
           "Cuối kỳ I": "CKI",
           "Giữa kỳ II": "GKII",
-          "Cả năm": "CN",
+          "Cuối năm": "CN",
         };
         const hocKyCode = hocKyMap[hocKy];
 
@@ -371,7 +371,7 @@ const handleStatusChange = (maDinhDanh, status) => {
           "Giữa kỳ I": "GKI",
           "Cuối kỳ I": "CKI",
           "Giữa kỳ II": "GKII",
-          "Cả năm": "CN",
+          "Cuối năm": "CN",
         };
         const hocKyCode = hocKyMap[hocKy];
 

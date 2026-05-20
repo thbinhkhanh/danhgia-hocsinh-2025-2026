@@ -38,7 +38,7 @@ export default function XuatDanhGia() {
         return "CKI";
       case "Giữa kỳ II":
         return "GKII";
-      case "Cả năm":
+      case "Cuối năm":
         return "CN";
       default:
         return "GKI";
@@ -157,7 +157,7 @@ export default function XuatDanhGia() {
               if (colNX > 0) row.getCell(colNX).value = ktdk.nhanXet || "";
               // KHÔNG ghi tongCong
             } else {
-              // Cuối kỳ / Cả năm: xuất mucDat + nhanXet + tongCong
+              // Cuối kỳ / Cuối năm: xuất mucDat + nhanXet + tongCong
               if (colDgtx > 0) row.getCell(colDgtx).value = ktdk.mucDat || "";
               if (colNX > 0) row.getCell(colNX).value = ktdk.nhanXet || "";
               row.getCell(6).value = ktdk.tongCong ?? "";

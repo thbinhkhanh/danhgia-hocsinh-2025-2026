@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
-import { 
-  Box, Typography, MenuItem, Select, Grid, Paper, Button, Stack, 
+
+// ================= MUI COMPONENTS =================
+import {
+  Box,
+  Typography,
+  MenuItem,
+  Select,
+  Grid,
+  Paper,
+  Button,
+  Stack,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -8,58 +17,85 @@ import {
   IconButton,
   Chip,
   TextField,
-  FormControl, 
+  FormControl,
   InputLabel,
   Tooltip
 } from "@mui/material";
 
-import { db } from "../firebase";
+// ================= FIREBASE =================
+import {
+  db
+} from "../firebase";
+
+import {
+  doc,
+  getDoc,
+  getDocs,
+  collection,
+  updateDoc,
+  setDoc,
+  onSnapshot
+} from "firebase/firestore";
+
+// ================= CONTEXT =================
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { useSelectedClass } from "../context/SelectedClassContext";
-import { doc, getDoc, getDocs, collection, updateDoc, setDoc } from "firebase/firestore";
-import { onSnapshot } from "firebase/firestore";
-import CloseIcon from "@mui/icons-material/Close";
-import Draggable from "react-draggable";
-import { useTheme, useMediaQuery } from "@mui/material"; 
+
+// ================= ROUTER =================
 import { useNavigate } from "react-router-dom";
 
+// ================= UI LIBS =================
+import Draggable from "react-draggable";
+
+// ================= ICONS =================
+import CloseIcon from "@mui/icons-material/Close";
+import GroupIcon from "@mui/icons-material/Group";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+
+// ================= THEME =================
+import { useTheme, useMediaQuery } from "@mui/material";
+
+// ================= DIALOGS =================
 import DoneDialog from "../dialog/DoneDialog";
 import StudentStatusDialog from "../dialog/StudentStatusDialog";
 import SystemLockedDialog from "../dialog/SystemLockedDialog";
-
-import GroupIcon from '@mui/icons-material/Group';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-
 
 export default function HocSinh() {
   // 🔹 Lấy context
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
   const navigate = useNavigate();
 
-  // 🔹 Local state
-  const [classes, setClasses] = useState([]);
-  //const [selectedClass, setSelectedClass] = useState("");
-  const { selectedClass, setSelectedClass } = useSelectedClass();
+  // ================= CONTEXT CONFIG =================
+  const { config, setConfig } = useContext(ConfigContext);
 
+  // ================= CLASS STATE =================
+  const { selectedClass, setSelectedClass } = useSelectedClass();
+  const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
+
+  // ================= STUDENT STATE =================
   const [expandedStudent, setExpandedStudent] = useState(null);
   const [studentStatus, setStudentStatus] = useState({});
+  const [recentStudents, setRecentStudents] = useState([]);
 
-  const { config, setConfig } = useContext(ConfigContext);
+  // ================= WEEK / PROGRESS =================
   const [selectedWeek, setSelectedWeek] = useState(1);
-  const [systemLocked, setSystemLocked] = useState(false);
-  const [saving, setSaving] = useState(false); // 🔒 trạng thái đang lưu
+  const [weekData, setWeekData] = useState({});
 
+  // ================= SYSTEM STATE =================
+  const [systemLocked, setSystemLocked] = useState(false);
+  const [openSystemLocked, setOpenSystemLocked] = useState(false);
+  const choXemDiem = config?.choXemDiem;
+
+  // ================= UI STATE =================
+  const [saving, setSaving] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  // ================= DONE DIALOG =================
   const [openDoneDialog, setOpenDoneDialog] = useState(false);
   const [doneMessage, setDoneMessage] = useState("");
   const [doneStudent, setDoneStudent] = useState(null);
-  const [weekData, setWeekData] = useState({});
-
-  const choXemDiem = config?.choXemDiem; // lấy từ config
-  const [recentStudents, setRecentStudents] = useState([]); // học sinh gần đây trên máy
-  const [showAll, setShowAll] = useState(false); // nút mở rộng
-  const [openSystemLocked, setOpenSystemLocked] = useState(false);
   
   // Khi tải trang
   useEffect(() => {
@@ -582,7 +618,7 @@ return (
                       // 🔹 KIỂM TRA ĐỊNH KỲ
                       // =======================
                       if (mode === "ktdk") {
-                        const hocKyMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cả năm": "CN" };
+                        const hocKyMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cuối năm": "CN" };
                         const hocKyCode = hocKyMap[config.hocKy];
                         if (!hocKyCode) {
                           setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
@@ -781,7 +817,7 @@ return (
 
                               // 🔹 KIỂM TRA ĐỊNH KỲ
                               if (mode === "ktdk") {
-                                const hocKyMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cả năm": "CN" };
+                                const hocKyMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cuối năm": "CN" };
                                 const hocKyCode = hocKyMap[config.hocKy];
                                 if (!hocKyCode) {
                                   setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
@@ -826,13 +862,12 @@ return (
                               if (mode === "ontap") {
                                 navigate("/tracnghiem-ontap", {
                                   state: {
-                                    studentId: student.maDinhDanh,
                                     fullname: student.hoVaTen,
                                     lop: selectedClass,
-                                    selectedWeek,
-                                    //mon: config.mon,
-                                    //collectionName: "TRACNGHIEM_ONTAP",
-                                    //docId: `${selectedClass}_ONTAP_${config.mon}_${config.hocKy}`,
+                                    mon: config.mon,
+                                    hocKy: config.hocKy,
+                                    namHoc: config.namHoc,
+                                    autoStart: true, // ⭐ thêm flag
                                   },
                                 });
 

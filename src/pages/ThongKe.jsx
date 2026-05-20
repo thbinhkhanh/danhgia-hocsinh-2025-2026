@@ -32,7 +32,7 @@ export default function ThongKe() {
     "Giữa kỳ I": "GKI",
     "Cuối kỳ I": "CKI",
     "Giữa kỳ II": "GKII",
-    "Cả năm": "CN",
+    "Cuối năm": "CN",
   };
 
   // 🔹 Hàm load CONFIG từ Firestore

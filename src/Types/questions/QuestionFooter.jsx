@@ -30,7 +30,7 @@ const QuestionFooter = ({ q, qi, update, handleDelete, saveAllQuestions }) => {
       justifyContent="space-between"
       alignItems="center"
     >
-      <FormControl size="small" sx={{ width: 150 }}>
+      <FormControl size="small" sx={{ width: 120 }}>
         <InputLabel>Kiểu sắp xếp</InputLabel>
         <Select
           value={q.sortType || "fixed"}
@@ -44,11 +44,11 @@ const QuestionFooter = ({ q, qi, update, handleDelete, saveAllQuestions }) => {
 
       <Stack direction="row" spacing={1}>
         {/* Nút lưu */}
-        <Tooltip title={`Lưu đề`}>
+        {/*<Tooltip title={`Lưu đề`}>
           <IconButton onClick={handleSaveQuestion} sx={{ color: "#1976d2" }}>
             <SaveIcon />
           </IconButton>
-        </Tooltip>
+        </Tooltip>*/}
 
         {/* Nút xoá */}
         <Tooltip title={`Xóa câu ${qi + 1}`}>

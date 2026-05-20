@@ -15,7 +15,7 @@ export const getQuizDocId = async ({
     "Cuối kỳ I": "CKI",
     "Giữa kỳ I": "GKI",
     "Giữa kỳ II": "GKII",
-    "Cả năm": "CN",
+    "Cuối năm": "CN",
   };
 
   const hocKiCode = hocKiMap[hocKiFromConfig];

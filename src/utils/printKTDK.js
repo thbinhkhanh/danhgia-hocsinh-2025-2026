@@ -34,7 +34,7 @@ export const printKTDK = (students, className, selectedSemester = "Giữa kỳ I
     termDoc === "GKI" ? "Giữa kỳ I" :
     termDoc === "CKI" ? "Cuối kỳ I" :
     termDoc === "GKII" ? "Giữa kỳ II" :
-    "Cả năm";
+    "Cuối năm";
 
   // 🔹 Sắp xếp theo tên cuối
   const sorted = [...students].sort((a, b) => {

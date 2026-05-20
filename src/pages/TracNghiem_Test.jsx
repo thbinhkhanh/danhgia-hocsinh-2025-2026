@@ -1,73 +1,77 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+
+// ===== MUI =====
 import {
   Box,
   Typography,
   Paper,
   Button,
-  //Radio,
-  //RadioGroup,
-  //FormControlLabel,
-  //Checkbox,
   Stack,
   LinearProgress,
   IconButton,
   Tooltip,
-  Snackbar, 
+  Snackbar,
   Alert,
   Divider,
-  //TextField,
   FormControl,
   Select,
   MenuItem,
-  InputLabel, Card,
+  InputLabel,
+  Card,
 } from "@mui/material";
-import { doc, getDoc, getDocs, setDoc, collection } from "firebase/firestore";
-//import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
 import { useTheme, useMediaQuery } from "@mui/material";
 
-import { db } from "../firebase";
-import { useContext } from "react";
-import { ConfigContext } from "../context/ConfigContext";
-import { exportQuizPDF } from "../utils/exportQuizPDF"; 
-//import QuestionOption from "../utils/QuestionOption";
+// ===== Firebase =====
+import {
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  collection,
+} from "firebase/firestore";
 
+import { db } from "../firebase";
+
+// ===== Context =====
+import { ConfigContext } from "../context/ConfigContext";
+
+// ===== Utils =====
+import { exportQuizPDF } from "../utils/exportQuizPDF";
+import { buildRuntimeQuestions } from "../utils/buildRuntimeQuestions";
+import { handleSubmitQuiz } from "../utils/submitQuiz";
+import { autoSubmitQuiz } from "../utils/autoSubmitQuiz";
+import { getQuestionStatus } from "../utils/questionStatus";
+import { processQuestions } from "../utils/processQuestions";
+import { getQuizDocId } from "../utils/getQuizDocId";
+import { useQuizTimer } from "../utils/useQuizTimer";
+
+// ===== Icons =====
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-//import CloseIcon from "@mui/icons-material/Close";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
+// ===== Dialogs =====
 import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
 import ImageZoomDialog from "../dialog/ImageZoomDialog";
 import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
 import TestResultDialog from "../dialog/TestResultDialog";
 
+// ===== Components =====
 import QuizQuestion from "../Types/questions/options/QuizQuestion";
-import { buildRuntimeQuestions } from "../utils/buildRuntimeQuestions";
-import { handleSubmitQuiz } from "../utils/submitQuiz";
-import { autoSubmitQuiz } from "../utils/autoSubmitQuiz";
-import { getQuestionStatus } from "../utils/questionStatus";
-
-//import Dialog from "@mui/material/Dialog";
-//import DialogTitle from "@mui/material/DialogTitle";
-//import DialogContent from "@mui/material/DialogContent";
-//import DialogActions from "@mui/material/DialogActions";
-
-import { processQuestions } from "../utils/processQuestions";
-import { getQuizDocId } from "../utils/getQuizDocId";
-import { useQuizTimer } from "../utils/useQuizTimer";
-
 import QuizHeader from "../components/quiz/QuizHeader";
 import QuizSidebar from "../components/quiz/QuizSidebar";
 import QuizNavigation from "../components/quiz/QuizNavigation";
 import QuizLoading from "../components/quiz/QuizLoading";
 import QuizDialogs from "../components/quiz/QuizDialogs";
 
-import { useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+// ===== Router =====
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function TracNghiem_Test() {
+  // ================= QUIZ DATA =================
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -75,52 +79,57 @@ export default function TracNghiem_Test() {
   const [quizClass, setQuizClass] = useState("");
   const [score, setScore] = useState(0);
 
+  // ================= LOADING / PROGRESS =================
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  // ================= ALERT / VALIDATION =================
   const [openAlertDialog, setOpenAlertDialog] = useState(false);
   const [unansweredQuestions, setUnansweredQuestions] = useState([]);
 
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
+  // ================= CONFIG =================
   const { config } = useContext(ConfigContext);
   const [selectedYear, setSelectedYear] = useState(config?.namHoc || "2025-2026");
-  const [saving, setSaving] = useState(false);
-  const [openExitConfirm, setOpenExitConfirm] = useState(false);
-
-  const [zoomImage, setZoomImage] = useState(null);
-
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [started, setStarted] = useState(false);
-  //const [timeLeft, setTimeLeft] = useState(0);
-  //const [startTime, setStartTime] = useState(null);
-  const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
-
   const [hocKi, setHocKi] = useState(config?.hocKy || "Cuối kỳ I");
   const [monHoc, setMonHoc] = useState("");
-  const [choXemDiem, setChoXemDiem] = useState(false);
-  const [choXemDapAn, setChoXemDapAn] = useState(false);
   const xuatFileBaiLam = config?.xuatFileBaiLam ?? true;
 
-  const [openResultDialog, setOpenResultDialog] = useState(false);
-  const [studentResult, setStudentResult] = useState(null);
-  const [fillBlankStatus, setFillBlankStatus] = useState({});
-
+  // ================= EXAM DATA =================
   const [examList, setExamList] = useState([]);
   const [selectedExam, setSelectedExam] = useState("");
   const [complete, setComplete] = useState(false); // thêm dòng này
   const [examType, setExamType] = useState("kt"); // "bt" | "kt"
   const [allExamList, setAllExamList] = useState([]);
 
-  const theme = useTheme();
-  /*const isBelow900 = useMediaQuery(theme.breakpoints.down("md")); // <900
-  const isBelow1080 = useMediaQuery("(max-width:1079px)");
-  const isBelow1200 = useMediaQuery("(max-width:1199px)");
-  const [showSidebar, setShowSidebar] = React.useState(true);*/
-  const isBelow1024 = useMediaQuery("(max-width:1023px)");
+  // ================= RESULT =================
+  const [openResultDialog, setOpenResultDialog] = useState(false);
+  const [studentResult, setStudentResult] = useState(null);
+  const [fillBlankStatus, setFillBlankStatus] = useState({});
+
+  // ================= UI STATE =================
+  const [openExitConfirm, setOpenExitConfirm] = useState(false);
+  const [zoomImage, setZoomImage] = useState(null);
+  const [started, setStarted] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  
-  // Lấy trường từ tài khoản đăng nhập
+
+  // ================= ROUTER =================
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // ================= QUIZ SETTINGS =================
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
+  const [choXemDiem, setChoXemDiem] = useState(false);
+  const [choXemDapAn, setChoXemDapAn] = useState(false);
+
+  // ================= THEME / RESPONSIVE =================
+  const theme = useTheme();
+  const isBelow1024 = useMediaQuery("(max-width:1023px)");
+
+  // ================= USER =================
   const account = localStorage.getItem("account") || "";
-  const school = account === "TH Lâm Văn Bền" ? account : "TH Bình Khánh";
+  const school =
+    account === "TH Lâm Văn Bền" ? account : "TH Bình Khánh";
 
   // Lấy lớp từ tên đề
   const detectedClass = selectedExam?.match(/Lớp\s*(\d+)/)?.[1] || "Test";
@@ -665,7 +674,7 @@ return (
       px: { xs: 1, sm: 2 },
     }}
   >
-    {/* Wrapper ngang để chứa Paper + Sidebar */}
+    {/* Wrapper */}
     <Box
       sx={{
         display: "flex",
@@ -679,228 +688,197 @@ return (
       {/* =================== MAIN PAPER =================== */}
       <Paper
         sx={{
-          p: { xs: 2, sm: 4 },
+          p: 0,
           borderRadius: 3,
           width: "100%",
           maxWidth: 1000,
-          minWidth: { xs: "auto", sm: 600 },
           minHeight: { xs: "auto", sm: 650 },
           display: "flex",
           flexDirection: "column",
           position: "relative",
-          boxSizing: "border-box",
+          overflow: "hidden",
           flexGrow: 1,
         }}
       >
-        {hasSidebar && (
-          <Tooltip
-            title={
-              showSidebar
-                ? "Thu gọn bảng câu hỏi"
-                : "Mở bảng câu hỏi"
-            }
-            arrow
-          >
-            <IconButton
-              onClick={() => setShowSidebar((prev) => !prev)}
-              sx={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                bgcolor: "#e3f2fd",
-                border: "1px solid #90caf9",
-                zIndex: 10,
-                "&:hover": {
-                  bgcolor: "#bbdefb",
-                },
-              }}
-            >
-              {showSidebar ? (
-                <ChevronLeftIcon />
-              ) : (
-                <ChevronRightIcon />
-              )}
-            </IconButton>
-          </Tooltip>
-        )}
-
+        {/* ================= HEADER XANH ================= */}
         <Box
           sx={{
-            width: "60%",
-            maxWidth: 350,
-            mt: 1,
-            mb: 2,
-            ml: "auto",
-            mr: "auto",
-            textAlign: "center",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            px: 3,
+            py: 1.5,
+            background: "#1976d2",
+            color: "#fff",
           }}
         >
-          {/* Tiêu đề */}
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: "bold",
-              fontSize: "20px",
-              mb: 2,
-              mt: -1,
-              color: "#1976d2",
-            }}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems="center"
+            justifyContent="space-between"
           >
-            TEST ĐỀ KIỂM TRA
-          </Typography>
+            {/* LEFT TITLE */}
+            <Box sx={{ minWidth: 180 }}>
+              <Typography sx={{ fontSize: 18, fontWeight: 700 }}>
+                TEST ĐỀ KIỂM TRA
+              </Typography>
+              {/*<Typography sx={{ fontSize: 13, opacity: 0.9 }}>
+                Hệ thống làm bài trực tuyến
+              </Typography>*/}
+            </Box>
 
-          {/* Ô chọn đề */}
-          <Stack direction="row" spacing={2} alignItems="center">
-            {/* ================= LOẠI ĐỀ ================= */}
-            <FormControl size="small" sx={{ width: 159 }}>
-              <InputLabel sx={{ fontSize: 16, fontWeight: "bold" }}>
-                Loại đề
-              </InputLabel>
-              <Select
-                value={examType}
-                label="Loại đề"
-                sx={{ fontSize: 16, fontWeight: 500 }}
-                onChange={(e) => {
-                  const type = e.target.value;
-                  setExamType(type);
-                  fetchQuizList(type);
-
-                  if (type === "bt") {
-                    setSelectedClass("4");
-                  } else {
-                    setSelectedClass("");
-                  }
+            {/* CENTER: SELECT */}
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              {/* LOẠI ĐỀ */}
+              <FormControl
+                size="small"
+                sx={{
+                  minWidth: 140,
+                  bgcolor: "#fff",
+                  borderRadius: 1,
                 }}
               >
-                <MenuItem value="bt">Bài tập tuần</MenuItem>
-                <MenuItem value="kt">KTĐK</MenuItem>
-              </Select>
-            </FormControl>
-
-            {/* ================= CHỌN LỚP ================= */}
-            {examType === "bt" && (
-              <FormControl size="small" sx={{ width: 120 }}>
-                <InputLabel>Lớp</InputLabel>
                 <Select
-                  value={selectedClass}
-                  label="Lớp"
-                  onChange={(e) => setSelectedClass(e.target.value)}
+                  value={examType}
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    setExamType(type);
+                    fetchQuizList(type);
+
+                    if (type === "bt") {
+                      setSelectedClass("4");
+                    } else {
+                      setSelectedClass("");
+                    }
+                  }}
                 >
-                  <MenuItem value="3">Lớp 3</MenuItem>
-                  <MenuItem value="4">Lớp 4</MenuItem>
-                  <MenuItem value="5">Lớp 5</MenuItem>
+                  <MenuItem value="bt">Bài tập tuần</MenuItem>
+                  <MenuItem value="kt">Kiểm tra</MenuItem>
                 </Select>
               </FormControl>
-            )}
 
-            {/* ================= CHỌN ĐỀ ================= */}
-            <FormControl size="small" sx={{ width: 220 }}>
-              <InputLabel>Chọn đề</InputLabel>
-              <Select
-                value={selectedExam}
-                label="Chọn đề"
-                onChange={(e) => setSelectedExam(e.target.value)}
+              {/* CHỌN LỚP (giữ logic cũ) */}
+              {examType === "bt" && (
+                <FormControl
+                  size="small"
+                  sx={{
+                    minWidth: 110,
+                    bgcolor: "#fff",
+                    borderRadius: 1,
+                  }}
+                >
+                  <Select
+                    value={selectedClass}
+                    onChange={(e) =>
+                      setSelectedClass(e.target.value)
+                    }
+                  >
+                    <MenuItem value="3">Lớp 3</MenuItem>
+                    <MenuItem value="4">Lớp 4</MenuItem>
+                    <MenuItem value="5">Lớp 5</MenuItem>
+                  </Select>
+                </FormControl>
+              )}
+
+              {/* CHỌN ĐỀ */}
+              <FormControl
+                size="small"
+                sx={{
+                  minWidth: 200,
+                  bgcolor: "#fff",
+                  borderRadius: 1,
+                }}
               >
-                {examList.map((exam) => (
-                  <MenuItem key={exam} value={exam}>
-                    {formatQuizTitle(exam)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                <Select
+                  value={selectedExam}
+                  onChange={(e) =>
+                    setSelectedExam(e.target.value)
+                  }
+                >
+                  {examList.map((exam) => (
+                    <MenuItem key={exam} value={exam}>
+                      {formatQuizTitle(exam)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+
+            {/* RIGHT (sidebar toggle nếu có) */}
+            {hasSidebar && (
+              <IconButton
+                onClick={() =>
+                  setShowSidebar((p) => !p)
+                }
+                sx={{
+                  color: "#fff",
+                  bgcolor: "rgba(255,255,255,0.15)",
+                  "&:hover": {
+                    bgcolor: "rgba(255,255,255,0.25)",
+                  },
+                }}
+              >
+                {showSidebar ? (
+                  <ChevronLeftIcon />
+                ) : (
+                  <ChevronRightIcon />
+                )}
+              </IconButton>
+            )}
           </Stack>
         </Box>
 
-        {/* Đồng hồ */}
-        {/*<Box
+        {/* ================= CONTENT ================= */}
+        <Box
           sx={{
+            p: { xs: 2, sm: 3 },
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
-            mt: 0.5,
-            mb: 0,
-            minHeight: 40,
-            width: "100%",
+            flex: 1,
           }}
         >
-          {started && !loading && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 3,
-                py: 0.5,
-                borderRadius: 2,
-                bgcolor: "#fff",
-              }}
-            >
-              <AccessTimeIcon sx={{ color: "#d32f2f" }} />
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: "bold", color: "#d32f2f" }}
-              >
-                {formatTime(timeLeft)}
-              </Typography>
-            </Box>
+          {/* Loading */}
+          <QuizLoading loading={loading} progress={progress} />
+
+          {/* Question */}
+          {!loading && currentQuestion && (
+            <QuizQuestion
+              currentQuestion={currentQuestion}
+              currentIndex={currentIndex}
+              answers={answers}
+              setAnswers={setAnswers}
+              submitted={submitted}
+              started={started}
+              choXemDapAn={choXemDapAn}
+              setZoomImage={setZoomImage}
+              handleSingleSelect={handleSingleSelect}
+              handleMultipleSelect={handleMultipleSelect}
+              handleDragEnd={handleDragEnd}
+              reorder={reorder}
+              normalizeValue={normalizeValue}
+              ratio={ratio}
+            />
           )}
 
-          <Box
-            sx={{
-              width: "100%",
-              height: 1,
-              bgcolor: "#e0e0e0",
-              mt: 0,
-            }}
-          />
-        </Box>*/}
+          <Box sx={{ flexGrow: 1 }} />
 
-        {/* Loading */}
-        <QuizLoading loading={loading} progress={progress} />
-
-        {!loading && currentQuestion && (
-          <QuizQuestion
-            key={currentQuestion.id || currentIndex}
-            currentQuestion={currentQuestion}
-            currentIndex={currentIndex}
-            answers={answers}
-            setAnswers={setAnswers}
-            submitted={submitted}
-            started={started}
-            choXemDapAn={choXemDapAn}
-            setZoomImage={setZoomImage}
-            handleSingleSelect={handleSingleSelect}
-            handleMultipleSelect={handleMultipleSelect}
-            handleDragEnd={handleDragEnd}
-            reorder={reorder}
-            normalizeValue={normalizeValue}
-            ratio={ratio}
-          />
-        )}
-
-        <Box sx={{ flexGrow: 1 }} />
-
-        {/* ===== NÚT ĐIỀU HƯỚNG ===== */}
-        {started && !loading && (
-          <QuizNavigation
-            started={started}
-            loading={loading}
-            currentIndex={currentIndex}
-            questionsLength={questions.length}
-            handlePrev={handlePrev}
-            handleNext={handleNext}
-            handleSubmit={handleSubmit}
-            submitted={submitted}
-            isEmptyQuestion={isEmptyQuestion}
-            isSidebarVisible={isSidebarVisible}
-          />
-        )}
+          {/* NAV */}
+          {started && !loading && (
+            <QuizNavigation
+              started={started}
+              loading={loading}
+              currentIndex={currentIndex}
+              questionsLength={questions.length}
+              handlePrev={handlePrev}
+              handleNext={handleNext}
+              handleSubmit={handleSubmit}
+              submitted={submitted}
+              isEmptyQuestion={isEmptyQuestion}
+              isSidebarVisible={isSidebarVisible}
+            />
+          )}
+        </Box>
       </Paper>
 
-      {/* =================== SIDEBAR =================== */}
+      {/* SIDEBAR */}
       {isSidebarVisible && (
         <QuizSidebar
           sidebarConfig={sidebarConfig}
@@ -912,19 +890,17 @@ return (
           handleSubmit={handleSubmit}
           navigate={navigate}
           setOpenExitConfirm={setOpenExitConfirm}
-          getQuestionStatus={getQuestionStatus}
         />
       )}
     </Box>
 
-    {/* Dialog cảnh báo chưa làm hết */}
+    {/* ===== DIALOGS + SNACKBAR GIỮ NGUYÊN ===== */}
     <IncompleteAnswersDialog
       open={openAlertDialog}
       onClose={() => setOpenAlertDialog(false)}
       unansweredQuestions={unansweredQuestions}
     />
 
-    {/* Dialog xác nhận thoát */}
     <ExitConfirmDialog
       open={openExitConfirm}
       onClose={() => setOpenExitConfirm(false)}
@@ -943,18 +919,13 @@ return (
       onClose={() => setZoomImage(null)}
     />
 
-    {/* Snackbar */}
     <Snackbar
       open={snackbar.open}
       autoHideDuration={3000}
       onClose={handleCloseSnackbar}
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
     >
-      <Alert
-        onClose={handleCloseSnackbar}
-        severity={snackbar.severity}
-        sx={{ width: "100%" }}
-      >
+      <Alert severity={snackbar.severity}>
         {snackbar.message}
       </Alert>
     </Snackbar>

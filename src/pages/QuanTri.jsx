@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 
+// ================= MUI =================
 import {
   Box,
   Typography,
@@ -12,62 +13,83 @@ import {
   MenuItem,
   FormControl,
   Divider,
-  Checkbox, 
+  Checkbox,
   FormControlLabel,
   Snackbar,
   RadioGroup,
   Radio,
+  TextField,
 } from "@mui/material";
 
-import { doc, getDoc, getDocs, collection, setDoc, updateDoc, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
-import { writeBatch } from "firebase/firestore";
+// ================= FIREBASE =================
+import {
+  doc,
+  getDoc,
+  getDocs,
+  collection,
+  setDoc,
+  updateDoc,
+  onSnapshot,
+  writeBatch
+} from "firebase/firestore";
 
-//import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import { db } from "../firebase";
+
+// ================= ICONS =================
 import BackupIcon from "@mui/icons-material/Backup";
 import RestoreIcon from "@mui/icons-material/Restore";
-import AutorenewIcon from '@mui/icons-material/Autorenew';
+import AutorenewIcon from "@mui/icons-material/Autorenew";
+import LockResetIcon from "@mui/icons-material/LockReset";
 
+// ================= ROUTER =================
 import { useNavigate } from "react-router-dom";
+
+// ================= CONTEXT =================
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentContext } from "../context/StudentContext";
-import LockResetIcon from "@mui/icons-material/LockReset";
+
+// ================= COMPONENTS =================
 import ChangePasswordDialog from "../dialog/ChangePasswordDialog";
 import CreateDataConfirmDialog from "../dialog/CreateDataConfirmDialog";
 import BackupPage from "./BackupPage";
 import RestorePage from "./RestorePage";
-//import UploadPage from "./UploadPage";
-import TextField from "@mui/material/TextField";
 
+// ================= STATE =================
 export default function QuanTri() {
-  const [openBackupDialog, setOpenBackupDialog] = useState(false);
-  const [openRestoreDialog, setOpenRestoreDialog] = useState(false);
-  //const [openUploadPage, setOpenUploadPage] = useState(false);
-
-  // 🔹 Context & navigation
-  const navigate = useNavigate();
+  // ================= CONTEXT =================
   const { config, setConfig } = useContext(ConfigContext);
   const { classData, setClassData } = useContext(StudentContext);
   const { studentData, setStudentData } = useContext(StudentContext);
 
-  // 🔹 Chọn tuần, học kỳ, lớp, môn
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [selectedSemester, setSelectedSemester] = useState("Giữa kỳ I");
+  // ================= ROUTER =================
+  const navigate = useNavigate();
+
+  // ================= DIALOG STATE =================
+  const [openBackupDialog, setOpenBackupDialog] = useState(false);
+  const [openRestoreDialog, setOpenRestoreDialog] = useState(false);
+  const [openChangePw, setOpenChangePw] = useState(false);
+  const [openCreateDataDialog, setOpenCreateDataDialog] = useState(false);
+
+  // ================= CLASS / DATA =================
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [subject, setSubject] = useState("Tin học");
 
-  const [openChangePw, setOpenChangePw] = useState(false);
+  // ================= SCHOOL SETTINGS =================
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedSemester, setSelectedSemester] = useState("Giữa kỳ I");
+  const [selectedYear, setSelectedYear] = useState("2025-2026");
+
+  // ================= PASSWORD =================
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [pwError, setPwError] = useState("");
 
+  // ================= UI STATE =================
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(false);
-  const [openCreateDataDialog, setOpenCreateDataDialog] = useState(false);
-  const [selectedYear, setSelectedYear] = useState("2025-2026");
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -328,7 +350,7 @@ export default function QuanTri() {
                     <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
                     <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
                     <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-                    <MenuItem value="Cả năm">Cả năm</MenuItem>
+                    <MenuItem value="Cuối năm">Cuối năm</MenuItem>
                   </Select>
                 </FormControl>
 

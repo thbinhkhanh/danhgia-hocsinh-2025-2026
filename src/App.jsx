@@ -236,8 +236,8 @@ function AppContent() {
                 <option style={{ color: "#1976d2" }} value="Giữa kỳ II">
                   Giữa kỳ II
                 </option>
-                <option style={{ color: "#1976d2" }} value="Cả năm">
-                  Cả năm
+                <option style={{ color: "#1976d2" }} value="Cuối năm">
+                  Cuối năm
                 </option>
               </select>
             </Box>

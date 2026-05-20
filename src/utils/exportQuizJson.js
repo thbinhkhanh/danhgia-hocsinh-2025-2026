@@ -28,7 +28,7 @@ export const handleExportQuiz = ({
           ? "HK1"
           : semester === "Giữa kỳ II"
           ? "HK2"
-          : semester === "Cả năm"
+          : semester === "Cuối năm"
           ? "CN"
           : "HK2";
 

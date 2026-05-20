@@ -68,14 +68,28 @@ const TrueFalseOptions = ({ q, qi, update }) => {
     <Stack spacing={1.5} sx={{ mb: 2 }}>
       {/* Toolbar */}
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1 }}>
-        <IconButton size="small" onClick={() => applyFormat("bold")}>
-          <FormatBoldIcon fontSize="small" />
+        <IconButton
+          size="small"
+          onClick={() => applyFormat("bold")}
+          sx={{ p: 0.4 }}
+        >
+          <FormatBoldIcon sx={{ fontSize: 20 }} />
         </IconButton>
-        <IconButton size="small" onClick={() => applyFormat("italic")}>
-          <FormatItalicIcon fontSize="small" />
+
+        <IconButton
+          size="small"
+          onClick={() => applyFormat("italic")}
+          sx={{ p: 0.4 }}
+        >
+          <FormatItalicIcon sx={{ fontSize: 20 }} />
         </IconButton>
-        <IconButton size="small" onClick={() => applyFormat("underline")}>
-          <FormatUnderlinedIcon fontSize="small" />
+
+        <IconButton
+          size="small"
+          onClick={() => applyFormat("underline")}
+          sx={{ p: 0.4 }}
+        >
+          <FormatUnderlinedIcon sx={{ fontSize: 20 }} />
         </IconButton>
       </Box>
 
