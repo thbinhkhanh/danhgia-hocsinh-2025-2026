@@ -1044,18 +1044,28 @@ return (
           {/* RIGHT TITLE */}
           <Box
             sx={{
+              ml: 2,
               px: 1.5,
               py: 0.5,
-              borderRadius: 2,
+              borderRadius: 1,
               bgcolor: "rgba(25,118,210,0.08)",
+
+              flex: "1 1 auto",   // 👈 cho phép co giãn
+              minWidth: 0,        // 👈 bắt buộc để wrap hoạt động đúng
+              display: "flex",
+              justifyContent: "center",
             }}
           >
             <Typography
               sx={{
-                fontSize: "0.85rem",
+                fontSize: { xs: "1rem", sm: "1.3rem" }, // 👈 nhỏ hơn trên mobile
                 fontWeight: 700,
                 color: "#1976d2",
                 letterSpacing: 0.5,
+                textAlign: "center",
+
+                wordBreak: "break-word", // 👈 cho phép xuống dòng
+                lineHeight: 1.5,
               }}
             >
               TẠO ĐỀ KIỂM TRA
