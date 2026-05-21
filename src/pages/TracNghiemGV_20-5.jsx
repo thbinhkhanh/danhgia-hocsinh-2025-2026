@@ -157,56 +157,28 @@ const hocKyMap = {
   });
 
   useEffect(() => {
-    const loadFromConfig = async () => {
-      try {
-        const configRef = doc(db, "CONFIG", "config");
-        const snap = await getDoc(configRef);
+    const savedId = localStorage.getItem("deTracNghiemId");
+    const savedCollection = localStorage.getItem("deTracNghiemCollection"); // 🔥 thêm
 
-        if (!snap.exists()) return;
-
-        const data = snap.data();
-
-        const docId = data.deTracNghiem;
-        const examTypeFromConfig = data.examType;
-
-        if (!docId || !examTypeFromConfig) return;
-
-        setExamType(examTypeFromConfig);
-
-        let collectionName = getCollectionByExamType(examTypeFromConfig);
-
-        if (examTypeFromConfig === "ktdk") {
-          collectionName = "NGANHANG_DE";
-        }
-
-        if (examTypeFromConfig === "ontap") {
-          collectionName = "DE_ONTAP";
-        }
-
-        // 👇 THÊM DÒNG NÀY
-        if (examTypeFromConfig === "luyentap") {
-          setLessonName(data.deTracNghiem || "");
-        } else {
-          setLessonName("");
-        }
-
-        updateQuizConfig({
-          deTracNghiem: docId,
-          examType: examTypeFromConfig,
-          collection: collectionName,
-        });
-
-        setSelectedDoc(docId);
-
-      } catch (err) {
-        console.error("❌ Load CONFIG error:", err);
-      }
-    };
-
-    loadFromConfig();
+    if (savedId) {
+      updateQuizConfig({ 
+        deTracNghiem: savedId,
+        collection: savedCollection // 🔥 thêm
+      });
+    }
   }, []);
 
-  
+  useInitialQuiz({
+    db,
+    setQuestions,
+    setSelectedClass,
+    setSelectedSubject,
+    setSemester,
+    setSchoolYear,
+    setExamLetter,
+    setExamType,
+    setLessonName,
+  });
 
 
 // -----------------------
@@ -276,7 +248,6 @@ useEffect(() => {
       semester,
       schoolYear,
       examLetter,
-      lessonName,
     };
     localStorage.setItem("teacherConfig", JSON.stringify(cfg));
   }, [selectedClass, selectedSubject, semester, schoolYear, examLetter]);
@@ -426,88 +397,81 @@ useEffect(() => {
     fetchQuizList(defaultType, filterYear, filterClass);
   };
 
-  const getCollectionByExamType = (type) => {
-    if (type === "bt") return "BAITAP_TUAN";
-    if (type === "ktdk") return "NGANHANG_DE";
-    if (type === "luyentap") return "TRACNGHIEM";
-    if (type === "ontap") return "DE_ONTAP"; // 👈 THÊM MỚI
-    return "BAITAP_TUAN";
-  };
 
   // 🔹 Hàm lấy danh sách đề trong Firestore
   const fetchQuizList = async (type, year = filterYear, cls = filterClass) => {
-    setLoadingList(true);
+  setLoadingList(true);
 
-    try {
-      let docs = [];
+  try {
+    let docs = [];
 
-      // ===== GIỮ NGUYÊN BT / KTĐK =====
-      if (type !== "luyentap") {
-        const colName = getCollectionByExamType(type);
+    // ===== GIỮ NGUYÊN BT / KTĐK =====
+    if (type !== "luyentap") {
+      const colName = type === "bt" ? "BAITAP_TUAN" : "NGANHANG_DE";
 
-        const snap = await getDocs(collection(db, colName));
+      const snap = await getDocs(collection(db, colName));
 
-        docs = snap.docs.map((d) => ({
-          id: d.id,
-          name: d.id,
-          collection: colName,
-          ...d.data(),
-        }));
-      }
+      docs = snap.docs.map((d) => ({
+        id: d.id,
+        name: d.id,
+        collection: colName,
+        ...d.data(),
+      }));
+    }
 
-      // ===== LUYỆN TẬP TIN HỌC =====
-      else {
-        const baseCollections = [
-          //"TRACNGHIEM1",
-          //"TRACNGHIEM2",
-          "TRACNGHIEM3",
-          "TRACNGHIEM4",
-          "TRACNGHIEM5",
-        ];
+    // ===== LUYỆN TẬP TIN HỌC =====
+    else {
+      const baseCollections = [
+        //"TRACNGHIEM1",
+        //"TRACNGHIEM2",
+        "TRACNGHIEM3",
+        "TRACNGHIEM4",
+        "TRACNGHIEM5",
+      ];
 
-        const suffix = year === "2025-2026" ? "" : "_New";
+      const suffix = year === "2025-2026" ? "" : "_New";
 
-        const collections = baseCollections.map((c) => c + suffix);
+      const collections = baseCollections.map((c) => c + suffix);
 
-        docs = [];
+      docs = [];
 
-        for (const colName of collections) {
-          try {
-            const snap = await getDocs(collection(db, colName));
+      for (const colName of collections) {
+        try {
+          const snap = await getDocs(collection(db, colName));
 
-            const colDocs = snap.docs.map((d) => ({
-              id: d.id,
-              name: d.id,
-              collection: colName,
-              lop: `Lớp ${colName.match(/\d+/)?.[0]}`,
-              year,
-              ...d.data(),
-            }));
+          const colDocs = snap.docs.map((d) => ({
+            id: d.id,
+            name: d.id,
+            collection: colName,
+            lop: `Lớp ${colName.match(/\d+/)?.[0]}`,
+            year,
+            ...d.data(),
+          }));
 
-            docs.push(...colDocs);
-          } catch (err) {
-            console.warn("Missing:", colName);
-          }
+          docs.push(...colDocs);
+        } catch (err) {
+          console.warn("Missing:", colName);
         }
       }
-
-      setDocList(docs);
-
-      if (docs.length > 0) setSelectedDoc(docs[0].id);
-
-    } catch (err) {
-      console.error("❌ Lỗi khi lấy danh sách đề:", err);
-
-      setSnackbar({
-        open: true,
-        message: "❌ Không thể tải danh sách đề!",
-        severity: "error",
-      });
-    } finally {
-      setLoadingList(false);
-      setOpenDialog(true);
     }
-  };
+
+    setDocList(docs);
+
+    if (docs.length > 0) setSelectedDoc(docs[0].id);
+
+  } catch (err) {
+    console.error("❌ Lỗi khi lấy danh sách đề:", err);
+
+    setSnackbar({
+      open: true,
+      message: "❌ Không thể tải danh sách đề!",
+      severity: "error",
+    });
+  } finally {
+    setLoadingList(false);
+    setOpenDialog(true);
+  }
+};
 
 
   // 🔹 Hàm mở đề được chọn
@@ -525,15 +489,17 @@ useEffect(() => {
 
     try {
       // 🔹 Xác định collection theo loại đề
-      let collectionName = getCollectionByExamType(dialogExamType);
+      let collectionName = "BAITAP_TUAN";
 
-      if (dialogExamType === "luyentap") {
+      if (dialogExamType === "ktdk") {
+        collectionName = "NGANHANG_DE";
+      } 
+      else if (dialogExamType === "luyentap") {
         // 🔥 luyện tập: collection nằm sẵn trong docList
         const currentDoc = docList.find((d) => d.id === selectedDoc);
         if (!currentDoc?.collection) {
           throw new Error("Không xác định được collection của đề luyện tập");
         }
-
         collectionName = currentDoc.collection; // TRACNGHIEM1..5
 
         localStorage.setItem("deTracNghiemCollection", currentDoc.collection);
@@ -577,7 +543,6 @@ useEffect(() => {
       let examTypeFromCollection = "bt";
       if (collectionName === "NGANHANG_DE") examTypeFromCollection = "ktdk";
       if (collectionName.startsWith("TRACNGHIEM")) examTypeFromCollection = "luyentap";
-      if (collectionName === "DE_ONTAP") examTypeFromCollection = "ontap"; // 👈 THÊM
 
       setDialogExamType(examTypeFromCollection);
       setExamType(examTypeFromCollection);
@@ -1137,7 +1102,6 @@ return (
                 <MenuItem value="bt">Bài tập tuần</MenuItem>
                 <MenuItem value="luyentap">Luyện tập tin học</MenuItem>
                 <MenuItem value="ktdk">KTĐK</MenuItem>
-                <MenuItem value="ontap">Ôn tập</MenuItem>
               </Select>
             </FormControl>
 
@@ -1210,8 +1174,24 @@ return (
               </FormControl>
             )}
 
-            {(examType === "ktdk" || examType === "ontap") && (
+            {examType === "ktdk" && (
               <>
+                <FormControl size="small" sx={getSx(120)} variant="outlined">
+                  <InputLabel id="semester-label">Học kỳ</InputLabel>
+                  <Select
+                    labelId="semester-label"
+                    id="semester-select"
+                    value={semester}
+                    label="Học kỳ"
+                    onChange={(e) => setSemester(e.target.value)}
+                  >
+                    <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
+                    <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
+                    <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
+                    <MenuItem value="Cả năm">Cuối năm</MenuItem>
+                  </Select>
+                </FormControl>
+
                 <FormControl size="small" sx={getSx(120)} variant="outlined">
                   <InputLabel id="year-label">Năm học</InputLabel>
                   <Select
@@ -1229,41 +1209,22 @@ return (
                   </Select>
                 </FormControl>
 
-                {/* chỉ KTDK mới cần học kỳ + đề A/B/C/D */}
-                {examType === "ktdk" && (
-                  <>
-                    <FormControl size="small" sx={getSx(120)} variant="outlined">
-                      <InputLabel id="semester-label">Học kỳ</InputLabel>
-                      <Select
-                        labelId="semester-label"
-                        value={semester}
-                        label="Học kỳ"
-                        onChange={(e) => setSemester(e.target.value)}
-                      >
-                        <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
-                        <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
-                        <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
-                        <MenuItem value="Cả năm">Cuối năm</MenuItem>
-                      </Select>
-                    </FormControl>
-
-                    <FormControl size="small" sx={getSx(120)} variant="outlined">
-                      <InputLabel id="letter-label">Đề</InputLabel>
-                      <Select
-                        labelId="letter-label"
-                        value={examLetter || ""}
-                        label="Đề"
-                        onChange={(e) => setExamLetter(e.target.value)}
-                      >
-                        {["A", "B", "C", "D"].map((d) => (
-                          <MenuItem key={d} value={d}>
-                            {d}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </>
-                )}
+                <FormControl size="small" sx={getSx(120)} variant="outlined">
+                  <InputLabel id="letter-label">Đề</InputLabel>
+                  <Select
+                    labelId="letter-label"
+                    id="letter-select"
+                    value={examLetter || ""}
+                    label="Đề"
+                    onChange={(e) => setExamLetter(e.target.value)}
+                  >
+                    {["A", "B", "C", "D"].map((d) => (
+                      <MenuItem key={d} value={d}>
+                        {d}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </>
             )}
 

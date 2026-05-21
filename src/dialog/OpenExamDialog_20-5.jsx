@@ -100,7 +100,6 @@ const isDocMatchType = (doc, type) => {
   if (type === "bt") return doc.collection === "BAITAP_TUAN";
   if (type === "ktdk") return doc.collection === "NGANHANG_DE";
   if (type === "luyentap") return doc.collection?.startsWith("TRACNGHIEM");
-  if (type === "ontap") return doc.collection === "DE_ONTAP"; // 👈 THÊM
   return false;
 };
 
@@ -287,7 +286,6 @@ return (
                 <MenuItem value="luyentap">
                   Luyện tập
                 </MenuItem>
-                <MenuItem value="ontap">Ôn tập</MenuItem> 
               </Select>
             </FormControl>
 
@@ -472,166 +470,403 @@ return (
 
       {/* ================= CONTENT ================= */}
       <DialogContent
-  sx={{
-    flex: 1,
-    overflow: "hidden",
-    px: 3,
-    pt: 0,
-    pb: 2,
-  }}
->
-  <Box
-    sx={{
-      height: "100%",
-      overflowY: "auto",
-      borderRadius: "5px",
-      bgcolor: "#fff",
-      border: "1px solid #e2e8f0",
-      p: 1.2,
-      "&::-webkit-scrollbar": { width: 6 },
-      "&::-webkit-scrollbar-thumb": {
-        background: "#cbd5e1",
-        borderRadius: 999,
-      },
-    }}
-  >
-    {loadingList ? (
-      <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CircularProgress />
-      </Box>
-    ) : (() => {
-      // ================= HELPERS =================
-      const normalize = (s = "") =>
-        s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        sx={{
+          flex: 1,
+          overflow: "hidden",
+          px: 3,
+          pt: 0,
+          pb: 2,
+        }}
+      >
+        <Box
+          sx={{
+            height: "100%",
+            overflowY: "auto",
+            borderRadius: "5px",
+            bgcolor: "#fff",
+            border: "1px solid #e2e8f0",
+            p: 1.2,
 
-      const getNumber = (text = "") => {
-        const match = text.match(/(tuần|bài)\s*(\d+)/i) || text.match(/\d+/);
-        return match ? parseInt(match[2] || match[0], 10) : 9999;
-      };
+            "&::-webkit-scrollbar": {
+              width: 6,
+            },
 
-      const getGroup = (t) => {
-        if (t.includes("bai") || t.includes("tuan")) return 1;
-        if (t.includes("on tap hoc ki")) return 2;
-        if (t.includes("on tap cuoi nam")) return 3;
-        if (t.includes("ontap")) return 4; // 👈 ONTAP
-        return 4;
-      };
+            "&::-webkit-scrollbar-thumb":
+              {
+                background: "#cbd5e1",
+                borderRadius: 999,
+              },
+          }}
+        >
+          {loadingList ? (
+            <Box
+              sx={{
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <CircularProgress />
+            </Box>
+          ) : (
+            (() => {
+              const normalize = (
+                s = ""
+              ) =>
+                s
+                  .toLowerCase()
+                  .normalize("NFD")
+                  .replace(
+                    /[\u0300-\u036f]/g,
+                    ""
+                  );
 
-      const getTitle = (doc) => {
-        switch (dialogExamType) {
-          case "ktdk":
-            return formatExamTitle(doc.id);
-          case "bt":
-            return formatBtTitle(doc.id);
-          case "luyentap":
-            return doc.id;
-          case "ontap": // 👈 THÊM
-            return `Ôn tập - ${doc.id}`;
-          default:
-            return doc.id;
-        }
-      };
+              const getNumber = (
+                text = ""
+              ) => {
+                const weekMatch =
+                  text.match(
+                    /tuần\s*(\d+)/i
+                  );
 
-      // ================= FILTER =================
-      const filteredDocs = docList
-        .filter((doc) => isDocMatchType(doc, dialogExamType))
-        .filter((doc) => {
-          if (dialogExamType === "luyentap") {
-            return getClassFromLuyenTapCollection(doc.collection) === filterClass;
-          }
-          return doc.class === filterClass;
-        })
-        .filter((doc) => {
-          if (!["ktdk", "ontap"].includes(dialogExamType)) return true;
-          return getExamYearFromId(doc.id) === filterYear;
-        })
-        .filter((doc) => {
-          if (dialogExamType !== "bt") return true;
-          if (!filterSubject || filterSubject === "all") return true;
+                if (weekMatch)
+                  return parseInt(
+                    weekMatch[1],
+                    10
+                  );
 
-          const subject = (doc.subject || doc.mon || "").toLowerCase();
+                const baiMatch =
+                  text.match(
+                    /bài\s*(\d+)/i
+                  );
 
-          if (filterSubject === "tin") return subject.includes("tin");
-          if (filterSubject === "congnghe")
-            return subject.includes("công") || subject.includes("cong");
+                if (baiMatch)
+                  return parseInt(
+                    baiMatch[1],
+                    10
+                  );
 
-          return true;
-        })
-        .sort((a, b) => {
-          const titleA = getTitle(a);
-          const titleB = getTitle(b);
+                const any =
+                  text.match(/\d+/);
 
-          const groupA = getGroup(normalize(titleA));
-          const groupB = getGroup(normalize(titleB));
+                return any
+                  ? parseInt(any[0], 10)
+                  : 9999;
+              };
 
-          if (groupA !== groupB) return groupA - groupB;
+              const getGroup = (t) => {
+                if (
+                  t.includes("bai") ||
+                  t.includes("tuan")
+                )
+                  return 1;
 
-          return getNumber(titleA) - getNumber(titleB);
-        });
+                if (
+                  t.includes(
+                    "on tap hoc ki"
+                  )
+                )
+                  return 2;
 
-      // ================= EMPTY =================
-      if (!filteredDocs.length) {
-        return (
-          <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "#94a3b8" }}>
-            <DescriptionOutlinedIcon sx={{ fontSize: 52, mb: 1, opacity: 0.5 }} />
-            <Typography fontWeight={600}>Không có đề nào</Typography>
-          </Box>
-        );
-      }
+                if (
+                  t.includes(
+                    "on tap cuoi nam"
+                  )
+                )
+                  return 3;
 
-      // ================= LIST =================
-      return (
-        <Stack spacing={1}>
-          {filteredDocs.map((doc) => {
-            const isSelected = selectedDoc === doc.id;
+                return 4;
+              };
 
-            return (
-              <Box
-                key={doc.id}
-                onClick={() => setSelectedDoc(doc.id)}
-                onDoubleClick={() => handleOpenSelectedDoc(doc.id)}
-                sx={{
-                  p: 1.6,
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  transition: ".18s",
-                  border: isSelected ? "2px solid #1976d2" : "1px solid #e2e8f0",
-                  bgcolor: isSelected ? "#f0f7ff" : "#fff",
-                  "&:hover": { bgcolor: "#f8fbff", borderColor: "#90caf9" },
-                }}
-              >
-                <Stack direction="row" alignItems="center" spacing={1.5}>
-                  <Typography
-                    sx={{
-                      flex: 1,
-                      fontSize: 15,
-                      fontWeight: 500,
-                      color: "#1e293b",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {getTitle(doc)}
-                  </Typography>
+              const filteredDocs =
+                docList
+                  .filter((doc) =>
+                    isDocMatchType(
+                      doc,
+                      dialogExamType
+                    )
+                  )
 
+                  .filter((doc) => {
+                    if (
+                      dialogExamType ===
+                      "luyentap"
+                    ) {
+                      return (
+                        getClassFromLuyenTapCollection(
+                          doc.collection
+                        ) === filterClass
+                      );
+                    }
+
+                    return (
+                      doc.class ===
+                      filterClass
+                    );
+                  })
+
+                  .filter((doc) => {
+                    if (
+                      dialogExamType !==
+                      "ktdk"
+                    )
+                      return true;
+
+                    return (
+                      getExamYearFromId(
+                        doc.id
+                      ) === filterYear
+                    );
+                  })
+
+                  .filter((doc) => {
+                    if (
+                      dialogExamType !==
+                      "bt"
+                    )
+                      return true;
+
+                    if (
+                      !filterSubject ||
+                      filterSubject ===
+                        "all"
+                    )
+                      return true;
+
+                    const subject = (
+                      doc.subject ||
+                      doc.mon ||
+                      ""
+                    ).toLowerCase();
+
+                    if (
+                      filterSubject ===
+                      "tin"
+                    )
+                      return subject.includes(
+                        "tin"
+                      );
+
+                    if (
+                      filterSubject ===
+                      "congnghe"
+                    )
+                      return (
+                        subject.includes(
+                          "công"
+                        ) ||
+                        subject.includes(
+                          "cong"
+                        )
+                      );
+
+                    return true;
+                  })
+
+                  .sort((a, b) => {
+                    const titleA =
+                      dialogExamType ===
+                      "ktdk"
+                        ? formatExamTitle(
+                            a.id
+                          )
+                        : dialogExamType ===
+                          "bt"
+                        ? formatBtTitle(
+                            a.id
+                          )
+                        : a.id;
+
+                    const titleB =
+                      dialogExamType ===
+                      "ktdk"
+                        ? formatExamTitle(
+                            b.id
+                          )
+                        : dialogExamType ===
+                          "bt"
+                        ? formatBtTitle(
+                            b.id
+                          )
+                        : b.id;
+
+                    const tA =
+                      normalize(titleA);
+
+                    const tB =
+                      normalize(titleB);
+
+                    const groupA =
+                      getGroup(tA);
+
+                    const groupB =
+                      getGroup(tB);
+
+                    if (
+                      groupA !== groupB
+                    )
+                      return (
+                        groupA - groupB
+                      );
+
+                    return (
+                      getNumber(titleA) -
+                      getNumber(titleB)
+                    );
+                  });
+
+              if (
+                filteredDocs.length === 0
+              ) {
+                return (
                   <Box
                     sx={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      border: isSelected ? "5px solid #1976d2" : "2px solid #cbd5e1",
-                      transition: ".2s",
-                      flexShrink: 0,
+                      height: "100%",
+                      display: "flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      flexDirection:
+                        "column",
+                      color: "#94a3b8",
                     }}
-                  />
+                  >
+                    <DescriptionOutlinedIcon
+                      sx={{
+                        fontSize: 52,
+                        mb: 1,
+                        opacity: 0.5,
+                      }}
+                    />
+
+                    <Typography
+                      sx={{
+                        fontWeight: 600,
+                      }}
+                    >
+                      Không có đề nào
+                    </Typography>
+                  </Box>
+                );
+              }
+
+              return (
+                <Stack spacing={1}>
+                  {filteredDocs.map(
+                    (doc) => {
+                      const isSelected =
+                        selectedDoc ===
+                        doc.id;
+
+                      return (
+                        <Box
+                          key={doc.id}
+                          onClick={() =>
+                            setSelectedDoc(
+                              doc.id
+                            )
+                          }
+                          onDoubleClick={() =>
+                            handleOpenSelectedDoc(
+                              doc.id
+                            )
+                          }
+                          sx={{
+                            p: 1.6,
+                            borderRadius:
+                              "5px",
+
+                            cursor:
+                              "pointer",
+
+                            transition:
+                              ".18s",
+
+                            border:
+                              isSelected
+                                ? "2px solid #1976d2"
+                                : "1px solid #e2e8f0",
+
+                            bgcolor:
+                              isSelected
+                                ? "#f0f7ff"
+                                : "#fff",
+
+                            "&:hover":
+                              {
+                                bgcolor:
+                                  "#f8fbff",
+
+                                borderColor:
+                                  "#90caf9",
+                              },
+                          }}
+                        >
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={1.5}
+                          >
+                            <Typography
+                              sx={{
+                                flex: 1,
+                                fontSize: 15,
+                                fontWeight: 500,
+                                color:
+                                  "#1e293b",
+
+                                lineHeight: 1.5,
+                              }}
+                            >
+                              {dialogExamType ===
+                                "ktdk" &&
+                                formatExamTitle(
+                                  doc.id
+                                )}
+
+                              {dialogExamType ===
+                                "bt" &&
+                                formatBtTitle(
+                                  doc.id
+                                )}
+
+                              {dialogExamType ===
+                                "luyentap" &&
+                                doc.id}
+                            </Typography>
+
+                            {/* RADIO */}
+                            <Box
+                              sx={{
+                                width: 18,
+                                height: 18,
+                                borderRadius:
+                                  "50%",
+
+                                border:
+                                  isSelected
+                                    ? "5px solid #1976d2"
+                                    : "2px solid #cbd5e1",
+
+                                transition:
+                                  ".2s",
+
+                                flexShrink: 0,
+                              }}
+                            />
+                          </Stack>
+                        </Box>
+                      );
+                    }
+                  )}
                 </Stack>
-              </Box>
-            );
-          })}
-        </Stack>
-      );
-    })()}
-  </Box>
-</DialogContent>
+              );
+            })()
+          )}
+        </Box>
+      </DialogContent>
 
       {/* ================= FOOTER ================= */}
       <DialogActions

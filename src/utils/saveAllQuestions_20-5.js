@@ -375,17 +375,6 @@ for (let q of questions) {
       docId = docName; // ✅ FIX CHUẨN
     }
 
-    // ===== ÔN TẬP (CHỈ THÊM MỚI) =====
-    else if (examType === "ontap") {
-      collectionName = "DE_ONTAP";
-
-      docId =
-        lessonName ||
-        quizConfig?.deOntap ||
-        localStorage.getItem("deTracNghiemId") || // 👈 THÊM DÒNG NÀY
-        `ONTAP_${Date.now()}`;
-    }
-
     // ===== KTĐK =====
     else if (examType === "ktdk") {
       collectionName = "NGANHANG_DE";
