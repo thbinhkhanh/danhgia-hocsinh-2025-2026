@@ -40,19 +40,26 @@ const QuestionCard = ({
       <Box
         sx={{
           position: "absolute",
-          top: 10,
-          right: 12,
-          display: "flex",
-          flexDirection: "column",
-          gap: 0.5,
 
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(8px)",
-          border: "1px solid rgba(0,0,0,0.08)",
-          borderRadius: 3,
-          padding: "6px 4px",
-          boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
-          zIndex: 10,
+          top: 17,
+          right: 140,
+
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 0.3,
+
+          background: "transparent",
+
+          border: "1px solid #dcdcdc",
+          borderRadius: 0,
+
+          boxShadow: "none",
+
+          px: 1.2,
+          py: 0.4,
+
+          zIndex: 2,
         }}
       >
         {/* UP */}
@@ -130,7 +137,7 @@ const QuestionCard = ({
       </Box>
 
       {/* ===== CONTENT ===== */}
-      <Box sx={{ pr: 6 }}>
+      <Box sx={{ px: 1 }}>
         <QuestionHeader q={q} qi={qi} update={updateQuestionAt} />
 
         <QuestionOptions q={q} qi={qi} update={updateQuestionAt} />

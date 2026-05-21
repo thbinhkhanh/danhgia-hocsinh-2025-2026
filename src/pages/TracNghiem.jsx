@@ -1,5 +1,5 @@
 // ================= REACT =================
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 
 // ================= MUI =================
 import {
@@ -64,6 +64,7 @@ const [submitted, setSubmitted] = useState(false);
 const [currentIndex, setCurrentIndex] = useState(0);
 const [quizClass, setQuizClass] = useState("");
 const [score, setScore] = useState(0);
+const answersRef = useRef({});
 
 // ================= UI STATE =================
 const [openAlertDialog, setOpenAlertDialog] = useState(false);
@@ -145,6 +146,10 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
       return { ...prev, [questionId]: newAns };
     });
   };
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 
   const showNotFoundDialog = (msg) => {
     setDialogMessage(msg);
@@ -233,7 +238,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
 
         window.currentHocKi = data.semester || hocKiFromConfig;
         window.currentMonHoc = data.subject || monHocFromConfig;
-
+        
         // ===== QUESTIONS =====
         processQuestions({
           data,
@@ -349,7 +354,7 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
         setUnansweredQuestions,
         setOpenResultDialog,
         questions,
-        answers,
+        answers: answersRef.current,
         startTime,
         db,
         config,

@@ -50,34 +50,6 @@ export const autoSubmitQuiz = async ({
       return;
     }
 
-    const unanswered = questions.filter(q => {
-      const a = answers[q.id];
-      if (q.type === "single") return a === undefined || a === null || a === "";
-      if (q.type === "multiple") return !Array.isArray(a) || a.length === 0;
-      if (q.type === "image") {
-        const isSingle = Array.isArray(q.correct) && q.correct.length === 1;
-        if (isSingle) return a === undefined || a === null || a.length === 0;
-        return !Array.isArray(a) || a.length === 0;
-      }
-      if (q.type === "truefalse")
-        return !Array.isArray(a) || a.length !== q.options.length;
-      if (q.type === "fillblank")
-        return !Array.isArray(a) || a.some(v => !v);
-      // 👉 sort và matching không coi là unanswered
-      return false;
-    });
-    
-    // 👉👉 CHẶN NỘP BÀI NẾU CÒN CÂU CHƯA LÀM
-    /*if (unanswered.length > 0) {
-      setUnansweredQuestions(
-        unanswered.map(
-          q => questions.findIndex(item => item.id === q.id) + 1
-        )
-      );
-      setOpenAlertDialog(true);
-      return; // ⛔ DỪNG LUÔN, KHÔNG TÍNH ĐIỂM
-    }*/
-
     // --- Tính điểm ---
     setSaving(true);
 
