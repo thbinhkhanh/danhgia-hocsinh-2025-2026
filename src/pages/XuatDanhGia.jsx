@@ -196,100 +196,207 @@ export default function XuatDanhGia() {
   };
 
   return (
-  <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 5 }}>
-    <Card elevation={6} sx={{ p: 4, borderRadius: 3, maxWidth: 380, mx: "auto" }}>
-      <Typography
-        variant="h5"
-        color="primary"
-        fontWeight="bold"
-        align="center"
-        sx={{ mb: 2 }}
+  <>
+    {/* ===== PAGE WRAPPER ===== */}
+    <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc", py: 4 }}>
+
+      {/* ===== CARD MAIN ===== */}
+      <Card
+        elevation={0}
+        sx={{
+          maxWidth: 520,
+          mx: "auto",
+          borderRadius: 3,
+          overflow: "hidden",
+          border: "1px solid #e2e8f0",
+          bgcolor: "#fff",
+        }}
       >
-        {/*{`XUẤT KẾT QUẢ ${termText ? ` ${termText.toUpperCase()}` : ""}`}*/}
-        XUẤT KẾT QUẢ
-      </Typography>
 
-      <Stack spacing={3}>
-        <Button variant="outlined" color="primary" onClick={handleSelectFolder}>
-          📁 Chọn thư mục
-        </Button>
-
-        {folderHandle && (
-          <Typography variant="body2" sx={{ mt: 0.5 }}>
-            Thư mục đã chọn: <strong>{folderHandle.name}</strong>
-          </Typography>
-        )}
-
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleExportAll}
-          disabled={loading || !folderHandle}
+        {/* ===== HEADER ===== */}
+        <Box
+          sx={{
+            px: 3,
+            py: 1,
+            background: "#1976d2",
+            color: "#fff",
+          }}
         >
-          Xuất kết quả
-        </Button>
+          <Typography sx={{ fontSize: 18, fontWeight: 700 }}>
+            Xuất kết quả đánh giá
+          </Typography>
 
-        {loading && (
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-            <Box sx={{ width: "75%" }}>
-              <LinearProgress variant="determinate" value={progress} />
-              <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
-                🔄 Đang xuất kết quả... {progress}%
-              </Typography>
+          {/*<Typography sx={{ fontSize: 12, opacity: 0.9 }}>
+            {termText}
+          </Typography>*/}
+        </Box>
+
+        {/* ===== CONTENT ===== */}
+        <Box sx={{ p: 3 }}>
+          <Stack spacing={2.2}>
+
+            {/* ===== CHỌN THƯ MỤC ===== */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: "1px solid #e2e8f0",
+                bgcolor: "#fff",
+              }}
+            >
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleSelectFolder}
+              >
+                📁 Chọn thư mục dữ liệu
+              </Button>
+
+              {folderHandle && (
+                <Typography
+                  sx={{
+                    mt: 1,
+                    fontSize: 13,
+                    color: "#64748b",
+                  }}
+                >
+                  Thư mục: <b>{folderHandle.name}</b>
+                </Typography>
+              )}
             </Box>
-          </Box>
-        )}
 
-        {message && !loading && (
-          <Alert severity={success ? "success" : "error"}>{message}</Alert>
-        )}
+            {/* ===== ACTION ===== */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: "1px solid #e2e8f0",
+                bgcolor: "#fff",
+              }}
+            >
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleExportAll}
+                disabled={loading || !folderHandle}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  boxShadow: "none",
+                }}
+              >
+                Bắt đầu xuất
+              </Button>
+            </Box>
 
-        {/* Bảng tổng hợp */}
-        {!loading && (openedFiles.length > 0 || skipped.length > 0) && (
-          <Box sx={{ mt: 2 }}>
-            {/* Lớp xuất thành công */}
-            {openedFiles.length > 0 && (
-              <Box sx={{ mb: 2, ml: 3 }}> {/* tăng lùi đầu dòng cho cả block */}
-                <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>
-                  ✅ Lớp xuất thành công:
+            {/* ===== PROGRESS ===== */}
+            {loading && (
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <LinearProgress
+                  variant="determinate"
+                  value={progress}
+                  sx={{ height: 8, borderRadius: 5 }}
+                />
+
+                <Typography
+                  sx={{
+                    mt: 1,
+                    textAlign: "center",
+                    fontSize: 13,
+                    color: "#64748b",
+                  }}
+                >
+                  Đang xử lý... {progress}%
                 </Typography>
-
-                {["4", "5"].map((grade) => {
-                  const filtered = openedFiles
-                    .filter((l) => l.startsWith(grade + "."))
-                    .sort((a, b) => parseFloat(a) - parseFloat(b));
-                  if (filtered.length === 0) return null;
-                  return (
-                    <Box key={grade} sx={{ ml: 3, mb: 0.5 }}> {/* lùi cấp 1 nhiều hơn */}
-                      <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                        Lớp {grade}:
-                      </Typography>
-                      <Typography variant="body2" sx={{ ml: 4 }}> {/* lùi danh sách thêm 1 cấp */}
-                        {filtered.join(", ")}
-                      </Typography>
-                    </Box>
-                  );
-                })}
               </Box>
             )}
 
-            {/* Lớp chưa xuất / lỗi */}
-            {skipped.length > 0 && (
-              <Box sx={{ mt: 1, ml: 3 }}>
-                <Typography variant="subtitle2" color="error.main" sx={{ mb: 0.5 }}>
-                  ❌ Lớp chưa xuất / lỗi:
-                </Typography>
-                <Typography variant="body2" sx={{ ml: 4 }}>
-                  {skipped.join(", ")}
-                </Typography>
+            {/* ===== MESSAGE ===== */}
+            {message && !loading && (
+              <Alert severity={success ? "success" : "error"}>
+                {message}
+              </Alert>
+            )}
+
+            {/* ===== RESULT SUMMARY ===== */}
+            {!loading && (openedFiles.length > 0 || skipped.length > 0) && (
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: "1px solid #e2e8f0",
+                  bgcolor: "#fff",
+                }}
+              >
+
+                {/* SUCCESS */}
+                {openedFiles.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        color: "green",
+                        mb: 1,
+                      }}
+                    >
+                      ✅ Xuất thành công
+                    </Typography>
+
+                    {["4", "5"].map((grade) => {
+                      const filtered = openedFiles
+                        .filter((l) => l.startsWith(grade + "."))
+                        .sort((a, b) => parseFloat(a) - parseFloat(b));
+
+                      if (!filtered.length) return null;
+
+                      return (
+                        <Box key={grade} sx={{ ml: 2, mb: 1 }}>
+                          <Typography sx={{ fontWeight: 600 }}>
+                            Lớp {grade}
+                          </Typography>
+
+                          <Typography sx={{ ml: 2, fontSize: 13 }}>
+                            {filtered.join(", ")}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
+
+                {/* SKIPPED */}
+                {skipped.length > 0 && (
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        color: "#ef4444",
+                        mb: 1,
+                      }}
+                    >
+                      ❌ Bỏ qua / lỗi
+                    </Typography>
+
+                    <Typography sx={{ fontSize: 13, ml: 2 }}>
+                      {skipped.join(", ")}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             )}
-          </Box>
-        )}
 
-      </Stack>
-    </Card>
-  </Box>
+          </Stack>
+        </Box>
+      </Card>
+    </Box>
+  </>
 );
 
 }

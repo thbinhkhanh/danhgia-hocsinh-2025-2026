@@ -1009,8 +1009,6 @@ return (
             py: 1,
             borderBottom: "1px solid rgba(0,0,0,0.06)",
             background: "linear-gradient(to right, #ffffff, #f9fbff)",
-            flexWrap: "wrap",
-            gap: 1,
           }}
         >
 
@@ -1121,22 +1119,10 @@ return (
           }}
         >
           <Stack
-            direction="row"
-            spacing={1.2}
-            sx={{
-              width: "100%",
-              alignItems: "center",
-
-              flexWrap: "nowrap",        // 👈 không xuống dòng
-              overflowX: "auto",         // 👈 cho cuộn ngang
-              overflowY: "hidden",
-
-              pb: 0.5,                   // tránh bị cắt scrollbar
-              pt: 1,   // 👈 THÊM CÁI NÀY
-              "&::-webkit-scrollbar": {
-                height: 6,
-              },
-            }}
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            flexWrap="wrap"
+            sx={{ width: "100%", alignItems: "flex-start" }}
           >
 
             <FormControl size="small" sx={getSx(150)} variant="outlined">

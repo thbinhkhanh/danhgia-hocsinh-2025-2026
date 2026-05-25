@@ -5,11 +5,10 @@ import {
   IconButton,
   Typography,
   Box,
+  Button,
   Stack,
 } from "@mui/material";
-
 import CloseIcon from "@mui/icons-material/Close";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
 const StudentStatusDialog = ({
   expandedStudent,
@@ -21,36 +20,33 @@ const StudentStatusDialog = ({
 }) => {
   if (!expandedStudent) return null;
 
-  const currentStatus =
-    expandedStudent.status ??
-    studentStatus?.[expandedStudent.maDinhDanh] ??
-    "";
+  const fromExpanded = expandedStudent.status ?? "";
+  const fromMap = studentStatus?.[expandedStudent.maDinhDanh] ?? "";
+  const currentStatus = fromExpanded || fromMap;
 
-  const options = [
-    {
-      label: "Hoàn thành tốt",
-      emoji: "🌟",
+  const statusConfig = {
+    "Hoàn thành tốt": {
       color: "#1976d2",
-      desc: "Làm bài xuất sắc",
+      bg: "#e3f2fd",
     },
-    {
-      label: "Hoàn thành",
-      emoji: "👍",
+    "Hoàn thành": {
       color: "#9c27b0",
-      desc: "Đạt yêu cầu",
+      bg: "#f3e5f5",
     },
-    {
-      label: "Chưa hoàn thành",
-      emoji: "⚠️",
+    "Chưa hoàn thành": {
       color: "#ed6c02",
-      desc: "Cần cải thiện",
+      bg: "#fff3e0",
     },
-  ];
+  };
 
   return (
     <Dialog
       open={Boolean(expandedStudent)}
-      onClose={() => setExpandedStudent(null)}
+      onClose={(event, reason) => {
+        if (reason !== "backdropClick") {
+          setExpandedStudent(null);
+        }
+      }}
       maxWidth="xs"
       fullWidth
       PaperComponent={PaperComponent}
@@ -59,6 +55,7 @@ const StudentStatusDialog = ({
           borderRadius: "18px",
           overflow: "hidden",
           background: "#f8fafc",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
           fontFamily: '"Segoe UI","Arial","Helvetica","sans-serif"',
         },
       }}
@@ -75,21 +72,19 @@ const StudentStatusDialog = ({
           alignItems: "center",
         }}
       >
-        {/* 👤 ICON + NAME */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <AccountCircleIcon sx={{ fontSize: 20 }} />
+        <Typography sx={{ fontSize: 16, fontWeight: 600 }}>
+          {expandedStudent.hoVaTen?.normalize("NFC")}
+        </Typography>
 
-          <Typography sx={{ fontSize: 16, fontWeight: 600 }}>
-            {expandedStudent.hoVaTen?.normalize("NFC")}
-          </Typography>
-        </Box>
-
-        {/* CLOSE */}
         <IconButton
           onClick={() => setExpandedStudent(null)}
+          disabled={saving}
           sx={{
             color: "#fff",
             bgcolor: "rgba(255,255,255,0.15)",
+            "&:hover": {
+              bgcolor: "rgba(255,255,255,0.25)",
+            },
           }}
         >
           <CloseIcon fontSize="small" />
@@ -98,62 +93,68 @@ const StudentStatusDialog = ({
 
       {/* CONTENT */}
       <DialogContent sx={{ px: 3, py: 3 }}>
-        <Stack spacing={1.8}>
-          {options.map((opt) => {
-            const isSelected = currentStatus === opt.label;
+        <Stack spacing={1.5}>
+          {Object.keys(statusConfig).map((s) => {
+            const isSelected = currentStatus === s;
+            const cfg = statusConfig[s];
 
             return (
-              <Box
-                key={opt.label}
+              <Button
+                key={s}
+                disabled={saving}
                 onClick={() =>
                   handleStatusChange(
                     expandedStudent.maDinhDanh,
                     expandedStudent.hoVaTen,
-                    opt.label
+                    s
                   )
                 }
                 sx={{
-                  cursor: "pointer",
-                  p: 2,
-                  borderRadius: "14px",
+                  justifyContent: "flex-start",
+                  textTransform: "none",
+                  px: 2,
+                  py: 1.3,
+                  borderRadius: "12px",
+                  fontSize: 14,
+
                   border: `1px solid ${
-                    isSelected ? opt.color : "#e2e8f0"
+                    isSelected ? cfg.color : "#e2e8f0"
                   }`,
-                  background: isSelected ? "#ffffff" : "#fff",
+
+                  background: isSelected ? cfg.bg : "#ffffff",
+                  color: cfg.color,
+
                   boxShadow: isSelected
-                    ? `0 8px 20px ${opt.color}22`
-                    : "0 2px 8px rgba(0,0,0,0.04)",
-                  transform: isSelected ? "scale(1.02)" : "scale(1)",
+                    ? `0 4px 14px ${cfg.color}33`
+                    : "none",
+
                   transition: "all 0.2s ease",
+
+                  "&:hover": {
+                    background: cfg.bg,
+                    transform: "translateY(-1px)",
+                  },
                 }}
               >
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Box sx={{ fontSize: 26 }}>{opt.emoji}</Box>
+                <Box
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    background: cfg.color,
+                    mr: 1.2,
+                  }}
+                />
 
-                  <Box>
-                    <Typography
-                      sx={{
-                        fontSize: 16,
-                        color: opt.color,
-                        fontWeight: isSelected ? 700 : 400,
-                      }}
-                    >
-                      {isSelected ? "✓ " + opt.label : opt.label}
-                    </Typography>
-
-                    <Typography sx={{ fontSize: 12, color: "#64748b" }}>
-                      {opt.desc}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </Box>
+                {isSelected ? "✓ " + s : s}
+              </Button>
             );
           })}
 
           {/* HỦY */}
           {currentStatus && (
-            <Box sx={{ display: "flex", justifyContent: "center", pt: 1 }}>
-              <Box
+            <Box sx={{ pt: 2, display: "flex", justifyContent: "center" }}>
+              <Button
                 onClick={() => {
                   handleStatusChange(
                     expandedStudent.maDinhDanh,
@@ -162,18 +163,23 @@ const StudentStatusDialog = ({
                   );
                   setExpandedStudent(null);
                 }}
+                disabled={saving}
                 sx={{
+                  textTransform: "none",
+                  borderRadius: "12px",
                   px: 3,
                   py: 1,
-                  borderRadius: "12px",
+                  fontSize: 13,
+                  fontWeight: 500,
                   background: "#ef4444",
                   color: "#fff",
-                  fontSize: 13,
-                  cursor: "pointer",
+                  "&:hover": {
+                    background: "#dc2626",
+                  },
                 }}
               >
                 Hủy đánh giá
-              </Box>
+              </Button>
             </Box>
           )}
         </Stack>

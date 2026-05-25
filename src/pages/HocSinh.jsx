@@ -57,7 +57,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useTheme, useMediaQuery } from "@mui/material";
 
 // ================= DIALOGS =================
-import DoneDialog from "../dialog/DoneDialog";
+import DoneDialog from "../dialog/StatusResultDialogHS";
 import StudentStatusDialog from "../dialog/StudentStatusDialog";
 import SystemLockedDialog from "../dialog/SystemLockedDialog";
 

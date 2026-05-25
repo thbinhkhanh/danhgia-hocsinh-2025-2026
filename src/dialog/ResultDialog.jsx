@@ -1,12 +1,12 @@
-// src/dialog/ResultDialog.jsx
 import React from "react";
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
-  IconButton,
+  Button,
   Typography,
   Box,
+  IconButton,
+  Stack,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -20,115 +20,231 @@ const ResultDialog = ({
   configData,
   convertPercentToScore,
 }) => {
+  const studentName = (studentResult?.hoVaTen || "Học sinh").normalize("NFC");
+
+  const getScore = () => {
+    if (!choXemDiem) return null;
+
+    if (configData?.kiemTraDinhKi) {
+      return studentResult?.diem;
+    }
+
+    if (configData?.baiTapTuan) {
+      return convertPercentToScore(studentResult?.diemTN);
+    }
+
+    if (configData?.onTap) {
+      return studentResult?.diem;
+    }
+
+    return "";
+  };
+
   return (
-    <Dialog
-      open={open}
-      onClose={(event, reason) => {
-        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
-        onClose();
-      }}
-      disableEscapeKeyDown
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          p: 3,
-          bgcolor: "#e3f2fd",
-          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
-        },
+  <Dialog
+    open={open}
+    onClose={(event, reason) => {
+      if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+      onClose();
+    }}
+    disableEscapeKeyDown
+    maxWidth="xs"
+    fullWidth
+    PaperProps={{
+      sx: {
+        borderRadius: "18px",
+        overflow: "hidden",
+        background: "#f8fafc",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
+
+        // ✅ FONT CHUẨN VIỆT NAM
+        fontFamily:
+          '"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
+
+        textRendering: "optimizeLegibility",
+        WebkitFontSmoothing: "antialiased",
+        MozOsxFontSmoothing: "grayscale",
+
+        fontFeatureSettings: '"kern" 1, "liga" 1',
+      },
+    }}
+  >
+    {/* HEADER */}
+    <Box
+      sx={{
+        px: 3,
+        py: 2,
+        color: "#fff",
+        background: "linear-gradient(135deg, #1976d2, #42a5f5)",
+        position: "relative",
       }}
     >
-      {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+      <Stack direction="row" alignItems="center" spacing={1}>
         <Box
           sx={{
-            bgcolor: "#42a5f5",
-            color: "#fff",
+            width: 34,
+            height: 34,
             borderRadius: "50%",
-            width: 36,
-            height: 36,
+            bgcolor: "rgba(255,255,255,0.2)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
+            fontSize: 16,
           }}
         >
           📊
         </Box>
-        <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0" }}>
+
+        <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
           KẾT QUẢ
-        </DialogTitle>
-        <IconButton
-          onClick={onClose}
+        </Typography>
+      </Stack>
+
+      <IconButton
+        onClick={onClose}
+        sx={{
+          position: "absolute",
+          right: 10,
+          top: 10,
+          color: "#fff",
+          bgcolor: "rgba(255,255,255,0.15)",
+        }}
+      >
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </Box>
+
+    {/* CONTENT */}
+    <DialogContent
+      sx={{
+        px: 3,
+        py: 4,
+        textAlign: "center",
+      }}
+    >
+      {dialogMode === "notFound" ? (
+        <Typography
           sx={{
-            ml: "auto",
-            color: "#f44336",
-            "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+            fontSize: 16,
+            fontWeight: 700,
+            color: "#ef4444",
+            fontFamily:
+              '"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
           }}
         >
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
-      {/* Nội dung */}
-      <DialogContent sx={{ textAlign: "center" }}>
-        {dialogMode === "notFound" ? (
-          <Typography
+          {dialogMessage}
+        </Typography>
+      ) : (
+        <Stack spacing={2.5} alignItems="center">
+          {/* ICON */}
+          <Box
             sx={{
-              fontSize: "1.15rem",
-              fontWeight: 700,
-              color: "red",
-              textAlign: "center",
+              width: 85,
+              height: 85,
+              borderRadius: "50%",
+              background: choXemDiem ? "#4caf50" : "#ef4444",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontSize: 36,
             }}
           >
-            {dialogMessage}
+            {choXemDiem ? "🏆" : "✓"}
+          </Box>
+
+          {/* NAME (FIX FONT VIỆT NAM) */}
+          <Typography
+            sx={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#0f172a",
+              textTransform: "none",
+
+              fontFamily:
+                '"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
+
+              fontFeatureSettings: '"kern" 1, "liga" 1',
+              textRendering: "optimizeLegibility",
+            }}
+          >
+            {(studentResult?.hoVaTen || "Học sinh")
+              .trim()
+              .normalize("NFC")
+              .toLocaleUpperCase("vi-VN")}
           </Typography>
-        ) : (
-          <>
-            <Typography
-              sx={{ fontSize: 18, fontWeight: "bold", color: "#0d47a1", mb: 1 }}
+
+          {/* CLASS */}
+          <Typography
+            sx={{
+              fontSize: 15,
+              color: "#1565c0",
+              fontWeight: 600,
+            }}
+          >
+            Lớp: {studentResult?.lop}
+          </Typography>
+
+          {/* STATUS */}
+          <Typography
+            sx={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: choXemDiem ? "#16a34a" : "#dc2626",
+            }}
+          >
+            Đã hoàn thành bài kiểm tra
+          </Typography>
+
+          {/* SCORE */}
+          {choXemDiem ? (
+            <Box
+              sx={{
+                mt: 1,
+                px: 3,
+                py: 2,
+                borderRadius: "14px",
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                minWidth: 160,
+              }}
             >
-              {studentResult?.hoVaTen?.toUpperCase() || "HỌC SINH"}
-            </Typography>
-
-            <Typography sx={{ fontSize: 16, color: "#1565c0", mb: 1 }}>
-              Lớp: <span style={{ fontWeight: 600 }}>{studentResult?.lop}</span>
-            </Typography>
-
-            {choXemDiem ? (
-              <Typography sx={{ fontSize: 16, color: "#0d47a1", mt: 2 }}>
-                Điểm:&nbsp;
-                <span style={{ fontWeight: 700, color: "red" }}>
-                  {configData?.kiemTraDinhKi === true
-                    ? studentResult?.diem
-                    : configData?.baiTapTuan === true
-                    ? convertPercentToScore(studentResult?.diemTN)
-                    : configData?.onTap === true
-                    ? studentResult?.diem // 👉 nhánh Ôn tập
-                    : ""}
-                </span>
+              <Typography sx={{ fontSize: 13, color: "#64748b" }}>
+                Điểm của bạn
               </Typography>
-            ) : (
+
               <Typography
                 sx={{
-                  fontSize: 16,
-                  mt: 2,
-                  textAlign: "center",
-                  fontWeight: 700,
-                  color: "red",
+                  fontSize: 30,
+                  fontWeight: 900,
+                  color: "#1976d2",
                 }}
               >
-                ĐÃ HOÀN THÀNH BÀI KIỂM TRA
+                {configData?.kiemTraDinhKi === true
+                  ? studentResult?.diem
+                  : configData?.baiTapTuan === true
+                  ? convertPercentToScore(studentResult?.diemTN)
+                  : configData?.onTap === true
+                  ? studentResult?.diem
+                  : ""}
               </Typography>
-            )}
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
+            </Box>
+          ) : (
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#ef4444",
+              }}
+            >
+              ĐÃ HOÀN THÀNH BÀI KIỂM TRA
+            </Typography>
+          )}
+        </Stack>
+      )}
+    </DialogContent>
+  </Dialog>
+);
 };
 
 export default ResultDialog;

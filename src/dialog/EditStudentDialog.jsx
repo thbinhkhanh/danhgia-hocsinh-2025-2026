@@ -5,15 +5,16 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle,
   TextField,
   IconButton,
   Typography,
+  Stack,
 } from "@mui/material";
+
 import CloseIcon from "@mui/icons-material/Close";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import EditIcon from "@mui/icons-material/Edit";
-import WarningIcon from "@mui/icons-material/Warning";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 export default function EditStudentDialog({
   open,
@@ -25,84 +26,111 @@ export default function EditStudentDialog({
   setNewMaDinhDanh,
   isAdding,
   onSave,
-  isConfirm = false, // 🔹 nếu true = cảnh báo xóa
-  onConfirm, // 🔹 callback khi nhấn Xóa
+  isConfirm = false,
+  onConfirm,
 }) {
+  const title = isConfirm
+    ? "Xóa học sinh"
+    : isAdding
+    ? "Thêm học sinh"
+    : "Chỉnh sửa học sinh";
+
+  const Icon = isConfirm
+    ? WarningAmberIcon
+    : isAdding
+    ? PersonAddIcon
+    : EditIcon;
+
+  const color = isConfirm ? "#ef4444" : "#1976d2";
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      fullWidth={true}        // vẫn fullWidth để responsive
-      maxWidth={false}        // tắt maxWidth mặc định
+      maxWidth="xs"
+      fullWidth
       PaperProps={{
         sx: {
-          width: { xs: "90%", sm: 500 }, // mobile 90% màn hình, desktop 400px
-          borderRadius: 3,
-          p: 3,
-          bgcolor: "#fff",
-          boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
+          borderRadius: "18px",
+          overflow: "hidden",
+          background: "#f8fafc",
         },
       }}
     >
-      {/* ===== Header ===== */}
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-        <Box
-          sx={{
-            bgcolor: isConfirm ? "#f44336" : isAdding ? "#4caf50" : "#42a5f5",
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-          }}
-        >
-          {isConfirm ? <WarningIcon /> : isAdding ? <PersonAddIcon /> : <EditIcon />}
+      {/* ===== HEADER ===== */}
+      <Box
+        sx={{
+          px: 3,
+          py: 1.6,
+          background: `linear-gradient(135deg, ${color}, #42a5f5)`,
+          color: "#fff",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        {/* LEFT */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              bgcolor: "rgba(255,255,255,0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon fontSize="small" />
+          </Box>
+
+          <Typography sx={{ fontSize: 15.5, fontWeight: 600 }}>
+            {title}
+          </Typography>
         </Box>
 
-        <DialogTitle
-          sx={{
-            p: 0,
-            fontWeight: "bold",
-            color: isConfirm ? "#d32f2f" : "#1565c0",
-            flex: 1,
-          }}
-        >
-          {isConfirm
-            ? "Xóa học sinh"
-            : isAdding
-            ? "Thêm học sinh"
-            : "Chỉnh sửa tên"}
-        </DialogTitle>
-
+        {/* CLOSE */}
         <IconButton
           onClick={onClose}
           sx={{
-            ml: "auto",
-            color: "#f44336",
-            "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+            color: "#fff",
+            bgcolor: "rgba(255,255,255,0.15)",
+            "&:hover": {
+              bgcolor: "rgba(255,255,255,0.25)",
+            },
           }}
         >
-          <CloseIcon />
+          <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
 
-      {/* ===== Content ===== */}
-      <DialogContent>
+      {/* ===== CONTENT ===== */}
+      <DialogContent sx={{ px: 3, py: 3 }}>
         {isConfirm ? (
-          <Typography>
-            Bạn có chắc chắn muốn xóa học sinh <b>{student?.hoVaTen}</b>?
-          </Typography>
-        ) : (
           <Box
             sx={{
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              gap: 1.5, // khoảng cách gọn hơn
+              textAlign: "center",
+              py: 1,
             }}
           >
+            <Typography sx={{ fontSize: 14, color: "#334155" }}>
+              Bạn có chắc chắn muốn xóa học sinh
+            </Typography>
+
+            <Typography
+              sx={{
+                mt: 1,
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#ef4444",
+              }}
+            >
+              {student?.hoVaTen}
+            </Typography>
+          </Box>
+        ) : (
+          <Stack spacing={2}>
             {/* Mã định danh */}
             <TextField
               label="Mã định danh"
@@ -111,18 +139,14 @@ export default function EditStudentDialog({
               InputProps={{ readOnly: !isAdding }}
               size="small"
               sx={{
-                flex: 1,
-                "& .MuiInputBase-root": {
-                  minHeight: 40,          // đủ 1 dòng chữ
-                  paddingTop: 1,
-                  paddingBottom: 1,
-                },
-                "& .MuiInputBase-input": {
-                  padding: "2px 10px",    // padding nội dung bên trong
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "12px",
+                  background: "#fff",
                 },
               }}
             />
 
+            {/* Họ tên */}
             <TextField
               label="Họ và tên"
               value={newName}
@@ -130,55 +154,44 @@ export default function EditStudentDialog({
               autoFocus
               size="small"
               sx={{
-                flex: 2,
-                "& .MuiInputBase-root": {
-                  minHeight: 40,
-                  paddingTop: 1,
-                  paddingBottom: 1,
-                },
-                "& .MuiInputBase-input": {
-                  padding: "2px 10px",
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "12px",
+                  background: "#fff",
                 },
               }}
             />
-
-          </Box>
+          </Stack>
         )}
       </DialogContent>
 
-      {/* ===== Actions ===== */}
-      <DialogActions sx={{ px: 3 }}>
-        <Box sx={{ display: "flex", gap: 2, width: "100%" }}>
-          <Box sx={{ flex: 1 }} />
-          <Box
+      {/* ===== ACTIONS ===== */}
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} sx={{ borderRadius: "10px" }}>
+          Hủy
+        </Button>
+
+        {isConfirm ? (
+          <Button
+            variant="contained"
+            color="error"
+            onClick={onConfirm}
+            sx={{ borderRadius: "10px" }}
+          >
+            Xóa
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            onClick={onSave}
+            disabled={!newName.trim() || (isAdding && !newMaDinhDanh?.trim())}
             sx={{
-              flex: 2,
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 1,
+              borderRadius: "10px",
+              background: "linear-gradient(135deg,#1976d2,#42a5f5)",
             }}
           >
-            <Button onClick={onClose}>Hủy</Button>
-
-            {isConfirm ? (
-              <Button
-                variant="contained"
-                color="error"
-                onClick={onConfirm}
-              >
-                Xóa
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={onSave}
-                disabled={!newName.trim() || (isAdding && !newMaDinhDanh?.trim())}
-              >
-                {isAdding ? "Thêm" : "Lưu"}
-              </Button>
-            )}
-          </Box>
-        </Box>
+            {isAdding ? "Thêm" : "Lưu"}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

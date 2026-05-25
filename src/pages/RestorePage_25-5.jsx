@@ -338,65 +338,64 @@ export default function RestorePage({ open, onClose }) {
   };
 
   return (
-  <>
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          overflow: "hidden",
-          bgcolor: "#f8fafc",
-        },
-      }}
-    >
-      {/* ===== HEADER (đồng bộ SAO LƯU) ===== */}
-      <Box
-        sx={{
-          px: 3,
-          py: 1.5,
-          background: "#1976d2",
-          color: "#fff",
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 3,
+            bgcolor: "#fff",
+            boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
+          },
         }}
       >
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-        >
-          <Typography
+        {/* HEADER */}
+        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+          <Box
             sx={{
-              fontSize: 17,
-              fontWeight: 700,
+              bgcolor: "#42a5f5",
+              color: "#fff",
+              borderRadius: "50%",
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mr: 1.5,
+              fontWeight: "bold",
+              fontSize: 18,
             }}
           >
+            🔄
+          </Box>
+
+          <DialogTitle
+            sx={{ p: 0, fontWeight: "bold", color: "#1565c0", flex: 1 }}
+          >
             PHỤC HỒI DỮ LIỆU
-          </Typography>
+          </DialogTitle>
 
           <IconButton
             onClick={onClose}
             sx={{
-              color: "#fff",
-              bgcolor: "rgba(255,255,255,0.12)",
-              "&:hover": {
-                bgcolor: "rgba(255,255,255,0.22)",
-              },
+              color: "#f44336",
+              "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
             }}
           >
             <CloseIcon />
           </IconButton>
-        </Stack>
-      </Box>
+        </Box>
 
-      {/* ===== ACTION UPLOAD ===== */}
-      <Box sx={{ px: 3, pt: 2 }}>
+        {/* UPLOAD */}
         <Button
           variant="outlined"
           startIcon={<UploadFileIcon />}
           onClick={() => fileInputRef.current.click()}
-          sx={{ borderRadius: 2, textTransform: "none" }}
+          sx={{ mb: 1 }}
         >
           Chọn file phục hồi (.json)
         </Button>
@@ -410,223 +409,196 @@ export default function RestorePage({ open, onClose }) {
         />
 
         {selectedFile && (
-          <Typography sx={{ mt: 1, color: "#ef4444", fontWeight: 600 }}>
+          <Typography sx={{ color: "red", fontWeight: "bold", mb: 1 }}>
             📄 {selectedFile.name}
           </Typography>
         )}
-      </Box>
 
-      {/* ===== CONTENT ===== */}
-      <DialogContent sx={{ px: 3, py: 2.5 }}>
-        <Stack spacing={2.2}>
-          {/* ===== HỌC SINH ===== */}
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              bgcolor: "#fff",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-            }}
-          >
-            <FormControlLabel
-              sx={{ ml: 0 }}
-              control={
-                <Checkbox
-                  checked={isGroupChecked(GROUPS.HOCSINH)}
-                  indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
-                  onChange={() => toggleGroup(GROUPS.HOCSINH)}
-                  disabled={getEnabledKeys(GROUPS.HOCSINH).length === 0}
-                />
-              }
-              label={
-                <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
-                  Học sinh
-                </Typography>
-              }
-            />
-
-            <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+        {/* CONTENT */}
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            {/* HỌC SINH */}
+            <Box>
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={restoreOptions["DANHSACH"] || false}
-                    disabled={disabledOptions["DANHSACH"]}
-                    onChange={() => toggleOption("DANHSACH")}
+                    checked={isGroupChecked(GROUPS.HOCSINH)}
+                    indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
+                    onChange={() => toggleGroup(GROUPS.HOCSINH)}
+                    disabled={getEnabledKeys(GROUPS.HOCSINH).length === 0}
                   />
                 }
-                label="Danh sách lớp"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={restoreOptions["DATA"] || false}
-                    disabled={disabledOptions["DATA"]}
-                    onChange={() => toggleOption("DATA")}
-                  />
+                label={
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+                    Học sinh
+                  </Typography>
                 }
-                label="Kết quả đánh giá"
-              />
-            </Box>
-          </Box>
-
-          {/* ===== ĐỀ KIỂM TRA ===== */}
-          <Box sx={{ p: 2, borderRadius: 2, bgcolor: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
-            <FormControlLabel
-              sx={{ ml: 0 }}
-              control={
-                <Checkbox
-                  checked={isGroupChecked(GROUPS.DETHI)}
-                  indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
-                  onChange={() => toggleGroup(GROUPS.DETHI)}
-                  disabled={getEnabledKeys(GROUPS.DETHI).length === 0}
-                />
-              }
-              label={
-                <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
-                  Đề kiểm tra
-                </Typography>
-              }
-            />
-
-            <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={restoreOptions["NGANHANG_DE"] || false}
-                    disabled={disabledOptions["NGANHANG_DE"]}
-                    onChange={() => toggleOption("NGANHANG_DE")}
-                  />
-                }
-                label="Ngân hàng đề KTĐK"
               />
 
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={restoreOptions["DETHI"] || false}
-                    disabled={disabledOptions["DETHI"]}
-                    onChange={() => toggleOption("DETHI")}
-                  />
-                }
-                label="Đề chọn thi"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={restoreOptions["BAITAP_TUAN"] || false}
-                    disabled={disabledOptions["BAITAP_TUAN"]}
-                    onChange={() => toggleOption("BAITAP_TUAN")}
-                  />
-                }
-                label="Bài tập tuần"
-              />
-            </Box>
-          </Box>
-
-          {/* ===== LUYỆN TẬP ===== */}
-          <Box sx={{ p: 2, borderRadius: 2, bgcolor: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
-            <FormControlLabel
-              sx={{ ml: 0 }}
-              control={
-                <Checkbox
-                  checked={isGroupChecked(GROUPS.TRACNGHIEM)}
-                  indeterminate={isGroupIndeterminate(GROUPS.TRACNGHIEM)}
-                  onChange={() => toggleGroup(GROUPS.TRACNGHIEM)}
-                  disabled={getEnabledKeys(GROUPS.TRACNGHIEM).length === 0}
-                />
-              }
-              label={
-                <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
-                  Luyện tập tin học
-                </Typography>
-              }
-            />
-
-            <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-              {GROUPS.TRACNGHIEM.map((key) => (
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
                 <FormControlLabel
-                  key={key}
                   control={
                     <Checkbox
-                      checked={restoreOptions[key] || false}
-                      disabled={disabledOptions[key]}
-                      onChange={() => toggleOption(key)}
+                      checked={restoreOptions["DANHSACH"] || false}
+                      disabled={disabledOptions["DANHSACH"]}
+                      onChange={() => toggleOption("DANHSACH")}
                     />
                   }
-                  label={
-                    BACKUP_KEYS.find((b) => b.key === key)?.label || key
-                  }
+                  label="Danh sách lớp"
                 />
-              ))}
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={restoreOptions["DATA"] || false}
+                      disabled={disabledOptions["DATA"]}
+                      onChange={() => toggleOption("DATA")}
+                    />
+                  }
+                  label="Kết quả đánh giá"
+                />
+              </Box>
             </Box>
-          </Box>
-        </Stack>
-      </DialogContent>
 
-      {/* ===== PROGRESS ===== */}
-      {loading && (
-        <Box sx={{ px: 3, pb: 2 }}>
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{ height: 8, borderRadius: 10 }}
-          />
-          <Typography
-            sx={{
-              mt: 1,
-              textAlign: "center",
-              fontSize: 13,
-              color: "#64748b",
-            }}
+            <Divider />
+
+            {/* ĐỀ KIỂM TRA */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.DETHI)}
+                    indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
+                    onChange={() => toggleGroup(GROUPS.DETHI)}
+                    disabled={getEnabledKeys(GROUPS.DETHI).length === 0}
+                  />
+                }
+                label={
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+                    Đề kiểm tra
+                  </Typography>
+                }
+              />
+
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={restoreOptions["NGANHANG_DE"] || false}
+                      disabled={disabledOptions["NGANHANG_DE"]}
+                      onChange={() => toggleOption("NGANHANG_DE")}
+                    />
+                  }
+                  label="Ngân hàng đề KTĐK"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={restoreOptions["DETHI"] || false}
+                      disabled={disabledOptions["DETHI"]}
+                      onChange={() => toggleOption("DETHI")}
+                    />
+                  }
+                  label="Đề chọn thi"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={restoreOptions["BAITAP_TUAN"] || false}
+                      disabled={disabledOptions["BAITAP_TUAN"]}
+                      onChange={() => toggleOption("BAITAP_TUAN")}
+                    />
+                  }
+                  label="Bài tập tuần"
+                />
+              </Box>
+            </Box>
+
+            <Divider />
+
+            {/* LUYỆN TẬP */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.TRACNGHIEM)}
+                    indeterminate={isGroupIndeterminate(GROUPS.TRACNGHIEM)}
+                    onChange={() => toggleGroup(GROUPS.TRACNGHIEM)}
+                    disabled={getEnabledKeys(GROUPS.TRACNGHIEM).length === 0}
+                  />
+                }
+                label={
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
+                    Luyện tập tin học
+                  </Typography>
+                }
+              />
+
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+                {GROUPS.TRACNGHIEM.map((key) => (
+                  <FormControlLabel
+                    key={key}
+                    control={
+                      <Checkbox
+                        checked={restoreOptions[key] || false}
+                        disabled={disabledOptions[key]}
+                        onChange={() => toggleOption(key)}
+                      />
+                    }
+                    label={
+                      BACKUP_KEYS.find((b) => b.key === key)?.label || key
+                    }
+                  />
+                ))}
+              </Box>
+            </Box>
+          </Stack>
+        </DialogContent>
+
+        {/* PROGRESS */}
+        {loading && (
+          <>
+            <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
+              <LinearProgress variant="determinate" value={progress} />
+            </Box>
+            <Typography
+              variant="body2"
+              align="center"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              Đang phục hồi... {progress}%
+            </Typography>
+          </>
+        )}
+
+        {/* ACTION */}
+        <DialogActions sx={{ justifyContent: "flex-end" }}>
+          <Button onClick={onClose}>Hủy</Button>
+          <Button
+            variant="contained"
+            startIcon={<RestoreIcon />}
+            onClick={handleRestore}
+            disabled={loading || !hasAnyChecked}
           >
-            Đang phục hồi... {progress}%
-          </Typography>
-        </Box>
-      )}
+            PHỤC HỒI
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* ===== ACTION ===== */}
-      <DialogActions
-        sx={{
-          px: 3,
-          py: 2,
-          borderTop: "1px solid #e2e8f0",
-          bgcolor: "#fff",
-        }}
+      {/* SNACKBAR */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Button onClick={onClose}>Hủy</Button>
-
-        <Button
-          variant="contained"
-          startIcon={<RestoreIcon />}
-          onClick={handleRestore}
-          disabled={loading || !hasAnyChecked}
-          sx={{
-            borderRadius: 2,
-            fontWeight: 600,
-            textTransform: "none",
-            boxShadow: "none",
-            "&:hover": { boxShadow: "none" },
-          }}
-        >
-          PHỤC HỒI
-        </Button>
-      </DialogActions>
-    </Dialog>
-
-    {/* SNACKBAR */}
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={4000}
-      onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-    >
-      <Alert severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
-        {snackbar.message}
-      </Alert>
-    </Snackbar>
-  </>
-);
+        <Alert severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
+  );
 }

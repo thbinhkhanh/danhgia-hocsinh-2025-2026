@@ -301,7 +301,7 @@ export default function BackupPage({ open, onClose }) {
 
 
 
-    return (
+  return (
     <>
       <Dialog
         open={open}
@@ -311,65 +311,46 @@ export default function BackupPage({ open, onClose }) {
         PaperProps={{
           sx: {
             borderRadius: 3,
-            overflow: "hidden",
-            bgcolor: "#f8fafc",
+            p: 3,
+            bgcolor: "#fff",
+            boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
           },
         }}
       >
-        {/* ===== HEADER (style mới) ===== */}
-        <Box
-          sx={{
-            px: 3,
-            py: 1.5,
-            background: "#1976d2",
-            color: "#fff",
-          }}
-        >
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
+        {/* HEADER */}
+        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+          <Box
+            sx={{
+              bgcolor: "#42a5f5",
+              color: "#fff",
+              borderRadius: "50%",
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mr: 1.5,
+              fontWeight: "bold",
+            }}
           >
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: 17,
-                  fontWeight: 700,
-                }}
-              >
-                SAO LƯU DỮ LIỆU
-              </Typography>
-            </Box>
+            🗄️
+          </Box>
 
-            <IconButton
-              onClick={onClose}
-              sx={{
-                color: "#fff",
-                bgcolor: "rgba(255,255,255,0.12)",
-                "&:hover": {
-                  bgcolor: "rgba(255,255,255,0.22)",
-                },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Stack>
+          <DialogTitle sx={{ p: 0, fontWeight: "bold", color: "#1565c0", flex: 1 }}>
+            SAO LƯU DỮ LIỆU
+          </DialogTitle>
+
+          <IconButton onClick={onClose}>
+            <CloseIcon />
+          </IconButton>
         </Box>
 
-        {/* ===== CONTENT ===== */}
-        <DialogContent sx={{ px: 3, py: 2.5 }}>
-          <Stack spacing={2.2}>
+        {/* CONTENT */}
+        <DialogContent>
+          <Stack spacing={2}>
 
             {/* ===== HỌC SINH ===== */}
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: "#fff",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-              }}
-            >
+            <Box>
               <FormControlLabel
                 sx={{ ml: 0 }}
                 control={
@@ -380,13 +361,13 @@ export default function BackupPage({ open, onClose }) {
                   />
                 }
                 label={
-                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
                     Học sinh
                   </Typography>
                 }
               />
 
-              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
                 <FormControlLabel
                   sx={{ ml: 0 }}
                   control={
@@ -411,16 +392,10 @@ export default function BackupPage({ open, onClose }) {
               </Box>
             </Box>
 
+            <Divider />
+
             {/* ===== ĐỀ KIỂM TRA ===== */}
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: "#fff",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-              }}
-            >
+            <Box>
               <FormControlLabel
                 sx={{ ml: 0 }}
                 control={
@@ -431,13 +406,13 @@ export default function BackupPage({ open, onClose }) {
                   />
                 }
                 label={
-                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
                     Đề kiểm tra
                   </Typography>
                 }
               />
 
-              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
                 <FormControlLabel
                   sx={{ ml: 0 }}
                   control={
@@ -473,16 +448,10 @@ export default function BackupPage({ open, onClose }) {
               </Box>
             </Box>
 
-            {/* ===== LUYỆN TẬP ===== */}
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: "#fff",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-              }}
-            >
+            <Divider />
+
+            {/* ===== LUYỆN TẬP TIN HỌC ===== */}
+            <Box>
               <FormControlLabel
                 sx={{ ml: 0 }}
                 control={
@@ -493,13 +462,13 @@ export default function BackupPage({ open, onClose }) {
                   />
                 }
                 label={
-                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                  <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
                     Luyện tập tin học
                   </Typography>
                 }
               />
 
-              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
                 <FormControlLabel
                   sx={{ ml: 0 }}
                   control={
@@ -571,53 +540,32 @@ export default function BackupPage({ open, onClose }) {
           </Stack>
         </DialogContent>
 
-        {/* ===== PROGRESS ===== */}
+        {/* PROGRESS */}
         {loading && (
-          <Box sx={{ px: 3, pb: 2 }}>
-            <LinearProgress
-              variant="determinate"
-              value={progress}
-              sx={{
-                height: 8,
-                borderRadius: 10,
-              }}
-            />
+          <>
+            <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
+              <LinearProgress variant="determinate" value={progress} />
+            </Box>
+
             <Typography
-              sx={{
-                mt: 1,
-                textAlign: "center",
-                fontSize: 13,
-                color: "#64748b",
-              }}
+              variant="body2"
+              align="center"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
             >
               Đang sao lưu... {progress}%
             </Typography>
-          </Box>
+          </>
         )}
 
-        {/* ===== ACTION ===== */}
-        <DialogActions
-          sx={{
-            px: 3,
-            py: 2,
-            borderTop: "1px solid #e2e8f0",
-            bgcolor: "#fff",
-          }}
-        >
+        {/* ACTION */}
+        <DialogActions>
           <Button onClick={onClose}>Hủy</Button>
-
           <Button
             variant="contained"
             startIcon={<BackupIcon />}
             onClick={handleBackup}
             disabled={loading}
-            sx={{
-              borderRadius: 2,
-              fontWeight: 600,
-              textTransform: "none",
-              boxShadow: "none",
-              "&:hover": { boxShadow: "none" },
-            }}
           >
             Sao lưu
           </Button>

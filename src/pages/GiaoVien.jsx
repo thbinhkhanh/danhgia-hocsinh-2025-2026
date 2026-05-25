@@ -27,7 +27,7 @@ import Draggable from "react-draggable";
 import { useTheme, useMediaQuery } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DanhGiaGVDialog from "../dialog/DanhGiaGVDialog";
-import ThongBaoTracNghiemGVDialog from "../dialog/ThongBaoTracNghiemGVDialog";
+import StatusResultDialogGV from "../dialog/StatusResultDialogGV";
 
 export default function GiaoVien() {
   const { studentData, setStudentData, setClassData } = useContext(StudentContext);
@@ -638,7 +638,7 @@ const handleStatusChange = (maDinhDanh, status) => {
     />
 
     {/* Dialog điểm trắc nghiệm */}
-    <ThongBaoTracNghiemGVDialog
+    <StatusResultDialogGV
       studentForTracNghiem={studentForTracNghiem}
       setStudentForTracNghiem={setStudentForTracNghiem}
       studentScores={studentScores}

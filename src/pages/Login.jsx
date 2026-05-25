@@ -1,6 +1,20 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Box, Typography, TextField, Button, Stack, Card, IconButton, FormControl, InputLabel, Select, MenuItem, Snackbar, Alert } from "@mui/material";
-import CloseIcon from '@mui/icons-material/Close';
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Stack,
+  Card,
+  IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Snackbar,
+  Alert,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
 import { ConfigContext } from "../context/ConfigContext";
 import { doc, getDoc } from "firebase/firestore";
@@ -11,7 +25,12 @@ const ACCOUNTS = ["Admin"];
 export default function Login() {
   const [username, setUsername] = useState(ACCOUNTS[0]);
   const [password, setPassword] = useState("");
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
+
   const navigate = useNavigate();
   const { setConfig } = useContext(ConfigContext);
 
@@ -23,7 +42,7 @@ export default function Login() {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setConfig(prev => ({
+          setConfig((prev) => ({
             ...prev,
             tuan: data.tuan || prev.tuan || 1,
             mon: data.mon || prev.mon || "Tin học",
@@ -36,6 +55,7 @@ export default function Login() {
         console.error(err);
       }
     };
+
     fetchConfig();
   }, [setConfig]);
 
@@ -45,7 +65,11 @@ export default function Login() {
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
-        setSnackbar({ open: true, message: "❌ Không tìm thấy thông tin Admin!", severity: "error" });
+        setSnackbar({
+          open: true,
+          message: "❌ Không tìm thấy thông tin Admin!",
+          severity: "error",
+        });
         return;
       }
 
@@ -56,75 +80,178 @@ export default function Login() {
         localStorage.setItem("account", username);
 
         window.dispatchEvent(new Event("storage"));
-        setSnackbar({ open: true, message: "✅ Đăng nhập thành công!", severity: "success" });
+
+        setSnackbar({
+          open: true,
+          message: "✅ Đăng nhập thành công!",
+          severity: "success",
+        });
+
         navigate("/tonghopdanhgia");
       } else {
-        setSnackbar({ open: true, message: "❌ Sai mật khẩu!", severity: "error" });
+        setSnackbar({
+          open: true,
+          message: "❌ Sai mật khẩu!",
+          severity: "error",
+        });
       }
     } catch (err) {
-      console.error("❌ Lỗi đăng nhập:", err);
-      setSnackbar({ open: true, message: "❌ Lỗi khi đăng nhập!", severity: "error" });
+      console.error(err);
+      setSnackbar({
+        open: true,
+        message: "❌ Lỗi khi đăng nhập!",
+        severity: "error",
+      });
     }
   };
 
-  const handleClose = () => {
-    navigate("/hocsinh");
-  };
-
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 4 }}>
-      <Box sx={{ width: { xs: "95%", sm: 400 }, mx: "auto", position: "relative" }}>
-        <Card elevation={10} sx={{ p: 3, borderRadius: 4 }}>
-          <IconButton
-            onClick={handleClose}
-            sx={{ position: "absolute", top: 8, right: 8, color: "red" }}
-          >
-            <CloseIcon />
-          </IconButton>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: "#f1f5f9",
+        py: 5,
+        px: 2,
+        display: "flex",
+        justifyContent: "center",
+        fontFamily: '"Roboto","Inter","Arial",sans-serif',
+      }}
+    >
+      <Box sx={{ width: "100%", maxWidth: 420 }}>
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: "14px",
+            overflow: "hidden",
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 10px 35px rgba(0,0,0,0.12)",
+            position: "relative",
+          }}
+        >
+          {/* HEADER */}
+          <Box sx={{ px: 3, py: 1.5, background: "#1976d2", color: "#fff" }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Typography sx={{ fontSize: 17, fontWeight: 700 }}>
+                Đăng nhập hệ thống
+              </Typography>
 
-          <Stack spacing={3} alignItems="center">
-            <div style={{ fontSize: 50 }}>🔐</div>
-            <Typography variant="h5" fontWeight="bold" color="primary" textAlign="center">
-              ĐĂNG NHẬP
-            </Typography>
-
-            <FormControl fullWidth size="small">
-              <InputLabel>Tài khoản</InputLabel>
-              <Select
-                value={username}
-                label="Tài khoản"
-                onChange={(e) => setUsername(e.target.value)}
+              <IconButton
+                onClick={() => navigate("/hocsinh")}
+                sx={{
+                  color: "#fff",
+                  bgcolor: "rgba(255,255,255,0.12)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.22)" },
+                }}
               >
-                {ACCOUNTS.map((acc) => (
-                  <MenuItem key={acc} value={acc}>{acc}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+          </Box>
 
-            <TextField
-              label="Mật khẩu"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              fullWidth
-              size="small"
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            />
+          {/* CONTENT */}
+          <Box sx={{ px: 3, py: 4 }}>
+            <Stack spacing={2.5} alignItems="center">
+              {/* ICON */}
+              <Box
+                sx={{
+                  width: 82,
+                  height: 82,
+                  borderRadius: "50%",
+                  bgcolor: "#e3f2fd",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 38,
+                  border: "4px solid #fff",
+                  boxShadow: "0 4px 15px rgba(25,118,210,0.15)",
+                }}
+              >
+                🔐
+              </Box>
 
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleLogin}
-              fullWidth
-              sx={{ fontWeight: "bold", textTransform: "none", fontSize: "1rem" }}
-            >
-              🔐 Đăng nhập
-            </Button>
-          </Stack>
+              {/* TITLE */}
+              <Box textAlign="center">
+                <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#1e293b" }}>
+                  Chào mừng
+                </Typography>
+                <Typography sx={{ fontSize: 14, color: "#64748b", mt: 0.5 }}>
+                  Vui lòng đăng nhập để tiếp tục
+                </Typography>
+              </Box>
+
+              {/* ACCOUNT */}
+              <FormControl fullWidth size="small">
+                <InputLabel>Tài khoản</InputLabel>
+                <Select
+                  value={username}
+                  label="Tài khoản"
+                  onChange={(e) => setUsername(e.target.value)}
+                  sx={{
+                    bgcolor: "#fff",
+                    borderRadius: "5px",
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#dbe2ea",
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#1976d2",
+                      borderWidth: 2,
+                    },
+                  }}
+                >
+                  {ACCOUNTS.map((acc) => (
+                    <MenuItem key={acc} value={acc}>
+                      {acc}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* PASSWORD */}
+              <TextField
+                label="Mật khẩu"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                fullWidth
+                size="small"
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#fff",
+                    borderRadius: "5px",
+                    "& fieldset": { borderColor: "#dbe2ea" },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#1976d2",
+                      borderWidth: 2,
+                    },
+                  },
+                }}
+              />
+
+              {/* BUTTON */}
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleLogin}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: "12px",
+                  py: 1.2,
+                  fontWeight: 700,
+                  fontSize: 15,
+                  boxShadow: "none",
+                  "&:hover": { boxShadow: "none" },
+                }}
+              >
+                🔐 Đăng nhập
+              </Button>
+            </Stack>
+          </Box>
         </Card>
       </Box>
 
-      {/* Snackbar */}
+      {/* SNACKBAR */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
