@@ -56,15 +56,11 @@ const ResultDialog = ({
         overflow: "hidden",
         background: "#f8fafc",
         boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
-
-        // ✅ FONT CHUẨN VIỆT NAM
         fontFamily:
           '"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
-
         textRendering: "optimizeLegibility",
         WebkitFontSmoothing: "antialiased",
         MozOsxFontSmoothing: "grayscale",
-
         fontFeatureSettings: '"kern" 1, "liga" 1',
       },
     }}
@@ -92,7 +88,7 @@ const ResultDialog = ({
             fontSize: 16,
           }}
         >
-          📊
+          🎯
         </Box>
 
         <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
@@ -142,7 +138,7 @@ const ResultDialog = ({
               width: 85,
               height: 85,
               borderRadius: "50%",
-              background: choXemDiem ? "#4caf50" : "#ef4444",
+              background: choXemDiem ? "#4caf50" : "#4caf50",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -153,17 +149,15 @@ const ResultDialog = ({
             {choXemDiem ? "🏆" : "✓"}
           </Box>
 
-          {/* NAME (FIX FONT VIỆT NAM) */}
+          {/* NAME */}
           <Typography
             sx={{
               fontSize: 22,
               fontWeight: 700,
               color: "#0f172a",
               textTransform: "none",
-
               fontFamily:
                 '"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
-
               fontFeatureSettings: '"kern" 1, "liga" 1',
               textRendering: "optimizeLegibility",
             }}
@@ -188,7 +182,7 @@ const ResultDialog = ({
           {/* STATUS */}
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: 600,
               color: choXemDiem ? "#16a34a" : "#dc2626",
             }}
@@ -196,50 +190,34 @@ const ResultDialog = ({
             Đã hoàn thành bài kiểm tra
           </Typography>
 
-          {/* SCORE */}
-          {choXemDiem ? (
-            <Box
-              sx={{
-                mt: 1,
-                px: 3,
-                py: 2,
-                borderRadius: "14px",
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                minWidth: 160,
-              }}
-            >
-              <Typography sx={{ fontSize: 13, color: "#64748b" }}>
-                Điểm của bạn
-              </Typography>
+          {/* SCORE - LUÔN HIỂN THỊ KHUNG */}
+          <Box
+            sx={{
+              mt: 1,
+              px: 3,
+              py: 2,
+              borderRadius: "14px",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              minWidth: 160,
+            }}
+          >
+            <Typography sx={{ fontSize: 13, color: "#64748b" }}>
+              Điểm của bạn
+            </Typography>
 
-              <Typography
-                sx={{
-                  fontSize: 30,
-                  fontWeight: 900,
-                  color: "#1976d2",
-                }}
-              >
-                {configData?.kiemTraDinhKi === true
-                  ? studentResult?.diem
-                  : configData?.baiTapTuan === true
-                  ? convertPercentToScore(studentResult?.diemTN)
-                  : configData?.onTap === true
-                  ? studentResult?.diem
-                  : ""}
-              </Typography>
-            </Box>
-          ) : (
             <Typography
               sx={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: "#ef4444",
+                fontSize: 30,
+                fontWeight: 900,
+                color: "#1976d2",
+                minHeight: 40, // giữ ổn định chiều cao
+                lineHeight: 1,
               }}
             >
-              ĐÃ HOÀN THÀNH BÀI KIỂM TRA
+              {choXemDiem ? getScore() : "\u200B"}
             </Typography>
-          )}
+          </Box>
         </Stack>
       )}
     </DialogContent>

@@ -92,11 +92,11 @@ const StatusResultDialogGV = ({
               fontSize: 16,
             }}
           >
-            📝
+            🎯
           </Box>
 
           <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
-            KẾT QUẢ BÀI LÀM
+            KẾT QUẢ
           </Typography>
         </Stack>
 
@@ -108,6 +108,9 @@ const StatusResultDialogGV = ({
             top: 10,
             color: "#fff",
             bgcolor: "rgba(255,255,255,0.15)",
+            "&:hover": {
+              bgcolor: "rgba(255,255,255,0.25)",
+            },
           }}
         >
           <CloseIcon fontSize="small" />
@@ -150,7 +153,7 @@ const StatusResultDialogGV = ({
           {/* STATUS */}
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: 600,
               color: "#16a34a",
             }}

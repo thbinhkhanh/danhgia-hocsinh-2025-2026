@@ -53,9 +53,26 @@ const StatusResultDialogGV = ({
           position: "relative",
         }}
       >
-        <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
-          KẾT QUẢ BÀI LÀM
-        </Typography>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              bgcolor: "rgba(255,255,255,0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+            }}
+          >
+            🎯
+          </Box>
+
+          <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
+            KẾT QUẢ
+          </Typography>
+        </Stack>
 
         <IconButton
           onClick={onClose}
@@ -83,20 +100,20 @@ const StatusResultDialogGV = ({
 
           {/* ICON */}
           <Box
-  sx={{
-    width: 90,
-    height: 90,
-    borderRadius: "50%",
-    background: "#4caf50",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#fff",
-    fontSize: 38,
-  }}
->
-  {choXemDiem ? "🏆" : "✓"}
-</Box>
+            sx={{
+              width: 90,
+              height: 90,
+              borderRadius: "50%",
+              background: "#4caf50",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontSize: 38,
+            }}
+          >
+            {choXemDiem ? "🏆" : "✓"}
+          </Box>
 
           <Typography
             sx={{
@@ -120,7 +137,7 @@ const StatusResultDialogGV = ({
           {/* STATUS */}
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: 600,
               color: choXemDiem ? "#16a34a" : "#dc2626",
             }}
@@ -129,45 +146,77 @@ const StatusResultDialogGV = ({
           </Typography>
 
           {/* SCORE */}
-          {choXemDiem && (
+          <Box
+            sx={{
+              mt: 1,
+              px: 3,
+              py: 2,
+              borderRadius: "14px",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              minWidth: 160,
+            }}
+          >
+            <Typography sx={{ fontSize: 13, color: "#64748b", mb: 1 }}>
+              Điểm của bạn
+            </Typography>
+
             <Box
               sx={{
-                mt: 1,
-                px: 3,
-                py: 2,
-                borderRadius: "14px",
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                minWidth: 160,
+                height: 40, // giữ vùng điểm cố định
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <Typography sx={{ fontSize: 13, color: "#64748b", mb: 1 }}>
-                Điểm của bạn
-              </Typography>
-
               <Typography
                 sx={{
                   fontSize: 30,
                   fontWeight: 900,
                   color: "#1976d2",
+                  lineHeight: 1,
+                  textAlign: "center",
                 }}
               >
-                {config?.baiTapTuan
-                  ? convertPercentToScore(doneStudent?.diemTN)
-                  : config?.kiemTraDinhKi
-                  ? doneStudent?.diemTN ?? "0"
-                  : ""}
+                {choXemDiem
+                  ? config?.baiTapTuan
+                    ? convertPercentToScore(doneStudent?.diemTN)
+                    : config?.kiemTraDinhKi
+                    ? doneStudent?.diemTN ?? "0"
+                    : ""
+                  : "\u200B"}
               </Typography>
             </Box>
-          )}
+          </Box>
         </Stack>
       </DialogContent>
 
       {/* ACTION */}
       <Box sx={{ px: 3, pb: 3, display: "flex", justifyContent: "center" }}>
-        <Button variant="contained" onClick={onClose}>
+        <Box
+          onClick={onClose}
+          sx={{
+            px: 3,
+            py: 1,
+            borderRadius: "12px",
+            background: "#1976d2",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "0.2s",
+            userSelect: "none",
+            "&:hover": {
+              opacity: 0.9,
+              transform: "translateY(-1px)",
+            },
+            "&:active": {
+              transform: "scale(0.98)",
+            },
+          }}
+        >
           OK
-        </Button>
+        </Box>
       </Box>
     </Dialog>
   );

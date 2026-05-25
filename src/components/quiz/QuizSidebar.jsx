@@ -12,6 +12,8 @@ export default function QuizSidebar({
   navigate,
   setOpenExitConfirm,
   sidebarConfig,
+  choXemDiem = true,
+  choXemDapAn = true,
 }) {
   return (
     <Box
@@ -70,11 +72,17 @@ export default function QuizSidebar({
             if (!submitted && status === "answered") bgcolor = "#bbdefb";
 
             if (submitted) {
-              if (status === "correct") bgcolor = "#c8e6c9";
-              else if (status === "wrong") bgcolor = "#ffcdd2";
-              else {
-                bgcolor = "#fafafa";
-                border = "1px dashed #bdbdbd";
+              // 🚫 KHÔNG CHO XEM ĐIỂM / ĐÁP ÁN → GIỐNG CHƯA LÀM
+              if (!choXemDiem || !choXemDapAn) {
+                bgcolor = "#eeeeee";
+                border = "1px solid transparent";
+              } else {
+                if (status === "correct") bgcolor = "#c8e6c9";
+                else if (status === "wrong") bgcolor = "#ffcdd2";
+                else {
+                  bgcolor = "#fafafa";
+                  border = "1px dashed #bdbdbd";
+                }
               }
             }
 

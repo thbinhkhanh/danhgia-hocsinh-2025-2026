@@ -890,6 +890,8 @@ return (
           handleSubmit={handleSubmit}
           navigate={navigate}
           setOpenExitConfirm={setOpenExitConfirm}
+          choXemDiem={choXemDiem}
+          choXemDapAn={choXemDapAn}
         />
       )}
     </Box>

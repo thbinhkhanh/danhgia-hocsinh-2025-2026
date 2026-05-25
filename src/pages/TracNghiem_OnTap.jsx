@@ -66,6 +66,7 @@ export default function TracNghiem_OnTap() {
   // ===== loading / progress =====
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [saving, setSaving] = useState(false); 
 
   // ===== config context =====
   const { config } = useContext(ConfigContext);
@@ -734,6 +735,8 @@ return (
           navigate={navigate}
           setOpenExitConfirm={setOpenExitConfirm}
           getQuestionStatus={getQuestionStatus}
+          choXemDiem={choXemDiem}
+          choXemDapAn={choXemDapAn}
         />
       )}
     </Box>
