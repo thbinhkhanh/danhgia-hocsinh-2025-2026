@@ -455,7 +455,7 @@ export default function QuanTri() {
                         ? "baiTapTuan"
                         : config.kiemTraDinhKi
                         ? "kiemTraDinhKi"
-                        : config.onTap
+                        : config.examType === "ontap"
                         ? "onTap"
                         : ""
                     }
@@ -465,7 +465,8 @@ export default function QuanTri() {
                         danhGiaTuan: v === "danhGiaTuan",
                         baiTapTuan: v === "baiTapTuan",
                         kiemTraDinhKi: v === "kiemTraDinhKi",
-                        onTap: v === "onTap", // thêm trạng thái Ôn tập
+                        onTap: v === "onTap",
+                        examType: v === "onTap" ? "ontap" : config.examType,
                       };
                       setConfig(newState);
                     }}
@@ -668,6 +669,7 @@ export default function QuanTri() {
       <CreateDataConfirmDialog
         open={openCreateDataDialog} // chỉ cần open
         onClose={() => setOpenCreateDataDialog(false)}
+        configData={config}
       />
     </Box>
   );

@@ -54,6 +54,7 @@ import { LinearProgress } from "@mui/material";
 export default function DanhSachHS() {
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
+  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
@@ -111,7 +112,7 @@ export default function DanhSachHS() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const snapshot = await getDocs(collection(db, "DANHSACH"));
+        const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
         const classList = snapshot.docs.map((doc) => doc.id);
         setClassData(classList);
         setClasses(classList);
@@ -161,7 +162,7 @@ export default function DanhSachHS() {
     // Nếu chưa có cache, fetch từ Firestore
     const fetchStudents = async () => {
       try {
-        const classDocRef = doc(db, "DANHSACH", selectedClass);
+       const classDocRef = doc(db, `DANHSACH_${namHocKey}`, selectedClass);
         const classSnap = await getDoc(classDocRef);
 
         if (!classSnap.exists()) {
@@ -294,11 +295,12 @@ export default function DanhSachHS() {
           file,
           db,
           selectedClass,
+          namHocKey,
           onProgress: (p) => setUploadProgress(p),
         });
 
         // 🔄 Reload danh sách HS từ Firestore để UI cập nhật ngay
-        const classDocRef = doc(db, "DANHSACH", selectedClass);
+        const classDocRef = doc(db, `DANHSACH_${namHocKey}`, selectedClass);
         const classSnap = await getDoc(classDocRef);
 
         if (classSnap.exists()) {
@@ -397,7 +399,7 @@ export default function DanhSachHS() {
 
     try {
       // 1️⃣ Ghi Firestore DANHSACH với lop + stt
-      await updateDoc(doc(db, "DANHSACH", selectedClass), {
+      await updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
         [ma]: {
           hoVaTen: ten,
           lop,
@@ -448,7 +450,7 @@ export default function DanhSachHS() {
 
     try {
       // 1️⃣ Ghi Firestore DANHSACH
-      await updateDoc(doc(db, "DANHSACH", selectedClass), {
+      await updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
         [ma]: { hoVaTen: ten },
       });
 
@@ -483,13 +485,13 @@ export default function DanhSachHS() {
 
     try {
       // 1️⃣ Xóa trên Firestore DANHSACH
-      await updateDoc(doc(db, "DANHSACH", selectedClass), {
+      await updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
         [ma]: deleteField(),
       });
 
       // 2️⃣ Xóa document DATA của học sinh (bao gồm mã định danh)
       const lopKey = selectedClass.replace(".", "_");
-      const hsRef = doc(db, "DATA", lopKey, "HOCSINH", ma);
+      const hsRef = doc(db, `DATA_${namHocKey}`, lopKey, "HOCSINH", ma);
       await deleteDoc(hsRef); // ✅ xóa hẳn document
 
       // 3️⃣ Cập nhật UI ngay
@@ -1166,6 +1168,7 @@ export default function DanhSachHS() {
     <CreateDataConfirmDialog
       open={createDataDialogOpen}
       onClose={() => setCreateDataDialogOpen(false)}
+      configData={config}
     />
 
     </Box>    

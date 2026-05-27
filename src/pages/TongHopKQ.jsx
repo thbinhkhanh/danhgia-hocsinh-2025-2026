@@ -51,6 +51,7 @@ import { exportKetQuaExcel } from "../utils/exportKetQuaExcel";
 export default function TongHopKQ() {
   // ================= CONTEXT =================
   const { config } = useContext(ConfigContext);
+  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   // ================= DATA STATE =================
   const [classesList, setClassesList] = useState([]);
@@ -96,7 +97,7 @@ export default function TongHopKQ() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const snapshot = await getDocs(collection(db, "DANHSACH"));
+        const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
         const classList = snapshot.docs.map(doc => doc.id).sort((a, b) => a.localeCompare(b));
         setClassesList(classList);
         setSelectedLop(classList[0] || "");
@@ -191,7 +192,7 @@ export default function TongHopKQ() {
 
       // ================== KTĐK ==================
       const classKey = selectedLop.replace(".", "_");
-      const colRef = collection(db, "DATA", classKey, "HOCSINH");
+      const colRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
       const snapshot = await getDocs(colRef);
 
       if (snapshot.empty) {
@@ -281,7 +282,7 @@ export default function TongHopKQ() {
 
           // 2️⃣ Xóa Firestore nền (không block UI)
           const classKey = selectedLop.replace(".", "_");
-          const hsRef = collection(db, "DATA", classKey, "HOCSINH");
+          const hsRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
           const snapshot = await getDocs(hsRef);
 
           if (snapshot.empty) return; // Không có dữ liệu Firestore
@@ -310,7 +311,7 @@ export default function TongHopKQ() {
             }
 
             return Object.keys(updates).length > 0
-              ? { docRef: doc(db, "DATA", classKey, "HOCSINH", studentId), updates }
+              ? { docRef: doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId), updates }
               : null;
           }).filter(Boolean);
 
@@ -353,7 +354,7 @@ export default function TongHopKQ() {
           await Promise.all(
             classesList.map(async (lop) => {
               const classKey = lop.replace(".", "_");
-              const hsRef = collection(db, "DATA", classKey, "HOCSINH");
+              const hsRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
               const snapshot = await getDocs(hsRef);
 
               if (snapshot.empty) return;
@@ -379,7 +380,7 @@ export default function TongHopKQ() {
                 }
 
                 if (Object.keys(updates).length > 0) {
-                  return { docRef: doc(db, "DATA", classKey, "HOCSINH", studentId), updates };
+                  return { docRef: doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId), updates };
                 }
                 return null;
               }).filter(Boolean);

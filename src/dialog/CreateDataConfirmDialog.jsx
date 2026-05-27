@@ -1,317 +1,361 @@
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
-  DialogActions,
-  Button,
   Typography,
   Box,
-  LinearProgress,
-  FormControl,
-  FormLabel,
+  Stack,
+  Button,
+  IconButton,
   RadioGroup,
   FormControlLabel,
   Radio,
+  FormControl,
+  FormLabel,
+  LinearProgress,
 } from "@mui/material";
+
+import CloseIcon from "@mui/icons-material/Close";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+
 import { db } from "../firebase";
 import { getDocs, getDoc, collection, writeBatch, doc } from "firebase/firestore";
 
-const CreateDataConfirmDialog = ({ open, onClose }) => {
+const CreateDataConfirmDialog = ({ open, onClose, configData }) => {
+  const namHocKey = (configData?.namHoc || "2025-2026").replace("-", "_");
+
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
-  const [mode, setMode] = useState("update"); // "update" hoặc "new"
+  const [mode, setMode] = useState("update");
   const [disableConfirm, setDisableConfirm] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setLoading(false);
-      setProgress(0);
-      setMessage("");
-      setSuccess(false);
-      setMode("update");
-    }
+    if (!open) return;
+
+    setLoading(false);
+    setProgress(0);
+    setMessage("");
+    setSuccess(false);
+    setMode("update");
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
 
     const checkClassList = async () => {
-      const classSnap = await getDocs(collection(db, "DANHSACH"));
-      setDisableConfirm(classSnap.empty);
+      const classSnap = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
+      const hasData = classSnap.docs.some(
+        (d) => Object.keys(d.data() || {}).length > 0
+      );
+      setDisableConfirm(!hasData);
     };
 
     checkClassList();
-  }, [open]);
+  }, [open, namHocKey]);
 
   const handleCreateDATA = async () => {
-  try {
-    setLoading(true);
-    setMessage(mode === "new" ? "🔄 Đang tạo dữ liệu mới..." : "🔄 Đang cập nhật dữ liệu...");
-    setProgress(0);
+    try {
+      setLoading(true);
+      setProgress(0);
+      setMessage("Đang xử lý...");
 
-    const classSnap = await getDocs(collection(db, "DANHSACH"));
-    const CLASS_LIST = classSnap.docs.map(doc => doc.id);
+      const classSnap = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
+      const CLASS_LIST = classSnap.docs.map((d) => d.id);
 
-    // ⛔ KIỂM TRA DANH SÁCH LỚP RỖNG
-    if (CLASS_LIST.length === 0) {
-      setMessage("⚠️ Không có lớp nào trong DANHSACH. Không thể tạo DATA.");
-      setSuccess(false);
-      setLoading(false);
-      return;
-    }
-
-    let done = 0;
-
-    for (const lop of CLASS_LIST) {
-      const lopKey = lop.replace(".", "_");
-      const dsSnap = await getDoc(doc(db, "DANHSACH", lop));
-      if (!dsSnap.exists()) continue;
-      const danhSach = dsSnap.data();
-
-      // Lấy toàn bộ học sinh hiện có trong lớp nếu mode = "update"
-      let existingHS = {};
-      if (mode === "update") {
-        const hsSnap = await getDocs(collection(db, "DATA", lopKey, "HOCSINH"));
-        hsSnap.forEach(docSnap => {
-          existingHS[docSnap.id] = docSnap.data();
-        });
+      if (CLASS_LIST.length === 0) {
+        setMessage("Không có lớp dữ liệu");
+        setLoading(false);
+        return;
       }
 
-      const batch = writeBatch(db);
+      let done = 0;
 
-      for (const [maHS, hs] of Object.entries(danhSach)) {
-        const hsRef = doc(db, "DATA", lopKey, "HOCSINH", maHS);
+      for (const lop of CLASS_LIST) {
+        const lopKey = lop.replace(".", "_");
 
-        let hsData = {};
+        const dsSnap = await getDoc(doc(db, `DANHSACH_${namHocKey}`, lop));
+        if (!dsSnap.exists()) continue;
+
+        const danhSach = dsSnap.data();
+
+        let existingHS = {};
         if (mode === "update") {
-          const existingData = existingHS[maHS] || {};
-          hsData = {
-            hoVaTen: hs.hoVaTen || existingData.hoVaTen || "",
-            stt: hs.stt ?? existingData.stt ?? null,
-            TinHoc: {
-              dgtx: existingData.TinHoc?.dgtx || {},
-              ktdk: existingData.TinHoc?.ktdk || {},
-            },
-            CongNghe: {
-              dgtx: existingData.CongNghe?.dgtx || {},
-              ktdk: existingData.CongNghe?.ktdk || {},
-            },
-          };
-        } else {
-          hsData = {
-            hoVaTen: hs.hoVaTen || "",
-            stt: hs.stt || null,
-            TinHoc: { dgtx: {}, ktdk: {} },
-            CongNghe: { dgtx: {}, ktdk: {} },
-          };
+          const hsSnap = await getDocs(
+            collection(db, `DATA_${namHocKey}`, lopKey, "HOCSINH")
+          );
+          hsSnap.forEach((d) => {
+            existingHS[d.id] = d.data();
+          });
         }
 
-        batch.set(hsRef, hsData, { merge: true });
+        const batch = writeBatch(db);
+
+        for (const [maHS, hs] of Object.entries(danhSach)) {
+          const hsRef = doc(
+            db,
+            `DATA_${namHocKey}`,
+            lopKey,
+            "HOCSINH",
+            maHS
+          );
+
+          const old = existingHS[maHS] || {};
+
+          const hsData =
+            mode === "update"
+              ? {
+                  hoVaTen: hs.hoVaTen || old.hoVaTen || "",
+                  stt: hs.stt ?? old.stt ?? null,
+                  TinHoc: old.TinHoc || { dgtx: {}, ktdk: {} },
+                  CongNghe: old.CongNghe || { dgtx: {}, ktdk: {} },
+                }
+              : {
+                  hoVaTen: hs.hoVaTen || "",
+                  stt: hs.stt || null,
+                  TinHoc: { dgtx: {}, ktdk: {} },
+                  CongNghe: { dgtx: {}, ktdk: {} },
+                };
+
+          batch.set(hsRef, hsData, { merge: true });
+        }
+
+        await batch.commit();
+
+        done++;
+        setProgress(Math.round((done / CLASS_LIST.length) * 100));
       }
 
-      await batch.commit();
-      done++;
-      setProgress(Math.round((done / CLASS_LIST.length) * 100));
+      setSuccess(true);
+      setMessage(
+        mode === "new"
+          ? "Tạo DATA thành công"
+          : "Cập nhật DATA thành công"
+      );
+    } catch (err) {
+      console.error(err);
+      setMessage("Có lỗi xảy ra");
+    } finally {
+      setLoading(false);
     }
-
-    setMessage(mode === "new" ? "✅ Tạo dữ liệu mới thành công!" : "✅ Cập nhật dữ liệu thành công!");
-    setSuccess(true);
-  } catch (err) {
-    console.error("❌ Lỗi khi tạo/cập nhật dữ liệu:", err);
-    setMessage("❌ Lỗi khi tạo/cập nhật dữ liệu");
-    setSuccess(false);
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   return (
     <Dialog
       open={open}
-      onClose={loading ? null : onClose}
+      onClose={(event, reason) => {
+        if (loading) return;
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        onClose();
+      }}
+      disableEscapeKeyDown
       maxWidth="xs"
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          p: 3,
-          bgcolor: "#e3f2fd",
-          boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+          borderRadius: "18px",
+          overflow: "hidden",
+          background: "#f8fafc",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
         },
       }}
     >
-      {/* ===== HEADER ===== */}
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-        <Box
-          sx={{
-            bgcolor: success ? "#4caf50" : "#f44336",
-            color: "#fff",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mr: 1.5,
-            fontWeight: "bold",
-            fontSize: 18,
-          }}
-        >
-          {success ? "✅" : "⚠️"}
-        </Box>
-
-        <DialogTitle
-          sx={{
-            p: 0,
-            fontWeight: "bold",
-            color: "#d32f2f",
-          }}
-        >
-          {disableConfirm
-            ? "Cảnh báo"
-            : mode === "new"
-            ? "Tạo DATA mới"
-            : "Cập nhật DATA"}
-        </DialogTitle>
-      </Box>
-
-      {/* ===== CONTENT ===== */}
-      <DialogContent>
-        {/* 🔴 CẢNH BÁO KHI DANHSACH RỖNG */}
-        {disableConfirm && (
-          <Typography
-            sx={{
-              fontSize: 16,
-              color: "error.main",
-              textAlign: "left",
-              mt: 2,
-            }}
-          >
-            ⚠️ Không tìm thấy danh sách học sinh. Vui lòng tải danh sách học sinh lên trước.
-          </Typography>
-        )}
-
-        {/* 🟢 NỘI DUNG XÁC NHẬN (CHỈ KHI CÓ LỚP) */}
-        {!disableConfirm && !loading && !success && (
-          <>
-            <Typography sx={{ fontSize: 16, color: "#0d47a1" }}>
-              Bạn chắc chắn muốn{" "}
-              {mode === "new"
-                ? "xóa dữ liệu cũ và tạo DATA mới"
-                : "cập nhật DATA, giữ dữ liệu hiện có"}
-              ?<br />
-              Hành động này <strong>không thể hoàn tác</strong>.
-            </Typography>
-
-            <FormControl component="fieldset" sx={{ mt: 4 }}>
-              <FormLabel component="legend">Chọn chế độ</FormLabel>
-              <RadioGroup
-                row
-                value={mode}
-                onChange={(e) => setMode(e.target.value)}
-              >
-                <FormControlLabel value="new" control={<Radio />} label="Tạo mới" />
-                <FormControlLabel
-                  value="update"
-                  control={<Radio />}
-                  label="Cập nhật"
-                />
-              </RadioGroup>
-            </FormControl>
-          </>
-        )}
-
-        {/* 🔄 LOADING */}
-        {loading && (
+      {/* HEADER */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          color: "#fff",
+          background: "linear-gradient(135deg, #1976d2, #42a5f5)",
+          position: "relative",
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={1}>
           <Box
             sx={{
-              mt: 2,
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              bgcolor: "#fff",
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
-              gap: 1,
+              justifyContent: "center",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
             }}
           >
-            <LinearProgress
-              variant="determinate"
-              value={progress}
+            <WarningAmberRoundedIcon
               sx={{
-                width: "80%",
-                borderRadius: 2,
-                height: 4,
-                backgroundColor: "#cfe8fc",
-                "& .MuiLinearProgress-bar": {
-                  backgroundColor: "#1976d2",
-                },
-                mb: 0.5,
+                fontSize: 18,
+                color: "#f59e0b",
               }}
             />
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {message} ({progress}%)
-            </Typography>
           </Box>
-        )}
 
-        {/* ✅ SUCCESS */}
-        {success && !loading && (
-          <Typography
-            sx={{
-              fontSize: 16,
-              color: "#0d47a1",
-              textAlign: "center",
-            }}
-          >
-            ✅{" "}
-            {mode === "new"
-              ? "Dữ liệu mới đã được tạo thành công!"
-              : "Cập nhật dữ liệu thành công!"}
+          <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
+            {disableConfirm
+              ? "Cảnh báo"
+              : mode === "new"
+              ? "Tạo DATA"
+              : "Cập nhật DATA"}
           </Typography>
-        )}
+        </Stack>
+
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: "absolute",
+            right: 10,
+            top: 10,
+            color: "#fff",
+            bgcolor: "rgba(255,255,255,0.15)",
+            "&:hover": {
+              bgcolor: "rgba(255,255,255,0.25)",
+            },
+          }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* CONTENT */}
+      <DialogContent sx={{ px: 3, py: 4 }}>
+        <Stack spacing={2} alignItems="center">
+
+          {/* DISABLE */}
+          {disableConfirm && (
+            <Typography sx={{ color: "#d32f2f", textAlign: "center" }}>
+              Không tìm thấy danh sách học sinh
+            </Typography>
+          )}
+
+          {/* CONFIRM UI */}
+          {!disableConfirm && !loading && !success && (
+            <>
+              <Typography sx={{ color: "#64748b", textAlign: "center" }}>
+                <Typography
+                  sx={{
+                    color: "#64748b",
+                    textAlign: "center",
+                  }}
+                >
+                  Bạn muốn{" "}
+                  {mode === "new"
+                    ? "tạo mới"
+                    : "cập nhật"}{" "}
+                  dữ liệu năm học{" "}
+                  <b>
+                    {namHocKey.replace("_", "-")}
+                  </b>
+                  ?
+                </Typography>
+              </Typography>
+
+              <FormControl
+                sx={{
+                  width: "100%",
+                  pl: 5,
+                  alignItems: "flex-start",
+                }}
+              >
+                <FormLabel
+                  sx={{
+                    mb: 0.5,
+                  }}
+                >
+                  Chọn kiểu
+                </FormLabel>
+
+                <RadioGroup
+                  row
+                  value={mode}
+                  onChange={(e) =>
+                    setMode(e.target.value)
+                  }
+                  sx={{
+                    justifyContent: "flex-start",
+                  }}
+                >
+                  <FormControlLabel
+                    value="new"
+                    control={<Radio />}
+                    label="Tạo mới"
+                  />
+
+                  <FormControlLabel
+                    value="update"
+                    control={<Radio />}
+                    label="Cập nhật"
+                  />
+                </RadioGroup>
+              </FormControl>
+            </>
+          )}
+
+          {/* LOADING */}
+          {loading && (
+            <Box sx={{ width: "100%" }}>
+              <LinearProgress variant="determinate" value={progress} />
+              <Typography sx={{ mt: 1, fontSize: 13, textAlign: "center" }}>
+                {message} ({progress}%)
+              </Typography>
+            </Box>
+          )}
+
+          {/* SUCCESS */}
+          {success && (
+            <Typography sx={{ color: "#1976d2", fontWeight: 700 }}>
+              {message}
+            </Typography>
+          )}
+        </Stack>
       </DialogContent>
 
-      {/* ===== ACTIONS ===== */}
-      <DialogActions sx={{ justifyContent: "center", pt: 2 }}>
-        {/* 🔴 CHỈ OK KHI DANHSACH RỖNG */}
-        {disableConfirm && (
+      {/* ACTIONS */}
+      <Stack
+        direction="row"
+        spacing={2}
+        justifyContent="center"
+        sx={{ pb: 3 }}
+      >
+        <Button
+          variant="outlined"
+          onClick={onClose}
+          sx={{
+            minWidth: 110,
+            height: 42,
+            borderRadius: "12px",
+            textTransform: "none",
+            fontWeight: 600,
+          }}
+        >
+          {disableConfirm || success ? "Đóng" : "Hủy"}
+        </Button>
+
+        {!success && !loading && (
           <Button
             variant="contained"
-            color="primary"
-            onClick={onClose}
-            sx={{ borderRadius: 1, px: 4 }}
+            onClick={handleCreateDATA}
+            disabled={disableConfirm}
+            sx={{
+              minWidth: 130,
+              height: 42,
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: 700,
+              background: "linear-gradient(135deg, #1976d2, #42a5f5)",
+              boxShadow: "0 10px 20px rgba(25,118,210,0.25)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #1565c0, #1976d2)",
+              },
+            }}
           >
-            OK
+            Xác nhận
           </Button>
         )}
-
-        {/* 🟢 NÚT XÁC NHẬN KHI CÓ LỚP */}
-        {!disableConfirm && !loading && !success && (
-          <>
-            <Button variant="outlined" onClick={onClose}>
-              Hủy
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleCreateDATA}
-            >
-              Xác nhận
-            </Button>
-          </>
-        )}
-
-        {!loading && success && (
-          <Button variant="contained" onClick={onClose}>
-            OK
-          </Button>
-        )}
-      </DialogActions>
+      </Stack>
     </Dialog>
   );
-
 };
 
 export default CreateDataConfirmDialog;

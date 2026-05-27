@@ -193,16 +193,6 @@ return (
             >
               Danh sách đề kiểm tra
             </Typography>
-
-            <Typography
-              sx={{
-                fontSize: 13,
-                opacity: 0.9,
-                mt: 0.3,
-              }}
-            >
-              Quản lý và mở đề nhanh chóng
-            </Typography>
           </Box>
 
           <IconButton
@@ -472,166 +462,166 @@ return (
 
       {/* ================= CONTENT ================= */}
       <DialogContent
-  sx={{
-    flex: 1,
-    overflow: "hidden",
-    px: 3,
-    pt: 0,
-    pb: 2,
-  }}
->
-  <Box
-    sx={{
-      height: "100%",
-      overflowY: "auto",
-      borderRadius: "5px",
-      bgcolor: "#fff",
-      border: "1px solid #e2e8f0",
-      p: 1.2,
-      "&::-webkit-scrollbar": { width: 6 },
-      "&::-webkit-scrollbar-thumb": {
-        background: "#cbd5e1",
-        borderRadius: 999,
-      },
-    }}
-  >
-    {loadingList ? (
-      <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CircularProgress />
-      </Box>
-    ) : (() => {
-      // ================= HELPERS =================
-      const normalize = (s = "") =>
-        s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        sx={{
+          flex: 1,
+          overflow: "hidden",
+          px: 3,
+          pt: 0,
+          pb: 2,
+        }}
+      >
+        <Box
+          sx={{
+            height: "100%",
+            overflowY: "auto",
+            borderRadius: "5px",
+            bgcolor: "#fff",
+            border: "1px solid #e2e8f0",
+            p: 1.2,
+            "&::-webkit-scrollbar": { width: 6 },
+            "&::-webkit-scrollbar-thumb": {
+              background: "#cbd5e1",
+              borderRadius: 999,
+            },
+          }}
+        >
+          {loadingList ? (
+            <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <CircularProgress />
+            </Box>
+          ) : (() => {
+            // ================= HELPERS =================
+            const normalize = (s = "") =>
+              s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-      const getNumber = (text = "") => {
-        const match = text.match(/(tuần|bài)\s*(\d+)/i) || text.match(/\d+/);
-        return match ? parseInt(match[2] || match[0], 10) : 9999;
-      };
+            const getNumber = (text = "") => {
+              const match = text.match(/(tuần|bài)\s*(\d+)/i) || text.match(/\d+/);
+              return match ? parseInt(match[2] || match[0], 10) : 9999;
+            };
 
-      const getGroup = (t) => {
-        if (t.includes("bai") || t.includes("tuan")) return 1;
-        if (t.includes("on tap hoc ki")) return 2;
-        if (t.includes("on tap cuoi nam")) return 3;
-        if (t.includes("ontap")) return 4; // 👈 ONTAP
-        return 4;
-      };
+            const getGroup = (t) => {
+              if (t.includes("bai") || t.includes("tuan")) return 1;
+              if (t.includes("on tap hoc ki")) return 2;
+              if (t.includes("on tap cuoi nam")) return 3;
+              if (t.includes("ontap")) return 4; // 👈 ONTAP
+              return 4;
+            };
 
-      const getTitle = (doc) => {
-        switch (dialogExamType) {
-          case "ktdk":
-            return formatExamTitle(doc.id);
-          case "bt":
-            return formatBtTitle(doc.id);
-          case "luyentap":
-            return doc.id;
-          case "ontap": // 👈 THÊM
-            return `Ôn tập - ${doc.id}`;
-          default:
-            return doc.id;
-        }
-      };
+            const getTitle = (doc) => {
+              switch (dialogExamType) {
+                case "ktdk":
+                  return formatExamTitle(doc.id);
+                case "bt":
+                  return formatBtTitle(doc.id);
+                case "luyentap":
+                  return doc.id;
+                case "ontap": // 👈 THÊM
+                  return `Ôn tập - ${doc.id}`;
+                default:
+                  return doc.id;
+              }
+            };
 
-      // ================= FILTER =================
-      const filteredDocs = docList
-        .filter((doc) => isDocMatchType(doc, dialogExamType))
-        .filter((doc) => {
-          if (dialogExamType === "luyentap") {
-            return getClassFromLuyenTapCollection(doc.collection) === filterClass;
-          }
-          return doc.class === filterClass;
-        })
-        .filter((doc) => {
-          if (!["ktdk", "ontap"].includes(dialogExamType)) return true;
-          return getExamYearFromId(doc.id) === filterYear;
-        })
-        .filter((doc) => {
-          if (dialogExamType !== "bt") return true;
-          if (!filterSubject || filterSubject === "all") return true;
+            // ================= FILTER =================
+            const filteredDocs = docList
+              .filter((doc) => isDocMatchType(doc, dialogExamType))
+              .filter((doc) => {
+                if (dialogExamType === "luyentap") {
+                  return getClassFromLuyenTapCollection(doc.collection) === filterClass;
+                }
+                return doc.class === filterClass;
+              })
+              .filter((doc) => {
+                if (!["ktdk", "ontap"].includes(dialogExamType)) return true;
+                return getExamYearFromId(doc.id) === filterYear;
+              })
+              .filter((doc) => {
+                if (dialogExamType !== "bt") return true;
+                if (!filterSubject || filterSubject === "all") return true;
 
-          const subject = (doc.subject || doc.mon || "").toLowerCase();
+                const subject = (doc.subject || doc.mon || "").toLowerCase();
 
-          if (filterSubject === "tin") return subject.includes("tin");
-          if (filterSubject === "congnghe")
-            return subject.includes("công") || subject.includes("cong");
+                if (filterSubject === "tin") return subject.includes("tin");
+                if (filterSubject === "congnghe")
+                  return subject.includes("công") || subject.includes("cong");
 
-          return true;
-        })
-        .sort((a, b) => {
-          const titleA = getTitle(a);
-          const titleB = getTitle(b);
+                return true;
+              })
+              .sort((a, b) => {
+                const titleA = getTitle(a);
+                const titleB = getTitle(b);
 
-          const groupA = getGroup(normalize(titleA));
-          const groupB = getGroup(normalize(titleB));
+                const groupA = getGroup(normalize(titleA));
+                const groupB = getGroup(normalize(titleB));
 
-          if (groupA !== groupB) return groupA - groupB;
+                if (groupA !== groupB) return groupA - groupB;
 
-          return getNumber(titleA) - getNumber(titleB);
-        });
+                return getNumber(titleA) - getNumber(titleB);
+              });
 
-      // ================= EMPTY =================
-      if (!filteredDocs.length) {
-        return (
-          <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "#94a3b8" }}>
-            <DescriptionOutlinedIcon sx={{ fontSize: 52, mb: 1, opacity: 0.5 }} />
-            <Typography fontWeight={600}>Không có đề nào</Typography>
-          </Box>
-        );
-      }
+            // ================= EMPTY =================
+            if (!filteredDocs.length) {
+              return (
+                <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "#94a3b8" }}>
+                  <DescriptionOutlinedIcon sx={{ fontSize: 52, mb: 1, opacity: 0.5 }} />
+                  <Typography fontWeight={600}>Không có đề nào</Typography>
+                </Box>
+              );
+            }
 
-      // ================= LIST =================
-      return (
-        <Stack spacing={1}>
-          {filteredDocs.map((doc) => {
-            const isSelected = selectedDoc === doc.id;
-
+            // ================= LIST =================
             return (
-              <Box
-                key={doc.id}
-                onClick={() => setSelectedDoc(doc.id)}
-                onDoubleClick={() => handleOpenSelectedDoc(doc.id)}
-                sx={{
-                  p: 1.6,
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  transition: ".18s",
-                  border: isSelected ? "2px solid #1976d2" : "1px solid #e2e8f0",
-                  bgcolor: isSelected ? "#f0f7ff" : "#fff",
-                  "&:hover": { bgcolor: "#f8fbff", borderColor: "#90caf9" },
-                }}
-              >
-                <Stack direction="row" alignItems="center" spacing={1.5}>
-                  <Typography
-                    sx={{
-                      flex: 1,
-                      fontSize: 15,
-                      fontWeight: 500,
-                      color: "#1e293b",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {getTitle(doc)}
-                  </Typography>
+              <Stack spacing={1}>
+                {filteredDocs.map((doc) => {
+                  const isSelected = selectedDoc === doc.id;
 
-                  <Box
-                    sx={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      border: isSelected ? "5px solid #1976d2" : "2px solid #cbd5e1",
-                      transition: ".2s",
-                      flexShrink: 0,
-                    }}
-                  />
-                </Stack>
-              </Box>
+                  return (
+                    <Box
+                      key={doc.id}
+                      onClick={() => setSelectedDoc(doc.id)}
+                      onDoubleClick={() => handleOpenSelectedDoc(doc.id)}
+                      sx={{
+                        p: 1.6,
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                        transition: ".18s",
+                        border: isSelected ? "2px solid #1976d2" : "1px solid #e2e8f0",
+                        bgcolor: isSelected ? "#f0f7ff" : "#fff",
+                        "&:hover": { bgcolor: "#f8fbff", borderColor: "#90caf9" },
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" spacing={1.5}>
+                        <Typography
+                          sx={{
+                            flex: 1,
+                            fontSize: 15,
+                            fontWeight: 500,
+                            color: "#1e293b",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {getTitle(doc)}
+                        </Typography>
+
+                        <Box
+                          sx={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: "50%",
+                            border: isSelected ? "5px solid #1976d2" : "2px solid #cbd5e1",
+                            transition: ".2s",
+                            flexShrink: 0,
+                          }}
+                        />
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Stack>
             );
-          })}
-        </Stack>
-      );
-    })()}
-  </Box>
-</DialogContent>
+          })()}
+        </Box>
+      </DialogContent>
 
       {/* ================= FOOTER ================= */}
       <DialogActions

@@ -1,44 +1,76 @@
-// src/utils/uploadExcel.js
-//import * as XLSX from "xlsx";
+import * as XLSX from "xlsx";
 import { doc, setDoc } from "firebase/firestore";
 
-/* ================== UPLOAD DANH SÁCH HỌC SINH ================== */
 export const uploadStudents = async ({
   file,
   db,
   selectedClass,
+  namHocKey,
   onProgress,
 }) => {
+  if (!namHocKey) {
+    throw new Error("namHocKey is undefined ❌");
+  }
+
   const data = await file.arrayBuffer();
   const workbook = XLSX.read(data);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-  const dataToSave = {};
-  const total = jsonData.length;
+  // 👉 Gom nhóm theo lớp
+  const groupedByClass = {};
 
-  for (let i = 0; i < jsonData.length; i++) {
-    const item = jsonData[i];
+  jsonData.forEach((item) => {
+    const ma =
+      item.maDinhDanh ||
+      item["MÃ ĐỊNH DANH"];
 
-    if (item.maDinhDanh && item.hoVaTen) {
-      dataToSave[item.maDinhDanh] = {
-        hoVaTen: item.hoVaTen,
+    const ten =
+      item.hoVaTen ||
+      item["HỌ VÀ TÊN"];
+
+    const lopRaw =
+      item.lop ||
+      item["LỚP"] ||
+      selectedClass;
+
+    // ✅ FIX: đọc STT đa dạng header
+    const stt =
+      item.stt ||
+      item["STT"] ||
+      item["SỐ THỨ TỰ"] ||
+      item["SO THU TU"];
+
+    if (ma && ten) {
+      if (!groupedByClass[lopRaw]) {
+        groupedByClass[lopRaw] = {};
+      }
+
+      groupedByClass[lopRaw][ma] = {
+        hoVaTen: (ten || "").toUpperCase(), // ✅ IN HOA
+        lop: String(lopRaw),          // luôn là string "4.1"
+        stt: stt ? Number(stt) : null // ép số an toàn
       };
     }
+  });
 
-    // 🔥 Progress khi xử lý file (NHANH – mượt)
+  // 👉 Ghi từng lớp vào Firestore
+  const classKeys = Object.keys(groupedByClass);
+
+  for (let i = 0; i < classKeys.length; i++) {
+    const lop = classKeys[i];
+
+    const classRef = doc(db, `DANHSACH_${namHocKey}`, lop);
+
+    await setDoc(classRef, groupedByClass[lop], { merge: true });
+
     if (onProgress) {
-      onProgress(Math.round(((i + 1) / total) * 100));
+      onProgress(Math.round(((i + 1) / classKeys.length) * 100));
     }
   }
-
-  // ✅ GHI FIRESTORE 1 LẦN DUY NHẤT
-  await setDoc(
-    doc(db, "DANHSACH", selectedClass),
-    dataToSave,
-    { merge: true }
-  );
 };
+
+
 
 
 /* ================== UPLOAD PHÂN PHỐI CHƯƠNG TRÌNH ================== */

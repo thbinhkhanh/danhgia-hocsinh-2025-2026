@@ -749,9 +749,9 @@ return (
                       setSelectedClass("");
                     }
                   }}
-                >
-                  <MenuItem value="bt">Bài tập tuần</MenuItem>
-                  <MenuItem value="kt">Kiểm tra</MenuItem>
+                >                  
+                  <MenuItem value="kt">Đề KTĐK</MenuItem>
+                  <MenuItem value="bt">Bài tập tuần</MenuItem>                  
                 </Select>
               </FormControl>
 

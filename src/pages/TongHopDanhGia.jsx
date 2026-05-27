@@ -66,6 +66,7 @@ export default function TongHopDanhGia() {
     useContext(StudentDataContext);
 
   const { config, setConfig } = useContext(ConfigContext);
+  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
   const selectedSemester = config.hocKy || "Giữa kỳ I";
 
   // ================= CLASS / DATA =================
@@ -213,7 +214,7 @@ const handleSaveAll = async () => {
   const batch = writeBatch(db);
 
   students.forEach((s) => {
-    const hsRef = doc(db, "DATA", classKey, "HOCSINH", s.maDinhDanh);
+    const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", s.maDinhDanh);
 
     const termUpdate = {};
 
@@ -331,7 +332,7 @@ useEffect(() => {
     // Nếu chưa có dữ liệu lớp => fetch từ Firestore
     const fetchClasses = async () => {
         try {
-        const snapshot = await getDocs(collection(db, "DANHSACH")); // sửa cú pháp
+        const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`)); // sửa cú pháp
         const classList = snapshot.docs.map(doc => doc.id);
 
         setClassData(classList);
@@ -387,7 +388,7 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
     }
 
     // 🔹 LẤY DANH SÁCH HS
-    const hsSnap = await getDocs(collection(db, "DATA", classKey, "HOCSINH"));
+    const hsSnap = await getDocs(collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH"));
     if (hsSnap.empty) {
       setStudents([]);
       return;

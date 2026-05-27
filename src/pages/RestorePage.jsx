@@ -25,13 +25,13 @@ import { db } from "../firebase";
 const BACKUP_KEYS = [
   
   // ===== HỌC SINH =====
-  { key: "DANHSACH", label: "Danh sách lớp" },
+  { key: "DANHSACH_2025_2026", label: "Danh sách lớp" },
   { key: "BAITAP_TUAN", label: "Bài tập tuần" },
 
   // ===== ĐỀ KIỂM TRA =====
   { key: "NGANHANG_DE", label: "Ngân hàng đề KTĐK" },
   { key: "DETHI", label: "Đề chọn thi" },
-  { key: "DATA", label: "Kết quả đánh giá" },
+  { key: "DATA_2025_2026", label: "Kết quả đánh giá" },
 
   // ===== LUYỆN TẬP =====
   { key: "TRACNGHIEM3", label: "Lớp 3 (CTST)" },
@@ -124,8 +124,8 @@ export default function RestorePage({ open, onClose }) {
   const handleRestore = async () => {
   // 🔥 chỉ cho phép các key đúng UI
   const VALID_KEYS = [
-    "DANHSACH",
-    "DATA",
+    "DANHSACH_2025_2026",
+    "DATA_2025_2026",
     "NGANHANG_DE",
     "DETHI",
     "BAITAP_TUAN",
@@ -181,7 +181,7 @@ export default function RestorePage({ open, onClose }) {
     for (const key of effectiveKeys) {
       const docs = jsonData[key];
 
-      if (key === "DATA") {
+      if (key === "DATA_2025_2026") {
         for (const c of Object.keys(docs)) {
           totalDocs += Object.keys(docs[c]?.HOCSINH || {}).length;
         }
@@ -198,14 +198,14 @@ export default function RestorePage({ open, onClose }) {
       if (!docs) continue;
 
       // ===== DATA =====
-      if (key === "DATA") {
+      if (key === "DATA_2025_2026") {
         for (const classId of Object.keys(docs)) {
           const hsObj = docs[classId]?.HOCSINH || {};
 
           await Promise.all(
             Object.keys(hsObj).map(async (studentId) => {
               await setDoc(
-                doc(db, "DATA", classId, "HOCSINH", studentId),
+                doc(db, "DATA_2025_2026", classId, "HOCSINH", studentId),
                 hsObj[studentId],
                 { merge: true }
               );
@@ -298,7 +298,7 @@ export default function RestorePage({ open, onClose }) {
   );
 
   const GROUPS = {
-    HOCSINH: ["DANHSACH", "DATA"],
+    HOCSINH: ["DANHSACH_2025_2026", "DATA_2025_2026"],
     DETHI: ["NGANHANG_DE", "DETHI", "BAITAP_TUAN"],
     TRACNGHIEM: [
       "TRACNGHIEM3",
@@ -450,9 +450,9 @@ export default function RestorePage({ open, onClose }) {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={restoreOptions["DANHSACH"] || false}
-                    disabled={disabledOptions["DANHSACH"]}
-                    onChange={() => toggleOption("DANHSACH")}
+                    checked={restoreOptions["DANHSACH_2025_2026"] || false}
+                    disabled={disabledOptions["DANHSACH_2025_2026"]}
+                    onChange={() => toggleOption("DANHSACH_2025_2026")}
                   />
                 }
                 label="Danh sách lớp"
@@ -461,9 +461,9 @@ export default function RestorePage({ open, onClose }) {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={restoreOptions["DATA"] || false}
-                    disabled={disabledOptions["DATA"]}
-                    onChange={() => toggleOption("DATA")}
+                    checked={restoreOptions["DATA_2025_2026"] || false}
+                    disabled={disabledOptions["DATA_2025_2026"]}
+                    onChange={() => toggleOption("DATA_2025_2026")}
                   />
                 }
                 label="Kết quả đánh giá"

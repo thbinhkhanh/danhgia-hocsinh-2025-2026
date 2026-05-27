@@ -38,6 +38,7 @@ export default function UploadPage({ open, onClose, selectedClass }) {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const [uploadType, setUploadType] = useState("students"); 
   const { config } = useContext(ConfigContext);
+  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   // Reset khi mở dialog
   useEffect(() => {
@@ -92,7 +93,7 @@ export default function UploadPage({ open, onClose, selectedClass }) {
         for (let i = 0; i < keys.length; i++) {
           const id = keys[i];
           await setDoc(
-            doc(db, "DANHSACH", selectedClass),
+            doc(db, `DANHSACH_${namHocKey}`, selectedClass),
             { [id]: dataToSave[id] },
             { merge: true }
           );

@@ -60,6 +60,12 @@ export const createOnTapExam = async ({
       sortType: q.sortType || "shuffle",
       score: q.score || 0.5,
 
+      // ✅ GIỮ NGUYÊN FIELD QUAN TRỌNG CHO FILLBLANK
+      option: q.option || "",
+
+      // optional fallback nếu UI dùng cả 2 kiểu
+      fillBlank: q.fillBlank || q.option || "",
+
       options: (q.options || []).map((opt) => ({
         text: opt?.text || "",
         image: opt?.image || "",

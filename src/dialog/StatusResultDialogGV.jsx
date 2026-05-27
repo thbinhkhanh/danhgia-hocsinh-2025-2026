@@ -151,15 +151,27 @@ const StatusResultDialogGV = ({
           </Typography>
 
           {/* STATUS */}
-          <Typography
-            sx={{
-              fontSize: 16,
-              fontWeight: 600,
-              color: "#16a34a",
-            }}
-          >
-            Đã hoàn thành bài kiểm tra
-          </Typography>
+          {finalScore != null ? (
+            <Typography
+              sx={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#16a34a",
+              }}
+            >
+              Đã hoàn thành bài kiểm tra
+            </Typography>
+          ) : (
+            <Typography
+              sx={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#f59e0b",
+              }}
+            >
+              Chưa có dữ liệu bài kiểm tra
+            </Typography>
+          )}
 
           {/* SCORE */}
           {finalScore !== null && finalScore !== undefined && (

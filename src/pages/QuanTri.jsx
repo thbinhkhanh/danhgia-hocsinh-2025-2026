@@ -19,6 +19,9 @@ import {
   RadioGroup,
   Radio,
   TextField,
+  IconButton,
+  Tooltip,
+  InputLabel
 } from "@mui/material";
 
 // ================= FIREBASE =================
@@ -40,6 +43,7 @@ import BackupIcon from "@mui/icons-material/Backup";
 import RestoreIcon from "@mui/icons-material/Restore";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 import LockResetIcon from "@mui/icons-material/LockReset";
+import PasswordIcon from "@mui/icons-material/Password";
 
 // ================= ROUTER =================
 import { useNavigate } from "react-router-dom";
@@ -310,43 +314,121 @@ export default function QuanTri() {
   }, []);
 
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
-      <Card
-        elevation={6}
+  <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
+    <Card
+      elevation={6}
+      sx={{
+        p: 4,
+        borderRadius: 3,
+        maxWidth: 900,
+        mx: "auto",
+        mt: 3,
+      }}
+    >
+      {/* ===== HEADER ===== */}
+      <Box
         sx={{
-          p: 4,
-          borderRadius: 3,
-          maxWidth: 650,
-          mx: "auto",
-          mt: 3,
+          px: 3,
+          py: 1.8,
+          mb: 3,
+          borderRadius: 2,
+          background:
+            "linear-gradient(135deg, #1976d2, #1565c0)",
+          color: "#fff",
+          boxShadow:
+            "0 4px 14px rgba(25,118,210,0.25)",
         }}
       >
-        {/* Tiêu đề HỆ THỐNG bao phủ cả 2 cột */}
-        <Typography
-          variant="h5"
-          color="primary"
-          fontWeight="bold"
-          align="center"
-          gutterBottom
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="center"
+          spacing={2}
+          sx={{
+            position: "relative",
+          }}
         >
-          QUẢN TRỊ HỆ THỐNG
-        </Typography>
-
-        <Divider sx={{ mt: 3, mb: 3 }} />
-
-        {/* Container 2 cột */}
-        <Box sx={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {/* Cột bên trái: Cấu hình hệ thống */}
-          <Box sx={{ flex: 1, minWidth: 250 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-              Cấu hình hệ thống
+          <Box sx={{ textAlign: "center" }}>
+            <Typography
+              sx={{
+                fontSize: 20,
+                fontWeight: 700,
+                letterSpacing: 0.5,
+              }}
+            >
+              QUẢN TRỊ HỆ THỐNG
             </Typography>
 
-            <Stack spacing={2} sx={{ mb: 4 }}>
-              {/* Học kỳ */}
+            <Typography
+              sx={{
+                fontSize: 13,
+                opacity: 0.9,
+                mt: 0.3,
+              }}
+            >
+              Quản lý cấu hình và dữ liệu hệ thống
+            </Typography>
+          </Box>
+
+          <Tooltip title="Đổi mật khẩu">
+            <IconButton
+              onClick={() =>
+                setOpenChangePw(true)
+              }
+              sx={{
+                position: "absolute",
+                right: 0,
+                color: "#fff",
+                bgcolor:
+                  "rgba(255,255,255,0.12)",
+                backdropFilter: "blur(4px)",
+
+                "&:hover": {
+                  bgcolor:
+                    "rgba(255,255,255,0.22)",
+                },
+              }}
+            >
+              <PasswordIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Box>
+
+      
+
+      {/* ===== GRID ===== */}
+      <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+
+        {/* ================= LEFT ================= */}
+        <Box sx={{ flex: 1, minWidth: 300 }}>
+
+          {/* ===== CONFIG ===== */}
+          <Box
+            sx={{
+              p: 2,
+              border: "1px solid #e2e8f0",
+              borderRadius: 2,
+              mb: 2,
+              bgcolor: "#fff",
+            }}
+          >
+            <Typography fontWeight="bold" sx={{ mb: 2 }}>
+              Cấu hình hiển thị
+            </Typography>
+
+            <Stack spacing={2}>
+
+              {/* Học kỳ / Năm */}
               <Box sx={{ display: "flex", gap: 2 }}>
                 <FormControl size="small" sx={{ flex: 1 }}>
-                  <Select value={selectedSemester} onChange={handleSemesterChange}>
+                  <InputLabel>Học kỳ</InputLabel>
+
+                  <Select
+                    label="Học kỳ"
+                    value={selectedSemester}
+                    onChange={handleSemesterChange}
+                  >
                     <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
                     <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>
                     <MenuItem value="Giữa kỳ II">Giữa kỳ II</MenuItem>
@@ -354,31 +436,72 @@ export default function QuanTri() {
                   </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={{ flex: 1 }}>
-                  <Select value={selectedYear} onChange={handleYearChange}>
-                    <MenuItem value="2025-2026">2025-2026</MenuItem>
-                    <MenuItem value="2026-2027">2026-2027</MenuItem>
-                    <MenuItem value="2027-2028">2027-2028</MenuItem>
-                    <MenuItem value="2028-2029">2028-2029</MenuItem>
-                    <MenuItem value="2029-2030">2029-2030</MenuItem>
+                <FormControl
+                  size="small"
+                  sx={{ flex: 1 }}
+                >
+                  <InputLabel>
+                    Năm học
+                  </InputLabel>
+
+                  <Select
+                    label="Năm học"
+                    value={selectedYear}
+                    onChange={handleYearChange}
+                  >
+                    {Array.from(
+                      { length: 5 },
+                      (_, i) => {
+                        const start = 2025 + i;
+                        return `${start}-${
+                          start + 1
+                        }`;
+                      }
+                    ).map((year) => (
+                      <MenuItem
+                        key={year}
+                        value={year}
+                      >
+                        {year}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Box>
 
-
-              {/* Môn / Lớp cùng 1 hàng */}
+              {/* Môn học / Lớp */}
               <Box sx={{ display: "flex", gap: 2 }}>
                 <FormControl size="small" sx={{ flex: 1 }}>
-                  <Select value={subject} onChange={handleSubjectChange}>
-                    <MenuItem value="Tin học">Tin học</MenuItem>
-                    <MenuItem value="Công nghệ">Công nghệ</MenuItem>
+                  <InputLabel>Môn học</InputLabel>
+
+                  <Select
+                    label="Môn học"
+                    value={subject}
+                    onChange={handleSubjectChange}
+                  >
+                    <MenuItem value="Tin học">
+                      Tin học
+                    </MenuItem>
+
+                    <MenuItem value="Công nghệ">
+                      Công nghệ
+                    </MenuItem>
                   </Select>
                 </FormControl>
 
                 <FormControl size="small" sx={{ flex: 1 }}>
-                  <Select value={selectedClass} onChange={handleClassChange}>
+                  <InputLabel>Lớp</InputLabel>
+
+                  <Select
+                    label="Lớp"
+                    value={selectedClass}
+                    onChange={handleClassChange}
+                  >
                     {classes.map((cls) => (
-                      <MenuItem key={cls} value={cls}>
+                      <MenuItem
+                        key={cls}
+                        value={cls}
+                      >
                         {cls}
                       </MenuItem>
                     ))}
@@ -386,290 +509,402 @@ export default function QuanTri() {
                 </FormControl>
               </Box>
 
-              {/* Tuần / Thời gian cùng 1 hàng, chiều rộng giống Môn / Lớp */}
-              <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              {/* Tuần / Thời gian */}
+              <Box sx={{ display: "flex", gap: 2 }}>
                 <FormControl size="small" sx={{ flex: 1 }}>
-                  <Select value={selectedWeek} onChange={handleWeekChange}>
+                  <InputLabel>Tuần</InputLabel>
+
+                  <Select
+                    label="Tuần"
+                    value={selectedWeek}
+                    onChange={handleWeekChange}
+                  >
                     {(
                       selectedSemester === "Giữa kỳ I" ||
                       selectedSemester === "Cuối kỳ I"
-                        ? Array.from({ length: 18 }, (_, i) => i + 1) // 1 → 18
-                        : Array.from({ length: 17 }, (_, i) => i + 19) // 19 → 35
+                        ? Array.from(
+                            { length: 18 },
+                            (_, i) => i + 1
+                          )
+                        : Array.from(
+                            { length: 17 },
+                            (_, i) => i + 19
+                          )
                     ).map((week) => (
-                      <MenuItem key={week} value={week}>
+                      <MenuItem
+                        key={week}
+                        value={week}
+                      >
                         Tuần {week}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
+
                 <TextField
                   label="Thời gian (phút)"
                   type="number"
                   size="small"
-                  //disabled={!config.baiTapTuan}
                   value={timeInput}
-                  onChange={(e) => handleTimeLimitChange(e.target.value)}
-                  sx={{ flex: 1 }} // bằng chiều rộng Lớp
-                  inputProps={{ min: 1, style: { textAlign: "center" } }}
-                />
-              </Box>
-
-              {/* Các checkbox */}
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {/* 🔒 Khóa hệ thống */}
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={config.khoaHeThong || false}
-                      onChange={(e) =>
-                        updateFirestoreAndContext("khoaHeThong", e.target.checked)
-                      }
-                      color="error"
-                    />
+                  onChange={(e) =>
+                    handleTimeLimitChange(
+                      e.target.value
+                    )
                   }
-                  label="Khóa hệ thống"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={config.hienThiTenGanDay || false}
-                      onChange={(e) =>
-                        updateFirestoreAndContext("hienThiTenGanDay", e.target.checked)
-                      }
-                      color="primary"
-                    />
-                  }
-                  label="Hiển thị tên gần đây"
-                />
-                
-                <Divider sx={{ mt: 1, mb: 1 }} />  
-                              
-                <FormControl>
-                  {/*<FormLabel>Chọn loại đánh giá</FormLabel>*/}
-
-                  <RadioGroup
-                    value={
-                      config.danhGiaTuan
-                        ? "danhGiaTuan"
-                        : config.baiTapTuan
-                        ? "baiTapTuan"
-                        : config.kiemTraDinhKi
-                        ? "kiemTraDinhKi"
-                        : config.onTap
-                        ? "onTap"
-                        : ""
-                    }
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      const newState = {
-                        danhGiaTuan: v === "danhGiaTuan",
-                        baiTapTuan: v === "baiTapTuan",
-                        kiemTraDinhKi: v === "kiemTraDinhKi",
-                        onTap: v === "onTap", // thêm trạng thái Ôn tập
-                      };
-                      setConfig(newState);
-                    }}
-                  >
-                    <FormControlLabel
-                      value="danhGiaTuan"
-                      control={<Radio color="primary" />}
-                      label="Đánh giá tuần"
-                    />
-                    <FormControlLabel
-                      value="baiTapTuan"
-                      control={<Radio color="primary" />}
-                      label="Bài tập tuần"
-                    />
-                    <FormControlLabel
-                      value="kiemTraDinhKi"
-                      control={<Radio color="primary" />}
-                      label="Kiểm tra định kì"
-                    />
-                    <FormControlLabel
-                      value="onTap"
-                      control={<Radio color="primary" />}
-                      label="Ôn tập"
-                    />
-                  </RadioGroup>
-                </FormControl>
-
-                <Divider sx={{ mt: 1, mb: 1 }} />
-
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={config.choXemDiem || false}
-                      onChange={(e) =>
-                        updateFirestoreAndContext("choXemDiem", e.target.checked)
-                      }
-                      color="primary"
-                    />
-                  }
-                  label="Cho xem điểm"
-                />
-
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={config.choXemDapAn || false}
-                      onChange={(e) =>
-                        updateFirestoreAndContext("choXemDapAn", e.target.checked)
-                      }
-                      color="primary"
-                    />
-                  }
-                  label="Cho xem đáp án"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={config.xuatFileBaiLam || false}
-                      onChange={(e) =>
-                        updateFirestoreAndContext("xuatFileBaiLam", e.target.checked)
-                      }
-                      color="primary"
-                    />
-                  }
-                  label="Xuất file bài làm"
+                  sx={{ flex: 1 }}
+                  inputProps={{
+                    min: 1,
+                    style: {
+                      textAlign: "center",
+                    },
+                  }}
                 />
               </Box>
             </Stack>
           </Box>
 
-          {/* Cột bên phải: Quản trị dữ liệu */}
-          <Box sx={{ flex: 1, minWidth: 300 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+          {/* ===== SYSTEM CHECK ===== */}
+          <Box
+            sx={{
+              p: 2,
+              border: "1px solid #e2e8f0",
+              borderRadius: 2,
+              mb: 2,
+              bgcolor: "#fff",
+            }}
+          >
+            <Typography fontWeight="bold" sx={{ mb: 1 }}>
+              Hệ thống
+            </Typography>
+
+            <Stack spacing={0.5}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.hienThiTenGanDay || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext(
+                        "hienThiTenGanDay",
+                        e.target.checked
+                      )
+                    }
+                  />
+                }
+                label="Hiển thị tên gần đây"
+              />
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.khoaHeThong || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext(
+                        "khoaHeThong",
+                        e.target.checked
+                      )
+                    }
+                    color="error"
+                  />
+                }
+                label={
+                  <Typography
+                    sx={{
+                      color: "#d32f2f",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Khóa hệ thống
+                  </Typography>
+                }
+              />
+            </Stack>
+          </Box>
+
+          {/* ===== ACTION AREA ===== */}
+          <Box
+            sx={{
+              p: 2,
+              border: "1px solid #e2e8f0",
+              borderRadius: 2,
+              bgcolor: "#fff",
+            }}
+          >
+            <Typography
+              fontWeight="bold"
+              sx={{ mb: 2 }}
+            >
               Quản trị dữ liệu
             </Typography>
 
-            {/* Quản trị dữ liệu */}
-            <Stack spacing={2.5} sx={{ mb: 4 }}>
-              {/* 📤 DANH SÁCH HỌC SINH */}
-              {/*<Button
-                variant="contained"
-                color="success"
-                startIcon={<CloudUploadIcon />}
-                onClick={() => setOpenUploadPage(true)}
-              >
-                Tải danh sách năm mới
-              </Button>*/}
-
+            <Stack
+              direction="row"
+              spacing={1.5}
+            >
               <Button
+                fullWidth
                 variant="contained"
                 color="success"
                 startIcon={<AutorenewIcon />}
-                onClick={() => setOpenCreateDataDialog(true)}
+                onClick={() =>
+                  setOpenCreateDataDialog(true)
+                }
+                sx={{
+                  height: 46,
+                  textTransform: "none",
+                  borderRadius: "12px",
+                  fontWeight: 700,
+                  boxShadow: "none",
+                }}
               >
-                KHỞI TẠO DỮ LIỆU NĂM MỚI
+                Năm mới
               </Button>
 
-              {/* Thanh tiến trình
-              {loading && (
-                <Box sx={{ mt: 1 }}>
-                  <LinearProgress variant="determinate" value={progress} />
-                  <Typography
-                    variant="body2"
-                    sx={{ mt: 0.5, textAlign: "center", fontWeight: 500 }}
-                  >
-                    {message} ({progress}%)
-                  </Typography>
-                </Box>
-              )}*/}
-
-              <Divider sx={{ mt: 1, mb: 1 }} />  
-
-              {/* 💾 SAO LƯU / PHỤC HỒI */}
               <Button
+                fullWidth
                 variant="contained"
-                color="primary"
                 startIcon={<BackupIcon />}
-                onClick={() => setOpenBackupDialog(true)}
+                onClick={() =>
+                  setOpenBackupDialog(true)
+                }
+                sx={{
+                  height: 46,
+                  textTransform: "none",
+                  borderRadius: "12px",
+                  fontWeight: 700,
+                  boxShadow: "none",
+                }}
               >
-                Sao lưu dữ liệu
+                Sao lưu
               </Button>
 
               <Button
+                fullWidth
                 variant="outlined"
                 color="secondary"
                 startIcon={<RestoreIcon />}
-                onClick={() => setOpenRestoreDialog(true)}
+                onClick={() =>
+                  setOpenRestoreDialog(true)
+                }
                 sx={{
-                  bgcolor: "#f44336",
-                  color: "#fff",
-                  borderColor: "#f44336",
-                  "&:hover": { bgcolor: "#d32f2f", borderColor: "#d32f2f" },
+                  height: 46,
+                  textTransform: "none",
+                  borderRadius: "12px",
+                  fontWeight: 700,
                 }}
               >
-                Phục hồi dữ liệu
-              </Button>
-              
-              <Divider sx={{ mt: 1, mb: 1 }} />  
-
-              {/* Nút Đổi mật khẩu */}
-              <Button
-                variant="outlined"
-                color="warning"
-                startIcon={<LockResetIcon />}
-                onClick={() => setOpenChangePw(true)}
-                sx={{
-                  bgcolor: "#ff9800",
-                  color: "#fff",
-                  borderColor: "#ff9800",
-                  "&:hover": { bgcolor: "#f57c00", borderColor: "#f57c00" },
-                }}
-              >
-                Đổi mật khẩu
+                Phục hồi
               </Button>
             </Stack>
-
           </Box>
         </Box>
 
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={4000}
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        
+
+        {/* ================= RIGHT ================= */}
+        <Box sx={{ flex: 1, minWidth: 300 }}>
+          {/* ===== EXAM TYPE ===== */}
+          <Box
+            sx={{
+              p: 2,
+              border: "1px solid #e2e8f0",
+              borderRadius: 2,
+              mb: 2,
+              bgcolor: "#fff",
+            }}
+          >
+            <Typography
+              fontWeight="bold"
+              sx={{ mb: 1 }}
+            >
+              Loại đánh giá
+            </Typography>
+
+            <RadioGroup
+              sx={{
+                ml: 1, // lề trái
+              }}
+              value={
+                config.danhGiaTuan
+                  ? "danhGiaTuan"
+                  : config.baiTapTuan
+                  ? "baiTapTuan"
+                  : config.kiemTraDinhKi
+                  ? "kiemTraDinhKi"
+                  : config.examType === "ontap"
+                  ? "onTap"
+                  : ""
+              }
+              onChange={(e) => {
+                const v = e.target.value;
+
+                setConfig({
+                  danhGiaTuan:
+                    v === "danhGiaTuan",
+
+                  baiTapTuan:
+                    v === "baiTapTuan",
+
+                  kiemTraDinhKi:
+                    v === "kiemTraDinhKi",
+
+                  onTap: v === "onTap",
+
+                  examType:
+                    v === "onTap"
+                      ? "ontap"
+                      : config.examType,
+                });
+              }}
+            >
+              <FormControlLabel
+                value="danhGiaTuan"
+                control={<Radio />}
+                label="Đánh giá tuần"
+              />
+
+              <FormControlLabel
+                value="baiTapTuan"
+                control={<Radio />}
+                label="Bài tập tuần"
+              />
+
+              <FormControlLabel
+                value="kiemTraDinhKi"
+                control={<Radio />}
+                label="Kiểm tra định kì"
+              />
+
+              <FormControlLabel
+                value="onTap"
+                control={<Radio />}
+                label="Ôn tập"
+              />
+            </RadioGroup>
+          </Box>
+
+          {/* ===== RESULT SETTINGS ===== */}
+          <Box
+            sx={{
+              p: 2,
+              border: "1px solid #e2e8f0",
+              borderRadius: 2,
+              bgcolor: "#fff",
+            }}
+          >
+            <Typography fontWeight="bold" sx={{ mb: 1 }}>
+              Hiển thị kết quả
+            </Typography>
+
+            <Stack spacing={0.5}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.choXemDiem || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext(
+                        "choXemDiem",
+                        e.target.checked
+                      )
+                    }
+                  />
+                }
+                label="Cho xem điểm"
+              />
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.choXemDapAn || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext(
+                        "choXemDapAn",
+                        e.target.checked
+                      )
+                    }
+                  />
+                }
+                label="Cho xem đáp án"
+              />
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={config.xuatFileBaiLam || false}
+                    onChange={(e) =>
+                      updateFirestoreAndContext(
+                        "xuatFileBaiLam",
+                        e.target.checked
+                      )
+                    }
+                  />
+                }
+                label="Xuất file bài làm"
+              />
+            </Stack>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* ===== SNACKBAR ===== */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() =>
+          setSnackbar((s) => ({
+            ...s,
+            open: false,
+          }))
+        }
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
         >
-          <Alert severity={snackbar.severity} variant="filled">
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
 
-        {/* Dialog Đổi mật khẩu */}
-        <ChangePasswordDialog
-          open={openChangePw}
-          onClose={() => setOpenChangePw(false)}
-          newPw={newPw}
-          setNewPw={setNewPw}
-          confirmPw={confirmPw}
-          setConfirmPw={setConfirmPw}
-          pwError={pwError}
-          handleChangePassword={handleChangePassword}
-        />
-
-        <BackupPage
-          open={openBackupDialog}
-          onClose={() => setOpenBackupDialog(false)}
-        />
-        <RestorePage
-          open={openRestoreDialog}
-          onClose={() => setOpenRestoreDialog(false)}
-        />
-
-        {/* Trang Upload danh sách riêng */}
-        {/*<UploadPage
-          open={openUploadPage}
-          onClose={() => setOpenUploadPage(false)}
-          selectedClass={selectedClass}
-        />*/}
-      </Card>
-
-      <CreateDataConfirmDialog
-        open={openCreateDataDialog} // chỉ cần open
-        onClose={() => setOpenCreateDataDialog(false)}
+      {/* ===== CHANGE PASSWORD ===== */}
+      <ChangePasswordDialog
+        open={openChangePw}
+        onClose={() => setOpenChangePw(false)}
+        newPw={newPw}
+        setNewPw={setNewPw}
+        confirmPw={confirmPw}
+        setConfirmPw={setConfirmPw}
+        pwError={pwError}
+        handleChangePassword={handleChangePassword}
       />
-    </Box>
-  );
+
+      {/* ===== BACKUP / RESTORE ===== */}
+      <BackupPage
+        open={openBackupDialog}
+        onClose={() =>
+          setOpenBackupDialog(false)
+        }
+      />
+
+      <RestorePage
+        open={openRestoreDialog}
+        onClose={() =>
+          setOpenRestoreDialog(false)
+        }
+      />
+
+      {/* ===== CREATE DATA ===== */}
+      <CreateDataConfirmDialog
+        open={openCreateDataDialog}
+        onClose={() =>
+          setOpenCreateDataDialog(false)
+        }
+        configData={config}
+      />
+    </Card>
+  </Box>
+);
 
 }

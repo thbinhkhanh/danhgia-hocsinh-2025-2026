@@ -533,7 +533,7 @@ const confirmDeleteOnTap = async () => {
                 fontSize: 14,
               }}
             >
-              {examList.length} đề trong ngân hàng đề
+              {examList.length} đề ngân hàng
             </Box>
 
             <Box

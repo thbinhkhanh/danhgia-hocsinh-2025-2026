@@ -25,6 +25,7 @@ import { exportThongKeExcel } from "../utils/exportThongKeExcel";
 
 export default function ThongKe() {
   const [config, setConfig] = useState({ hocKy: "", mon: "" });
+  
   const [rowsToRender, setRowsToRender] = useState([]);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -45,6 +46,7 @@ export default function ThongKe() {
         setConfig({
           hocKy: data.hocKy || "Giữa kỳ I",
           mon: data.mon || "Tin học",
+          namHoc: data.namHoc || "2025-2026"
         });
       } else {
         setConfig({ hocKy: "Giữa kỳ I", mon: "Tin học" });
@@ -55,15 +57,17 @@ export default function ThongKe() {
   };
 
   // 🔹 Hàm lấy dữ liệu thống kê
-  const fetchThongKeData = async (hocKy, mon) => {
-    if (!hocKy || !mon) return;
+  const fetchThongKeData = async (hocKy, mon, namHoc) => {
+    if (!hocKy || !mon || !namHoc) return;
+
+    const namHocKey = namHoc.replace(/-/g, "_");
 
     const selectedTerm = mapTerm[hocKy];
     const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
     try {
       // 1️⃣ Lấy danh sách lớp
-      const classSnap = await getDocs(collection(db, "DANHSACH"));
+      const classSnap = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
       const classes = classSnap.docs
         .map((d) => d.data()?.lop || d.id)
         .filter(Boolean)
@@ -79,7 +83,7 @@ export default function ThongKe() {
         classes.map(async (lop) => {
           const classKey = lop.replace(".", "_");
           const hsSnap = await getDocs(
-            collection(db, "DATA", classKey, "HOCSINH")
+            collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH")
           );
 
           let tot = 0, hoanThanh = 0, chuaHoanThanh = 0;
@@ -207,6 +211,7 @@ export default function ThongKe() {
         setConfig({
           hocKy: data.hocKy || "Giữa kỳ I",
           mon: data.mon || "Tin học",
+          namHoc: data.namHoc || "2025-2026",
         });
       }
     });
@@ -216,10 +221,10 @@ export default function ThongKe() {
 
   // 🔹 Khi config thay đổi, load lại thống kê
   useEffect(() => {
-    if (config.hocKy && config.mon) {
-      fetchThongKeData(config.hocKy, config.mon);
+    if (config.hocKy && config.mon && config.namHoc) {
+      fetchThongKeData(config.hocKy, config.mon, config.namHoc);
     }
-  }, [config]);
+  }, [config.hocKy, config.mon, config.namHoc]);
 
   // 🔹 Render bảng
   const renderRows = (rows) => {

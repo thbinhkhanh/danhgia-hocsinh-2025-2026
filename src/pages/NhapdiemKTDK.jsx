@@ -60,6 +60,7 @@ import {
 export default function NhapdiemKTDK() {
   const { classData, setClassData, studentData, setStudentData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
+  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
   const { getStudentsForClass, setStudentsForClass } = useContext(StudentKTDKContext);
 
   // ================= CLASS / DATA STATE =================
@@ -102,7 +103,7 @@ export default function NhapdiemKTDK() {
           return;
         }
 
-        const snapshot = await getDocs(collection(db, "DANHSACH"));
+        const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
         const classList = snapshot.docs.map((doc) => doc.id);
         setClassData(classList);
         setClasses(classList);
@@ -224,7 +225,7 @@ const fetchStudentsAndStatus = async (cls) => {
     const isGiuaKy = termDoc === "GKI" || termDoc === "GKII";
     const classKey = currentClass.replace(".", "_");
 
-    const hsCollection = collection(db, "DATA", classKey, "HOCSINH");
+    const hsCollection = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
     const snap = await getDocs(hsCollection);
     if (snap.empty) {
       setStudents([]);
@@ -570,7 +571,7 @@ const fetchStudentsAndStatus = async (cls) => {
     const batch = writeBatch(db);
 
     students.forEach((s) => {
-      const hsRef = doc(db, "DATA", classKey, "HOCSINH", s.maDinhDanh);
+      const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", s.maDinhDanh);
 
       const ktdkData = {
         [termDoc]: {
@@ -667,7 +668,7 @@ const fetchStudentsAndStatus = async (cls) => {
 
   const classKey = (selectedClass || "").replace(".", "_");
   const batch = writeBatch(db);
-  const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
+  const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
 
   // ✅ Helper xử lý rỗng → null
   const toNumberOrNull = (val) =>

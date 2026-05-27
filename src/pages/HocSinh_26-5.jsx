@@ -68,7 +68,6 @@ export default function HocSinh() {
 
   // ================= CONTEXT CONFIG =================
   const { config, setConfig } = useContext(ConfigContext);
-  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   // ================= CLASS STATE =================
   const { selectedClass, setSelectedClass } = useSelectedClass();
@@ -159,10 +158,7 @@ export default function HocSinh() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        //const snapshot = await getDocs(collection(db, `DANHSACH_${getNamHocKey(config)}`));
-        const snapshot = await getDocs(
-  collection(db, `DANHSACH_${namHocKey}`)
-);
+        const snapshot = await getDocs(collection(db, "DANHSACH"));
         const classList = snapshot.docs.map((doc) => doc.id);
 
         setClassData(classList);
@@ -197,7 +193,7 @@ export default function HocSinh() {
     const fetchStudents = async () => {
       try {
         //console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
-        const classDocRef = doc(db, `DANHSACH_${namHocKey}`, selectedClass);
+        const classDocRef = doc(db, "DANHSACH", selectedClass);
         const classSnap = await getDoc(classDocRef);
         if (classSnap.exists()) {
           const data = classSnap.data();
@@ -246,7 +242,7 @@ export default function HocSinh() {
         const statusMap = {};
 
         for (const student of students) {
-          const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
+          const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
           const hsSnap = await getDoc(hsRef);
 
           if (hsSnap.exists()) {
@@ -301,7 +297,7 @@ export default function HocSinh() {
       // Document học sinh trong DATA
       const hsRef = doc(
         db,
-        `DATA_${namHocKey}`,
+        "DATA",
         classKey,
         "HOCSINH",
         studentId
@@ -578,7 +574,7 @@ return (
 
                     try {
                       // 🔹 Lấy dữ liệu học sinh trực tiếp từ Firestore
-                      const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
+                      const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
                       const hsSnap = await getDoc(hsRef);
                       const data = hsSnap.exists() ? hsSnap.data() : {};
                       const dgtxData = data?.[subjectKey]?.dgtx || {};
@@ -786,7 +782,7 @@ return (
                                   setOpenDoneDialog(true);
                                   return;
                                 }
-                                const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
+                                const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
                                 const hsSnap = await getDoc(hsRef);
                                 const data = hsSnap.exists() ? hsSnap.data() : {};
                                 const dgtxData = data?.[subjectKey]?.dgtx || {};
@@ -829,7 +825,7 @@ return (
                                   return;
                                 }
 
-                                const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
+                                const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
                                 const hsSnap = await getDoc(hsRef);
                                 const data = hsSnap.exists() ? hsSnap.data() : {};
                                 const ktdkData = data?.[subjectKey]?.ktdk?.[hocKyCode] || {};
@@ -896,7 +892,7 @@ return (
                                   return;
                                 }
 
-                                const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
+                                const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
                                 const hsSnap = await getDoc(hsRef);
                                 const data = hsSnap.exists() ? hsSnap.data() : {};
                                 const dgtxData = data?.[subjectKey]?.dgtx || {};

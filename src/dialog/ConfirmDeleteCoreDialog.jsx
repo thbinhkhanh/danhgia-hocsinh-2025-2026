@@ -11,7 +11,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 
-const DeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
+const ConfirmDeleteCoreDialog = ({ open, onClose, onConfirm, message }) => {
   return (
     <Dialog
       open={open}
@@ -37,7 +37,7 @@ const DeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
           px: 3,
           py: 2,
           color: "#fff",
-          background: "linear-gradient(135deg, #1976d2, #42a5f5)", // xanh như bạn yêu cầu trước
+          background: "linear-gradient(135deg, #1976d2, #42a5f5)",
           position: "relative",
         }}
       >
@@ -54,12 +54,7 @@ const DeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
               boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
             }}
           >
-            <WarningAmberRoundedIcon
-              sx={{
-                fontSize: 18,
-                color: "#f44336", // icon đỏ
-              }}
-            />
+            <WarningAmberRoundedIcon sx={{ fontSize: 18, color: "#f44336" }} />
           </Box>
 
           <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
@@ -67,7 +62,6 @@ const DeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
           </Typography>
         </Stack>
 
-        {/* CLOSE BUTTON */}
         <IconButton
           onClick={onClose}
           sx={{
@@ -96,7 +90,7 @@ const DeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
               lineHeight: 1.7,
             }}
           >
-            Bạn có chắc chắn muốn xóa đề thi này?
+            {message || "Bạn có chắc chắn muốn xóa dữ liệu này?"}
             <br />
             Hành động này{" "}
             <Box component="span" sx={{ fontWeight: 700, color: "#d32f2f" }}>
@@ -146,4 +140,4 @@ const DeleteConfirmDialog = ({ open, onClose, onConfirm }) => {
   );
 };
 
-export default DeleteConfirmDialog;
+export default ConfirmDeleteCoreDialog;

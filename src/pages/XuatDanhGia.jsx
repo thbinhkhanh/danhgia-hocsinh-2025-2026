@@ -19,6 +19,8 @@ import { useConfig } from "../context/ConfigContext";
 
 export default function XuatDanhGia() {
   const { config } = useConfig();
+  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState(0);
@@ -99,7 +101,7 @@ export default function XuatDanhGia() {
         const className = fileEntry.name.replace(/\.xlsx$/i, "");
         const lopKey = className.replace(".", "_");
 
-        const hsSnap = await getDocs(collection(db, "DATA", lopKey, "HOCSINH"));
+        const hsSnap = await getDocs(collection(db, `DATA_${namHocKey}`, lopKey, "HOCSINH"));
         if (hsSnap.empty) {
           skip.push(`Không có dữ liệu DATA lớp ${className}`);
           continue;
