@@ -90,6 +90,7 @@ const [choXemDiem, setChoXemDiem] = useState(false);
 const [choXemDapAn, setChoXemDapAn] = useState(false);
 const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
 const [selectedExamType, setSelectedExamType] = useState("Giữa kỳ I"); // mặc định
+const reviewMode = submitted && choXemDapAn;
 
 // ================= ROUTER =================
 const location = useLocation();
@@ -560,7 +561,7 @@ return (
                 {capitalizeName(studentInfo?.name || "Học sinh")}
               </Typography>
               <Typography sx={{ fontSize: 15, opacity: 0.9 }}>
-                Lớp: {studentInfo?.class || "4A"}
+                Lớp: {studentInfo?.className || "4A"}
               </Typography>
             </Box>
 
@@ -711,6 +712,7 @@ return (
           currentIndex={currentIndex}
           setCurrentIndex={setCurrentIndex}
           submitted={submitted}
+          reviewMode={reviewMode}
           handleSubmit={handleSubmit}
           navigate={navigate}
           setOpenExitConfirm={setOpenExitConfirm}

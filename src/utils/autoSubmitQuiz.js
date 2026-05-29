@@ -40,6 +40,7 @@ export const autoSubmitQuiz = async ({
     const kiemTraDinhKi = config?.kiemTraDinhKi === true;
     const hocKiConfig = configData.hocKy || "UNKNOWN";
     const hocKiKey = mapHocKyToDocKey(hocKiConfig);
+    const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
     if (!studentClass || !studentName) {
       setSnackbar({
@@ -270,7 +271,7 @@ export const autoSubmitQuiz = async ({
       const subjectKey = config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
       const termDoc = mapHocKyToDocKey(configData?.hocKy || "Giữa kỳ I");
 
-      const hsRef = doc(db, "DATA", classKey, "HOCSINH", studentId);
+      const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId);
 
       await updateDoc(hsRef, {
         [`${subjectKey}.ktdk.${termDoc}.lyThuyet`]: total,
@@ -374,7 +375,7 @@ export const autoSubmitQuiz = async ({
 
       const hsRef = doc(
         db,
-        "DATA",
+        `DATA_${namHocKey}`,
         classKey,
         "HOCSINH",
         studentId

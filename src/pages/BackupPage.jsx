@@ -1,275 +1,76 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Box,
-  Button,
-  Checkbox,
   Dialog,
-  DialogActions,
   DialogContent,
-  DialogTitle,
+  DialogActions,
+  IconButton,
+  Button,
+  Stack,
+  Checkbox,
   FormControlLabel,
   LinearProgress,
-  Stack,
   Typography,
   Snackbar,
   Alert,
   Divider,
+  Box,
 } from "@mui/material";
-import BackupIcon from "@mui/icons-material/Backup";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
-import IconButton from "@mui/material/IconButton";
+
 import CloseIcon from "@mui/icons-material/Close";
+import RestoreIcon from "@mui/icons-material/Restore";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 
-const BACKUP_KEYS = [
-  // ===== HỌC SINH =====
-  { key: "DANHSACH", label: "Danh sách lớp" },
-  { key: "DATA", label: "Kết quả đánh giá" },
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
-  // ===== ĐỀ KIỂM TRA =====
-  { key: "NGANHANG_DE", label: "Ngân hàng đề KTĐK" },
-  { key: "DETHI", label: "Đề chọn thi" },
-  { key: "BAITAP_TUAN", label: "Bài tập tuần" },
+export default function RestorePage({
+  open,
+  onClose,
+  namHoc = "2025-2026",
+}) {
+  // ================= NAM HỌC =================
+  const namHocKey = namHoc.replace(/-/g, "_");
 
-  // ===== LUYỆN TẬP =====
-  { key: "TRACNGHIEM3", label: "Lớp 3 (CTST)" },
-  { key: "TRACNGHIEM4", label: "Lớp 4 (CTST)" },
-  { key: "TRACNGHIEM5", label: "Lớp 5 (CTST)" },
+  // ================= BACKUP KEYS =================
+  const BACKUP_KEYS = [
+    // ===== HỌC SINH =====
+    {
+      key: `DANHSACH_${namHocKey}`,
+      label: "Danh sách lớp",
+    },
+    {
+      key: `DATA_${namHocKey}`,
+      label: "Kết quả đánh giá",
+    },
 
-  { key: "TRACNGHIEM3_New", label: "Lớp 3 (KNTT)" },
-  { key: "TRACNGHIEM4_New", label: "Lớp 4 (KNTT)" },
-  { key: "TRACNGHIEM5_New", label: "Lớp 5 (KNTT)" },
-];
+    // ===== ĐỀ KIỂM TRA =====
+    { key: "BAITAP_TUAN", label: "Bài tập tuần" },
+    { key: "NGANHANG_DE", label: "Ngân hàng đề KTĐK" },
+    { key: "DETHI", label: "Đề chọn thi" },
 
-export default function BackupPage({ open, onClose }) {
-  const [backupOptions, setBackupOptions] = useState(
-    BACKUP_KEYS.reduce((acc, { key }) => ({ ...acc, [key]: true }), {})
-  );
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+    // ===== LUYỆN TẬP =====
+    { key: "TRACNGHIEM3", label: "Lớp 3 (CTST)" },
+    { key: "TRACNGHIEM4", label: "Lớp 4 (CTST)" },
+    { key: "TRACNGHIEM5", label: "Lớp 5 (CTST)" },
 
-  const toggleOption = (key) => {
-    setBackupOptions((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+    { key: "TRACNGHIEM3_New", label: "Lớp 3 (KNTT)" },
+    { key: "TRACNGHIEM4_New", label: "Lớp 4 (KNTT)" },
+    { key: "TRACNGHIEM5_New", label: "Lớp 5 (KNTT)" },
+  ];
 
-  const exportBackupToJson = (data, backupOptions = {}) => {
-    if (!data || Object.keys(data).length === 0) return;
-
-    // tránh lỗi undefined
-    const selectedCollections = Object.keys(backupOptions || {}).filter(
-      (k) => backupOptions[k]
-    );
-
-    const collectionsName =
-      selectedCollections.length === BACKUP_KEYS.length
-        ? "full"
-        : selectedCollections.join("_");
-
-    const now = new Date();
-
-    const pad = (n) => n.toString().padStart(2, "0");
-
-    const dateStr = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now
-      .getFullYear()
-      .toString()
-      .slice(-2)}`;
-
-    const timeStr = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(
-      now.getSeconds()
-    )}`;
-
-    const fileName = `Backup_ĐGHS (${dateStr} ${timeStr}).json`;
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-
-    URL.revokeObjectURL(url);
-  };
-
-  const fetchAllBackup = async (onProgress, selectedCollections) => {
-    const TRACNGHIEM_COLLECTIONS = [
-      "TRACNGHIEM3",
-      "TRACNGHIEM4",
-      "TRACNGHIEM5",
-      "TRACNGHIEM3_New",
-      "TRACNGHIEM4_New",
-      "TRACNGHIEM5_New",
-    ];
-
-    try {
-      const backupData = {};
-      if (!selectedCollections || selectedCollections.length === 0) return {};
-
-      let progressCount = 0;
-      const hasDATA = selectedCollections.includes("DATA");
-      const otherCollections = selectedCollections.filter((c) => c !== "DATA");
-
-      // Tính phần trăm tiến trình
-      const DATA_WEIGHT = hasDATA ? 80 : 0;
-      const OTHERS_WEIGHT = hasDATA ? 20 : 100;
-
-      const otherStep =
-        otherCollections.length > 0
-          ? OTHERS_WEIGHT / otherCollections.length
-          : 0;
-
-      // ================== NHÓM KHÁC DATA ==================
-      for (const colName of otherCollections) {
-        // 1️⃣ Quiz
-        if (["BAITAP_TUAN", "NGANHANG_DE"].includes(colName)) {
-          const snap = await getDocs(collection(db, colName));
-
-          if (!backupData[colName]) backupData[colName] = {};
-
-          snap.forEach((d) => {
-            backupData[colName][d.id] = d.data();
-          });
-        }
-
-        // 2️⃣ Collection phẳng
-        else if (
-          ["DANHSACH", "DETHI"].includes(colName)
-        ) {
-          const snap = await getDocs(collection(db, colName));
-
-          if (!backupData[colName]) backupData[colName] = {};
-
-          snap.forEach((d) => {
-            backupData[colName][d.id] = d.data();
-          });
-        }
-
-        // 3️⃣ TRẮC NGHIỆM (FIX QUAN TRỌNG)
-        else if (TRACNGHIEM_COLLECTIONS.includes(colName)) {
-          const snap = await getDocs(collection(db, colName));
-
-          if (!backupData[colName]) backupData[colName] = {};
-
-          snap.forEach((d) => {
-            backupData[colName][d.id] = d.data();
-          });
-        }
-
-        // cập nhật tiến trình
-        progressCount += otherStep;
-        if (onProgress)
-          onProgress(Math.min(Math.round(progressCount), 99));
-      }
-
-      // ================== DATA ==================
-      if (hasDATA) {
-        backupData.DATA = {};
-
-        const classListSnap = await getDocs(collection(db, "DANHSACH"));
-        const classList = classListSnap.docs.map((d) => d.id);
-
-        if (classList.length === 0) {
-          progressCount += DATA_WEIGHT;
-          if (onProgress)
-            onProgress(Math.min(Math.round(progressCount), 99));
-        } else {
-          const perClassStep = DATA_WEIGHT / classList.length;
-
-          for (const classId of classList) {
-            const classKey = classId.replace(".", "_");
-
-            const studentsSnap = await getDocs(
-              collection(db, "DATA", classKey, "HOCSINH")
-            );
-
-            backupData.DATA[classKey] = { HOCSINH: {} };
-
-            for (const studentDoc of studentsSnap.docs) {
-              const studentId = studentDoc.id;
-              const studentData = studentDoc.data();
-
-              backupData.DATA[classKey].HOCSINH[studentId] = {
-                ...studentData,
-              };
-            }
-
-            progressCount += perClassStep;
-            if (onProgress)
-              onProgress(Math.min(Math.round(progressCount), 99));
-          }
-        }
-      }
-
-      // ================== HOÀN TẤT ==================
-      if (onProgress) onProgress(100);
-
-      return backupData;
-    } catch (err) {
-      console.error("❌ Lỗi khi backup:", err);
-      return {};
-    }
-  };
-
- const handleBackup = async () => {
-    const VALID_KEYS = BACKUP_KEYS.map(k => k.key);
-
-    const selected = Object.keys(backupOptions).filter(
-      (k) => backupOptions[k] && VALID_KEYS.includes(k)
-    );
-
-    if (selected.length === 0) {
-      setSnackbar({
-        open: true,
-        severity: "warning",
-        message: "Vui lòng chọn ít nhất một dữ liệu để sao lưu",
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setProgress(0);
-
-      const data = await fetchAllBackup(setProgress, selected);
-
-      // 🔥 chỉ export đúng những gì đã chọn
-      const filteredOptions = Object.fromEntries(
-        selected.map(k => [k, true])
-      );
-
-      exportBackupToJson(data, filteredOptions);
-
-      setSnackbar({
-        open: true,
-        severity: "success",
-        message: "✅ Sao lưu dữ liệu thành công",
-      });
-
-      onClose();
-    } catch (err) {
-      console.error(err);
-      setSnackbar({
-        open: true,
-        severity: "error",
-        message: "❌ Lỗi khi sao lưu dữ liệu",
-      });
-    } finally {
-      setLoading(false);
-      setProgress(0);
-    }
-  };
-
+  // ================= GROUPS =================
   const GROUPS = {
-    HOCSINH: ["DANHSACH", "DATA"],
-    DETHI: ["NGANHANG_DE", "DETHI", "BAITAP_TUAN"],
+    HOCSINH: [
+      `DANHSACH_${namHocKey}`,
+      `DATA_${namHocKey}`,
+    ],
+
+    DETHI: [
+      "NGANHANG_DE",
+      "DETHI",
+      "BAITAP_TUAN",
+    ],
+
     TRACNGHIEM: [
       "TRACNGHIEM3",
       "TRACNGHIEM4",
@@ -280,28 +81,283 @@ export default function BackupPage({ open, onClose }) {
     ],
   };
 
-  const isGroupChecked = (groupKeys) =>
-    groupKeys.every((k) => backupOptions[k]);
+  const fileInputRef = useRef(null);
 
-  const isGroupIndeterminate = (groupKeys) => {
-    const checkedCount = groupKeys.filter((k) => backupOptions[k]).length;
-    return checkedCount > 0 && checkedCount < groupKeys.length;
+  const [restoreOptions, setRestoreOptions] = useState({});
+  const [disabledOptions, setDisabledOptions] = useState({});
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
+  // ================= RESET =================
+  useEffect(() => {
+    if (open) {
+      const init = {};
+      const dis = {};
+
+      BACKUP_KEYS.forEach(({ key }) => {
+        init[key] = false;
+        dis[key] = true;
+      });
+
+      setRestoreOptions(init);
+      setDisabledOptions(dis);
+
+      setSelectedFile(null);
+      setProgress(0);
+      setLoading(false);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }, [open]);
+
+  // ================= TOGGLE =================
+  const toggleOption = (key) => {
+    setRestoreOptions((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
-  const toggleGroup = (groupKeys) => {
-    const allChecked = isGroupChecked(groupKeys);
+  // ================= ĐỌC FILE =================
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      const newChecked = {};
+      const newDisabled = {};
+
+      BACKUP_KEYS.forEach(({ key }) => {
+        const data = json?.[key];
+
+        const hasData =
+          data &&
+          typeof data === "object" &&
+          Object.keys(data).length > 0;
+
+        newChecked[key] = hasData;
+        newDisabled[key] = !hasData;
+      });
+
+      setRestoreOptions(newChecked);
+      setDisabledOptions(newDisabled);
+    } catch (err) {
+      console.error(err);
+
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "❌ File backup không hợp lệ",
+      });
+    }
+  };
+
+  // ================= RESTORE =================
+  const handleRestore = async () => {
+    const VALID_KEYS = BACKUP_KEYS.map((k) => k.key);
+
+    const selectedKeys = Object.keys(restoreOptions).filter(
+      (k) => restoreOptions[k] && VALID_KEYS.includes(k)
+    );
+
+    if (!selectedFile) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "Vui lòng chọn file backup",
+      });
+      return;
+    }
+
+    if (selectedKeys.length === 0) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "Chọn ít nhất 1 nhóm dữ liệu",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setProgress(0);
+
+      const text = await selectedFile.text();
+
+      const jsonDataRaw = JSON.parse(text);
+
+      const jsonData = Object.fromEntries(
+        Object.entries(jsonDataRaw).filter(([k]) =>
+          VALID_KEYS.includes(k)
+        )
+      );
+
+      let totalDocs = 0;
+
+      // ================= ĐẾM TỔNG =================
+      const effectiveKeys = selectedKeys.filter(
+        (k) => jsonData[k]
+      );
+
+      for (const key of effectiveKeys) {
+        const docs = jsonData[key];
+
+        // ===== DATA =====
+        if (key === `DATA_${namHocKey}`) {
+          for (const c of Object.keys(docs)) {
+            totalDocs += Object.keys(
+              docs[c]?.HOCSINH || {}
+            ).length;
+          }
+        }
+
+        // ===== COLLECTION KHÁC =====
+        else {
+          totalDocs += Object.keys(docs).length;
+        }
+      }
+
+      let done = 0;
+
+      // ================= RESTORE =================
+      for (const key of selectedKeys) {
+        const docs = jsonData[key];
+
+        if (!docs) continue;
+
+        // ================= DATA =================
+        if (key === `DATA_${namHocKey}`) {
+          for (const classId of Object.keys(docs)) {
+            const hsObj =
+              docs[classId]?.HOCSINH || {};
+
+            await Promise.all(
+              Object.keys(hsObj).map(async (studentId) => {
+                await setDoc(
+                  doc(
+                    db,
+                    `DATA_${namHocKey}`,
+                    classId,
+                    "HOCSINH",
+                    studentId
+                  ),
+                  hsObj[studentId],
+                  { merge: true }
+                );
+
+                done++;
+
+                setProgress(
+                  Math.round((done / totalDocs) * 100)
+                );
+              })
+            );
+          }
+        }
+
+        // ================= COLLECTION THƯỜNG =================
+        else {
+          await Promise.all(
+            Object.keys(docs).map(async (docId) => {
+              await setDoc(
+                doc(db, key, docId),
+                docs[docId],
+                { merge: true }
+              );
+
+              done++;
+
+              setProgress(
+                Math.round((done / totalDocs) * 100)
+              );
+            })
+          );
+        }
+      }
+
+      setProgress(100);
+
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: "✅ Phục hồi dữ liệu thành công",
+      });
+
+      onClose();
+    } catch (err) {
+      console.error(err);
+
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "❌ Lỗi khi phục hồi dữ liệu",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ================= GROUP HELPERS =================
+  const getEnabledKeys = (keys) =>
+    keys.filter((k) => !disabledOptions[k]);
+
+  const isGroupChecked = (keys) => {
+    const enabled = getEnabledKeys(keys);
+
+    return (
+      enabled.length > 0 &&
+      enabled.every((k) => restoreOptions[k])
+    );
+  };
+
+  const isGroupIndeterminate = (keys) => {
+    const enabled = getEnabledKeys(keys);
+
+    const checked = enabled.filter(
+      (k) => restoreOptions[k]
+    ).length;
+
+    return checked > 0 && checked < enabled.length;
+  };
+
+  const toggleGroup = (keys) => {
+    const enabled = getEnabledKeys(keys);
+
+    const allChecked = enabled.every(
+      (k) => restoreOptions[k]
+    );
 
     const newState = {};
-    groupKeys.forEach((k) => {
+
+    enabled.forEach((k) => {
       newState[k] = !allChecked;
     });
 
-    setBackupOptions((prev) => ({ ...prev, ...newState }));
+    setRestoreOptions((prev) => ({
+      ...prev,
+      ...newState,
+    }));
   };
 
+  const hasAnyChecked =
+    Object.values(restoreOptions).some(Boolean);
 
-
-    return (
+  return (
     <>
       <Dialog
         open={open}
@@ -316,7 +372,7 @@ export default function BackupPage({ open, onClose }) {
           },
         }}
       >
-        {/* ===== HEADER (style mới) ===== */}
+        {/* ================= HEADER ================= */}
         <Box
           sx={{
             px: 3,
@@ -330,16 +386,14 @@ export default function BackupPage({ open, onClose }) {
             alignItems="center"
             justifyContent="space-between"
           >
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: 17,
-                  fontWeight: 700,
-                }}
-              >
-                SAO LƯU DỮ LIỆU
-              </Typography>
-            </Box>
+            <Typography
+              sx={{
+                fontSize: 17,
+                fontWeight: 700,
+              }}
+            >
+              PHỤC HỒI DỮ LIỆU
+            </Typography>
 
             <IconButton
               onClick={onClose}
@@ -356,54 +410,141 @@ export default function BackupPage({ open, onClose }) {
           </Stack>
         </Box>
 
-        {/* ===== CONTENT ===== */}
-        <DialogContent sx={{ px: 3, py: 2.5 }}>
-          <Stack spacing={2.2}>
+        {/* ================= UPLOAD ================= */}
+        <Box sx={{ px: 3, pt: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<UploadFileIcon />}
+            onClick={() =>
+              fileInputRef.current.click()
+            }
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+            }}
+          >
+            Chọn file phục hồi (.json)
+          </Button>
 
-            {/* ===== HỌC SINH ===== */}
+          <input
+            type="file"
+            hidden
+            accept=".json"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+          />
+
+          {selectedFile && (
+            <Typography
+              sx={{
+                mt: 1,
+                color: "#ef4444",
+                fontWeight: 600,
+              }}
+            >
+              📄 {selectedFile.name}
+            </Typography>
+          )}
+        </Box>
+
+        {/* ================= CONTENT ================= */}
+        <DialogContent
+          sx={{ px: 3, py: 2.5 }}
+        >
+          <Stack spacing={2.2}>
+            {/* ================= HỌC SINH ================= */}
             <Box
               sx={{
                 p: 2,
                 borderRadius: 2,
                 bgcolor: "#fff",
                 border: "1px solid #e2e8f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
               }}
             >
               <FormControlLabel
                 sx={{ ml: 0 }}
                 control={
                   <Checkbox
-                    checked={isGroupChecked(GROUPS.HOCSINH)}
-                    indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
-                    onChange={() => toggleGroup(GROUPS.HOCSINH)}
+                    checked={isGroupChecked(
+                      GROUPS.HOCSINH
+                    )}
+                    indeterminate={isGroupIndeterminate(
+                      GROUPS.HOCSINH
+                    )}
+                    onChange={() =>
+                      toggleGroup(
+                        GROUPS.HOCSINH
+                      )
+                    }
+                    disabled={
+                      getEnabledKeys(
+                        GROUPS.HOCSINH
+                      ).length === 0
+                    }
                   />
                 }
                 label={
-                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      color: "#1e293b",
+                    }}
+                  >
                     Học sinh
                   </Typography>
                 }
               />
 
-              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Box
+                sx={{
+                  ml: 3,
+                  mt: 0.5,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.5,
+                }}
+              >
                 <FormControlLabel
-                  sx={{ ml: 0 }}
                   control={
                     <Checkbox
-                      checked={backupOptions["DANHSACH"]}
-                      onChange={() => toggleOption("DANHSACH")}
+                      checked={
+                        restoreOptions[
+                          `DANHSACH_${namHocKey}`
+                        ] || false
+                      }
+                      disabled={
+                        disabledOptions[
+                          `DANHSACH_${namHocKey}`
+                        ]
+                      }
+                      onChange={() =>
+                        toggleOption(
+                          `DANHSACH_${namHocKey}`
+                        )
+                      }
                     />
                   }
                   label="Danh sách lớp"
                 />
 
                 <FormControlLabel
-                  sx={{ ml: 0 }}
                   control={
                     <Checkbox
-                      checked={backupOptions["DATA"]}
-                      onChange={() => toggleOption("DATA")}
+                      checked={
+                        restoreOptions[
+                          `DATA_${namHocKey}`
+                        ] || false
+                      }
+                      disabled={
+                        disabledOptions[
+                          `DATA_${namHocKey}`
+                        ]
+                      }
+                      onChange={() =>
+                        toggleOption(
+                          `DATA_${namHocKey}`
+                        )
+                      }
                     />
                   }
                   label="Kết quả đánh giá"
@@ -411,167 +552,167 @@ export default function BackupPage({ open, onClose }) {
               </Box>
             </Box>
 
-            {/* ===== ĐỀ KIỂM TRA ===== */}
+            {/* ================= ĐỀ KIỂM TRA ================= */}
             <Box
               sx={{
                 p: 2,
                 borderRadius: 2,
                 bgcolor: "#fff",
                 border: "1px solid #e2e8f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
               }}
             >
               <FormControlLabel
                 sx={{ ml: 0 }}
                 control={
                   <Checkbox
-                    checked={isGroupChecked(GROUPS.DETHI)}
-                    indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
-                    onChange={() => toggleGroup(GROUPS.DETHI)}
+                    checked={isGroupChecked(
+                      GROUPS.DETHI
+                    )}
+                    indeterminate={isGroupIndeterminate(
+                      GROUPS.DETHI
+                    )}
+                    onChange={() =>
+                      toggleGroup(
+                        GROUPS.DETHI
+                      )
+                    }
+                    disabled={
+                      getEnabledKeys(
+                        GROUPS.DETHI
+                      ).length === 0
+                    }
                   />
                 }
                 label={
-                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      color: "#1e293b",
+                    }}
+                  >
                     Đề kiểm tra
                   </Typography>
                 }
               />
 
-              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["NGANHANG_DE"]}
-                      onChange={() => toggleOption("NGANHANG_DE")}
-                    />
-                  }
-                  label="Ngân hàng đề KTĐK"
-                />
-
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["DETHI"]}
-                      onChange={() => toggleOption("DETHI")}
-                    />
-                  }
-                  label="Đề chọn thi"
-                />
-
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["BAITAP_TUAN"]}
-                      onChange={() => toggleOption("BAITAP_TUAN")}
-                    />
-                  }
-                  label="Bài tập tuần"
-                />
+              <Box
+                sx={{
+                  ml: 3,
+                  mt: 0.5,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.5,
+                }}
+              >
+                {GROUPS.DETHI.map((key) => (
+                  <FormControlLabel
+                    key={key}
+                    control={
+                      <Checkbox
+                        checked={
+                          restoreOptions[key] ||
+                          false
+                        }
+                        disabled={
+                          disabledOptions[key]
+                        }
+                        onChange={() =>
+                          toggleOption(key)
+                        }
+                      />
+                    }
+                    label={
+                      BACKUP_KEYS.find(
+                        (b) => b.key === key
+                      )?.label || key
+                    }
+                  />
+                ))}
               </Box>
             </Box>
 
-            {/* ===== LUYỆN TẬP ===== */}
+            {/* ================= TRẮC NGHIỆM ================= */}
             <Box
               sx={{
                 p: 2,
                 borderRadius: 2,
                 bgcolor: "#fff",
                 border: "1px solid #e2e8f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
               }}
             >
               <FormControlLabel
                 sx={{ ml: 0 }}
                 control={
                   <Checkbox
-                    checked={isGroupChecked(GROUPS.TRACNGHIEM)}
-                    indeterminate={isGroupIndeterminate(GROUPS.TRACNGHIEM)}
-                    onChange={() => toggleGroup(GROUPS.TRACNGHIEM)}
+                    checked={isGroupChecked(
+                      GROUPS.TRACNGHIEM
+                    )}
+                    indeterminate={isGroupIndeterminate(
+                      GROUPS.TRACNGHIEM
+                    )}
+                    onChange={() =>
+                      toggleGroup(
+                        GROUPS.TRACNGHIEM
+                      )
+                    }
+                    disabled={
+                      getEnabledKeys(
+                        GROUPS.TRACNGHIEM
+                      ).length === 0
+                    }
                   />
                 }
                 label={
-                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      color: "#1e293b",
+                    }}
+                  >
                     Luyện tập tin học
                   </Typography>
                 }
               />
 
-              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["TRACNGHIEM3"]}
-                      onChange={() => toggleOption("TRACNGHIEM3")}
-                    />
-                  }
-                  label="Lớp 3 (CTST)"
-                />
-
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["TRACNGHIEM4"]}
-                      onChange={() => toggleOption("TRACNGHIEM4")}
-                    />
-                  }
-                  label="Lớp 4 (CTST)"
-                />
-
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["TRACNGHIEM5"]}
-                      onChange={() => toggleOption("TRACNGHIEM5")}
-                    />
-                  }
-                  label="Lớp 5 (CTST)"
-                />
-
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["TRACNGHIEM3_New"]}
-                      onChange={() => toggleOption("TRACNGHIEM3_New")}
-                    />
-                  }
-                  label="Lớp 3 (KNTT)"
-                />
-
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["TRACNGHIEM4_New"]}
-                      onChange={() => toggleOption("TRACNGHIEM4_New")}
-                    />
-                  }
-                  label="Lớp 4 (KNTT)"
-                />
-
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions["TRACNGHIEM5_New"]}
-                      onChange={() => toggleOption("TRACNGHIEM5_New")}
-                    />
-                  }
-                  label="Lớp 5 (KNTT)"
-                />
+              <Box
+                sx={{
+                  ml: 3,
+                  mt: 0.5,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.5,
+                }}
+              >
+                {GROUPS.TRACNGHIEM.map((key) => (
+                  <FormControlLabel
+                    key={key}
+                    control={
+                      <Checkbox
+                        checked={
+                          restoreOptions[key] ||
+                          false
+                        }
+                        disabled={
+                          disabledOptions[key]
+                        }
+                        onChange={() =>
+                          toggleOption(key)
+                        }
+                      />
+                    }
+                    label={
+                      BACKUP_KEYS.find(
+                        (b) => b.key === key
+                      )?.label || key
+                    }
+                  />
+                ))}
               </Box>
             </Box>
-
           </Stack>
         </DialogContent>
 
-        {/* ===== PROGRESS ===== */}
+        {/* ================= PROGRESS ================= */}
         {loading && (
           <Box sx={{ px: 3, pb: 2 }}>
             <LinearProgress
@@ -582,6 +723,7 @@ export default function BackupPage({ open, onClose }) {
                 borderRadius: 10,
               }}
             />
+
             <Typography
               sx={{
                 mt: 1,
@@ -590,12 +732,12 @@ export default function BackupPage({ open, onClose }) {
                 color: "#64748b",
               }}
             >
-              Đang sao lưu... {progress}%
+              Đang phục hồi... {progress}%
             </Typography>
           </Box>
         )}
 
-        {/* ===== ACTION ===== */}
+        {/* ================= ACTION ================= */}
         <DialogActions
           sx={{
             px: 3,
@@ -604,33 +746,49 @@ export default function BackupPage({ open, onClose }) {
             bgcolor: "#fff",
           }}
         >
-          <Button onClick={onClose}>Hủy</Button>
+          <Button onClick={onClose}>
+            Hủy
+          </Button>
 
           <Button
             variant="contained"
-            startIcon={<BackupIcon />}
-            onClick={handleBackup}
-            disabled={loading}
+            startIcon={<RestoreIcon />}
+            onClick={handleRestore}
+            disabled={
+              loading || !hasAnyChecked
+            }
             sx={{
               borderRadius: 2,
               fontWeight: 600,
               textTransform: "none",
               boxShadow: "none",
-              "&:hover": { boxShadow: "none" },
             }}
           >
-            Sao lưu
+            PHỤC HỒI
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* SNACKBAR */}
+      {/* ================= SNACKBAR ================= */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        onClose={() =>
+          setSnackbar((s) => ({
+            ...s,
+            open: false,
+          }))
+        }
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
       >
-        <Alert severity={snackbar.severity}>
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

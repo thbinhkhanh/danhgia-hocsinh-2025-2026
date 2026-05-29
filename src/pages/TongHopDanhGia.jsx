@@ -868,8 +868,8 @@ return (
                   const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
                   return Array.from({ length: endWeek - startWeek + 1 }, (_, i) => (
                     <React.Fragment key={`sub-${i}`}>
-                      <TableCell align="center" sx={{ backgroundColor: "#42a5f5", color: "white", width: 30 }}>HS</TableCell>
-                      <TableCell align="center" sx={{ backgroundColor: "#42a5f5", color: "white", width: 30 }}>GV</TableCell>
+                      <TableCell align="center" sx={{ backgroundColor: "#42a5f5", color: "white", width: 30 }}>NX</TableCell>
+                      <TableCell align="center" sx={{ backgroundColor: "#42a5f5", color: "white", width: 30 }}>BT</TableCell>
                     </React.Fragment>
                   ));
                 })()}

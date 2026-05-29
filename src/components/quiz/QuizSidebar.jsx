@@ -73,9 +73,9 @@ export default function QuizSidebar({
 
             if (submitted) {
               // 🚫 KHÔNG CHO XEM ĐIỂM / ĐÁP ÁN → GIỐNG CHƯA LÀM
-              if (!choXemDiem || !choXemDapAn) {
-                bgcolor = "#eeeeee";
-                border = "1px solid transparent";
+              if (!choXemDiem && !choXemDapAn) {
+                bgcolor = "#e3f2fd"; // xanh dương nhẹ (Material UI blue 50)
+                border = "1px solid #bbdefb";
               } else {
                 if (status === "correct") bgcolor = "#c8e6c9";
                 else if (status === "wrong") bgcolor = "#ffcdd2";
