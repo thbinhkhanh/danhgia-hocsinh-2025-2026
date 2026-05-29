@@ -11,8 +11,14 @@ export const checkDuplicateOnTap = async (db, docId) => {
 /**
  * CHUẨN HÓA ID ÔN TẬP
  */
-export const normalizeOnTapId = (selectedExams, selectedYear, formatExamTitle) => {
-  const raw = formatExamTitle(selectedExams[0].tenDe || selectedExams[0].id);
+export const normalizeOnTapId = (
+  selectedExams,
+  selectedYear,
+  formatExamTitle
+) => {
+  const raw = formatExamTitle(
+    selectedExams[0].tenDe || selectedExams[0].id
+  );
 
   const match = raw.match(
     /(Tin học|Công nghệ)\s*(\d+)(?:\s*-\s*(CKI|CKII|CN))?/i
@@ -28,7 +34,9 @@ export const normalizeOnTapId = (selectedExams, selectedYear, formatExamTitle) =
   const [s, e] = selectedYear.split("-");
   const yearKey = `${s.slice(-2)}-${e.slice(-2)}`;
 
-  return `quiz_Lớp ${classNum}_${subject}${part ? `_${part}` : ""}_${yearKey}`;
+  return `quiz_Lớp ${classNum}_${subject}${
+    part ? `_${part}` : ""
+  }_${yearKey}`;
 };
 
 /**
@@ -52,36 +60,52 @@ export const createOnTapExam = async ({
 
     const data = snap.data();
 
-    const questions = (data.questions || []).map((q, qIndex) => ({
-      id: `${ex.id}_${q.id || qIndex}`,
-      question: q.question || "",
-      questionImage: q.questionImage || "",
-      type: q.type || "single",
-      sortType: q.sortType || "shuffle",
-      score: q.score || 0.5,
+    const questions = (data.questions || []).map((q, qIndex) => {
+      const base = {
+        id: `${ex.id}_${q.id || qIndex}`,
+        question: q.question || "",
+        questionImage: q.questionImage || "",
+        type: q.type || "single",
+        sortType: q.sortType || "shuffle",
+        score: q.score || 0.5,
+        correct: Array.isArray(q.correct)
+          ? [...q.correct]
+          : q.correct !== undefined
+          ? [q.correct]
+          : [],
+        sourceExamId: ex.id,
+      };
 
-      // ✅ GIỮ NGUYÊN FIELD QUAN TRỌNG CHO FILLBLANK
-      option: q.option || "",
+      /**
+       * ✅ MATCHING: GIỮ NGUYÊN STRUCTURE
+       */
+      if (q.type === "matching") {
+        return {
+          ...base,
+          type: "matching",
+          pairs: q.pairs || [],
+          columnRatio: q.columnRatio || { left: 1, right: 1 },
+        };
+      }
 
-      // optional fallback nếu UI dùng cả 2 kiểu
-      fillBlank: q.fillBlank || q.option || "",
+      /**
+       * ✅ SINGLE / MULTIPLE / OTHER
+       */
+      return {
+        ...base,
 
-      options: (q.options || []).map((opt) => ({
-        text: opt?.text || "",
-        image: opt?.image || "",
-        formats: {
-          image: opt?.formats?.image || "",
-        },
-      })),
+        option: q.option || "",
+        fillBlank: q.fillBlank || q.option || "",
 
-      correct: Array.isArray(q.correct)
-        ? [...q.correct]
-        : q.correct !== undefined
-        ? [q.correct]
-        : [],
-
-      sourceExamId: ex.id,
-    }));
+        options: (q.options || []).map((opt) => ({
+          text: opt?.text || "",
+          image: opt?.image || "",
+          formats: {
+            image: opt?.formats?.image || "",
+          },
+        })),
+      };
+    });
 
     mergedQuestions.push(...questions);
   }
@@ -111,7 +135,7 @@ export const createOnTapExam = async ({
   const docData = {
     examType: "ontap",
     class: firstExam.class || "",
-    title: `Ôn tập`,
+    title: "Ôn tập",
     schoolYear: selectedYear,
     yearKey,
     sourceExams: selectedExams.map((e) => e.id),

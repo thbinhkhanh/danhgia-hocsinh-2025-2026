@@ -34,7 +34,7 @@ import {
   collection,
   updateDoc,
   setDoc,
-  onSnapshot
+  onSnapshot,
 } from "firebase/firestore";
 
 // ================= CONTEXT =================
@@ -53,6 +53,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import GroupIcon from "@mui/icons-material/Group";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
+import SchoolIcon from "@mui/icons-material/School";
+import QuizIcon from "@mui/icons-material/Quiz";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+
 // ================= THEME =================
 import { useTheme, useMediaQuery } from "@mui/material";
 
@@ -69,6 +74,7 @@ export default function HocSinh() {
   // ================= CONTEXT CONFIG =================
   const { config, setConfig } = useContext(ConfigContext);
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
+  const hocKiDisplay = config?.hocKy || "Cuối kỳ I";
 
   // ================= CLASS STATE =================
   const { selectedClass, setSelectedClass } = useSelectedClass();
@@ -431,6 +437,7 @@ const updateConfig = async (field, value) => {
   }
 };
 
+
 return (
     <Box
       sx={{
@@ -465,13 +472,19 @@ return (
               pb: 1,
             }}
           >
-            {config?.baiTapTuan
+            {config?.examType === "ontap" && !config?.baiTapTuan && !config?.kiemTraDinhKi && !config?.danhGiaTuan
+              ? `ÔN TẬP - ${(hocKiDisplay || "HỌC KỲ").toUpperCase()}`
+
+              : config?.baiTapTuan
               ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
+
               : config?.danhGiaTuan
               ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
-              : config?.onTap
-              ? `ÔN TẬP - ${config?.hocKy?.toUpperCase() || ""}`
-              : `KIỂM TRA ĐỊNH KỲ`}
+
+              : config?.kiemTraDinhKi
+                ? `KTĐK - ${(hocKiDisplay || "HỌC KỲ").toUpperCase()}`
+                : `KTĐK - ${(hocKiDisplay || "HỌC KỲ").toUpperCase()}`
+            }
           </Typography>
         </Box>
 
@@ -521,226 +534,175 @@ return (
           
         </Box>
 
-
-        {/* 🔹 Học sinh gần đây */}
+        {/* 🔹 Học sinh gần đây — Modern Exam UI */}
         {config.hienThiTenGanDay && recentStudents.length > 0 && !showAll && (
-          <Box
-            sx={{
-              mb: 3,
-              ml: { xs: 0, sm: 15 },
-              textAlign: "left",
-            }}
-          >
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-              Học sinh gần đây:
-            </Typography>
-
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-                mb: 1,
-                ml: { xs: 0, sm: 1 },
-              }}
-            >
-              {recentStudents.slice(0, 5).map((student) => (
-                <Paper
-                  key={student.maDinhDanh}
-                  elevation={3}
-                  sx={{
-                    width: { xs: "90%", sm: 250 },
-                    minHeight: 40,
-                    p: 2,
-                    borderRadius: 2,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    bgcolor: "#fff",
-                    display: "flex",
-                    alignItems: "center",
-                    transition: "0.2s",
-                    "&:hover": {
-                      transform: "scale(1.03)",
-                      boxShadow: 4,
-                      bgcolor: "#f5f5f5",
-                    },
-                  }}
-                  onClick={async () => {
-                    if (config?.khoaHeThong) {
-                      setOpenSystemLocked(true); // nếu có dialog
-                      return;
-                    }
-
-                    if (!selectedClass || !student.maDinhDanh) return;                                    
-
-                    const subjectKey = config.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
-                    const classKey = selectedClass.replace(".", "_");
-
-                    try {
-                      // 🔹 Lấy dữ liệu học sinh trực tiếp từ Firestore
-                      const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
-                      const hsSnap = await getDoc(hsRef);
-                      const data = hsSnap.exists() ? hsSnap.data() : {};
-                      const dgtxData = data?.[subjectKey]?.dgtx || {};
-                      const ktdkData = data?.[subjectKey]?.ktdk || {};
-
-                      const mode = getMode(config);
-
-                      // =======================
-                      // 🔹 BÀI TẬP TUẦN
-                      // =======================
-                      if (mode === "btt") {
-                        if (!selectedWeek) {
-                          setDoneMessage("⚠️ Chưa chọn tuần.");
-                          setOpenDoneDialog(true);
-                          return;
-                        }
-                        const weekData = dgtxData[`tuan_${selectedWeek}`] || {};
-                        if (weekData.TN_diem != null) {
-                          setDoneStudent({
-                            hoVaTen: student.hoVaTen,
-                            diemTN: weekData.TN_diem,
-                            status: weekData.status || ""
-                          });
-                          setOpenDoneDialog(true);
-                          return;
-                        } else {
-                          navigate("/tracnghiem", {
-                            state: {
-                              studentId: student.maDinhDanh,
-                              fullname: student.hoVaTen,
-                              lop: selectedClass,
-                              selectedWeek,
-                              mon: config.mon,
-                            },
-                          });
-                          return;
-                        }
-                      }
-
-                      // =======================
-                      // 🔹 KIỂM TRA ĐỊNH KỲ
-                      // =======================
-                      if (mode === "ktdk") {
-                        const hocKyMap = { "Giữa kỳ I": "GKI", "Cuối kỳ I": "CKI", "Giữa kỳ II": "GKII", "Cuối năm": "CN" };
-                        const hocKyCode = hocKyMap[config.hocKy];
-                        if (!hocKyCode) {
-                          setDoneMessage("⚠️ Cấu hình học kỳ không hợp lệ.");
-                          setOpenDoneDialog(true);
-                          return;
-                        }
-                        const hocKyData = ktdkData?.[hocKyCode] || {};
-                        const lyThuyet = hocKyData?.lyThuyet ?? null;
-
-                        if (lyThuyet != null) {
-                          setDoneStudent({
-                            hoVaTen: hocKyData?.hoVaTen ?? student.hoVaTen,
-                            diemTN: lyThuyet,
-                            nhanXet: hocKyData?.nhanXet || ""
-                          });
-                          setOpenDoneDialog(true);
-                          return;
-                        } else {
-                          navigate("/tracnghiem", {
-                            state: {
-                              studentId: student.maDinhDanh,
-                              fullname: student.hoVaTen,
-                              lop: selectedClass,
-                              selectedWeek,
-                              mon: config.mon,
-                            },
-                          });
-                          return;
-                        }
-                      }
-
-                      // =======================
-                      // 🔹 ÔN TẬP
-                      // =======================
-                      if (mode === "ontap") {
-                        navigate("/tracnghiem-ontap", {
-                          state: {
-                            fullname: student.hoVaTen,
-                            lop: selectedClass,
-                          },
-                        });
-                        return;
-                      }
-
-                      // =======================
-                      // 🔹 ĐÁNH GIÁ TUẦN
-                      // =======================
-                      if (mode === "dgt") {
-                        const weekData = dgtxData[`tuan_${selectedWeek}`] || {};
-                        setExpandedStudent({
-                          ...student,
-                          status: weekData.status || "",
-                        });
-                        return;
-                      }
-
-                      // =======================
-                      // 🔹 FALLBACK
-                      // =======================
-                      navigate("/tracnghiem", {
-                        state: {
-                          studentId: student.maDinhDanh,
-                          fullname: student.hoVaTen,
-                          lop: selectedClass,
-                          selectedWeek,
-                          mon: config.mon,
-                        },
-                      });
-
-                    } catch (err) {
-                      console.error("❌ Lỗi khi click học sinh:", err);
-                      setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài.");
-                      setOpenDoneDialog(true);
-                    }
-
-                    // =======================
-                    // 🔹 LƯU HỌC SINH GẦN ĐÂY
-                    // =======================
-                    if (config.hienThiTenGanDay) {
-                      const key = `recent_${selectedClass}`;
-                      const updated = [
-                        student,
-                        ...recentStudents.filter((s) => s.maDinhDanh !== student.maDinhDanh),
-                      ];
-                      if (updated.length > 10) updated.pop();
-                      localStorage.setItem(key, JSON.stringify(updated));
-                      setRecentStudents(updated);
-                    }
-                  }}
-                >
-                  <Typography variant="subtitle2" fontWeight="medium">
-                    {student.stt}. {student.hoVaTen}
-                  </Typography>
-                </Paper>
-              ))}
+          <Box sx={{width:"100%",maxWidth:1200,mx:"auto",mb:4,fontFamily:'"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',textRendering:"optimizeLegibility",WebkitFontSmoothing:"antialiased",MozOsxFontSmoothing:"grayscale",fontFeatureSettings:'"kern" 1, "liga" 1'}}>
+            
+            {/* HEADER */}
+            <Box sx={{display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center",textAlign:"left",mb:2.5}}>
+              <Box>
+                <Typography sx={{fontSize:{xs:22,sm:26},fontWeight:500,color:"#0f172a",letterSpacing:"-0.5px",fontFamily:"inherit"}}>
+                  Học sinh gần đây
+                </Typography>
+                <Typography sx={{fontSize:14,color:"#64748b",mt:0.5,fontWeight:500,fontFamily:"inherit"}}>
+                  Truy cập nhanh học sinh vừa thao tác
+                </Typography>
+              </Box>
             </Box>
 
-            <Box sx={{ mt: 6, ml: { xs: 0, sm: 1 } }}>
-              <Tooltip title="Chế độ xem: Cả lớp">
-                <IconButton
+            {/* LIST */}
+            <Box sx={{display:"flex",flexDirection:{xs:"column",sm:"row"},gap:2.5,overflowX:{xs:"visible",sm:"auto"},pb:1,"&::-webkit-scrollbar":{height:8},"&::-webkit-scrollbar-thumb":{background:"#cbd5e1",borderRadius:999}}}>
+              
+              {recentStudents.slice(0,4).map((student,index)=>{
+                const status=studentStatus[student.maDinhDanh];
+
+                const getCardIcon=()=>{
+                  const mode=getMode(config);
+                  if(mode==="btt")return <QuizIcon sx={{fontSize:34,color:"#fff"}}/>;
+                  if(mode==="ontap")return <AutoStoriesIcon sx={{fontSize:34,color:"#fff"}}/>;
+                  if(mode==="dgt")return <AssignmentTurnedInIcon sx={{fontSize:34,color:"#fff"}}/>;
+                  return <SchoolIcon sx={{fontSize:34,color:"#fff"}}/>;
+                };
+
+                const mode = getMode(config);
+                
+                return (
+                  <Paper key={student.maDinhDanh} elevation={0}
+                    sx={{
+                      width:{xs:"100%",sm:260},minWidth:{xs:"100%",sm:260},maxWidth:{xs:"100%",sm:260},
+                      borderRadius:"30px",position:"relative",overflow:"hidden",cursor:"pointer",
+                      background:"linear-gradient(180deg,#ffffff,#f8fbff)",
+                      border:"1px solid rgba(226,232,240,.9)",
+                      boxShadow:"0 8px 28px rgba(15,23,42,.06)",
+                      transition:".28s ease",flexShrink:0,
+                      fontFamily:'"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
+                      "&:hover":{transform:"translateY(-4px) scale(1.015)",boxShadow:"0 18px 40px rgba(37,99,235,.14)",borderColor:"#93c5fd"},
+                      "&::before":{content:'""',position:"absolute",top:0,left:0,right:0,height:6,background:index%2===0?"linear-gradient(90deg,#2563eb,#60a5fa)":"linear-gradient(90deg,#7c3aed,#a78bfa)"}
+                    }}
+                    onClick={async()=>{
+                      if(config?.khoaHeThong){setOpenSystemLocked(true);return;}
+                      if(!selectedClass||!student.maDinhDanh)return;
+
+                      const subjectKey=config.mon==="Công nghệ"?"CongNghe":"TinHoc";
+                      const classKey=selectedClass.replace(".","_");
+
+                      try{
+                        const hsRef=doc(db,`DATA_${namHocKey}`,classKey,"HOCSINH",student.maDinhDanh);
+                        const hsSnap=await getDoc(hsRef);
+                        const data=hsSnap.exists()?hsSnap.data():{};
+                        const dgtxData=data?.[subjectKey]?.dgtx||{};
+                        const ktdkData=data?.[subjectKey]?.ktdk||{};
+                        const mode=getMode(config);
+
+                        if(mode==="btt"){
+                          if(!selectedWeek){setDoneMessage("⚠️ Chưa chọn tuần.");setOpenDoneDialog(true);return;}
+                          const weekData=dgtxData[`tuan_${selectedWeek}`]||{};
+                          if(weekData.TN_diem!=null){setDoneStudent({hoVaTen:student.hoVaTen,diemTN:weekData.TN_diem,status:weekData.status||""});setOpenDoneDialog(true);return;}
+                          navigate("/tracnghiem",{state:{studentId:student.maDinhDanh,fullname:student.hoVaTen,lop:selectedClass,selectedWeek,mon:config.mon}});
+                          return;
+                        }
+
+                        if(mode==="ktdk"){
+                          const hocKyMap={"Giữa kỳ I":"GKI","Cuối kỳ I":"CKI","Giữa kỳ II":"GKII","Cuối năm":"CN"};
+                          const hocKyCode=hocKyMap[config.hocKy];
+                          const hocKyData=ktdkData?.[hocKyCode]||{};
+                          const lyThuyet=hocKyData?.lyThuyet??null;
+                          if(lyThuyet!=null){setDoneStudent({hoVaTen:hocKyData?.hoVaTen??student.hoVaTen,diemTN:lyThuyet,nhanXet:hocKyData?.nhanXet||""});setOpenDoneDialog(true);return;}
+                          navigate("/tracnghiem",{state:{studentId:student.maDinhDanh,fullname:student.hoVaTen,lop:selectedClass,selectedWeek,mon:config.mon}});
+                          return;
+                        }
+
+                        if(mode==="ontap"){navigate("/tracnghiem-ontap",{state:{fullname:student.hoVaTen,lop:selectedClass}});return;}
+
+                        if(mode==="dgt"){const weekData=dgtxData[`tuan_${selectedWeek}`]||{};setExpandedStudent({...student,status:weekData.status||""});return;}
+
+                        navigate("/tracnghiem",{state:{studentId:student.maDinhDanh,fullname:student.hoVaTen,lop:selectedClass,selectedWeek,mon:config.mon}});
+                      }catch(err){
+                        console.error(err);
+                        setDoneMessage("⚠️ Có lỗi khi kiểm tra trạng thái bài.");
+                        setOpenDoneDialog(true);
+                      }
+
+                      if(config.hienThiTenGanDay){
+                        const key=`recent_${selectedClass}`;
+                        const updated=[student,...recentStudents.filter(s=>s.maDinhDanh!==student.maDinhDanh)];
+                        if(updated.length>10)updated.pop();
+                        localStorage.setItem(key,JSON.stringify(updated));
+                        setRecentStudents(updated);
+                      }
+                    }}
+                  >
+                    <Box sx={{p:2.5,display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center"}}>
+                      <Box sx={{width:72,height:72,borderRadius:"24px",display:"flex",alignItems:"center",justifyContent:"center",mb:2,background:index%2===0?"linear-gradient(135deg,#2563eb,#60a5fa)":"linear-gradient(135deg,#7c3aed,#a78bfa)",boxShadow:"0 14px 30px rgba(37,99,235,.24)"}}>
+                        {getCardIcon()}
+                      </Box>
+
+                      <Typography sx={{fontSize:18,fontWeight:700,color:"#0f172a",lineHeight:1.35,minHeight:50,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+                        {student.hoVaTen}
+                      </Typography>
+
+                      <Typography sx={{mt:1,fontSize:13,color:"#64748b",fontWeight:600}}>
+                        Học sinh lớp {selectedClass}
+                      </Typography>
+
+                      <Box sx={{display:"flex",alignItems:"center",gap:1,mt:2,flexWrap:"wrap",justifyContent:"center"}}>
+                        <Chip label={`STT: ${student.stt}`} size="small" sx={{bgcolor:"#eff6ff",color:"#2563eb",fontWeight:700,borderRadius:"10px"}}/>
+                        {/*{mode === "dgt" && status && (
+                          <Chip
+                            label={statusColors[status]?.label || ""}
+                            size="small"
+                            sx={{
+                              bgcolor: statusColors[status]?.bg || "#e2e8f0",
+                              color: "#fff",
+                              fontWeight: 800,
+                              borderRadius: "10px",
+                            }}
+                          />
+                        )}*/}
+                      </Box>
+
+                      <Box sx={{mt:2.5,width:"100%",py:1.2,borderRadius:"16px",fontWeight:700,fontSize:14,color:"#2563eb",background:"#eff6ff","&:hover":{background:"#dbeafe"}}}>
+                        {mode === "dgt" ? "Vào đánh giá" : "Bắt đầu làm bài"}
+                      </Box>
+                    </Box>
+                  </Paper>
+                );
+              })}
+            </Box>
+
+            {/* NÚT XEM TOÀN BỘ */}
+            {!showAll && (
+              <Box sx={{display:"flex",justifyContent:"flex-start",mt:3}}>
+                <Box
                   onClick={() => setShowAll(true)}
                   sx={{
-                    fontSize: '1.2rem',
-                    padding: '6px 16px',
-                    minHeight: '36px',
-                    border: '1px solid',
-                    borderColor: 'primary.main',
-                    borderRadius: '4px',
-                    color: 'primary.main',
-                    '&:hover': {
-                      backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                    },
+                    display:"flex",
+                    alignItems:"center",
+                    gap:1.5,
+                    px:3,
+                    py:1.6,
+                    borderRadius:"18px",
+                    cursor:"pointer",
+                    background:"linear-gradient(135deg,#eff6ff,#f8fbff)",
+                    border:"1px solid #dbeafe",
+                    boxShadow:"0 8px 22px rgba(37,99,235,.12)",
+                    transition:".25s",
+                    width:"fit-content",
+                    "&:hover":{
+                      transform:"translateY(-2px)",
+                      boxShadow:"0 14px 32px rgba(37,99,235,.2)",
+                      borderColor:"#93c5fd"
+                    }
                   }}
                 >
-                  <GroupIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
+                  <GroupIcon sx={{color:"#2563eb",fontSize:28}}/>
+                  <Typography sx={{fontSize:16,fontWeight:700,color:"#2563eb"}}>
+                    Xem toàn bộ lớp
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+
           </Box>
         )}
 

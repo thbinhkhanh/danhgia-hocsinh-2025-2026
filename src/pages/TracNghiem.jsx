@@ -83,6 +83,7 @@ const [saving, setSaving] = useState(false);
 
 // ================= CONFIG =================
 const { config } = useContext(ConfigContext);
+const isOnTap = config?.examType === "ontap";
 const [configData, setConfigData] = useState(null);
 const [hocKi, setHocKi] = useState("");
 const [monHoc, setMonHoc] = useState("");
@@ -176,7 +177,10 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
         }
 
         const configData = configSnap.data();
+        const namHoc = configData.namHoc;
         setConfigData(configData);
+        const examType = configData.examType;
+        const isOnTap = examType === "ontap";
 
         const hocKiFromConfig = configData.hocKy || "";
         const monHocFromConfig = configData.mon || "";
@@ -205,11 +209,13 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
         const result = await getQuizDocId({
           db,
           configData,
+          namHoc,
           classLabel,
           hocKiFromConfig,
           monHocFromConfig,
           studentInfo,
           setNotFoundMessage,
+          examType, 
         });
 
         if (!result) return;
@@ -578,7 +584,17 @@ return (
               </Typography>
             </Box>*/}
             <Box sx={{ textAlign: "center" }}>
-              {config?.kiemTraDinhKi ? (
+              {config?.examType === "ontap" && !config?.baiTapTuan && !config?.kiemTraDinhKi ? (
+                <>
+                  <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
+                    ÔN TẬP - {(hocKiDisplay || "HỌC KỲ").toUpperCase()}
+                  </Typography>
+
+                  <Typography sx={{ fontSize: 15, opacity: 0.9 }}>
+                    Môn: {(monHocDisplay || "TIN HỌC").toUpperCase()}
+                  </Typography>
+                </>
+              ) : config?.kiemTraDinhKi ? (
                 <>
                   <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
                     KTĐK - {(hocKiDisplay || "CUỐI NĂM").toUpperCase()}
