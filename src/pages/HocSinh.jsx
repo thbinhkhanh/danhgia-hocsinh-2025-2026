@@ -541,7 +541,7 @@ return (
             {/* HEADER */}
             <Box sx={{display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center",textAlign:"left",mb:2.5}}>
               <Box>
-                <Typography sx={{fontSize:{xs:22,sm:26},fontWeight:500,color:"#0f172a",letterSpacing:"-0.5px",fontFamily:"inherit"}}>
+                <Typography sx={{fontSize:{xs:22,sm:24},fontWeight:500,color:"#0f172a",letterSpacing:"-0.5px",fontFamily:"inherit"}}>
                   Học sinh gần đây
                 </Typography>
                 <Typography sx={{fontSize:14,color:"#64748b",mt:0.5,fontWeight:500,fontFamily:"inherit"}}>
