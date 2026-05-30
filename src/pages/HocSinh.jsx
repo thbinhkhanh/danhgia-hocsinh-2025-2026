@@ -929,24 +929,44 @@ return (
             
             {/* Đặt icon vào đúng vị trí của CỘT ĐẦU TIÊN */}
             <Grid item>
-              <Box sx={{ ml: { xs: 0, sm: 1 } }}>
-                <Tooltip title="Chế độ xem: Gần đây">
-                  <IconButton
-                    onClick={() => setShowAll(false)}
-                    sx={{
-                      fontSize: '1.2rem',
-                      padding: '6px 16px',
-                      minHeight: '36px',
-                      border: '1px solid',
-                      borderColor: 'primary.main',
-                      borderRadius: '4px',
-                      color: 'primary.main',
-                      '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.1)' },
-                    }}
-                  >
-                    <AccessTimeIcon />
-                  </IconButton>
-                </Tooltip>
+              <Box
+                onClick={() => setShowAll(false)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  px: 3,
+                  py: 1.6,
+                  borderRadius: "18px",
+                  cursor: "pointer",
+                  background: "linear-gradient(135deg,#eff6ff,#f8fbff)",
+                  border: "1px solid #dbeafe",
+                  boxShadow: "0 8px 22px rgba(37,99,235,.12)",
+                  transition: ".25s",
+                  width: "fit-content",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 14px 32px rgba(37,99,235,.2)",
+                    borderColor: "#93c5fd",
+                  },
+                }}
+              >
+                <AccessTimeIcon
+                  sx={{
+                    color: "#2563eb",
+                    fontSize: 28,
+                  }}
+                />
+
+                <Typography
+                  sx={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "#2563eb",
+                  }}
+                >
+                  Chế độ xem: Gần đây
+                </Typography>
               </Box>
             </Grid>
           </Grid>
