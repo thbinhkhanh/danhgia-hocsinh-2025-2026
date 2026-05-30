@@ -554,15 +554,17 @@ return (
             color: "#fff",
           }}
         >
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            alignItems="center"
-            justifyContent="space-between"
-            spacing={2}
+          <Box
+            sx={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              minHeight: 56,
+            }}
           >
-
             {/* LEFT: STUDENT */}
-            <Box>
+            <Box sx={{ textAlign: "left", zIndex: 1 }}>
               <Typography sx={{ fontSize: 17, fontWeight: 700 }}>
                 {capitalizeName(studentInfo?.name || "Học sinh")}
               </Typography>
@@ -571,20 +573,22 @@ return (
               </Typography>
             </Box>
 
-            {/* CENTER: THÔNG TIN MÔN + KỲ */}
-            {/*<Box sx={{ textAlign: "center" }}>
-              <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
-                KIỂM TRA ĐỊNH KÌ - {(monHocDisplay || "MÔN HỌC").toUpperCase()}
-              </Typography>
-
-              <Typography sx={{ fontSize: 15, opacity: 0.9 }}>
-                {hocKiDisplay
-                  ? `${hocKiDisplay} - ${config?.namHoc || ""}`
-                  : "HỌC KỲ"}
-              </Typography>
-            </Box>*/}
-            <Box sx={{ textAlign: "center" }}>
-              {config?.examType === "ontap" && !config?.baiTapTuan && !config?.kiemTraDinhKi ? (
+            {/* CENTER */}
+            <Box
+              sx={{
+                position: { xs: "static", sm: "absolute" },
+                left: { sm: "50%" },
+                transform: { sm: "translateX(-50%)" },
+                textAlign: {
+                  xs: "right",
+                  sm: "center",
+                },
+                ml: "auto",
+              }}
+            >
+              {config?.examType === "ontap" &&
+              !config?.baiTapTuan &&
+              !config?.kiemTraDinhKi ? (
                 <>
                   <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
                     ÔN TẬP - {(hocKiDisplay || "HỌC KỲ").toUpperCase()}
@@ -617,54 +621,79 @@ return (
               )}
             </Box>
 
-            {/* RIGHT: TIMER + SIDEBAR */}
-            <Stack direction="row" spacing={1} alignItems="center">
+            {/* RIGHT */}
+            <Box sx={{ zIndex: 1 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                {/* TIMER DESKTOP */}
+                {started && !loading && (
+                  <Box
+                    sx={{
+                      display: { xs: "none", sm: "flex" },
+                      alignItems: "center",
+                      gap: 1,
+                      px: 2,
+                      py: 0.6,
+                      borderRadius: 2,
+                      bgcolor: "#fff",
+                      color: "#d32f2f",
+                      fontWeight: 800,
+                      minWidth: 90,
+                      justifyContent: "center",
+                    }}
+                  >
+                    <AccessTimeIcon sx={{ fontSize: 20 }} />
+                    {formatTime(timeLeft)}
+                  </Box>
+                )}
 
-              {/* TIMER */}
-              {started && !loading && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    px: 2,
-                    py: 0.6,
-                    borderRadius: 2,
-                    bgcolor: "#fff",
-                    color: "#d32f2f",
-                    fontWeight: 800,
-                    minWidth: 90,
-                    justifyContent: "center",
-                  }}
-                >
-                  <AccessTimeIcon sx={{ fontSize: 20 }} />
-                  {formatTime(timeLeft)}
-                </Box>
-              )}
-
-              {/* SIDEBAR TOGGLE */}
-              {hasSidebar && (
-                <IconButton
-                  onClick={() => setShowSidebar((p) => !p)}
-                  sx={{
-                    color: "#fff",
-                    bgcolor: "rgba(255,255,255,0.15)",
-                    "&:hover": {
-                      bgcolor: "rgba(255,255,255,0.25)",
-                    },
-                  }}
-                >
-                  {showSidebar ? (
-                    <ChevronLeftIcon />
-                  ) : (
-                    <ChevronRightIcon />
-                  )}
-                </IconButton>
-              )}
-            </Stack>
-
-          </Stack>
+                {/* SIDEBAR */}
+                {hasSidebar && (
+                  <IconButton
+                    onClick={() => setShowSidebar((p) => !p)}
+                    sx={{
+                      color: "#fff",
+                      bgcolor: "rgba(255,255,255,0.15)",
+                      "&:hover": {
+                        bgcolor: "rgba(255,255,255,0.25)",
+                      },
+                    }}
+                  >
+                    {showSidebar ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+                  </IconButton>
+                )}
+              </Stack>
+            </Box>
+          </Box>
         </Box>
+
+        {/* TIMER MOBILE */}
+        {started && !loading && (
+          <Box
+            sx={{
+              display: { xs: "flex", sm: "none" },
+              justifyContent: "center",
+              mt: 2,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 2,
+                py: 0.6,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                color: "#d32f2f",
+                fontWeight: 800,
+                boxShadow: 1,
+              }}
+            >
+              <AccessTimeIcon sx={{ fontSize: 20 }} />
+              {formatTime(timeLeft)}
+            </Box>
+          </Box>
+        )}
 
         {/* ================= CONTENT ================= */}
         <Box
