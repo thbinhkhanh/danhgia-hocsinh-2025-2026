@@ -556,12 +556,13 @@ return (
               {recentStudents.slice(0,4).map((student,index)=>{
                 const status=studentStatus[student.maDinhDanh];
 
-                const getCardIcon=()=>{
-                  const mode=getMode(config);
-                  if(mode==="btt")return <QuizIcon sx={{fontSize:34,color:"#fff"}}/>;
-                  if(mode==="ontap")return <AutoStoriesIcon sx={{fontSize:34,color:"#fff"}}/>;
-                  if(mode==="dgt")return <AssignmentTurnedInIcon sx={{fontSize:34,color:"#fff"}}/>;
-                  return <SchoolIcon sx={{fontSize:34,color:"#fff"}}/>;
+                const getCardIcon = () => {
+                  const mode = getMode(config);
+                  if (mode === "ontap")
+                    return <AutoStoriesIcon sx={{ fontSize: 34, color: "#fff" }} />;
+                  if (mode === "dgt")
+                    return <AssignmentTurnedInIcon sx={{ fontSize: 34, color: "#fff" }} />;
+                  return <SchoolIcon sx={{ fontSize: 34, color: "#fff" }} />;
                 };
 
                 const mode = getMode(config);

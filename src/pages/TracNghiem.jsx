@@ -636,7 +636,7 @@ return (
                       borderRadius: 2,
                       bgcolor: "#fff",
                       color: "#d32f2f",
-                      fontWeight: 800,
+                      fontWeight: 700,
                       minWidth: 90,
                       justifyContent: "center",
                     }}
