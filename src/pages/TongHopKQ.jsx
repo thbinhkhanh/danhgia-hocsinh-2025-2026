@@ -76,7 +76,7 @@ export default function TongHopKQ() {
   const [dialogSeverity, setDialogSeverity] = useState("info");
 
   // ================= VIEW MODE =================
-  const [kieuHienThi, setKieuHienThi] = useState("KTĐK");
+  const [kieuHienThi, setKieuHienThi] = useState("ktdk");
 
   const circleIconStyle = {
     bgcolor: "white",
@@ -125,13 +125,13 @@ export default function TongHopKQ() {
       const hocKyCode = hocKyMap[config.hocKy];
 
       // ================== ÔN TẬP ==================
-      if (kieuHienThi === "ONTAP") {
+      if (kieuHienThi === "ontap") {
         const subjectKey =
           selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
         const colRef = collection(
           db,
-          `ONTAP_${namHocKey}`,
+          `DATA_ONTAP_${namHocKey}`,
           config.hocKy,
           selectedLop
         );
@@ -285,10 +285,10 @@ export default function TongHopKQ() {
           // 2️⃣ Xóa Firestore nền (không block UI)
 
           // ===== ÔN TẬP =====
-          if (kieuHienThi === "ONTAP") {
+          if (kieuHienThi === "ontap") {
             const ontapRef = collection(
               db,
-              `ONTAP_${namHocKey}`,
+              `DATA_ONTAP_${namHocKey}`,
               config.hocKy,
               selectedLop
             );
@@ -326,7 +326,7 @@ export default function TongHopKQ() {
               const studentData = docSnap.data();
               const updates = {};
 
-              if (kieuHienThi === "KTĐK") {
+              if (kieuHienThi === "ktdk") {
                 const ktdkData = studentData?.[subjectKey]?.ktdk || {};
 
                 hocKyMap.forEach(hocKyCode => {
@@ -387,7 +387,7 @@ export default function TongHopKQ() {
     openConfirmDialog(
       "Xóa toàn trường",
       `⚠️ Bạn có chắc muốn xóa kết quả ${
-        kieuHienThi === "KTĐK" ? "KIỂM TRA ĐỊNH KỲ" : "ÔN TẬP"
+        kieuHienThi === "ktdk" ? "KIỂM TRA ĐỊNH KỲ" : "ÔN TẬP"
       } của toàn trường?\nHành động này không thể hoàn tác!`,
       async () => {
         try {
@@ -396,12 +396,12 @@ export default function TongHopKQ() {
           const CHUNK_SIZE = 450;
 
           // ===== ÔN TẬP =====
-          if (kieuHienThi === "ONTAP") {
+          if (kieuHienThi === "ontap") {
             await Promise.all(
               classesList.map(async (lop) => {
                 const ontapRef = collection(
                   db,
-                  `ONTAP_${namHocKey}`,
+                  `DATA_ONTAP_${namHocKey}`,
                   config.hocKy,
                   lop
                 );
@@ -462,7 +462,7 @@ export default function TongHopKQ() {
                   const studentData = docSnap.data();
                   const updates = {};
 
-                  if (kieuHienThi === "KTĐK") {
+                  if (kieuHienThi === "ktdk") {
                     const ktdkData = studentData?.[subjectKey]?.ktdk || {};
 
                     hocKyList.forEach(hocKyCode => {
@@ -726,8 +726,8 @@ export default function TongHopKQ() {
             size="small"
             sx={{ width: 120 }}
           >
-            <MenuItem value="KTĐK">KTĐK</MenuItem>
-            <MenuItem value="ONTAP">Ôn tập</MenuItem>
+            <MenuItem value="ktdk">KTĐK</MenuItem>
+            <MenuItem value="ontap">Ôn tập</MenuItem>
           </TextField>
 
         </Box>
@@ -744,7 +744,7 @@ export default function TongHopKQ() {
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 200 }}>Họ và tên</TableCell>
 
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 70 }}>Điểm</TableCell>
-                    {kieuHienThi === "ONTAP" && ( // ⭐ thêm điều kiện
+                    {kieuHienThi === "ontap" && ( // ⭐ thêm điều kiện
                       <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 80 }}>
                         Số lần
                       </TableCell>
@@ -787,7 +787,7 @@ export default function TongHopKQ() {
           {r.diem}
         </TableCell>
 
-        {kieuHienThi === "ONTAP" && (
+        {kieuHienThi === "ontap" && (
           <TableCell
             sx={{
               px: 1,

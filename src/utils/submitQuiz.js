@@ -330,7 +330,7 @@ export const handleSubmitQuiz = async ({
         }
       });
     } else if (configData?.examType === "ontap") {
-        const collectionRoot = `ONTAP_${namHocKey}`;
+        const collectionRoot = `DATA_ONTAP_${namHocKey}`;
         const studentDocId = normalizeName(studentName);
 
         const subjectKey =

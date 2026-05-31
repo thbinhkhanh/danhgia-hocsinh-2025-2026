@@ -137,10 +137,9 @@ export const autoSubmitQuiz = async ({
     setSubmitted(true);
 
     // --- Tính thời gian ---
-    const durationSec = startTime
-      ? Math.floor((Date.now() - startTime) / 1000)
-      : 0;
-    const durationStr = formatTime(durationSec);
+    // --- Auto submit => thời gian làm bài chính là timeLimit ---
+    const timeLimitMinutes = Number(configData?.timeLimit || 0);
+    const durationStr = `${String(timeLimitMinutes).padStart(2, "0")}:00`;
 
     // --- PDF cho KTDK ---
     const hocKi = window.currentHocKi || "GKI";
@@ -301,8 +300,8 @@ export const autoSubmitQuiz = async ({
           throw err;
         }
       });
-    } else if (configData?.onTap === true) {
-        const collectionRoot = "ONTAP";
+    } else if (configData?.examType === "ontap") {
+        const collectionRoot = `DATA_ONTAP_${namHocKey}`;
         const studentDocId = normalizeName(studentName);
 
         const subjectKey =
