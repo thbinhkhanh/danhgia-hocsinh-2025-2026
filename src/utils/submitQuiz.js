@@ -329,8 +329,8 @@ export const handleSubmitQuiz = async ({
           throw err;
         }
       });
-    } else if (configData?.onTap === true) {
-        const collectionRoot = "ONTAP";
+    } else if (configData?.examType === "ontap") {
+        const collectionRoot = `ONTAP_${namHocKey}`;
         const studentDocId = normalizeName(studentName);
 
         const subjectKey =

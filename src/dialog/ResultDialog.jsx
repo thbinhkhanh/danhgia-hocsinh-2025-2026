@@ -33,7 +33,7 @@ const ResultDialog = ({
       return convertPercentToScore(studentResult?.diemTN);
     }
 
-    if (configData?.onTap) {
+    if (configData?.examType === "ontap") {
       return studentResult?.diem;
     }
 

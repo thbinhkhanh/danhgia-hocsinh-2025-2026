@@ -131,7 +131,7 @@ export default function TongHopKQ() {
 
         const colRef = collection(
           db,
-          "ONTAP",
+          `ONTAP_${namHocKey}`,
           config.hocKy,
           selectedLop
         );
@@ -280,48 +280,92 @@ export default function TongHopKQ() {
           setSnackbarMessage(`✅ Đã xóa kết quả lớp ${selectedLop}`);
           setSnackbarOpen(true);
 
+          const CHUNK_SIZE = 450;
+
           // 2️⃣ Xóa Firestore nền (không block UI)
+
+          // ===== ÔN TẬP =====
+          if (kieuHienThi === "ONTAP") {
+            const ontapRef = collection(
+              db,
+              `ONTAP_${namHocKey}`,
+              config.hocKy,
+              selectedLop
+            );
+
+            const ontapSnap = await getDocs(ontapRef);
+
+            if (!ontapSnap.empty) {
+              for (let i = 0; i < ontapSnap.docs.length; i += CHUNK_SIZE) {
+                const batch = writeBatch(db);
+
+                ontapSnap.docs
+                  .slice(i, i + CHUNK_SIZE)
+                  .forEach(docSnap => batch.delete(docSnap.ref));
+
+                await batch.commit();
+              }
+            }
+
+            return;
+          }
+
           const classKey = selectedLop.replace(".", "_");
           const hsRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
           const snapshot = await getDocs(hsRef);
 
           if (snapshot.empty) return; // Không có dữ liệu Firestore
 
-          const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
+          const subjectKey =
+            selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
           const hocKyMap = ["GKI", "CKI", "GKII", "CN"];
-          const CHUNK_SIZE = 450;
 
-          const updatesList = snapshot.docs.map(docSnap => {
-            const studentId = docSnap.id;
-            const studentData = docSnap.data();
-            const updates = {};
+          const updatesList = snapshot.docs
+            .map(docSnap => {
+              const studentId = docSnap.id;
+              const studentData = docSnap.data();
+              const updates = {};
 
-            if (kieuHienThi === "KTĐK") {
-              const ktdkData = studentData?.[subjectKey]?.ktdk || {};
-              hocKyMap.forEach(hocKyCode => {
-                if (ktdkData[hocKyCode]) {
-                  updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`] = null;
-                  updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`] = null;
-                  updates[`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`] = null;
-                  updates[`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`] = null;
-                  updates[`${subjectKey}.ktdk.${hocKyCode}.thucHanh`] = null;
-                  updates[`${subjectKey}.ktdk.${hocKyCode}.tongCong`] = null;
-                }
-              });
-            }
+              if (kieuHienThi === "KTĐK") {
+                const ktdkData = studentData?.[subjectKey]?.ktdk || {};
 
-            return Object.keys(updates).length > 0
-              ? { docRef: doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId), updates }
-              : null;
-          }).filter(Boolean);
+                hocKyMap.forEach(hocKyCode => {
+                  if (ktdkData[hocKyCode]) {
+                    updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`] = null;
+                    updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`] = null;
+                    updates[`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`] = null;
+                    updates[`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`] = null;
+                    updates[`${subjectKey}.ktdk.${hocKyCode}.thucHanh`] = null;
+                    updates[`${subjectKey}.ktdk.${hocKyCode}.tongCong`] = null;
+                  }
+                });
+              }
+
+              return Object.keys(updates).length > 0
+                ? {
+                    docRef: doc(
+                      db,
+                      `DATA_${namHocKey}`,
+                      classKey,
+                      "HOCSINH",
+                      studentId
+                    ),
+                    updates,
+                  }
+                : null;
+            })
+            .filter(Boolean);
 
           // Dùng batch chunk để tránh Firestore limit
           for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
             const batch = writeBatch(db);
-            updatesList.slice(i, i + CHUNK_SIZE).forEach(item => batch.update(item.docRef, item.updates));
+
+            updatesList
+              .slice(i, i + CHUNK_SIZE)
+              .forEach(item => batch.update(item.docRef, item.updates));
+
             await batch.commit(); // Không block UI, vẫn chạy nền
           }
-
         } catch (err) {
           console.error("❌ Firestore: Xóa lớp thất bại:", err);
           setSnackbarSeverity("error");
@@ -349,48 +393,131 @@ export default function TongHopKQ() {
         try {
           const hocKyList = ["GKI", "CKI", "GKII", "CN"];
           let totalUpdated = 0;
-          const CHUNK_SIZE = 450; // tối đa 500 thao tác/batch, dùng 450 an toàn
+          const CHUNK_SIZE = 450;
 
+          // ===== ÔN TẬP =====
+          if (kieuHienThi === "ONTAP") {
+            await Promise.all(
+              classesList.map(async (lop) => {
+                const ontapRef = collection(
+                  db,
+                  `ONTAP_${namHocKey}`,
+                  config.hocKy,
+                  lop
+                );
+
+                const snapshot = await getDocs(ontapRef);
+
+                if (snapshot.empty) return;
+
+                for (let i = 0; i < snapshot.docs.length; i += CHUNK_SIZE) {
+                  const batch = writeBatch(db);
+
+                  snapshot.docs
+                    .slice(i, i + CHUNK_SIZE)
+                    .forEach(docSnap => batch.delete(docSnap.ref));
+
+                  await batch.commit();
+                  totalUpdated += snapshot.docs.slice(i, i + CHUNK_SIZE).length;
+                }
+              })
+            );
+
+            if (totalUpdated > 0) {
+              setResults([]);
+              setSnackbarSeverity("success");
+              setSnackbarMessage(
+                `✅ Đã xóa toàn trường (${totalUpdated} học sinh)`
+              );
+            } else {
+              setSnackbarSeverity("warning");
+              setSnackbarMessage("Không có dữ liệu để xóa!");
+            }
+
+            setSnackbarOpen(true);
+            return;
+          }
+
+          // ===== KTĐK (giữ nguyên code cũ) =====
           await Promise.all(
             classesList.map(async (lop) => {
               const classKey = lop.replace(".", "_");
-              const hsRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
+              const hsRef = collection(
+                db,
+                `DATA_${namHocKey}`,
+                classKey,
+                "HOCSINH"
+              );
+
               const snapshot = await getDocs(hsRef);
 
               if (snapshot.empty) return;
 
-              const subjectKey = selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
-              const updatesList = snapshot.docs.map(docSnap => {
-                const studentId = docSnap.id;
-                const studentData = docSnap.data();
-                const updates = {};
+              const subjectKey =
+                selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-                if (kieuHienThi === "KTĐK") {
-                  const ktdkData = studentData?.[subjectKey]?.ktdk || {};
-                  hocKyList.forEach(hocKyCode => {
-                    if (ktdkData[hocKyCode]) {
-                      updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`] = null;
-                      updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`] = null;
-                      updates[`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`] = null;
-                      updates[`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`] = null;
-                      updates[`${subjectKey}.ktdk.${hocKyCode}.thucHanh`] = null;
-                      updates[`${subjectKey}.ktdk.${hocKyCode}.tongCong`] = null;
-                    }
-                  });
-                }
+              const updatesList = snapshot.docs
+                .map(docSnap => {
+                  const studentId = docSnap.id;
+                  const studentData = docSnap.data();
+                  const updates = {};
 
-                if (Object.keys(updates).length > 0) {
-                  return { docRef: doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId), updates };
-                }
-                return null;
-              }).filter(Boolean);
+                  if (kieuHienThi === "KTĐK") {
+                    const ktdkData = studentData?.[subjectKey]?.ktdk || {};
 
-              // Chia thành chunk và commit song song
+                    hocKyList.forEach(hocKyCode => {
+                      if (ktdkData[hocKyCode]) {
+                        updates[
+                          `${subjectKey}.ktdk.${hocKyCode}.lyThuyet`
+                        ] = null;
+                        updates[
+                          `${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`
+                        ] = null;
+                        updates[
+                          `${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`
+                        ] = null;
+                        updates[
+                          `${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`
+                        ] = null;
+                        updates[
+                          `${subjectKey}.ktdk.${hocKyCode}.thucHanh`
+                        ] = null;
+                        updates[
+                          `${subjectKey}.ktdk.${hocKyCode}.tongCong`
+                        ] = null;
+                      }
+                    });
+                  }
+
+                  if (Object.keys(updates).length > 0) {
+                    return {
+                      docRef: doc(
+                        db,
+                        `DATA_${namHocKey}`,
+                        classKey,
+                        "HOCSINH",
+                        studentId
+                      ),
+                      updates,
+                    };
+                  }
+
+                  return null;
+                })
+                .filter(Boolean);
+
               for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
                 const batch = writeBatch(db);
-                updatesList.slice(i, i + CHUNK_SIZE).forEach(item => batch.update(item.docRef, item.updates));
+
+                updatesList
+                  .slice(i, i + CHUNK_SIZE)
+                  .forEach(item =>
+                    batch.update(item.docRef, item.updates)
+                  );
+
                 await batch.commit();
-                totalUpdated += updatesList.slice(i, i + CHUNK_SIZE).length;
+                totalUpdated +=
+                  updatesList.slice(i, i + CHUNK_SIZE).length;
               }
             })
           );
@@ -398,13 +525,15 @@ export default function TongHopKQ() {
           if (totalUpdated > 0) {
             setResults([]);
             setSnackbarSeverity("success");
-            setSnackbarMessage(`✅ Đã xóa toàn trường (${totalUpdated} học sinh)`);
+            setSnackbarMessage(
+              `✅ Đã xóa toàn trường (${totalUpdated} học sinh)`
+            );
           } else {
             setSnackbarSeverity("warning");
             setSnackbarMessage("Không có dữ liệu để xóa!");
           }
-          setSnackbarOpen(true);
 
+          setSnackbarOpen(true);
         } catch (err) {
           console.error("❌ Firestore:", err);
           setSnackbarSeverity("error");
