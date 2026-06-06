@@ -242,7 +242,11 @@ function AppContent() {
                   whiteSpace: "nowrap",
                 }}
               >
-                Năm học: {config?.namHoc || "2026-2027"}
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                  Năm học:{" "}
+                </Box>
+
+                {config?.namHoc || "2025-2026"}
               </Box>
 
               {/* 👤 ICON TÀI KHOẢN */}
