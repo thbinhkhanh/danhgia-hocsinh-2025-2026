@@ -7,58 +7,108 @@ function DashboardCard({ item, onClick }) {
     <Box
       onClick={onClick}
       sx={{
-        bgcolor: "white",
-        borderRadius: 3,
+        position: "relative",
+        overflow: "hidden",
+        bgcolor: "#fff",
+        borderRadius: "24px",
         p: 2.5,
-        minHeight: 160,
+        minHeight: 170,
         cursor: "pointer",
-        transition: "0.25s",
-        boxShadow: "0 3px 10px rgba(0,0,0,0.08)",
+        border: "1px solid #e5e7eb",
+        transition: "all .25s ease",
         display: "flex",
         flexDirection: "column",
+        justifyContent: "space-between",
+
         "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: "0 10px 20px rgba(0,0,0,0.15)",
+          transform: "translateY(-6px)",
+          boxShadow: "0 15px 35px rgba(0,0,0,0.12)",
+          borderColor: item.color,
+        },
+
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: 5,
+          background: item.color,
         },
       }}
     >
+      {/* ICON */}
       <Box
         sx={{
-          width: 48,
-          height: 48,
-          borderRadius: "50%",
-          bgcolor: item.color,
+          width: 54,
+          height: 54,
+          borderRadius: "18px",
+          bgcolor: `${item.color}15`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 22,
-          color: "white",
-          mb: 1.5,
+          fontSize: 26,
         }}
       >
         {item.icon}
       </Box>
 
-      <Typography
-        sx={{
-          fontWeight: 700,
-          fontSize: 15,
-          mb: 0.8,
-          lineHeight: 1.3,
-        }}
-      >
-        {item.label}
-      </Typography>
+      {/* TEXT */}
+      <Box sx={{ flexGrow: 1 }}>
+        <Typography
+          sx={{
+            mt: 2,
+            fontWeight: 700,
+            fontSize: 16,
+            color: "#0f172a",
+            lineHeight: 1.35,
+          }}
+        >
+          {item.label}
+        </Typography>
 
-      <Typography
+        <Typography
+          sx={{
+            mt: 1,
+            fontSize: 13,
+            color: "#64748b",
+            lineHeight: 1.6,
+          }}
+        >
+          {item.description}
+        </Typography>
+      </Box>
+
+      {/* ARROW */}
+      <Box
         sx={{
-          fontSize: 13,
-          color: "#64748b",
-          lineHeight: 1.5,
+          mt: 2,
+          display: "flex",
+          justifyContent: "flex-end",
         }}
       >
-        {item.description}
-      </Typography>
+        <Box
+          sx={{
+            width: 34,
+            height: 34,
+            borderRadius: "12px",
+            bgcolor: "#f1f5f9",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 18,
+            color: "#64748b",
+            transition: ".2s",
+
+            ".dashboard-card:hover &": {
+              bgcolor: item.color,
+              color: "#fff",
+            },
+          }}
+        >
+          →
+        </Box>
+      </Box>
     </Box>
   );
 }
@@ -142,54 +192,61 @@ export default function Dashboard({ isLoggedIn }) {
   ];
 
   return (
-  <Box
-    sx={{
-      minHeight: "100vh",
-      p: { xs: 2, md: 3 },
-      bgcolor: "#f4f6f8",
-    }}
-  >
     <Box
       sx={{
-        maxWidth: 1180,
-        mx: "auto",
+        minHeight: "100vh",
+        bgcolor: "#f4f6f8",
+        p: { xs: 2, md: 3 },
       }}
     >
-      <Typography
-        variant="h6"
-        fontWeight={700}
-        mb={3}
-        sx={{
-          fontFamily:
-            '"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
-        }}
-      >
-        CHỨC NĂNG CHÍNH
-      </Typography>
-
       <Box
         sx={{
-          display: "grid",
-          gap: 2.5,
-          justifyContent: "center",
-
-          gridTemplateColumns: {
-            xs: "95%",                // điện thoại: card rộng ~75%
-            sm: "repeat(2, 220px)",   // tablet
-            md: "repeat(3, 220px)",   // laptop nhỏ
-            lg: "repeat(5, 220px)",   // desktop
-          },
+          maxWidth: 1180,
+          mx: "auto",
         }}
       >
-        {cards.map((item) => (
-          <DashboardCard
-            key={item.path}
-            item={item}
-            onClick={() => navigate(item.path)}
-          />
-        ))}
+        {/* TITLE */}
+        <Typography
+          variant="h6"
+          fontWeight={700}
+          mb={3}
+          sx={{
+            color: "#0f172a",
+            fontFamily:
+              '"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
+          }}
+        >
+          CHỨC NĂNG CHÍNH
+        </Typography>
+
+        {/* GRID */}
+        <Box
+          sx={{
+            display: "grid",
+            gap: 2.5,
+            justifyContent: "center",
+
+            gridTemplateColumns: {
+              xs: "92%", // điện thoại
+              sm: "repeat(2, 220px)",
+              md: "repeat(3, 220px)",
+              lg: "repeat(5, 220px)", // desktop: 5 thẻ mỗi hàng
+            },
+          }}
+        >
+          {cards.map((item) => (
+            <Box
+              key={item.path}
+              className="dashboard-card"
+            >
+              <DashboardCard
+                item={item}
+                onClick={() => navigate(item.path)}
+              />
+            </Box>
+          ))}
+        </Box>
       </Box>
     </Box>
-  </Box>
-);
+  );
 }
