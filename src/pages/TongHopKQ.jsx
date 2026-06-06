@@ -273,246 +273,177 @@ export default function TongHopKQ() {
 
   //Xóa nhiều lớp
   const handleDeleteMultipleClasses = async (selectedClasses) => {
-  try {
-    console.log("🚀 [MULTI DELETE START]");
-    console.log("📌 selectedClasses:", selectedClasses);
-    console.log("📌 ExamType:", ExamType);
-    console.log("📌 selectedMon:", selectedMon);
-    console.log("📌 hocKy:", config?.hocKy);
+    try {
+      const CHUNK_SIZE = 450;
 
-    const CHUNK_SIZE = 450;
-
-    setResults([]);
-
-    const subjectKey =
-      selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
-
-    const hocKyCode = hocKyMap[config.hocKy];
-
-    console.log("📌 subjectKey:", subjectKey);
-    console.log("📌 hocKyCode:", hocKyCode);
-
-    if (!hocKyCode) {
-      console.log("❌ MISSING hocKyCode → STOP");
-      return;
-    }
-
-    // ================== ÔN TẬP ==================
-    if (ExamType === "ontap") {
-      console.log("🚀 [ONTAP LOAD START]");
-      console.log("📌 selectedLop:", selectedLop);
-      console.log("📌 selectedMon:", selectedMon);
-      console.log("📌 namHocKey:", namHocKey);
+      setResults([]);
 
       const subjectKey =
         selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-      console.log("📌 subjectKey:", subjectKey);
+      const hocKyCode = hocKyMap[config.hocKy];
 
-      const path = `DATA_ONTAP_${namHocKey}/${selectedLop}/HOCSINH`;
-      console.log("📌 Firestore path:", path);
+      if (!hocKyCode) {
+        return;
+      }
 
-      const colRef = collection(
-        db,
-        `DATA_ONTAP_${namHocKey}`,
-        selectedLop,
-        "HOCSINH"
-      );
+      // ================== ÔN TẬP ==================
+      if (ExamType === "ontap") {
+        const subjectKey =
+          selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-      const snapshot = await getDocs(colRef);
+        const colRef = collection(
+          db,
+          `DATA_ONTAP_${namHocKey}`,
+          selectedLop,
+          "HOCSINH"
+        );
 
-      console.log("📊 snapshot empty:", snapshot.empty);
-      console.log("📊 snapshot size:", snapshot.size);
+        const snapshot = await getDocs(colRef);
 
-      if (snapshot.empty) {
-        console.warn("⚠️ EMPTY SNAPSHOT - kiểm tra sai path hoặc chưa sync dữ liệu");
+        if (snapshot.empty) {
+          setResults([]);
+          setSnackbarSeverity("warning");
+          setSnackbarMessage(`Không có dữ liệu ôn tập lớp ${selectedLop}`);
+          setSnackbarOpen(true);
+          setLoading(false);
+          return;
+        }
 
-        setResults([]);
-        setSnackbarSeverity("warning");
-        setSnackbarMessage(`Không có dữ liệu ôn tập lớp ${selectedLop}`);
-        setSnackbarOpen(true);
+        const data = snapshot.docs.map(docSnap => {
+          const d = docSnap.data();
+          const subjectData = d?.subjects?.[subjectKey] || {};
+
+          return {
+            docId: docSnap.id,
+            hoVaTen: d.hoVaTen || "",
+            diem: subjectData.lyThuyet ?? "",
+            soLanLam: subjectData.soLanLam ?? "",
+            ngayHienThi: subjectData.ngayLam ?? "",
+            thoiGianLamBai: subjectData.thoiGianLamBai ?? "",
+          };
+        });
+
+        setResults(data);
         setLoading(false);
         return;
       }
 
-      snapshot.docs.forEach((docSnap, index) => {
-        const d = docSnap.data();
+      // =====================
+      // KTĐK
+      // =====================
+      await Promise.all(
+        selectedClasses.map(async (lop) => {
+          const classKey = lop.replace(".", "_");
 
-        console.log(`\n👤 DOC ${index + 1}:`, docSnap.id);
-        console.log("📦 RAW DATA:", d);
+          const hsRef = collection(
+            db,
+            `DATA_${namHocKey}`,
+            classKey,
+            "HOCSINH"
+          );
 
-        console.log("📦 subjects:", d?.subjects);
+          const snapshot = await getDocs(hsRef);
 
-        console.log("📌 TinHoc:", d?.subjects?.TinHoc);
-        console.log("📌 CongNghe:", d?.subjects?.CongNghe);
+          if (snapshot.empty) {
+            return;
+          }
 
-        console.log("🎯 subjectKey data:", d?.subjects?.[subjectKey]);
-      });
+          const updatesList = snapshot.docs
+            .map((docSnap) => {
+              const studentId = docSnap.id;
+              const studentData = docSnap.data();
 
-      const data = snapshot.docs.map(docSnap => {
-        const d = docSnap.data();
-        const subjectData = d?.subjects?.[subjectKey] || {};
+              const ktdkPath =
+                studentData?.[subjectKey]?.ktdk?.[hocKyCode];
 
-    console.log("➡️ mapping doc:", docSnap.id);
-    console.log("➡️ subjectData:", subjectData);
+              if (!ktdkPath) {
+                return null;
+              }
 
-    return {
-      docId: docSnap.id,
-      hoVaTen: d.hoVaTen || "",
-      diem: subjectData.lyThuyet ?? "",
-      soLanLam: subjectData.soLanLam ?? "",
-      ngayHienThi: subjectData.ngayLam ?? "",
-      thoiGianLamBai: subjectData.thoiGianLamBai ?? "",
-    };
-  });
+              const updates = {
+                [`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`]: null,
+                [`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`]: null,
+                [`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`]: null,
+                [`${subjectKey}.ktdk.${hocKyCode}.thucHanh`]: null,
+                [`${subjectKey}.ktdk.${hocKyCode}.tongCong`]: null,
+              };
 
-  console.log("✅ FINAL DATA:", data);
+              return {
+                docRef: doc(
+                  db,
+                  `DATA_${namHocKey}`,
+                  classKey,
+                  "HOCSINH",
+                  studentId
+                ),
+                updates,
+              };
+            })
+            .filter(Boolean);
 
-  setResults(data);
-  setLoading(false);
-  return;
-}
+          if (updatesList.length === 0) {
+            return;
+          }
 
-    // =====================
-    // KTĐK
-    // =====================
-    console.log("📘 MODE: KTĐK");
+          for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
+            const batch = writeBatch(db);
 
-    await Promise.all(
-      selectedClasses.map(async (lop, index) => {
-        console.log(`\n====================`);
-        console.log(`📌 [KTĐK] Class ${index + 1}:`, lop);
+            const chunk = updatesList.slice(i, i + CHUNK_SIZE);
 
-        const classKey = lop.replace(".", "_");
+            chunk.forEach(item => {
+              batch.update(item.docRef, item.updates);
+            });
 
-        console.log("📌 classKey:", classKey);
-
-        const hsRef = collection(
-          db,
-          `DATA_${namHocKey}`,
-          classKey,
-          "HOCSINH"
-        );
-
-        const snapshot = await getDocs(hsRef);
-
-        console.log(`📊 [KTĐK] students found (${lop}):`, snapshot.docs.length);
-
-        if (snapshot.empty) {
-          console.log(`⚠️ EMPTY CLASS: ${lop}`);
-          return;
-        }
-
-        const updatesList = snapshot.docs
-          .map((docSnap, idx) => {
-            const studentId = docSnap.id;
-            const studentData = docSnap.data();
-
-            console.log(`\n👤 Student ${idx + 1}:`, studentId);
-
-            const ktdkPath =
-              studentData?.[subjectKey]?.ktdk?.[hocKyCode];
-
-            console.log("📌 ktdkPath exists:", !!ktdkPath);
-
-            if (!ktdkPath) {
-              console.log("⛔ SKIP:", studentId);
-              return null;
-            }
-
-            const updates = {
-              [`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`]: null,
-              [`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`]: null,
-              [`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`]: null,
-              [`${subjectKey}.ktdk.${hocKyCode}.thucHanh`]: null,
-              [`${subjectKey}.ktdk.${hocKyCode}.tongCong`]: null,
-            };
-
-            console.log("✏️ UPDATE FIELDS:", updates);
-
-            return {
-              docRef: doc(
-                db,
-                `DATA_${namHocKey}`,
-                classKey,
-                "HOCSINH",
-                studentId
-              ),
-              updates,
-            };
-          })
-          .filter(Boolean);
-
-        console.log("📦 updatesList size:", updatesList.length);
-
-        if (updatesList.length === 0) {
-          console.log("⚠️ NOTHING TO UPDATE IN CLASS:", lop);
-          return;
-        }
-
-        for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
-          const batch = writeBatch(db);
-
-          const chunk = updatesList.slice(i, i + CHUNK_SIZE);
-
-          console.log(`🔥 [KTĐK] committing batch:`, {
-            lop,
-            start: i,
-            size: chunk.length,
-          });
-
-          chunk.forEach(item => {
-            console.log("📝 UPDATE DOC:", item.docRef.path);
-            batch.update(item.docRef, item.updates);
-          });
-
-          await batch.commit();
-          console.log(`✅ [KTĐK] batch committed for ${lop}`);
-        }
-      })
-    );
-
-    console.log("🏁 KTĐK DONE");
-  } catch (err) {
-    console.error("❌ MULTI DELETE ERROR:", err);
-  }
-};
+            await batch.commit();
+          }
+        })
+      );
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Xóa dữ liệu thành công");
+      setSnackbarOpen(true);
+    } catch (err) {
+    }
+  };
   // Xóa toàn bộ lớp
   const handleDeleteClass = () => {
     openConfirmDialog(
       "Xóa kết quả lớp",
       `⚠️ Bạn có chắc muốn xóa toàn bộ kết quả lớp ${selectedLop}?\nHành động này không thể hoàn tác!`,
-      async () => {
-        try {
-          if (!selectedLop) {
-            setSnackbarSeverity("warning");
-            setSnackbarMessage("Vui lòng chọn lớp để xóa!");
-            setSnackbarOpen(true);
-            return;
-          }
-
-          // 1️⃣ Xóa trên giao diện ngay lập tức
-          setResults([]);
-          setSnackbarSeverity("success");
-          setSnackbarMessage(`✅ Đã xóa kết quả lớp ${selectedLop}`);
+      () => {
+        if (!selectedLop) {
+          setSnackbarSeverity("warning");
+          setSnackbarMessage("Vui lòng chọn lớp để xóa!");
           setSnackbarOpen(true);
+          return;
+        }
 
-          const CHUNK_SIZE = 450;
+        // Xóa UI ngay
+        setResults([]);
 
-          // 2️⃣ Xóa Firestore nền (không block UI)
+        // Đóng dialog ngay
+        closeConfirmDialog?.();
 
-          // ===== ÔN TẬP =====
-          if (ExamType === "ontap") {
-            const ontapRef = collection(
-              db,
-              `DATA_ONTAP_${namHocKey}`,
-              config.hocKy,
-              selectedLop
-            );
+        // Báo thành công ngay
+        //setSnackbarSeverity("success");
+        //setSnackbarMessage(`Đã xóa kết quả lớp ${selectedLop}`);
+        //setSnackbarOpen(true);
 
-            const ontapSnap = await getDocs(ontapRef);
+        // Firestore chạy nền
+        (async () => {
+          try {
+            const CHUNK_SIZE = 450;
 
-            if (!ontapSnap.empty) {
+            if (ExamType === "ontap") {
+              const ontapRef = collection(
+                db,
+                `DATA_ONTAP_${namHocKey}`,
+                config.hocKy,
+                selectedLop
+              );
+
+              const ontapSnap = await getDocs(ontapRef);
+
               for (let i = 0; i < ontapSnap.docs.length; i += CHUNK_SIZE) {
                 const batch = writeBatch(db);
 
@@ -522,32 +453,39 @@ export default function TongHopKQ() {
 
                 await batch.commit();
               }
+
+              return;
             }
 
-            return;
-          }
+            const classKey = selectedLop.replace(".", "_");
 
-          const classKey = selectedLop.replace(".", "_");
-          const hsRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
-          const snapshot = await getDocs(hsRef);
+            const hsRef = collection(
+              db,
+              `DATA_${namHocKey}`,
+              classKey,
+              "HOCSINH"
+            );
 
-          if (snapshot.empty) return; // Không có dữ liệu Firestore
+            const snapshot = await getDocs(hsRef);
 
-          const subjectKey =
-            selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
-          const hocKyMap = ["GKI", "CKI", "GKII", "CN"];
+            if (snapshot.empty) return;
 
-          const updatesList = snapshot.docs
-            .map(docSnap => {
-              const studentId = docSnap.id;
-              const studentData = docSnap.data();
-              const updates = {};
+            const subjectKey =
+              selectedMon === "Công nghệ"
+                ? "CongNghe"
+                : "TinHoc";
 
-              if (ExamType === "ktdk") {
-                const ktdkData = studentData?.[subjectKey]?.ktdk || {};
+            const hocKyList = ["GKI", "CKI", "GKII", "CN"];
 
-                hocKyMap.forEach(hocKyCode => {
-                  if (ktdkData[hocKyCode]) {
+            const updatesList = snapshot.docs
+              .map(docSnap => {
+                const studentData = docSnap.data();
+                const updates = {};
+
+                hocKyList.forEach(hocKyCode => {
+                  if (
+                    studentData?.[subjectKey]?.ktdk?.[hocKyCode]
+                  ) {
                     updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`] = null;
                     updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`] = null;
                     updates[`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`] = null;
@@ -556,44 +494,46 @@ export default function TongHopKQ() {
                     updates[`${subjectKey}.ktdk.${hocKyCode}.tongCong`] = null;
                   }
                 });
-              }
 
-              return Object.keys(updates).length > 0
-                ? {
-                    docRef: doc(
-                      db,
-                      `DATA_${namHocKey}`,
-                      classKey,
-                      "HOCSINH",
-                      studentId
-                    ),
-                    updates,
-                  }
-                : null;
-            })
-            .filter(Boolean);
+                return Object.keys(updates).length
+                  ? {
+                      docRef: doc(
+                        db,
+                        `DATA_${namHocKey}`,
+                        classKey,
+                        "HOCSINH",
+                        docSnap.id
+                      ),
+                      updates,
+                    }
+                  : null;
+              })
+              .filter(Boolean);
 
-          // Dùng batch chunk để tránh Firestore limit
-          for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
-            const batch = writeBatch(db);
+            for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
+              const batch = writeBatch(db);
 
-            updatesList
-              .slice(i, i + CHUNK_SIZE)
-              .forEach(item => batch.update(item.docRef, item.updates));
+              updatesList
+                .slice(i, i + CHUNK_SIZE)
+                .forEach(item =>
+                  batch.update(item.docRef, item.updates)
+                );
 
-            await batch.commit(); // Không block UI, vẫn chạy nền
+              await batch.commit();
+            }
+          } catch (err) {
+            console.error(err);
+
+            setSnackbarSeverity("error");
+            setSnackbarMessage("Xóa dữ liệu thất bại");
+            setSnackbarOpen(true);
           }
-        } catch (err) {
-          console.error("❌ Firestore: Xóa lớp thất bại:", err);
-          setSnackbarSeverity("error");
-          setSnackbarMessage("❌ Xóa lớp thất bại (FireStore)!");
-          setSnackbarOpen(true);
-        }
+        })();
       }
     );
   };
 
-  const handleDeleteSchool = () => {
+  /*const handleDeleteSchool = () => {
     if (!classesList || classesList.length === 0) {
       setSnackbarSeverity("warning");
       setSnackbarMessage("Không có lớp nào để xóa!");
@@ -760,7 +700,7 @@ export default function TongHopKQ() {
       },
       "error"
     );
-  };
+  };*/
 
   // Xuất Excel
   const handleExportExcel = () => {
@@ -1090,78 +1030,120 @@ export default function TongHopKQ() {
                             ngayHienThi: "",
                           }));
 
-                    return displayData.map(r => (
-                      <TableRow
-                        key={r.docId}
-                        onMouseEnter={() => setHoverRow(r.docId)}
-                        onMouseLeave={() => setHoverRow(null)}
-                        sx={{
-                          cursor: "pointer",
-                          transition: "background-color 0.2s",
-                          backgroundColor:
-                            hoverRow === r.docId ? "rgba(0,0,0,0.04)" : "transparent",
-                        }}
-                      >
-                        <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
-                          {r.stt}
-                        </TableCell>
+                    return displayData.map((r) => {
+                      const hasData =
+                        r.diem !== "" &&
+                        r.diem !== null &&
+                        r.diem !== undefined;
 
-                        <TableCell sx={{ px: 1, textAlign: "left", border: "1px solid rgba(0,0,0,0.12)" }}>
-                          {r.hoVaTen?.toUpperCase()}
-                        </TableCell>
-
-                        <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)", fontWeight: "bold" }}>
-                          {r.diem}
-                        </TableCell>
-
-                        {ExamType === "ontap" && (
+                      return (
+                        <TableRow
+                          key={r.docId}
+                          onMouseEnter={() => hasData && setHoverRow(r.docId)}
+                          onMouseLeave={() => setHoverRow(null)}
+                          sx={{
+                            cursor: hasData ? "pointer" : "default",
+                            transition: "background-color 0.2s",
+                            backgroundColor:
+                              hasData && hoverRow === r.docId
+                                ? "rgba(0,0,0,0.04)"
+                                : "transparent",
+                          }}
+                        >
                           <TableCell
                             sx={{
                               px: 1,
                               textAlign: "center",
-                              border: "1px solid rgba(151, 127, 127, 0.12)",
+                              border: "1px solid rgba(0,0,0,0.12)",
                             }}
                           >
-                            {r.soLanLam}
+                            {r.stt}
                           </TableCell>
-                        )}
 
-                        <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
-                          {r.thoiGianLamBai}
-                        </TableCell>
-
-                        <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
-                          {r.ngayHienThi}
-                        </TableCell>
-
-                        {/* CỘT XÓA */}
-                        <TableCell
-                          sx={{
-                            width: 40,
-                            textAlign: "center",
-                            border: "1px solid rgba(0,0,0,0.12)",
-                          }}
-                        >
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setDeleteItem({
-                                docId: r.docId,
-                                hoVaTen: r.hoVaTen,
-                              });
-                              setOpenDeleteRow(true);
-                            }}
+                          <TableCell
                             sx={{
-                              opacity: hoverRow === r.docId ? 1 : 0,
-                              transition: "0.2s",
-                              color: "error.main",
+                              px: 1,
+                              textAlign: "left",
+                              border: "1px solid rgba(0,0,0,0.12)",
                             }}
                           >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ));
+                            {r.hoVaTen?.toUpperCase()}
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              px: 1,
+                              textAlign: "center",
+                              border: "1px solid rgba(0,0,0,0.12)",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {r.diem}
+                          </TableCell>
+
+                          {ExamType === "ontap" && (
+                            <TableCell
+                              sx={{
+                                px: 1,
+                                textAlign: "center",
+                                border: "1px solid rgba(151, 127, 127, 0.12)",
+                              }}
+                            >
+                              {r.soLanLam}
+                            </TableCell>
+                          )}
+
+                          <TableCell
+                            sx={{
+                              px: 1,
+                              textAlign: "center",
+                              border: "1px solid rgba(0,0,0,0.12)",
+                            }}
+                          >
+                            {r.thoiGianLamBai}
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              px: 1,
+                              textAlign: "center",
+                              border: "1px solid rgba(0,0,0,0.12)",
+                            }}
+                          >
+                            {r.ngayHienThi}
+                          </TableCell>
+
+                          {/* CỘT XÓA */}
+                          <TableCell
+                            sx={{
+                              width: 40,
+                              textAlign: "center",
+                              border: "1px solid rgba(0,0,0,0.12)",
+                            }}
+                          >
+                            {hasData && (
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  setDeleteItem({
+                                    docId: r.docId,
+                                    hoVaTen: r.hoVaTen,
+                                  });
+                                  setOpenDeleteRow(true);
+                                }}
+                                sx={{
+                                  opacity: hoverRow === r.docId ? 1 : 0,
+                                  transition: "0.2s",
+                                  color: "error.main",
+                                }}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    });
                   })()}
                 </TableBody>
               </Table>

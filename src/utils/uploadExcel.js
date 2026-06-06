@@ -1,8 +1,10 @@
 import * as XLSX from "xlsx";
 import { doc, setDoc } from "firebase/firestore";
 
+/* ================== UPLOAD HỌC SINH ================== */
 export const uploadStudents = async ({
   file,
+  files,
   db,
   selectedClass,
   namHocKey,
@@ -12,65 +14,88 @@ export const uploadStudents = async ({
     throw new Error("namHocKey is undefined ❌");
   }
 
-  const data = await file.arrayBuffer();
-  const workbook = XLSX.read(data);
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const jsonData = XLSX.utils.sheet_to_json(sheet);
+  // file đơn hoặc thư mục
+  const fileList = files
+    ? Array.from(files)
+    : file
+      ? [file]
+      : [];
 
-  // 👉 Gom nhóm theo lớp
+  if (!fileList.length) return;
+
   const groupedByClass = {};
 
-  jsonData.forEach((item) => {
-    const ma =
-      item.maDinhDanh ||
-      item["MÃ ĐỊNH DANH"];
+  // ===== Đọc tất cả file =====
+  for (const f of fileList) {
+    const path = f.webkitRelativePath || f.name;
 
-    const ten =
-      item.hoVaTen ||
-      item["HỌ VÀ TÊN"];
+    // tên file => tên lớp nếu không có cột LỚP
+    const fileClass = path
+      .split("/")
+      .pop()
+      .replace(/\.[^/.]+$/, "")
+      .trim();
 
-    const lopRaw =
-      item.lop ||
-      item["LỚP"] ||
-      selectedClass;
+    const data = await f.arrayBuffer();
 
-    // ✅ FIX: đọc STT đa dạng header
-    const stt =
-      item.stt ||
-      item["STT"] ||
-      item["SỐ THỨ TỰ"] ||
-      item["SO THU TU"];
+    const workbook = XLSX.read(data);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-    if (ma && ten) {
-      if (!groupedByClass[lopRaw]) {
-        groupedByClass[lopRaw] = {};
+    jsonData.forEach((item) => {
+      const ma =
+        item.maDinhDanh ||
+        item["MÃ ĐỊNH DANH"];
+
+      const ten =
+        item.hoVaTen ||
+        item["HỌ VÀ TÊN"];
+
+      const lop =
+        item.lop ||
+        item["LỚP"] ||
+        selectedClass ||
+        fileClass;
+
+      const stt =
+        item.stt ||
+        item["STT"] ||
+        item["SỐ THỨ TỰ"] ||
+        item["SO THU TU"];
+
+      if (!ma || !ten) return;
+
+      if (!groupedByClass[lop]) {
+        groupedByClass[lop] = {};
       }
 
-      groupedByClass[lopRaw][ma] = {
-        hoVaTen: (ten || "").toUpperCase(), // ✅ IN HOA
-        lop: String(lopRaw),          // luôn là string "4.1"
-        stt: stt ? Number(stt) : null // ép số an toàn
+      groupedByClass[lop][String(ma).trim()] = {
+        hoVaTen: String(ten).trim().toUpperCase(),
+        lop: String(lop),
+        stt: stt ? Number(stt) : null,
       };
-    }
-  });
+    });
+  }
 
-  // 👉 Ghi từng lớp vào Firestore
+  // ===== Upload Firestore =====
   const classKeys = Object.keys(groupedByClass);
 
   for (let i = 0; i < classKeys.length; i++) {
     const lop = classKeys[i];
 
-    const classRef = doc(db, `DANHSACH_${namHocKey}`, lop);
-
-    await setDoc(classRef, groupedByClass[lop], { merge: true });
+    await setDoc(
+      doc(db, `DANHSACH_${namHocKey}`, lop),
+      groupedByClass[lop],
+      { merge: true }
+    );
 
     if (onProgress) {
-      onProgress(Math.round(((i + 1) / classKeys.length) * 100));
+      onProgress(
+        Math.round(((i + 1) / classKeys.length) * 100)
+      );
     }
   }
 };
-
-
 
 
 /* ================== UPLOAD PHÂN PHỐI CHƯƠNG TRÌNH ================== */
@@ -95,19 +120,25 @@ export const uploadPPCT = async ({
   );
 
   const khoiData = {};
-  const updatedKhoiSet = new Set(); // ⭐ QUAN TRỌNG
+  const updatedKhoiSet = new Set();
 
   for (let i = 0; i < validRows.length; i++) {
     const item = validRows[i];
+
     const khoi = `khoi${item["Khối"]}`;
     const khoiNamHoc = `${khoi}_${namHoc}`;
-    updatedKhoiSet.add(khoi); // ⭐ lưu khối
+
+    updatedKhoiSet.add(khoi);
 
     const tuanKey =
       "tuan_" +
-      String(item["Tuần"]).replace(/\s+/g, "").replace(/\+/g, "_");
+      String(item["Tuần"])
+        .replace(/\s+/g, "")
+        .replace(/\+/g, "_");
 
-    if (!khoiData[khoiNamHoc]) khoiData[khoiNamHoc] = {};
+    if (!khoiData[khoiNamHoc]) {
+      khoiData[khoiNamHoc] = {};
+    }
 
     khoiData[khoiNamHoc][tuanKey] = {
       chuDe: item["Chủ đề"],
@@ -117,15 +148,18 @@ export const uploadPPCT = async ({
     };
 
     if (onProgress) {
-      onProgress(Math.round(((i + 1) / validRows.length) * 100));
+      onProgress(
+        Math.round(((i + 1) / validRows.length) * 100)
+      );
     }
   }
 
   for (const khoiNamHoc in khoiData) {
-    await setDoc(doc(db, "PPCT", khoiNamHoc), khoiData[khoiNamHoc]);
+    await setDoc(
+      doc(db, "PPCT", khoiNamHoc),
+      khoiData[khoiNamHoc]
+    );
   }
 
-  // ✅ TRẢ VỀ CÁC KHỐI ĐÃ ĐƯỢC UPDATE
   return Array.from(updatedKhoiSet);
 };
-

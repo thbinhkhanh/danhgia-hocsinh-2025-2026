@@ -46,8 +46,6 @@ import StorageIcon from "@mui/icons-material/Storage";
 import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
 import CloseIcon from "@mui/icons-material/Close";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-
 import { useNavigate } from "react-router-dom";
 
 import { Tabs, Tab } from "@mui/material";
@@ -70,8 +68,6 @@ export default function DanhSachHS() {
   const [selectedKhoi, setSelectedKhoi] = useState("khoi4");
   const [showChuDe, setShowChuDe] = useState(false); // ✅ mặc định OFF
   const fileInputRef = React.useRef(null);
-  const folderInputRef = React.useRef(null);
-
   const [ppctReloadKey, setPpctReloadKey] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -288,114 +284,77 @@ export default function DanhSachHS() {
   };
 
   const handleFileChange = async (e) => {
-    const files = Array.from(e.target.files || []);
-
-    if (!files.length) return;
+    const file = e.target.files[0];
+    if (!file) return;
 
     setUploading(true);
     setUploadProgress(0);
 
     try {
-
       if (viewMode === "students") {
-
         if (!selectedClass) return;
 
-        for (let i = 0; i < files.length; i++) {
-
-          const file = files[i];
-
-          await uploadStudents({
-            file,
-            db,
-            selectedClass,
-            namHocKey,
-            onProgress: (p) => {
-              const global = Math.round(
-                ((i + p / 100) / files.length) * 100
-              );
-
-              setUploadProgress(global);
-            },
-          });
-
-        }
-
-        // reload danh sách học sinh
-        const classDocRef = doc(
+        // Upload file và cập nhật progress
+        await uploadStudents({
+          file,
           db,
-          `DANHSACH_${namHocKey}`,
-          selectedClass
-        );
+          selectedClass,
+          namHocKey,
+          onProgress: (p) => setUploadProgress(p),
+        });
 
+        // 🔄 Reload danh sách HS từ Firestore để UI cập nhật ngay
+        const classDocRef = doc(db, `DANHSACH_${namHocKey}`, selectedClass);
         const classSnap = await getDoc(classDocRef);
 
         if (classSnap.exists()) {
-
           const data = classSnap.data();
+          const studentList = Object.entries(data).map(([maDinhDanh, info], idx) => ({
+            maDinhDanh,
+            hoVaTen: info.hoVaTen,
+            stt: idx + 1,
+            ghiChu: "",
+          }));
 
-          const studentList = Object.entries(data).map(
-            ([maDinhDanh, info], idx) => ({
-              maDinhDanh,
-              hoVaTen: info.hoVaTen,
-              stt: idx + 1,
-              ghiChu: "",
-            })
-          );
-
-          setStudentData(prev => ({
+          setStudentData((prev) => ({
             ...prev,
             [selectedClass]: studentList,
           }));
 
           setStudents(studentList);
-
         } else {
-
-          setStudentData(prev => ({
+          setStudentData((prev) => ({
             ...prev,
             [selectedClass]: [],
           }));
-
           setStudents([]);
         }
 
       } else {
+        // ===== PPCT =====
+        const updatedKhoiList = await uploadPPCT({
+          file,
+          db,
+          namHoc: config?.namHoc,
+          onProgress: (p) => setUploadProgress(p),
+        });
 
-        // PPCT
-        for (let i = 0; i < files.length; i++) {
-
-          const file = files[i];
-
-          await uploadPPCT({
-            file,
-            db,
-            namHoc: config?.namHoc,
-            onProgress: (p) => {
-              const global = Math.round(
-                ((i + p / 100) / files.length) * 100
-              );
-
-              setUploadProgress(global);
-            },
-          });
+        if (updatedKhoiList.includes(selectedKhoi)) {
+          setPpctReloadKey((k) => k + 1);
         }
-
-        setPpctReloadKey(k => k + 1);
       }
 
+      // Hoàn tất
       setUploadProgress(100);
-
     } catch (err) {
       console.error(err);
     } finally {
-
       setTimeout(() => {
         setUploading(false);
         setUploadProgress(0);
-      }, 500);
+      }, 800);
 
-      e.target.value = null;
+      e.target.value = "";
     }
   };
 
@@ -636,23 +595,6 @@ export default function DanhSachHS() {
               <FileUploadIcon />
             </IconButton>
           </Tooltip>
-
-          {viewMode === "students" && (
-            <Tooltip title="Tải thư mục danh sách học sinh từ Excel">
-              <IconButton
-                onClick={() => folderInputRef.current?.click()}
-                sx={{
-                  color: "#2e7d32",
-                  bgcolor: "rgba(46,125,50,0.1)",
-                  "&:hover": {
-                    bgcolor: "rgba(46,125,50,0.2)",
-                  },
-                }}
-              >
-                <FolderOpenIcon />
-              </IconButton>
-            </Tooltip>
-          )}
 
           {viewMode === "students" && (
             <Tooltip title="Khởi tạo DATA năm mới">
@@ -1212,20 +1154,10 @@ export default function DanhSachHS() {
       </Paper>
 
       <input
-        ref={fileInputRef}
         type="file"
+        ref={fileInputRef}
         hidden
         accept=".xlsx"
-        multiple
-        onChange={handleFileChange}
-      />
-
-      <input
-        ref={folderInputRef}
-        type="file"
-        hidden
-        multiple
-        webkitdirectory=""
         onChange={handleFileChange}
       />
 
