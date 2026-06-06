@@ -35,6 +35,8 @@ import {
   writeBatch
 } from "firebase/firestore";
 
+import { useNavigate } from "react-router-dom";
+
 // ================= CONTEXT =================
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
@@ -46,6 +48,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import PrintIcon from "@mui/icons-material/Print";
 import EditIcon from "@mui/icons-material/Edit";
+import CloseIcon from "@mui/icons-material/Close";
 
 // ================= UTILS =================
 import { exportKTDK } from "../utils/exportKTDK";
@@ -58,6 +61,7 @@ import {
 } from "../utils/nhanXet.js";
 
 export default function NhapdiemKTDK() {
+  const navigate = useNavigate();
   const { classData, setClassData, studentData, setStudentData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
@@ -846,6 +850,25 @@ const fetchStudentsAndStatus = async (cls) => {
           position: "relative"
         }}
       >
+        <IconButton
+          onClick={() => navigate("/dashboard")}
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            color: "#64748b",
+            backgroundColor: "#f1f5f9",
+            "&:hover": {
+              backgroundColor: "#e2e8f0",
+              color: "#ef4444",
+            },
+            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+            zIndex: 10,
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+
         {/* 🟩 Nút Lưu, Tải Excel, In */}
         <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
           <Tooltip title="Lưu dữ liệu" arrow>
@@ -919,6 +942,8 @@ const fetchStudentsAndStatus = async (cls) => {
             </IconButton>
           </Tooltip>
         </Box>
+
+        
 
         {/* 🟨 Tiêu đề & Học kỳ hiện tại */}
         <Box sx={{ textAlign: "center", mt: 3, mb: 3 }}>

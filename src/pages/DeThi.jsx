@@ -36,8 +36,11 @@ import DeleteExamDialog from "../dialog/DeleteExamDialog";
 import OverwriteConfirmDialog from "../dialog/OverwriteConfirmDialog";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { createOnTapExam, normalizeOnTapId, checkDuplicateOnTap } from "../utils/createOnTapExam";
+import CloseIcon from "@mui/icons-material/Close";
+import { useNavigate } from "react-router-dom";
 
 export default function DeThi() {
+  const navigate = useNavigate();
   // ================= IMPORT CONTEXT =================
   const { config } = useContext(ConfigContext);
 
@@ -486,7 +489,7 @@ const confirmDeleteOnTap = async () => {
       <Card
         sx={{
           width: "100%",
-          maxWidth: 900,
+          maxWidth: 800,
           borderRadius: "10px",
           overflow: "hidden",
           boxShadow: "0 10px 35px rgba(0,0,0,0.08)",
@@ -495,8 +498,47 @@ const confirmDeleteOnTap = async () => {
       >
 
       {/* HEADER */}
-      <Box sx={{ px: 3, py: 1, background: "#1976d2", color: "#fff" }}>
-        <Typography sx={{ fontSize: 17, fontWeight: 700 }}>Quản lý đề kiểm tra</Typography>
+      <Box
+        sx={{
+          px: 3,
+          py: 1.5,
+          bgcolor: "#1976d2",
+          color: "#fff",
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+        >
+          <Typography
+            sx={{
+              fontSize: 17,
+              fontWeight: 700,
+              textTransform: "uppercase",
+            }}
+          >
+            QUẢN LÝ ĐỀ KIỂM TRA
+          </Typography>
+
+          <IconButton
+            onClick={() => navigate("/dashboard")}
+            sx={{
+              color: "#fff",
+              bgcolor: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              transition: "all .2s ease",
+
+              "&:hover": {
+                bgcolor: "#fff",
+                color: "#ef4444",
+                transform: "scale(1.05)",
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Stack>
       </Box>
 
       {/* FILTER */}

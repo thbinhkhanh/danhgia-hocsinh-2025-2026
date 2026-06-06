@@ -7,6 +7,7 @@ import {
   Stack,
   LinearProgress,
   Alert,
+  IconButton
 } from "@mui/material";
 
 import ExcelJS from "exceljs";
@@ -17,7 +18,11 @@ import { getDatabase } from "firebase/database";
 import { db } from "../firebase";
 import { useConfig } from "../context/ConfigContext";
 
+import CloseIcon from "@mui/icons-material/Close";
+import { useNavigate } from "react-router-dom";
+
 export default function XuatDanhGia() {
+  const navigate = useNavigate();
   const { config } = useConfig();
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
@@ -214,23 +219,46 @@ export default function XuatDanhGia() {
           bgcolor: "#fff",
         }}
       >
-
-        {/* ===== HEADER ===== */}
         <Box
           sx={{
             px: 3,
-            py: 1,
-            background: "#1976d2",
+            py: 1.5,
+            bgcolor: "#1976d2",
             color: "#fff",
           }}
         >
-          <Typography sx={{ fontSize: 18, fontWeight: 700 }}>
-            Xuất kết quả đánh giá
-          </Typography>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Typography
+              sx={{
+                fontSize: 18,
+                fontWeight: 700,
+              }}
+            >
+              Xuất kết quả đánh giá
+            </Typography>
 
-          {/*<Typography sx={{ fontSize: 12, opacity: 0.9 }}>
-            {termText}
-          </Typography>*/}
+            <IconButton
+              onClick={() => navigate("/dashboard")}
+              sx={{
+                color: "#fff",
+                bgcolor: "rgba(255,255,255,0.12)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                transition: "all .2s ease",
+
+                "&:hover": {
+                  bgcolor: "#fff",
+                  color: "#ef4444",
+                  transform: "scale(1.05)",
+                },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
         </Box>
 
         {/* ===== CONTENT ===== */}

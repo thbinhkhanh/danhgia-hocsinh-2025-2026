@@ -14,7 +14,6 @@ import {
   Snackbar,
   Alert,
   Divider,
-  Card
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
 import { collection, getDocs } from "firebase/firestore";
@@ -22,7 +21,7 @@ import { db } from "../firebase";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
-export default function BackupPage({ onClose, config }) {
+export default function BackupPage({ open, onClose, config }) {
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   const BACKUP_KEYS = [
@@ -335,363 +334,354 @@ export default function BackupPage({ onClose, config }) {
 
 
     return (
-  <Box
-    sx={{
-      minHeight: "100vh",
-      bgcolor: "#e3f2fd",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "flex-start",
-      //pt: 3,
-    }}
-  >
-    {/* ===== CARD WRAPPER 900px ===== */}
-    <Card
-      elevation={6}
-      sx={{
-        width: "100%",
-        maxWidth: 900,
-        borderRadius: 3,
-        overflow: "hidden",
-      }}
-    >
-      {/* ===== HEADER ===== */}
-      <Box
-        sx={{
-          px: 3,
-          py: 1.4,
-          background: "#1976d2",
-          color: "#fff",
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: "hidden",
+            bgcolor: "#f8fafc",
+          },
         }}
       >
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-        >
-          <Typography sx={{ fontSize: 17, fontWeight: 700 }}>
-            SAO LƯU DỮ LIỆU
-          </Typography>
-
-          <IconButton
-            onClick={onClose}
-            sx={{
-              color: "#fff",
-              bgcolor: "rgba(255,255,255,0.12)",
-              border: "1px solid rgba(255,255,255,0.25)",
-              "&:hover": {
-                bgcolor: "#fff",
-                color: "#ef4444",
-              },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </Stack>
-      </Box>
-
-      {/* ===== CONTENT ===== */}
-      <Box sx={{ bgcolor: "#f8fafc", p: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2.2}>
-          
-          {/* ===== HỌC SINH ===== */}
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              bgcolor: "#fff",
-              border: "1px solid #e2e8f0",
-              flex: 1,
-              width: { xs: "100%", md: "auto" },
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isGroupChecked(GROUPS.HOCSINH)}
-                  indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
-                  onChange={() => toggleGroup(GROUPS.HOCSINH)}
-                />
-              }
-              label={
-                <Typography fontWeight={700}>
-                  Học sinh
-                </Typography>
-              }
-            />
-
-            <Box
-              sx={{
-                ml: 3,
-                mt: 1,
-                display: "flex",
-                flexDirection: "column", // ⭐ mobile luôn dọc
-                gap: 0.5,
-              }}
-            >
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions[`DANHSACH_${namHocKey}`]}
-                    onChange={() =>
-                      toggleOption(`DANHSACH_${namHocKey}`)
-                    }
-                  />
-                }
-                label="Danh sách lớp"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions[`DATA_${namHocKey}`]}
-                    onChange={() =>
-                      toggleOption(`DATA_${namHocKey}`)
-                    }
-                  />
-                }
-                label="Kết quả KTĐK"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions[`DATA_ONTAP_${namHocKey}`]}
-                    onChange={() =>
-                      toggleOption(`DATA_ONTAP_${namHocKey}`)
-                    }
-                  />
-                }
-                label="Kết quả ôn tập"
-              />
-            </Box>
-          </Box>
-
-          {/* ===== ĐỀ KIỂM TRA ===== */}
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              bgcolor: "#fff",
-              border: "1px solid #e2e8f0",
-              flex: 1,
-              width: { xs: "100%", md: "auto" },
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isGroupChecked(GROUPS.DETHI)}
-                  indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
-                  onChange={() => toggleGroup(GROUPS.DETHI)}
-                />
-              }
-              label={<Typography fontWeight={700}>Đề kiểm tra</Typography>}
-            />
-
-            <Box
-              sx={{
-                ml: 3,
-                mt: 1,
-                display: "flex",
-                flexDirection: "column", // ⭐ mobile luôn dọc
-                gap: 0.5,
-              }}
-            >
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["NGANHANG_DE"]}
-                    onChange={() => toggleOption("NGANHANG_DE")}
-                  />
-                }
-                label="Ngân hàng đề"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["DETHI"]}
-                    onChange={() => toggleOption("DETHI")}
-                  />
-                }
-                label="Đề thi"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["BAITAP_TUAN"]}
-                    onChange={() => toggleOption("BAITAP_TUAN")}
-                  />
-                }
-                label="Bài tập tuần"
-              />
-            </Box>
-          </Box>
-
-          {/* ===== LUYỆN TẬP ===== */}
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              bgcolor: "#fff",
-              border: "1px solid #e2e8f0",
-              flex: 1,
-              width: { xs: "100%", md: "auto" },
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isGroupChecked(GROUPS.TRACNGHIEM)}
-                  indeterminate={isGroupIndeterminate(GROUPS.TRACNGHIEM)}
-                  onChange={() => toggleGroup(GROUPS.TRACNGHIEM)}
-                />
-              }
-              label={
-                <Typography fontWeight={700}>
-                  Luyện tập tin học
-                </Typography>
-              }
-            />
-
-            <Box
-              sx={{
-                ml: 3,
-                mt: 1,
-                display: "flex",
-                flexDirection: "column", // ⭐ mobile luôn dọc
-                gap: 0.5,
-              }}
-            >
-              {/* ===== CTST ===== */}
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["TRACNGHIEM3"]}
-                    onChange={() => toggleOption("TRACNGHIEM3")}
-                  />
-                }
-                label="Lớp 3 (CTST)"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["TRACNGHIEM4"]}
-                    onChange={() => toggleOption("TRACNGHIEM4")}
-                  />
-                }
-                label="Lớp 4 (CTST)"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["TRACNGHIEM5"]}
-                    onChange={() => toggleOption("TRACNGHIEM5")}
-                  />
-                }
-                label="Lớp 5 (CTST)"
-              />
-
-              {/* ===== KNTT ===== */}
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["TRACNGHIEM3_New"]}
-                    onChange={() => toggleOption("TRACNGHIEM3_New")}
-                  />
-                }
-                label="Lớp 3 (KNTT)"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["TRACNGHIEM4_New"]}
-                    onChange={() => toggleOption("TRACNGHIEM4_New")}
-                  />
-                }
-                label="Lớp 4 (KNTT)"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={backupOptions["TRACNGHIEM5_New"]}
-                    onChange={() => toggleOption("TRACNGHIEM5_New")}
-                  />
-                }
-                label="Lớp 5 (KNTT)"
-              />
-            </Box>
-          </Box>
-        </Stack>
-      </Box>
-
-      {/* ===== PROGRESS ===== */}
-      {loading && (
+        {/* ===== HEADER (style mới) ===== */}
         <Box
           sx={{
             px: 3,
-            pb: 2,
-            mt: 2, // ⭐ thêm ở đây
-            display: "flex",
-            justifyContent: "center",
+            py: 1.5,
+            background: "#1976d2",
+            color: "#fff",
           }}
         >
-          <Box sx={{ width: { xs: "75%", md: "50%" } }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: 17,
+                  fontWeight: 700,
+                }}
+              >
+                SAO LƯU DỮ LIỆU
+              </Typography>
+            </Box>
+
+            <IconButton
+              onClick={onClose}
+              sx={{
+                color: "#fff",
+                bgcolor: "rgba(255,255,255,0.12)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                transition: "all .2s ease",
+
+                "&:hover": {
+                  bgcolor: "#fff",
+                  color: "#ef4444",
+                  transform: "scale(1.05)",
+                },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </Box>
+
+        {/* ===== CONTENT ===== */}
+        <DialogContent sx={{ px: 3, py: 2.5 }}>
+          <Stack spacing={2.2}>
+
+            {/* ===== HỌC SINH ===== */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+              }}
+            >
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.HOCSINH)}
+                    indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
+                    onChange={() => toggleGroup(GROUPS.HOCSINH)}
+                  />
+                }
+                label={
+                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                    Học sinh
+                  </Typography>
+                }
+              />
+
+              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions[`DANHSACH_${namHocKey}`]}
+                      onChange={() => toggleOption(`DANHSACH_${namHocKey}`)}
+                    />
+                  }
+                  label="Danh sách lớp"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions[`DATA_${namHocKey}`]}
+                      onChange={() => toggleOption(`DATA_${namHocKey}`)}
+                    />
+                  }
+                  label="Kết quả KTĐK"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions[`DATA_ONTAP_${namHocKey}`]}
+                      onChange={() => toggleOption(`DATA_ONTAP_${namHocKey}`)}
+                    />
+                  }
+                  label="Kết quả ôn tập"
+                />
+              </Box>
+            </Box>
+
+            {/* ===== ĐỀ KIỂM TRA ===== */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+              }}
+            >
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.DETHI)}
+                    indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
+                    onChange={() => toggleGroup(GROUPS.DETHI)}
+                  />
+                }
+                label={
+                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                    Đề kiểm tra
+                  </Typography>
+                }
+              />
+
+              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["NGANHANG_DE"]}
+                      onChange={() => toggleOption("NGANHANG_DE")}
+                    />
+                  }
+                  label="Ngân hàng đề KTĐK"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["DETHI"]}
+                      onChange={() => toggleOption("DETHI")}
+                    />
+                  }
+                  label="Đề chọn thi"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["BAITAP_TUAN"]}
+                      onChange={() => toggleOption("BAITAP_TUAN")}
+                    />
+                  }
+                  label="Bài tập tuần"
+                />
+              </Box>
+            </Box>
+
+            {/* ===== LUYỆN TẬP ===== */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+              }}
+            >
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.TRACNGHIEM)}
+                    indeterminate={isGroupIndeterminate(GROUPS.TRACNGHIEM)}
+                    onChange={() => toggleGroup(GROUPS.TRACNGHIEM)}
+                  />
+                }
+                label={
+                  <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+                    Luyện tập tin học
+                  </Typography>
+                }
+              />
+
+              <Box sx={{ ml: 3, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["TRACNGHIEM3"]}
+                      onChange={() => toggleOption("TRACNGHIEM3")}
+                    />
+                  }
+                  label="Lớp 3 (CTST)"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["TRACNGHIEM4"]}
+                      onChange={() => toggleOption("TRACNGHIEM4")}
+                    />
+                  }
+                  label="Lớp 4 (CTST)"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["TRACNGHIEM5"]}
+                      onChange={() => toggleOption("TRACNGHIEM5")}
+                    />
+                  }
+                  label="Lớp 5 (CTST)"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["TRACNGHIEM3_New"]}
+                      onChange={() => toggleOption("TRACNGHIEM3_New")}
+                    />
+                  }
+                  label="Lớp 3 (KNTT)"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["TRACNGHIEM4_New"]}
+                      onChange={() => toggleOption("TRACNGHIEM4_New")}
+                    />
+                  }
+                  label="Lớp 4 (KNTT)"
+                />
+
+                <FormControlLabel
+                  sx={{ ml: 0 }}
+                  control={
+                    <Checkbox
+                      checked={backupOptions["TRACNGHIEM5_New"]}
+                      onChange={() => toggleOption("TRACNGHIEM5_New")}
+                    />
+                  }
+                  label="Lớp 5 (KNTT)"
+                />
+              </Box>
+            </Box>
+
+          </Stack>
+        </DialogContent>
+
+        {/* ===== PROGRESS ===== */}
+        {loading && (
+          <Box sx={{ px: 3, pb: 2 }}>
             <LinearProgress
               variant="determinate"
               value={progress}
-              sx={{ height: 8, borderRadius: 10 }}
+              sx={{
+                height: 8,
+                borderRadius: 10,
+              }}
             />
-            <Typography sx={{ mt: 1, textAlign: "center", fontSize: 13 }}>
+            <Typography
+              sx={{
+                mt: 1,
+                textAlign: "center",
+                fontSize: 13,
+                color: "#64748b",
+              }}
+            >
               Đang sao lưu... {progress}%
             </Typography>
           </Box>
-        </Box>
-      )}
+        )}
 
-      {/* ===== ACTION ===== */}
-      <Box
-        sx={{
-          px: 3,
-          py: 2,
-          borderTop: "1px solid #e2e8f0",
-          bgcolor: "#fff",
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 1,
-        }}
-      >
-        <Button onClick={onClose}>Hủy</Button>
-
-        <Button
-          variant="contained"
-          startIcon={<BackupIcon />}
-          onClick={handleBackup}
-          disabled={loading}
+        {/* ===== ACTION ===== */}
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            borderTop: "1px solid #e2e8f0",
+            bgcolor: "#fff",
+          }}
         >
-          Sao lưu
-        </Button>
-      </Box>
+          <Button onClick={onClose}>Hủy</Button>
 
-      {/* ===== SNACKBAR ===== */}
+          <Button
+            variant="contained"
+            startIcon={<BackupIcon />}
+            onClick={handleBackup}
+            disabled={loading}
+            sx={{
+              borderRadius: 2,
+              fontWeight: 600,
+              textTransform: "none",
+              boxShadow: "none",
+              "&:hover": { boxShadow: "none" },
+            }}
+          >
+            Sao lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* SNACKBAR */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
-        onClose={() =>
-          setSnackbar((s) => ({ ...s, open: false }))
-        }
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
       >
         <Alert severity={snackbar.severity}>
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Card>
-  </Box>
-);
+    </>
+  );
 }

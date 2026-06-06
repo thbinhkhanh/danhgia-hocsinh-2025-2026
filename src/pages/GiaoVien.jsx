@@ -17,6 +17,7 @@ import {
   Stack,
   Chip,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
@@ -31,6 +32,7 @@ import StatusResultDialogGV from "../dialog/StatusResultDialogGV";
 import ConfirmDeleteCoreDialog from "../dialog/ConfirmDeleteCoreDialog";
 
 export default function GiaoVien() {
+  const navigate = useNavigate();
   const { studentData, setStudentData, setClassData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
@@ -481,6 +483,24 @@ const handleStatusChange = (maDinhDanh, status) => {
         position: "relative", // cần để đặt icon tuyệt đối
       }}
     >
+      <IconButton
+        onClick={() => navigate("/dashboard")}
+        sx={{
+          position: "absolute",
+          top: 12,
+          right: 12,
+          color: "#64748b",
+          backgroundColor: "#f1f5f9",
+          "&:hover": {
+            backgroundColor: "#e2e8f0",
+            color: "#ef4444",
+          },
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          zIndex: 10,
+        }}
+      >
+        <CloseIcon />
+      </IconButton>
       {/* Icon Xóa ở góc trên/trái */}
       <IconButton
         size="small"

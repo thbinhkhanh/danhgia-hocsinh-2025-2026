@@ -57,7 +57,6 @@ import CreateDataConfirmDialog from "../dialog/CreateDataConfirmDialog";
 import BackupPage from "./BackupPage";
 import RestorePage from "./RestorePage";
 
-
 // ================= STATE =================
 export default function QuanTri() {
   // ================= CONTEXT =================
@@ -67,9 +66,6 @@ export default function QuanTri() {
 
   // ================= ROUTER =================
   const navigate = useNavigate();
-  const [activePage, setActivePage] = useState("admin"); 
-// "admin" | "backup"
-
 
   // ================= DIALOG STATE =================
   const [openBackupDialog, setOpenBackupDialog] = useState(false);
@@ -273,18 +269,13 @@ export default function QuanTri() {
 
   return (
   <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
-    {activePage === "backup" ? (
-      <BackupPage onClose={() => setActivePage("admin")} />
-    ) : activePage === "restore" ? (
-      <RestorePage onClose={() => setActivePage("admin")} />
-    ) : (
-      <Card
+    <Card
       elevation={6}
       sx={{
         borderRadius: 3,
         maxWidth: 900,
         mx: "auto",
-        mt: 0,
+        mt: 3,
         overflow: "hidden",
       }}
     >
@@ -597,7 +588,9 @@ export default function QuanTri() {
                 fullWidth
                 variant="contained"
                 startIcon={<BackupIcon />}
-                onClick={() => setActivePage("backup")}
+                onClick={() =>
+                  setOpenBackupDialog(true)
+                }
                 sx={{
                   height: 46,
                   textTransform: "none",
@@ -614,7 +607,9 @@ export default function QuanTri() {
                 variant="outlined"
                 color="secondary"
                 startIcon={<RestoreIcon />}
-                onClick={() => setActivePage("restore")}
+                onClick={() =>
+                  setOpenRestoreDialog(true)
+                }
                 sx={{
                   height: 46,
                   textTransform: "none",
@@ -799,7 +794,19 @@ export default function QuanTri() {
       </Snackbar>
 
       {/* ===== BACKUP / RESTORE ===== */}
-      
+      <BackupPage
+        open={openBackupDialog}
+        onClose={() =>
+          setOpenBackupDialog(false)
+        }
+      />
+
+      <RestorePage
+        open={openRestoreDialog}
+        onClose={() =>
+          setOpenRestoreDialog(false)
+        }
+      />
 
       {/* ===== CREATE DATA ===== */}
       <CreateDataConfirmDialog
@@ -809,9 +816,7 @@ export default function QuanTri() {
         }
         configData={config}
       />
-      </Card>
-    )}
-
+    </Card>
   </Box>
 );
 

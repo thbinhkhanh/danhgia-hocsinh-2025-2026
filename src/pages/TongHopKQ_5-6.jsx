@@ -26,14 +26,10 @@ import {
   DialogActions,
 } from "@mui/material";
 
-import { useNavigate } from "react-router-dom";
 // ================= ICONS =================
 import { Delete, FileDownload } from "@mui/icons-material";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
-
-import DeleteDataClassesDialog from "../dialog/DeleteDataClassesDialog";
-import DeleteStudentConfirmDialog from "../dialog/DeleteStudentConfirmDialog";
 
 // ================= FIREBASE =================
 import { db } from "../firebase";
@@ -51,11 +47,8 @@ import { ConfigContext } from "../context/ConfigContext";
 
 // ================= UTILS =================
 import { exportKetQuaExcel } from "../utils/exportKetQuaExcel";
-import { syncONTAPToDATA_ONTAP } from "../utils/syncONTAPToDATA_ONTAP";
-import SyncIcon from "@mui/icons-material/Sync";
 
 export default function TongHopKQ() {
-  const navigate = useNavigate();
   // ================= CONTEXT =================
   const { config } = useContext(ConfigContext);
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
@@ -83,12 +76,7 @@ export default function TongHopKQ() {
   const [dialogSeverity, setDialogSeverity] = useState("info");
 
   // ================= VIEW MODE =================
-  const [ExamType, setExamType] = useState("ktdk");
-
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [hoverRow, setHoverRow] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [openDeleteRow, setOpenDeleteRow] = useState(false);
+  const [kieuHienThi, setKieuHienThi] = useState("ktdk");
 
   const circleIconStyle = {
     bgcolor: "white",
@@ -137,17 +125,15 @@ export default function TongHopKQ() {
       const hocKyCode = hocKyMap[config.hocKy];
 
       // ================== ÔN TẬP ==================
-      if (ExamType === "ontap") {
+      if (kieuHienThi === "ontap") {
         const subjectKey =
           selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
-        
-        const classKey = selectedLop.replace(".", "_"); // ⭐ FIX 4.1 → 4_1
 
         const colRef = collection(
           db,
           `DATA_ONTAP_${namHocKey}`,
-          classKey,
-          "HOCSINH"
+          config.hocKy,
+          selectedLop
         );
 
         const snapshot = await getDocs(colRef);
@@ -165,11 +151,13 @@ export default function TongHopKQ() {
           const d = docSnap.data();
 
           // ✅ HỖ TRỢ CẢ DATA MỚI + CŨ
-          const subjectData = d?.subjects?.[subjectKey] || {};
+          const subjectData =
+            d?.subjects?.[subjectKey] || d?.[subjectKey] || {};
+
           return {
             docId: docSnap.id,
             hoVaTen: d.hoVaTen || "",
-            diem: subjectData.lyThuyet ?? "",
+            diem: subjectData.diem ?? "",
             soLanLam: subjectData.soLanLam ?? "",
             ngayHienThi: subjectData.ngayLam ?? "",
             thoiGianLamBai: subjectData.thoiGianLamBai ?? "",
@@ -269,214 +257,9 @@ export default function TongHopKQ() {
   useEffect(() => {
     if (!config?.hocKy) return;
     loadResults();
-  }, [selectedLop, selectedMon, config?.hocKy, ExamType]);
+  }, [selectedLop, selectedMon, config?.hocKy, kieuHienThi]);
 
-  //Xóa nhiều lớp
-  const handleDeleteMultipleClasses = async (selectedClasses) => {
-  try {
-    console.log("🚀 [MULTI DELETE START]");
-    console.log("📌 selectedClasses:", selectedClasses);
-    console.log("📌 ExamType:", ExamType);
-    console.log("📌 selectedMon:", selectedMon);
-    console.log("📌 hocKy:", config?.hocKy);
 
-    const CHUNK_SIZE = 450;
-
-    setResults([]);
-
-    const subjectKey =
-      selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
-
-    const hocKyCode = hocKyMap[config.hocKy];
-
-    console.log("📌 subjectKey:", subjectKey);
-    console.log("📌 hocKyCode:", hocKyCode);
-
-    if (!hocKyCode) {
-      console.log("❌ MISSING hocKyCode → STOP");
-      return;
-    }
-
-    // ================== ÔN TẬP ==================
-    if (ExamType === "ontap") {
-      console.log("🚀 [ONTAP LOAD START]");
-      console.log("📌 selectedLop:", selectedLop);
-      console.log("📌 selectedMon:", selectedMon);
-      console.log("📌 namHocKey:", namHocKey);
-
-      const subjectKey =
-        selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
-
-      console.log("📌 subjectKey:", subjectKey);
-
-      const path = `DATA_ONTAP_${namHocKey}/${selectedLop}/HOCSINH`;
-      console.log("📌 Firestore path:", path);
-
-      const colRef = collection(
-        db,
-        `DATA_ONTAP_${namHocKey}`,
-        selectedLop,
-        "HOCSINH"
-      );
-
-      const snapshot = await getDocs(colRef);
-
-      console.log("📊 snapshot empty:", snapshot.empty);
-      console.log("📊 snapshot size:", snapshot.size);
-
-      if (snapshot.empty) {
-        console.warn("⚠️ EMPTY SNAPSHOT - kiểm tra sai path hoặc chưa sync dữ liệu");
-
-        setResults([]);
-        setSnackbarSeverity("warning");
-        setSnackbarMessage(`Không có dữ liệu ôn tập lớp ${selectedLop}`);
-        setSnackbarOpen(true);
-        setLoading(false);
-        return;
-      }
-
-      snapshot.docs.forEach((docSnap, index) => {
-        const d = docSnap.data();
-
-        console.log(`\n👤 DOC ${index + 1}:`, docSnap.id);
-        console.log("📦 RAW DATA:", d);
-
-        console.log("📦 subjects:", d?.subjects);
-
-        console.log("📌 TinHoc:", d?.subjects?.TinHoc);
-        console.log("📌 CongNghe:", d?.subjects?.CongNghe);
-
-        console.log("🎯 subjectKey data:", d?.subjects?.[subjectKey]);
-      });
-
-      const data = snapshot.docs.map(docSnap => {
-        const d = docSnap.data();
-        const subjectData = d?.subjects?.[subjectKey] || {};
-
-    console.log("➡️ mapping doc:", docSnap.id);
-    console.log("➡️ subjectData:", subjectData);
-
-    return {
-      docId: docSnap.id,
-      hoVaTen: d.hoVaTen || "",
-      diem: subjectData.lyThuyet ?? "",
-      soLanLam: subjectData.soLanLam ?? "",
-      ngayHienThi: subjectData.ngayLam ?? "",
-      thoiGianLamBai: subjectData.thoiGianLamBai ?? "",
-    };
-  });
-
-  console.log("✅ FINAL DATA:", data);
-
-  setResults(data);
-  setLoading(false);
-  return;
-}
-
-    // =====================
-    // KTĐK
-    // =====================
-    console.log("📘 MODE: KTĐK");
-
-    await Promise.all(
-      selectedClasses.map(async (lop, index) => {
-        console.log(`\n====================`);
-        console.log(`📌 [KTĐK] Class ${index + 1}:`, lop);
-
-        const classKey = lop.replace(".", "_");
-
-        console.log("📌 classKey:", classKey);
-
-        const hsRef = collection(
-          db,
-          `DATA_${namHocKey}`,
-          classKey,
-          "HOCSINH"
-        );
-
-        const snapshot = await getDocs(hsRef);
-
-        console.log(`📊 [KTĐK] students found (${lop}):`, snapshot.docs.length);
-
-        if (snapshot.empty) {
-          console.log(`⚠️ EMPTY CLASS: ${lop}`);
-          return;
-        }
-
-        const updatesList = snapshot.docs
-          .map((docSnap, idx) => {
-            const studentId = docSnap.id;
-            const studentData = docSnap.data();
-
-            console.log(`\n👤 Student ${idx + 1}:`, studentId);
-
-            const ktdkPath =
-              studentData?.[subjectKey]?.ktdk?.[hocKyCode];
-
-            console.log("📌 ktdkPath exists:", !!ktdkPath);
-
-            if (!ktdkPath) {
-              console.log("⛔ SKIP:", studentId);
-              return null;
-            }
-
-            const updates = {
-              [`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`]: null,
-              [`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`]: null,
-              [`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`]: null,
-              [`${subjectKey}.ktdk.${hocKyCode}.thucHanh`]: null,
-              [`${subjectKey}.ktdk.${hocKyCode}.tongCong`]: null,
-            };
-
-            console.log("✏️ UPDATE FIELDS:", updates);
-
-            return {
-              docRef: doc(
-                db,
-                `DATA_${namHocKey}`,
-                classKey,
-                "HOCSINH",
-                studentId
-              ),
-              updates,
-            };
-          })
-          .filter(Boolean);
-
-        console.log("📦 updatesList size:", updatesList.length);
-
-        if (updatesList.length === 0) {
-          console.log("⚠️ NOTHING TO UPDATE IN CLASS:", lop);
-          return;
-        }
-
-        for (let i = 0; i < updatesList.length; i += CHUNK_SIZE) {
-          const batch = writeBatch(db);
-
-          const chunk = updatesList.slice(i, i + CHUNK_SIZE);
-
-          console.log(`🔥 [KTĐK] committing batch:`, {
-            lop,
-            start: i,
-            size: chunk.length,
-          });
-
-          chunk.forEach(item => {
-            console.log("📝 UPDATE DOC:", item.docRef.path);
-            batch.update(item.docRef, item.updates);
-          });
-
-          await batch.commit();
-          console.log(`✅ [KTĐK] batch committed for ${lop}`);
-        }
-      })
-    );
-
-    console.log("🏁 KTĐK DONE");
-  } catch (err) {
-    console.error("❌ MULTI DELETE ERROR:", err);
-  }
-};
   // Xóa toàn bộ lớp
   const handleDeleteClass = () => {
     openConfirmDialog(
@@ -502,7 +285,7 @@ export default function TongHopKQ() {
           // 2️⃣ Xóa Firestore nền (không block UI)
 
           // ===== ÔN TẬP =====
-          if (ExamType === "ontap") {
+          if (kieuHienThi === "ontap") {
             const ontapRef = collection(
               db,
               `DATA_ONTAP_${namHocKey}`,
@@ -543,7 +326,7 @@ export default function TongHopKQ() {
               const studentData = docSnap.data();
               const updates = {};
 
-              if (ExamType === "ktdk") {
+              if (kieuHienThi === "ktdk") {
                 const ktdkData = studentData?.[subjectKey]?.ktdk || {};
 
                 hocKyMap.forEach(hocKyCode => {
@@ -604,7 +387,7 @@ export default function TongHopKQ() {
     openConfirmDialog(
       "Xóa toàn trường",
       `⚠️ Bạn có chắc muốn xóa kết quả ${
-        ExamType === "ktdk" ? "KIỂM TRA ĐỊNH KỲ" : "ÔN TẬP"
+        kieuHienThi === "ktdk" ? "KIỂM TRA ĐỊNH KỲ" : "ÔN TẬP"
       } của toàn trường?\nHành động này không thể hoàn tác!`,
       async () => {
         try {
@@ -613,7 +396,7 @@ export default function TongHopKQ() {
           const CHUNK_SIZE = 450;
 
           // ===== ÔN TẬP =====
-          if (ExamType === "ontap") {
+          if (kieuHienThi === "ontap") {
             await Promise.all(
               classesList.map(async (lop) => {
                 const ontapRef = collection(
@@ -679,7 +462,7 @@ export default function TongHopKQ() {
                   const studentData = docSnap.data();
                   const updates = {};
 
-                  if (ExamType === "ktdk") {
+                  if (kieuHienThi === "ktdk") {
                     const ktdkData = studentData?.[subjectKey]?.ktdk || {};
 
                     hocKyList.forEach(hocKyCode => {
@@ -820,69 +603,6 @@ export default function TongHopKQ() {
     },
   };
 
-  const handleDeleteRow = async (student) => {
-    if (!student) return;
-
-    try {
-      const classKey = selectedLop.replace(".", "_");
-
-      const batchDeletes = [];
-
-      // ======================
-      // 1. KTĐK
-      // ======================
-      if (ExamType === "ktdk") {
-        const docRef = doc(
-          db,
-          `DATA_${namHocKey}`,
-          classKey,
-          "HOCSINH",
-          student.docId
-        );
-
-        batchDeletes.push(deleteDoc(docRef));
-      }
-
-      // ======================
-      // 2. ÔN TẬP
-      // ======================
-      if (ExamType === "ontap") {
-        const docRef = doc(
-          db,
-          `DATA_ONTAP_${namHocKey}`,
-          classKey,
-          "HOCSINH",
-          student.docId
-        );
-
-        batchDeletes.push(deleteDoc(docRef));
-      }
-
-      await Promise.all(batchDeletes);
-
-      // update UI
-      setResults(prev =>
-        prev
-          .filter(r => r.docId !== student.docId)
-          .map((r, i) => ({ ...r, stt: i + 1 }))
-      );
-
-      setOpenDeleteRow(false);
-      setDeleteItem(null);
-
-      setSnackbarSeverity("success");
-      setSnackbarMessage("🗑️ Đã xóa học sinh!");
-      setSnackbarOpen(true);
-
-    } catch (err) {
-      console.error(err);
-
-      setSnackbarSeverity("error");
-      setSnackbarMessage("❌ Xóa thất bại!");
-      setSnackbarOpen(true);
-    }
-  };
-
   return (
     <Box sx={{ minHeight: "100vh", background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)", pt: 3, px: 2, display: "flex", justifyContent: "center" }}>
       <Paper
@@ -890,29 +610,13 @@ export default function TongHopKQ() {
           p: 4,
           borderRadius: 3,
           width: "100%",
-          maxWidth: 800,
+          maxWidth: 700,
           bgcolor: "white",
           position: "relative", // ⭐ BẮT BUỘC
         }}
         elevation={6}
       >
-        <IconButton
-          onClick={() => navigate("/dashboard")}
-          sx={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            color: "#64748b",
-            backgroundColor: "#f1f5f9",
-            "&:hover": {
-              backgroundColor: "#e2e8f0",
-              color: "#ef4444",
-            },
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
+
         <Box
           sx={{
             position: "relative",
@@ -936,7 +640,8 @@ export default function TongHopKQ() {
 
               <Tooltip title="Xóa lớp">
                 <IconButton
-                  onClick={() => setDeleteDialogOpen(true)}
+                  onClick={handleDeleteClass}
+                  disabled={deleting}
                   sx={{
                     ...circleIconStyle,
                     color: "error.main",
@@ -950,32 +655,21 @@ export default function TongHopKQ() {
                 </IconButton>
               </Tooltip>
 
-              {/*<Tooltip title="Đồng bộ ONTAP → DATA_ONTAP">
+              <Tooltip title="Xóa toàn trường">
                 <IconButton
-                  onClick={async () => {
-                    try {
-                      await syncONTAPToDATA_ONTAP({
-                        db,
-                      });
-
-                      alert("✅ Đồng bộ thành công!");
-                    } catch (err) {
-                      console.error(err);
-                      alert("❌ Đồng bộ thất bại!");
-                    }
-                  }}
+                  onClick={handleDeleteSchool}
                   sx={{
                     ...circleIconStyle,
-                    color: "#1976d2",
+                    color: "#d32f2f",
                     "&:hover": {
-                      bgcolor: "#1976d2",
+                      bgcolor: "#d32f2f",
                       color: "white",
                     },
                   }}
                 >
-                  <SyncIcon />
+                  <DeleteForeverIcon />
                 </IconButton>
-              </Tooltip>*/}
+              </Tooltip>
             </Stack>
           </Box>
 
@@ -1027,8 +721,8 @@ export default function TongHopKQ() {
           <TextField
             select
             label="Loại"
-            value={ExamType}
-            onChange={(e) => setExamType(e.target.value)}
+            value={kieuHienThi}
+            onChange={(e) => setKieuHienThi(e.target.value)}
             size="small"
             sx={{ width: 120 }}
           >
@@ -1050,23 +744,13 @@ export default function TongHopKQ() {
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 200 }}>Họ và tên</TableCell>
 
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 70 }}>Điểm</TableCell>
-                    {ExamType === "ontap" && ( // ⭐ thêm điều kiện
+                    {kieuHienThi === "ontap" && ( // ⭐ thêm điều kiện
                       <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 80 }}>
                         Số lần
                       </TableCell>
                     )}
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 70 }}>Thời gian</TableCell>
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 100 }}>Ngày</TableCell>
-                    <TableCell
-                      sx={{
-                        bgcolor: "#1976d2",
-                        color: "#fff",
-                        textAlign: "center",
-                        width: 40,
-                      }}
-                    >
-                      Xóa
-                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1085,41 +769,30 @@ export default function TongHopKQ() {
                             stt: i + 1,
                             hoVaTen: "",
                             diem: "",
-                            soLanLam: "",
                             thoiGianLamBai: "",
                             ngayHienThi: "",
                           }));
 
                     return displayData.map(r => (
-                      <TableRow
-                        key={r.docId}
-                        onMouseEnter={() => setHoverRow(r.docId)}
-                        onMouseLeave={() => setHoverRow(null)}
-                        sx={{
-                          cursor: "pointer",
-                          transition: "background-color 0.2s",
-                          backgroundColor:
-                            hoverRow === r.docId ? "rgba(0,0,0,0.04)" : "transparent",
-                        }}
-                      >
+                      <TableRow key={r.stt}>
                         <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
                           {r.stt}
                         </TableCell>
 
                         <TableCell sx={{ px: 1, textAlign: "left", border: "1px solid rgba(0,0,0,0.12)" }}>
-                          {r.hoVaTen?.toUpperCase()}
+                          {r.hoVaTen}
                         </TableCell>
 
                         <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)", fontWeight: "bold" }}>
                           {r.diem}
                         </TableCell>
 
-                        {ExamType === "ontap" && (
+                        {kieuHienThi === "ontap" && (
                           <TableCell
                             sx={{
                               px: 1,
                               textAlign: "center",
-                              border: "1px solid rgba(151, 127, 127, 0.12)",
+                              border: "1px solid rgba(0,0,0,0.12)",
                             }}
                           >
                             {r.soLanLam}
@@ -1132,33 +805,6 @@ export default function TongHopKQ() {
 
                         <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
                           {r.ngayHienThi}
-                        </TableCell>
-
-                        {/* CỘT XÓA */}
-                        <TableCell
-                          sx={{
-                            width: 40,
-                            textAlign: "center",
-                            border: "1px solid rgba(0,0,0,0.12)",
-                          }}
-                        >
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setDeleteItem({
-                                docId: r.docId,
-                                hoVaTen: r.hoVaTen,
-                              });
-                              setOpenDeleteRow(true);
-                            }}
-                            sx={{
-                              opacity: hoverRow === r.docId ? 1 : 0,
-                              transition: "0.2s",
-                              color: "error.main",
-                            }}
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ));
@@ -1191,34 +837,98 @@ export default function TongHopKQ() {
             {snackbarMessage}
           </Alert>
         </Snackbar>
-      
-        <DeleteDataClassesDialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-          classesList={classesList}
-          selectedLop={selectedLop}
-          hocKi={config?.hocKy}
-          setHocKi={() => {}}
-          examType={ExamType}
-          onConfirmDelete={async (selectedClasses) => {
-            setDeleteDialogOpen(false);
-
-            if (!selectedClasses || selectedClasses.length === 0) return;
-
-            // 👉 gọi hàm xóa mới
-            await handleDeleteMultipleClasses(selectedClasses);
+        
+        <Dialog
+          open={dialogOpen}
+          onClose={(_, reason) => {
+            if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+            setDialogOpen(false);
           }}
-        />
-
-        <DeleteStudentConfirmDialog
-          open={openDeleteRow}
-          student={deleteItem}
-          onClose={() => {
-            setOpenDeleteRow(false);
-            setDeleteItem(null);
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              p: 3,
+              bgcolor: "#fff",
+              boxShadow: "0 4px 12px rgba(33,150,243,0.15)",
+            },
           }}
-          onConfirm={handleDeleteRow}
-        />
+        >
+          {/* Header */}
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <Box
+              sx={{
+                bgcolor: "#42a5f5",
+                color: "#fff",
+                borderRadius: "50%",
+                width: 36,
+                height: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mr: 1.5,
+                fontWeight: "bold",
+                fontSize: 18,
+              }}
+            >
+              ❓
+            </Box>
+
+            <DialogTitle
+              sx={{
+                p: 0,
+                fontWeight: "bold",
+                color: "#1565c0",
+                flex: 1,
+              }}
+            >
+              {dialogTitle}
+            </DialogTitle>
+
+            {/* Nút đóng */}
+            <IconButton
+              onClick={() => setDialogOpen(false)}
+              sx={{
+                ml: "auto",
+                color: "#f44336",
+                "&:hover": { bgcolor: "rgba(244,67,54,0.1)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {/* Nội dung */}
+          <DialogContent dividers>
+            <Typography
+              sx={{
+                fontSize: 16,
+                color: "#333",
+                whiteSpace: "pre-line",
+                mb: 2, // ✅ chỉ tăng khoảng cách text ↔ divider
+              }}
+            >
+              {dialogContent}
+            </Typography>
+          </DialogContent>
+
+          {/* Actions */}
+          <DialogActions>
+            <Button onClick={() => setDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={dialogAction}
+              sx={{ fontWeight: "bold" }}
+            >
+              Xác nhận
+            </Button>
+          </DialogActions>
+        </Dialog>
+
 
       </Paper>
     </Box>

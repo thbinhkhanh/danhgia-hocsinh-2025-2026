@@ -9,17 +9,24 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import InfoRoundedIcon from "@mui/icons-material/InfoRounded";
-import { useNavigate } from "react-router-dom";
 
-const ExitConfirmDialog = ({ open, onClose }) => {
-  const navigate = useNavigate();
-
+export default function ConfirmDialog({
+  open,
+  title,
+  content,
+  onClose,
+  onConfirm,
+}) {
   return (
     <Dialog
       open={open}
       onClose={(event, reason) => {
-        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        if (
+          reason === "backdropClick" ||
+          reason === "escapeKeyDown"
+        ) {
+          return;
+        }
         onClose();
       }}
       disableEscapeKeyDown
@@ -38,7 +45,7 @@ const ExitConfirmDialog = ({ open, onClose }) => {
       <Box
         sx={{
           px: 3,
-          py: 2,
+          py: 1.5,
           color: "#fff",
           background: "linear-gradient(135deg, #1976d2, #42a5f5)",
           position: "relative",
@@ -50,22 +57,27 @@ const ExitConfirmDialog = ({ open, onClose }) => {
               width: 34,
               height: 34,
               borderRadius: "50%",
-              bgcolor: "#fff",
+              bgcolor: "#fff", // chỉ đổi chỗ này
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+              fontSize: 16,
             }}
           >
             ❓
           </Box>
 
-          <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
-            Xác nhận thoát
+          <Typography
+            sx={{
+              fontSize: 16,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+            }}
+          >
+            {title}
           </Typography>
         </Stack>
 
-        {/* CLOSE BUTTON */}
         <IconButton
           onClick={onClose}
           sx={{
@@ -84,27 +96,30 @@ const ExitConfirmDialog = ({ open, onClose }) => {
       </Box>
 
       {/* CONTENT */}
-      <DialogContent sx={{ px: 3, py: 4 }}>
-        <Stack spacing={4} alignItems="center">
+      <DialogContent
+        sx={{
+          px: 3,
+          py: 4,
+          textAlign: "center",
+        }}
+      >
+        <Stack spacing={2.5} alignItems="center">
+          {/* DESCRIPTION */}
           <Typography
             sx={{
-              fontSize: 15,
-              color: "#64748b",
-              textAlign: "center",
-              lineHeight: 1.7,
+                fontSize: 15,
+                color: "#64748b",
+                maxWidth: 320,
+                lineHeight: 1.7,
+                textAlign: "left",
+                whiteSpace: "pre-line",
             }}
-          >
-            Bạn có chắc chắn muốn thoát khỏi bài trắc nghiệm?
-            <br />
-            Mọi tiến trình chưa nộp sẽ{" "}
-            <Box component="span" sx={{ fontWeight: 700, color: "#d32f2f" }}>
-              bị mất
-            </Box>
-            .
-          </Typography>
+            >
+            {content}
+            </Typography>
 
           {/* BUTTONS */}
-          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+          <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
             <Button
               variant="outlined"
               onClick={onClose}
@@ -121,9 +136,9 @@ const ExitConfirmDialog = ({ open, onClose }) => {
 
             <Button
               variant="contained"
-              onClick={() => navigate(-1)}
+              onClick={onConfirm}
               sx={{
-                minWidth: 130,
+                minWidth: 140,
                 height: 42,
                 borderRadius: "12px",
                 textTransform: "none",
@@ -135,13 +150,11 @@ const ExitConfirmDialog = ({ open, onClose }) => {
                 },
               }}
             >
-              Thoát
+              Xác nhận
             </Button>
           </Stack>
         </Stack>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default ExitConfirmDialog;
+}

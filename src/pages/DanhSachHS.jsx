@@ -45,6 +45,8 @@ import StorageIcon from "@mui/icons-material/Storage";
 
 import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
+import CloseIcon from "@mui/icons-material/Close";
+import { useNavigate } from "react-router-dom";
 
 import { Tabs, Tab } from "@mui/material";
 import { Switch, FormControlLabel } from "@mui/material";
@@ -52,6 +54,8 @@ import { LinearProgress } from "@mui/material";
 //import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 
 export default function DanhSachHS() {
+  const navigate = useNavigate();
+
   const { studentData, setStudentData, classData, setClassData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
@@ -542,7 +546,23 @@ export default function DanhSachHS() {
           position: "relative",
         }}
       >
-
+        <IconButton
+          onClick={() => navigate("/dashboard")}
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            color: "#64748b",
+            backgroundColor: "#f1f5f9",
+            "&:hover": {
+              backgroundColor: "#e2e8f0",
+              color: "#ef4444",
+            },
+            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
         {/* ICON */}
         <Box
           sx={{

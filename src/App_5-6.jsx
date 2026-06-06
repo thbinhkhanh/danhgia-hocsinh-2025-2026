@@ -7,14 +7,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { AppBar, 
-  Toolbar, 
-  Button, 
-  Typography, 
-  Box,
-  IconButton,
-  Menu,
-} from "@mui/material";
+import { AppBar, Toolbar, Button, Typography, Box } from "@mui/material";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -37,8 +30,6 @@ import TracNghiemGV from "./pages/TracNghiemGV";
 import DeThi from "./pages/DeThi";
 import TracNghiemTest from "./pages/TracNghiem_Test";
 import TracNghiem_OnTap from "./pages/TracNghiem_OnTap"; // Thêm vào các import page
-import Dashboard from "./pages/Dashboard";
-import ChangePasswordDialog from "./dialog/ChangePasswordDialog";
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
@@ -59,10 +50,6 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import BarChartIcon from "@mui/icons-material/BarChart";
-import AppsIcon from "@mui/icons-material/Apps";
-import PersonIcon from "@mui/icons-material/Person";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import LockResetIcon from "@mui/icons-material/LockReset";
 
 function AppContent() {
   const location = useLocation();
@@ -71,24 +58,7 @@ function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true); 
   const account = localStorage.getItem("account"); // thêm dòng này trước <Routes>
-  const [openLogo, setOpenLogo] = useState(false);
-  
-  const [openChangePw, setOpenChangePw] = useState(false);
-  const [newPw, setNewPw] = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
-  const [pwError, setPwError] = useState("");
-
-  const [anchorEl, setAnchorEl] = useState(null);
-  const openMenu = Boolean(anchorEl);
-
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
+   const [openLogo, setOpenLogo] = useState(false);
 
   // ✅ Lấy trạng thái login ban đầu
   useEffect(() => {
@@ -110,16 +80,12 @@ function AppContent() {
   const handleLogout = () => {
     localStorage.removeItem("loggedIn");
     localStorage.removeItem("account");
-
     setIsLoggedIn(false);
+
+    // chỉ cập nhật config.login = false, không reset học kỳ
     setConfig((prev) => ({ ...prev, login: false }));
 
-    setAnchorEl(null);
-
-    // 🔥 delay để đảm bảo state update xong
-    setTimeout(() => {
-      navigate("/hocsinh", { replace: true });
-    }, 0);
+    navigate("/login");
 
     setTimeout(() => {
       const docRef = doc(db, "CONFIG", "config");
@@ -139,46 +105,29 @@ function AppContent() {
     localStorage.setItem("appConfig", JSON.stringify(newConfig));
   };
 
+  const navItems = [
+    /*{ path: "/tracnghiem-ontap", label: "Ôn tập" }, // thêm vào đầu menu*/
+    { path: "/hocsinh", label: "Học sinh" },
+    ...(isLoggedIn
+      ? [                     
+          { path: "/giaovien", label: "Đánh giá" },
+          { path: "/tonghopdanhgia", label: "ĐGTX" },
+          { path: "/nhapdiemktdk", label: "KTĐK" },
+          { path: "/xuatdanhgia", label: "Xuất đánh giá" },
+          { path: "/ketqua", label: "Kết quả" },
+          { path: "/thongke", label: "Thống kê" },
+          { path: "/danhsach", label: "PPCT - DS" },
+          //{ path: "/tracnghiem", label: "Trắc nghiệm" },
+          { path: "/tracnghiem-gv", label: "Soạn đề" },
+          { path: "/tracnghiem-test", label: "Test đề" }, 
+          { path: "/de-thi", label: "Đề thi" },
+          { path: "/quan-tri", label: "Hệ thống" },
+          { label: "Đăng xuất", onClick: handleLogout }
+        ]
+      : [{ path: "/login", label: "Đăng nhập" }]),
+  ];
+
   if (loading) return null;
-
-  const handleChangePassword = async () => {
-    if (!newPw.trim()) {
-      setPwError("❌ Mật khẩu mới không được để trống!");
-      return;
-    }
-
-    if (newPw !== confirmPw) {
-      setPwError("❌ Mật khẩu nhập lại không khớp!");
-      return;
-    }
-
-    setPwError("");
-    setOpenChangePw(false);
-
-    setSnackbar({
-      open: true,
-      message: "Đổi mật khẩu thành công!",
-      severity: "success",
-    });
-
-    const docId = "ADMIN";
-
-    // 🔥 FIRESTORE chạy nền (KHÔNG CHẶN UI)
-    setDoc(doc(db, "MATKHAU", docId), {
-      pass: newPw,
-    }).catch((err) => {
-      console.error("Lỗi lưu mật khẩu:", err);
-
-      setSnackbar({
-        open: true,
-        message: "Lưu mật khẩu thất bại!",
-        severity: "error",
-      });
-    });
-
-    setNewPw("");
-    setConfirmPw("");
-  };
 
   return (
     <>
@@ -196,7 +145,7 @@ function AppContent() {
             whiteSpace: "nowrap",
           }}
         >
-          {/* 🔹 LEFT: LOGO + DASHBOARD */}
+          {/* 🔹 Logo + Menu */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Box
               component="img"
@@ -208,174 +157,93 @@ function AppContent() {
                 flexShrink: 0,
                 ml: { xs: -1, sm: -2 },
                 mr: 1,
-                cursor: "pointer",
+                cursor: "pointer"
               }}
-            />          
-
-            <Button
-              onClick={() =>
-                navigate(isLoggedIn ? "/dashboard" : "/hocsinh")
-              }
-              sx={{
-                color: "#fff",
-                textTransform: "none",
-                fontWeight: 500,
-              }}
-            >
-              {isLoggedIn ? "DASHBOARD" : "HỌC SINH"}
-            </Button>
-          </Box>
-
-          {/* 🔹 RIGHT: USER AREA */}
-          {isLoggedIn ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-
-              {/* 📅 NĂM HỌC */}
-              <Box
+            />
+            {navItems.map((item) => (
+              <Button
+                key={item.path || item.label}
+                component={item.path ? Link : "button"}
+                to={item.path || undefined}
+                onClick={item.onClick || undefined}
                 sx={{
-                  px: 1.5,
-                  py: 0.4,
-                  borderRadius: 999,
-                  fontSize: 14,
-                  bgcolor: "rgba(255,255,255,0.12)",
-                  color: "#fff",
-                  whiteSpace: "nowrap",
+                  color: "white",
+                  textTransform: "none",
+                  padding: "4px 10px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.8,
+                  minHeight: "auto",
+                  flexShrink: 0,
+                  borderBottom:
+                    location.pathname === item.path
+                      ? "3px solid #fff"
+                      : "3px solid transparent",
+
+                  "&:hover": {
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    opacity: 1,               // 🔴 QUAN TRỌNG
+                  },
                 }}
               >
-                Năm học: {config?.namHoc || "2026-2027"}
-              </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    ml: 0.3,
+                    color: "white",           // 🔴 FIX CHÍNH
+                    opacity: 1,               // 🔴 FIX CHÍNH
+                  }}
+                >
+                  {item.label}
+                </Typography>
+              </Button>
 
-              {/* 👤 ICON TÀI KHOẢN */}
-              <IconButton sx={{ color: "#fff" }}>
-                <PersonIcon />
-              </IconButton>
+            ))}
+          </Box>
 
-              {/* 🟦 MENU 9 Ô VUÔNG */}
-            <IconButton onClick={handleMenuOpen} sx={{ color: "#fff" }}>
-              <AppsIcon />
-            </IconButton>
-
+          {/* 🔹 Dropdown chọn Học kỳ (chỉ khi đã đăng nhập) */}
+          {isLoggedIn && (
+            <Box sx={{ minWidth: 140, mr: 1 }}>
+              <select
+                value={config?.hocKy || "Giữa kỳ I"}
+                onChange={handleHocKyChange}
+                style={{
+                  backgroundColor: "transparent",
+                  color: "white",
+                  borderRadius: "4px",
+                  padding: "6px 12px",
+                  border: "2px solid white",
+                  outline: "none",
+                  fontSize: "0.95rem",
+                  width: "100%",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                  MozAppearance: "none",
+                  backgroundImage:
+                    "url(\"data:image/svg+xml;utf8,<svg fill='white' height='18' viewBox='0 0 24 24' width='18' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>\")",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPositionX: "calc(100% - 10px)",
+                  backgroundPositionY: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <option style={{ color: "#1976d2" }} value="Giữa kỳ I">
+                  Giữa kỳ I
+                </option>
+                <option style={{ color: "#1976d2" }} value="Cuối kỳ I">
+                  Cuối kỳ I
+                </option>
+                <option style={{ color: "#1976d2" }} value="Giữa kỳ II">
+                  Giữa kỳ II
+                </option>
+                <option style={{ color: "#1976d2" }} value="Cuối năm">
+                  Cuối năm
+                </option>
+              </select>
             </Box>
-          ) : (
-            <Button
-              component={Link}
-              to="/login"
-              sx={{
-                color: "#fff",
-                ml: "auto",
-                textDecoration: "none",
-                "&:hover": {
-                  color: "#fff",
-                  textDecoration: "none",
-                },
-                "&:visited": {
-                  color: "#fff",
-                },
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <LoginIcon sx={{ fontSize: 20 }} />
-              Đăng nhập
-            </Button>
           )}
         </Toolbar>
       </AppBar>
-
-      <Menu
-        anchorEl={anchorEl}
-        open={openMenu}
-        onClose={handleMenuClose}
-        PaperProps={{
-          sx: {
-            width: 180,
-            //borderRadius: "14px",
-            overflow: "hidden",
-            boxShadow: "0 12px 35px rgba(0,0,0,0.18)",
-            p: 0,
-          },
-        }}
-      >
-        {/* HEADER */}
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            bgcolor: "#fff",
-            fontWeight: 600,
-            fontSize: 14,
-            borderBottom: "1px solid #eee",
-            color: "#d32f2f", // 🔴 màu đỏ
-          }}
-        >
-          THÔNG TIN
-        </Box>
-
-        {/* ITEM 1 */}
-        <Box
-          onClick={() => {
-            handleMenuClose();
-            setOpenChangePw(true);
-          }}
-          sx={{
-            px: 2,
-            py: 1.5,
-            cursor: "pointer",
-            bgcolor: "#f5f7fa",
-            transition: "0.2s",
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            "&:hover": { bgcolor: "#e9eef5" },
-          }}
-        >
-          <LockResetIcon sx={{ fontSize: 18, color: "#1976d2" }} />
-          Đổi mật khẩu
-        </Box>
-
-        {/* 🔥 LINE NGĂN CÁCH */}
-        <Box
-          sx={{
-            height: "1px",
-            bgcolor: "#e5e7eb",
-            mx: 1,
-          }}
-        />
-
-        {/* ITEM 2 */}
-        <Box
-          onClick={() => {
-            handleMenuClose();
-            handleLogout();
-          }}
-          sx={{
-            px: 2,
-            py: 1.5,
-            cursor: "pointer",
-            bgcolor: "#f5f7fa",
-            transition: "0.2s",
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            "&:hover": { bgcolor: "#e9eef5" },
-          }}
-        >
-          <LogoutIcon sx={{ fontSize: 18, color: "#d32f2f" }} />
-          Đăng xuất
-        </Box>
-      </Menu>
-
-      <ChangePasswordDialog
-        open={openChangePw}
-        onClose={() => setOpenChangePw(false)}
-        newPw={newPw}
-        confirmPw={confirmPw}
-        setNewPw={setNewPw}
-        setConfirmPw={setConfirmPw}
-        pwError={pwError}
-        onSave={handleChangePassword}
-      />
 
       {openLogo && (
         <Box
@@ -426,37 +294,21 @@ function AppContent() {
       {/* 🔹 Nội dung các trang */}
       <Box sx={{ paddingTop: "44px" }}>
         <Routes>
-          {/* ROOT → DASHBOARD */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* 🔹 Mặc định mở trang Học Sinh */}
+          <Route path="/" element={<Navigate to="/hocsinh" replace />} />
 
-          {/* LOGIN */}
-          <Route path="/login" element={<Login />} />
-
-          {/* DASHBOARD (TRUNG TÂM 9 Ô) */}
-          <Route
-            path="/dashboard"
-            element={
-              isLoggedIn ? (
-                <Dashboard isLoggedIn={isLoggedIn} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-
-          {/* PUBLIC */}
+          <Route path="/tracnghiem-ontap" element={<TracNghiem_OnTap />} />
           <Route path="/hocsinh" element={<HocSinh />} />
           <Route path="/tracnghiem" element={<TracNghiem />} />
-          <Route path="/tracnghiem-ontap" element={<TracNghiem_OnTap />} />
+          <Route path="/login" element={<Login />} />
 
-          {/* PRIVATE FUNCTIONS */}
-          <Route
-            path="/giaovien"
-            element={isLoggedIn ? <GiaoVien /> : <Navigate to="/login" replace />}
-          />
           <Route
             path="/danhsach"
             element={isLoggedIn ? <DanhSachHS /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/giaovien"
+            element={isLoggedIn ? <GiaoVien /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/nhapdiemktdk"
@@ -465,6 +317,10 @@ function AppContent() {
           <Route
             path="/xuatdanhgia"
             element={isLoggedIn ? <XuatDanhGia /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/tonghopdanhgia"
+            element={isLoggedIn ? <TongHopDanhGia /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/ketqua"
@@ -476,7 +332,13 @@ function AppContent() {
           />
           <Route
             path="/tracnghiem-gv"
-            element={isLoggedIn ? <TracNghiemGV /> : <Navigate to="/login" replace />}
+            element={
+              isLoggedIn
+                ? account === "Admin"
+                  ? <TracNghiemGV />
+                  : <TracNghiemGV />
+                : <Navigate to="/login" replace />
+            }
           />
           <Route
             path="/tracnghiem-test"
@@ -491,6 +353,7 @@ function AppContent() {
             element={isLoggedIn ? <QuanTri /> : <Navigate to="/login" replace />}
           />
         </Routes>
+
       </Box>
     </>
   );

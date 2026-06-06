@@ -14,7 +14,6 @@ import {
   Alert,
   Divider,
   Box,
-  Card
 } from "@mui/material";
 
 import CloseIcon from "@mui/icons-material/Close";
@@ -346,33 +345,25 @@ export default function RestorePage({ open, onClose }) {
   };
 
   return (
-  <>
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "#e3f2fd",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        //pt: 3,
-      }}
-    >
-      {/* ===== CARD WRAPPER ===== */}
-      <Card
-        elevation={6}
-        sx={{
-          width: "100%",
-          maxWidth: 900,
-          borderRadius: 3,
-          overflow: "hidden",
-          bgcolor: "#f8fafc",
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: "hidden",
+            bgcolor: "#f8fafc",
+          },
         }}
       >
-        {/* ===== HEADER ===== */}
+        {/* HEADER */}
         <Box
           sx={{
             px: 3,
-            py: 1.4,
+            py: 1.5,
             background: "#1976d2",
             color: "#fff",
           }}
@@ -382,7 +373,12 @@ export default function RestorePage({ open, onClose }) {
             alignItems="center"
             justifyContent="space-between"
           >
-            <Typography sx={{ fontSize: 17, fontWeight: 700 }}>
+            <Typography
+              sx={{
+                fontSize: 17,
+                fontWeight: 700,
+              }}
+            >
               PHỤC HỒI DỮ LIỆU
             </Typography>
 
@@ -392,9 +388,12 @@ export default function RestorePage({ open, onClose }) {
                 color: "#fff",
                 bgcolor: "rgba(255,255,255,0.12)",
                 border: "1px solid rgba(255,255,255,0.25)",
+                transition: "all .2s ease",
+
                 "&:hover": {
                   bgcolor: "#fff",
                   color: "#ef4444",
+                  transform: "scale(1.05)",
                 },
               }}
             >
@@ -403,12 +402,12 @@ export default function RestorePage({ open, onClose }) {
           </Stack>
         </Box>
 
-        {/* ===== UPLOAD ===== */}
+        {/* UPLOAD */}
         <Box sx={{ px: 3, pt: 2 }}>
           <Box
             onClick={() => fileInputRef.current.click()}
             sx={{
-              display: "inline-flex",
+              display: "inline-flex", // quan trọng
               alignItems: "center",
               gap: 1,
               px: 2,
@@ -416,7 +415,10 @@ export default function RestorePage({ open, onClose }) {
               border: "1px solid #94a3b8",
               borderRadius: "10px",
               cursor: "pointer",
-              bgcolor: "#fff",
+              bgcolor: "#f8fafc",
+              transition: "0.2s",
+              width: "fit-content",
+
               "&:hover": {
                 borderColor: "#1976d2",
                 bgcolor: "#f1f5f9",
@@ -425,7 +427,13 @@ export default function RestorePage({ open, onClose }) {
           >
             <UploadFileIcon sx={{ color: "#1976d2" }} />
 
-            <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#334155",
+              }}
+            >
               Chọn file phục hồi (.json)
             </Typography>
           </Box>
@@ -439,18 +447,31 @@ export default function RestorePage({ open, onClose }) {
           />
 
           {selectedFile && (
-            <Typography sx={{ mt: 1, fontWeight: 600, color: "#ef4444" }}>
+            <Typography
+              sx={{
+                mt: 1,
+                color: "#ef4444",
+                fontWeight: 600,
+              }}
+            >
               📄 {selectedFile.name}
             </Typography>
           )}
         </Box>
 
-        {/* ===== CONTENT (3 CỘT) ===== */}
-        <Box sx={{ p: 2 }}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2.2}>
+        {/* CONTENT */}
+        <DialogContent sx={{ px: 3, py: 2.5 }}>
+          <Stack spacing={2.2}>
 
-            {/* ===== HỌC SINH ===== */}
-            <Box sx={{ p: 2, bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, flex: 1 }}>
+            {/* HỌC SINH */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+              }}
+            >
               <FormControlLabel
                 control={
                   <Checkbox
@@ -459,126 +480,194 @@ export default function RestorePage({ open, onClose }) {
                     onChange={() => toggleGroup(GROUPS.HOCSINH)}
                   />
                 }
-                label={<Typography fontWeight={700}>Học sinh</Typography>}
+                label={
+                  <Typography fontWeight={700}>
+                    Học sinh
+                  </Typography>
+                }
               />
 
-              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <Box
+                sx={{
+                  ml: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 {GROUPS.HOCSINH.map((key) => (
                   <FormControlLabel
                     key={key}
                     control={
                       <Checkbox
                         checked={restoreOptions[key] || false}
-                        disabled={disabledOptions[key]}
                         onChange={() => toggleOption(key)}
                       />
                     }
-                    label={BACKUP_KEYS.find((b) => b.key === key)?.label || key}
+                    label={
+                      BACKUP_KEYS.find((b) => b.key === key)?.label || key
+                    }
                   />
                 ))}
               </Box>
             </Box>
 
-            {/* ===== ĐỀ THI ===== */}
-            <Box sx={{ p: 2, bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, flex: 1 }}>
+            {/* ĐỀ THI */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+              }}
+            >
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={isGroupChecked(GROUPS.DETHI)}
-                    indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
-                    onChange={() => toggleGroup(GROUPS.DETHI)}
-                    disabled={getEnabledKeys(GROUPS.DETHI).length === 0}
+                    indeterminate={isGroupIndeterminate(
+                      GROUPS.DETHI
+                    )}
+                    onChange={() =>
+                      toggleGroup(GROUPS.DETHI)
+                    }
+                    disabled={
+                      getEnabledKeys(GROUPS.DETHI)
+                        .length === 0
+                    }
                   />
                 }
-                label={<Typography fontWeight={700}>Đề kiểm tra</Typography>}
+                label={
+                  <Typography fontWeight={700}>
+                    Đề kiểm tra
+                  </Typography>
+                }
               />
 
-              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <Box
+                sx={{
+                  ml: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 {GROUPS.DETHI.map((key) => (
                   <FormControlLabel
                     key={key}
                     control={
                       <Checkbox
-                        checked={restoreOptions[key] || false}
+                        checked={
+                          restoreOptions[key] || false
+                        }
                         disabled={disabledOptions[key]}
-                        onChange={() => toggleOption(key)}
+                        onChange={() =>
+                          toggleOption(key)
+                        }
                       />
                     }
-                    label={BACKUP_KEYS.find((b) => b.key === key)?.label || key}
+                    label={
+                      BACKUP_KEYS.find(
+                        (b) => b.key === key
+                      )?.label || key
+                    }
                   />
                 ))}
               </Box>
             </Box>
 
-            {/* ===== LUYỆN TẬP ===== */}
-            <Box sx={{ p: 2, bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, flex: 1 }}>
+            {/* TRẮC NGHIỆM */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+              }}
+            >
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={isGroupChecked(GROUPS.TRACNGHIEM)}
-                    indeterminate={isGroupIndeterminate(GROUPS.TRACNGHIEM)}
-                    onChange={() => toggleGroup(GROUPS.TRACNGHIEM)}
-                    disabled={getEnabledKeys(GROUPS.TRACNGHIEM).length === 0}
+                    checked={isGroupChecked(
+                      GROUPS.TRACNGHIEM
+                    )}
+                    indeterminate={isGroupIndeterminate(
+                      GROUPS.TRACNGHIEM
+                    )}
+                    onChange={() =>
+                      toggleGroup(GROUPS.TRACNGHIEM)
+                    }
+                    disabled={
+                      getEnabledKeys(
+                        GROUPS.TRACNGHIEM
+                      ).length === 0
+                    }
                   />
                 }
-                label={<Typography fontWeight={700}>Luyện tập tin học</Typography>}
+                label={
+                  <Typography fontWeight={700}>
+                    Luyện tập tin học
+                  </Typography>
+                }
               />
 
-              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <Box
+                sx={{
+                  ml: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 {GROUPS.TRACNGHIEM.map((key) => (
                   <FormControlLabel
                     key={key}
                     control={
                       <Checkbox
-                        checked={restoreOptions[key] || false}
+                        checked={
+                          restoreOptions[key] || false
+                        }
                         disabled={disabledOptions[key]}
-                        onChange={() => toggleOption(key)}
+                        onChange={() =>
+                          toggleOption(key)
+                        }
                       />
                     }
-                    label={BACKUP_KEYS.find((b) => b.key === key)?.label || key}
+                    label={
+                      BACKUP_KEYS.find(
+                        (b) => b.key === key
+                      )?.label || key
+                    }
                   />
                 ))}
               </Box>
             </Box>
-
           </Stack>
-        </Box>
+        </DialogContent>
 
-        {/* ===== PROGRESS ===== */}
+        {/* PROGRESS */}
         {loading && (
-          <Box
-            sx={{
-              px: 3,
-              pb: 2,
-              mt: 2,
-              display: "flex",
-              justifyContent: "center",
-            }}
-          >
-            <Box sx={{ width: { xs: "75%", md: "50%" } }}>
-              <LinearProgress
-                variant="determinate"
-                value={progress}
-                sx={{ height: 8, borderRadius: 10 }}
-              />
+          <Box sx={{ px: 3, pb: 2 }}>
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+            />
 
-              <Typography sx={{ mt: 1, textAlign: "center", fontSize: 13 }}>
-                Đang phục hồi... {progress}%
-              </Typography>
-            </Box>
+            <Typography
+              sx={{
+                mt: 1,
+                textAlign: "center",
+                fontSize: 13,
+              }}
+            >
+              Đang phục hồi... {progress}%
+            </Typography>
           </Box>
         )}
 
-        {/* ===== ACTION ===== */}
-        <Box
+        {/* ACTIONS */}
+        <DialogActions
           sx={{
             px: 3,
             py: 2,
             borderTop: "1px solid #e2e8f0",
-            bgcolor: "#fff",
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 1,
           }}
         >
           <Button onClick={onClose}>Hủy</Button>
@@ -591,21 +680,25 @@ export default function RestorePage({ open, onClose }) {
           >
             PHỤC HỒI
           </Button>
-        </Box>
-      </Card>
-    </Box>
+        </DialogActions>
+      </Dialog>
 
-    {/* SNACKBAR */}
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={4000}
-      onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-    >
-      <Alert severity={snackbar.severity}>
-        {snackbar.message}
-      </Alert>
-    </Snackbar>
-  </>
-);
+      {/* SNACKBAR */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() =>
+          setSnackbar((s) => ({
+            ...s,
+            open: false,
+          }))
+        }
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity={snackbar.severity}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
+  );
 }

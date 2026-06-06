@@ -330,18 +330,16 @@ export const handleSubmitQuiz = async ({
         }
       });
     } else if (configData?.examType === "ontap") {
-        const collectionRoot = `DATA_ONTAP_${namHocKey}`;
-        const studentDocId = normalizeName(studentName);
-
+        const classKey = studentClass.replace(".", "_");
         const subjectKey =
           config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
         const docRef = doc(
           db,
-          collectionRoot,
-          configData.hocKy,
-          studentClass,
-          studentDocId
+          `DATA_ONTAP_${namHocKey}`,
+          classKey,
+          "HOCSINH",
+          studentId
         );
 
         const ngayLam = new Date().toLocaleDateString("vi-VN");
@@ -351,38 +349,37 @@ export const handleSubmitQuiz = async ({
         if (docSnap.exists()) {
           const oldData = docSnap.data();
 
-          // ✅ HỖ TRỢ cả data cũ + mới
-          const oldSubject =
-            oldData?.subjects?.[subjectKey] ||
-            oldData?.[subjectKey] || {};
+          const oldSubject = oldData?.subjects?.[subjectKey] || {};
 
-          const oldScore = oldSubject.diem ?? 0;
+          const oldScore = oldSubject.lyThuyet ?? 0;
           const soLanLam = (oldSubject.soLanLam ?? 0) + 1;
 
-          // 🔥 LUÔN dùng updateDoc để tránh lỗi field sai
+          const updateData = {
+            hoVaTen: capitalizeName(studentName),
+            lop: studentClass,
+
+            [`subjects.${subjectKey}.lyThuyet`]:
+              total > oldScore ? total : oldScore,
+
+            [`subjects.${subjectKey}.soLanLam`]: soLanLam,
+
+            [`subjects.${subjectKey}.ngayLam`]: ngayLam,
+
+            [`subjects.${subjectKey}.thoiGianLamBai`]: durationStr,
+          };
+
           if (total > oldScore) {
-            await updateDoc(docRef, {
-              [`subjects.${subjectKey}.diem`]: total,
-              [`subjects.${subjectKey}.phanTram`]: phanTram,
-              [`subjects.${subjectKey}.ngayLam`]: ngayLam,
-              [`subjects.${subjectKey}.thoiGianLamBai`]: durationStr,
-              [`subjects.${subjectKey}.soLanLam`]: soLanLam,
-            });
-          } else {
-            await updateDoc(docRef, {
-              [`subjects.${subjectKey}.ngayLam`]: ngayLam,
-              [`subjects.${subjectKey}.thoiGianLamBai`]: durationStr,
-              [`subjects.${subjectKey}.soLanLam`]: soLanLam,
-            });
+            updateData[`subjects.${subjectKey}.phanTram`] = phanTram;
           }
+
+          await updateDoc(docRef, updateData);
         } else {
-          // 🆕 Lần đầu
           await setDoc(docRef, {
             hoVaTen: capitalizeName(studentName),
             lop: studentClass,
             subjects: {
               [subjectKey]: {
-                diem: total,
+                lyThuyet: total,
                 phanTram,
                 ngayLam,
                 thoiGianLamBai: durationStr,

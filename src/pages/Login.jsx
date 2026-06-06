@@ -87,7 +87,8 @@ export default function Login() {
           severity: "success",
         });
 
-        navigate("/tonghopdanhgia");
+        //navigate("/tonghopdanhgia");
+        navigate("/dashboard");
       } else {
         setSnackbar({
           open: true,

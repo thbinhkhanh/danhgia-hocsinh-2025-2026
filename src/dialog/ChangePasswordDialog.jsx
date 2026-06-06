@@ -80,13 +80,6 @@ const ChangePasswordDialog = ({
         return;
       }
 
-      if (newPw.length < 6) {
-        setPwError(
-          "Mật khẩu phải có ít nhất 6 ký tự"
-        );
-        return;
-      }
-
       if (newPw !== confirmPw) {
         setPwError(
           "Mật khẩu xác nhận không khớp"
@@ -151,7 +144,7 @@ const ChangePasswordDialog = ({
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: "18px",
+            borderRadius: "8px",
             overflow: "hidden",
             background: "#f8fafc",
             boxShadow:

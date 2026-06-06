@@ -33,7 +33,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 
 import DeleteDataClassesDialog from "../dialog/DeleteDataClassesDialog";
-import DeleteStudentConfirmDialog from "../dialog/DeleteStudentConfirmDialog";
 
 // ================= FIREBASE =================
 import { db } from "../firebase";
@@ -86,9 +85,6 @@ export default function TongHopKQ() {
   const [ExamType, setExamType] = useState("ktdk");
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [hoverRow, setHoverRow] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [openDeleteRow, setOpenDeleteRow] = useState(false);
 
   const circleIconStyle = {
     bgcolor: "white",
@@ -299,59 +295,59 @@ export default function TongHopKQ() {
 
     // ================== ÔN TẬP ==================
     if (ExamType === "ontap") {
-      console.log("🚀 [ONTAP LOAD START]");
-      console.log("📌 selectedLop:", selectedLop);
-      console.log("📌 selectedMon:", selectedMon);
-      console.log("📌 namHocKey:", namHocKey);
+  console.log("🚀 [ONTAP LOAD START]");
+  console.log("📌 selectedLop:", selectedLop);
+  console.log("📌 selectedMon:", selectedMon);
+  console.log("📌 namHocKey:", namHocKey);
 
-      const subjectKey =
-        selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
+  const subjectKey =
+    selectedMon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-      console.log("📌 subjectKey:", subjectKey);
+  console.log("📌 subjectKey:", subjectKey);
 
-      const path = `DATA_ONTAP_${namHocKey}/${selectedLop}/HOCSINH`;
-      console.log("📌 Firestore path:", path);
+  const path = `DATA_ONTAP_${namHocKey}/${selectedLop}/HOCSINH`;
+  console.log("📌 Firestore path:", path);
 
-      const colRef = collection(
-        db,
-        `DATA_ONTAP_${namHocKey}`,
-        selectedLop,
-        "HOCSINH"
-      );
+  const colRef = collection(
+    db,
+    `DATA_ONTAP_${namHocKey}`,
+    selectedLop,
+    "HOCSINH"
+  );
 
-      const snapshot = await getDocs(colRef);
+  const snapshot = await getDocs(colRef);
 
-      console.log("📊 snapshot empty:", snapshot.empty);
-      console.log("📊 snapshot size:", snapshot.size);
+  console.log("📊 snapshot empty:", snapshot.empty);
+  console.log("📊 snapshot size:", snapshot.size);
 
-      if (snapshot.empty) {
-        console.warn("⚠️ EMPTY SNAPSHOT - kiểm tra sai path hoặc chưa sync dữ liệu");
+  if (snapshot.empty) {
+    console.warn("⚠️ EMPTY SNAPSHOT - kiểm tra sai path hoặc chưa sync dữ liệu");
 
-        setResults([]);
-        setSnackbarSeverity("warning");
-        setSnackbarMessage(`Không có dữ liệu ôn tập lớp ${selectedLop}`);
-        setSnackbarOpen(true);
-        setLoading(false);
-        return;
-      }
+    setResults([]);
+    setSnackbarSeverity("warning");
+    setSnackbarMessage(`Không có dữ liệu ôn tập lớp ${selectedLop}`);
+    setSnackbarOpen(true);
+    setLoading(false);
+    return;
+  }
 
-      snapshot.docs.forEach((docSnap, index) => {
-        const d = docSnap.data();
+  snapshot.docs.forEach((docSnap, index) => {
+    const d = docSnap.data();
 
-        console.log(`\n👤 DOC ${index + 1}:`, docSnap.id);
-        console.log("📦 RAW DATA:", d);
+    console.log(`\n👤 DOC ${index + 1}:`, docSnap.id);
+    console.log("📦 RAW DATA:", d);
 
-        console.log("📦 subjects:", d?.subjects);
+    console.log("📦 subjects:", d?.subjects);
 
-        console.log("📌 TinHoc:", d?.subjects?.TinHoc);
-        console.log("📌 CongNghe:", d?.subjects?.CongNghe);
+    console.log("📌 TinHoc:", d?.subjects?.TinHoc);
+    console.log("📌 CongNghe:", d?.subjects?.CongNghe);
 
-        console.log("🎯 subjectKey data:", d?.subjects?.[subjectKey]);
-      });
+    console.log("🎯 subjectKey data:", d?.subjects?.[subjectKey]);
+  });
 
-      const data = snapshot.docs.map(docSnap => {
-        const d = docSnap.data();
-        const subjectData = d?.subjects?.[subjectKey] || {};
+  const data = snapshot.docs.map(docSnap => {
+    const d = docSnap.data();
+    const subjectData = d?.subjects?.[subjectKey] || {};
 
     console.log("➡️ mapping doc:", docSnap.id);
     console.log("➡️ subjectData:", subjectData);
@@ -820,69 +816,6 @@ export default function TongHopKQ() {
     },
   };
 
-  const handleDeleteRow = async (student) => {
-    if (!student) return;
-
-    try {
-      const classKey = selectedLop.replace(".", "_");
-
-      const batchDeletes = [];
-
-      // ======================
-      // 1. KTĐK
-      // ======================
-      if (ExamType === "ktdk") {
-        const docRef = doc(
-          db,
-          `DATA_${namHocKey}`,
-          classKey,
-          "HOCSINH",
-          student.docId
-        );
-
-        batchDeletes.push(deleteDoc(docRef));
-      }
-
-      // ======================
-      // 2. ÔN TẬP
-      // ======================
-      if (ExamType === "ontap") {
-        const docRef = doc(
-          db,
-          `DATA_ONTAP_${namHocKey}`,
-          classKey,
-          "HOCSINH",
-          student.docId
-        );
-
-        batchDeletes.push(deleteDoc(docRef));
-      }
-
-      await Promise.all(batchDeletes);
-
-      // update UI
-      setResults(prev =>
-        prev
-          .filter(r => r.docId !== student.docId)
-          .map((r, i) => ({ ...r, stt: i + 1 }))
-      );
-
-      setOpenDeleteRow(false);
-      setDeleteItem(null);
-
-      setSnackbarSeverity("success");
-      setSnackbarMessage("🗑️ Đã xóa học sinh!");
-      setSnackbarOpen(true);
-
-    } catch (err) {
-      console.error(err);
-
-      setSnackbarSeverity("error");
-      setSnackbarMessage("❌ Xóa thất bại!");
-      setSnackbarOpen(true);
-    }
-  };
-
   return (
     <Box sx={{ minHeight: "100vh", background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)", pt: 3, px: 2, display: "flex", justifyContent: "center" }}>
       <Paper
@@ -890,7 +823,7 @@ export default function TongHopKQ() {
           p: 4,
           borderRadius: 3,
           width: "100%",
-          maxWidth: 800,
+          maxWidth: 700,
           bgcolor: "white",
           position: "relative", // ⭐ BẮT BUỘC
         }}
@@ -1057,16 +990,6 @@ export default function TongHopKQ() {
                     )}
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 70 }}>Thời gian</TableCell>
                     <TableCell sx={{ bgcolor: "#1976d2", color: "#fff", textAlign: "center", width: 100 }}>Ngày</TableCell>
-                    <TableCell
-                      sx={{
-                        bgcolor: "#1976d2",
-                        color: "#fff",
-                        textAlign: "center",
-                        width: 40,
-                      }}
-                    >
-                      Xóa
-                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1091,23 +1014,13 @@ export default function TongHopKQ() {
                           }));
 
                     return displayData.map(r => (
-                      <TableRow
-                        key={r.docId}
-                        onMouseEnter={() => setHoverRow(r.docId)}
-                        onMouseLeave={() => setHoverRow(null)}
-                        sx={{
-                          cursor: "pointer",
-                          transition: "background-color 0.2s",
-                          backgroundColor:
-                            hoverRow === r.docId ? "rgba(0,0,0,0.04)" : "transparent",
-                        }}
-                      >
+                      <TableRow key={r.stt}>
                         <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
                           {r.stt}
                         </TableCell>
 
                         <TableCell sx={{ px: 1, textAlign: "left", border: "1px solid rgba(0,0,0,0.12)" }}>
-                          {r.hoVaTen?.toUpperCase()}
+                          {r.hoVaTen.toUpperCase()}
                         </TableCell>
 
                         <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)", fontWeight: "bold" }}>
@@ -1132,33 +1045,6 @@ export default function TongHopKQ() {
 
                         <TableCell sx={{ px: 1, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
                           {r.ngayHienThi}
-                        </TableCell>
-
-                        {/* CỘT XÓA */}
-                        <TableCell
-                          sx={{
-                            width: 40,
-                            textAlign: "center",
-                            border: "1px solid rgba(0,0,0,0.12)",
-                          }}
-                        >
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setDeleteItem({
-                                docId: r.docId,
-                                hoVaTen: r.hoVaTen,
-                              });
-                              setOpenDeleteRow(true);
-                            }}
-                            sx={{
-                              opacity: hoverRow === r.docId ? 1 : 0,
-                              transition: "0.2s",
-                              color: "error.main",
-                            }}
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ));
@@ -1210,15 +1096,6 @@ export default function TongHopKQ() {
           }}
         />
 
-        <DeleteStudentConfirmDialog
-          open={openDeleteRow}
-          student={deleteItem}
-          onClose={() => {
-            setOpenDeleteRow(false);
-            setDeleteItem(null);
-          }}
-          onConfirm={handleDeleteRow}
-        />
 
       </Paper>
     </Box>
