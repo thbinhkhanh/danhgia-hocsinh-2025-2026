@@ -69,7 +69,7 @@ const ResultDialog = ({
     <Box
       sx={{
         px: 3,
-        py: 2,
+        py: 1.5,
         color: "#fff",
         background: "linear-gradient(135deg, #1976d2, #42a5f5)",
         position: "relative",

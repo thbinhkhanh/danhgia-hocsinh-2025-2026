@@ -30,6 +30,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import DanhGiaGVDialog from "../dialog/DanhGiaGVDialog";
 import StatusResultDialogGV from "../dialog/StatusResultDialogGV";
 import ConfirmDeleteCoreDialog from "../dialog/ConfirmDeleteCoreDialog";
+import GroupIcon from "@mui/icons-material/Group";
+import HistoryIcon from "@mui/icons-material/History";
+import GroupsIcon from "@mui/icons-material/Groups";
 
 export default function GiaoVien() {
   const navigate = useNavigate();
@@ -57,6 +60,13 @@ export default function GiaoVien() {
   const dialogNodeRef = useRef(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const [recentStudents, setRecentStudents] = useState([]);
+  const [showAll, setShowAll] = useState(false);
+  const selectedClass = config?.lop;
+
+  const [doneStudent, setDoneStudent] = useState(null);
+  const [openDoneDialog, setOpenDoneDialog] = useState(false);
 
   function PaperComponent(props) {
     if (isMobile) return <Paper {...props} />;
@@ -95,6 +105,31 @@ export default function GiaoVien() {
     };
     fetchClasses();
   }, []);
+
+  useEffect(() => {
+    if (!config.lop) return;
+
+    const key = `recentGV_${config.lop}`;
+    const stored = JSON.parse(localStorage.getItem(key) || "[]");
+
+    setRecentStudents(stored);
+  }, [config.lop]);
+
+  const saveRecentStudent = (student) => {
+    if (!config.lop) return;
+
+    const key = `recentGV_${config.lop}`;
+
+    setRecentStudents(prev => {
+      const updated = [
+        student,
+        ...prev.filter(s => s.maDinhDanh !== student.maDinhDanh),
+      ].slice(0, 10);
+
+      localStorage.setItem(key, JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Lấy danh sách học sinh khi đổi lớp
   useEffect(() => {
@@ -458,6 +493,17 @@ const handleStatusChange = (maDinhDanh, status) => {
     setConfirmData(null);
   };
 
+  useEffect(() => {
+    const sync = () => {
+      const key = `recentGV_${config.lop}`;
+      const stored = JSON.parse(localStorage.getItem(key) || "[]");
+      setRecentStudents(stored);
+    };
+
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, [config.lop]);
+
   const mode = getMode(config);
 
   return (
@@ -523,16 +569,15 @@ const handleStatusChange = (maDinhDanh, status) => {
           fontWeight="bold"
           sx={{ color: "#1976d2", pb: 1 }}
         >
-          {config?.baiTapTuan
-            //? `BÀI TẬP - TUẦN ${config.tuan}`
-            //: config?.danhGiaTuan
-            //? `ĐÁNH GIÁ - TUẦN ${config.tuan}`
-            //: "KIỂM TRA ĐỊNH KỲ"}
-
-            ? `BÀI TẬP TRẮC NGHIỆM`
-            : config?.danhGiaTuan
-            ? `TỰ ĐÁNH GIÁ`
-            : "KIỂM TRA ĐỊNH KỲ"}
+          {
+            config?.loaiKiemTra === "baitap"
+              ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
+              : config?.loaiKiemTra === "danhgia"
+              ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
+              : config?.loaiKiemTra === "ontap"
+              ? `ÔN TẬP - ${config?.hocKy?.toUpperCase() || ""}`
+              : `KẾT QUẢ KTĐK - ${(config?.hocKy || "").toUpperCase()}`
+            }
         </Typography>
       </Box>
 
@@ -580,131 +625,501 @@ const handleStatusChange = (maDinhDanh, status) => {
         )}
       </Box>
 
-      {/* Danh sách học sinh */}
-      <Grid container spacing={2} justifyContent="center">
-        {columns.map((col, colIdx) => (
-          <Grid item key={colIdx}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {col.map(student => {
-                return (
-                  <Paper
-                    key={student.maDinhDanh}
-                    elevation={3}
-                    onClick={() => {
-                      const mode = getMode(config);   // ← dùng hàm dùng chung
+      {/* 🔹 Học sinh gần đây */}
+      {config.hienThiTenGanDay && recentStudents.length > 0 && !showAll && (
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: 1200,
+            mx: "auto",
+            mb: 4,
+          }}
+        >
+          {/* HEADER */}
+          <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#0f172a" }}>
+            Học sinh gần đây
+          </Typography>
 
-                      if (mode === "ktdk" || mode === "btt") {
-                        // mở dialog trắc nghiệm (phần 2)
-                        setStudentForTracNghiem(student);
+          <Typography sx={{ fontSize: 14, color: "#64748b", mt: 0.5, mb: 3 }}>
+            Truy cập nhanh học sinh vừa thao tác
+          </Typography>
 
-                      } else if (mode === "dgt") {
-                        // mở dialog đánh giá tuần (phần 1)
-                        setStudentForDanhGia(student);
+          {/* LIST */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 2.5,
+              overflowX: { xs: "visible", sm: "auto" },
+              overflowY: "visible",
+              pb: 1,
+              scrollSnapType: { sm: "x mandatory" },
 
-                      } else {
-                        // fallback
-                        setStudentForDanhGia(student);
+              "&::-webkit-scrollbar": {
+                height: 8,
+              },
+              "&::-webkit-scrollbar-thumb": {
+                background: "#cbd5e1",
+                borderRadius: 999,
+              },
+            }}
+          >
+            {recentStudents.slice(0, 4).map((student, index) => (
+              <Paper
+                key={student.maDinhDanh}
+                onClick={async () => {
+                  if (config?.khoaHeThong) {
+                    setOpenSystemLocked(true);
+                    return;
+                  }
+
+                  if (!selectedClass || !student.maDinhDanh) return;
+
+                  const subjectKey =
+                    config.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
+
+                  const classKey = selectedClass.replace(".", "_");
+
+                  try {
+                    const hsRef = doc(
+                      db,
+                      "DATA",
+                      classKey,
+                      "HOCSINH",
+                      student.maDinhDanh
+                    );
+
+                    const hsSnap = await getDoc(hsRef);
+                    const data = hsSnap.exists() ? hsSnap.data() : {};
+                    const dgtxData = data?.[subjectKey]?.dgtx || {};
+                    const ktdkData = data?.[subjectKey]?.ktdk || {};
+
+                    const mode = getMode(config);
+
+                    const saveRecent = () => {
+                      const key = `recent_${selectedClass}`;
+                      const updated = [
+                        student,
+                        ...recentStudents.filter(
+                          (s) => s.maDinhDanh !== student.maDinhDanh
+                        ),
+                      ].slice(0, 10);
+
+                      localStorage.setItem(key, JSON.stringify(updated));
+                      setRecentStudents(updated);
+                    };
+
+                    // ================= BTT =================
+                    if (mode === "btt") {
+                      if (!selectedWeek) {
+                        setDoneStudent({
+                          maDinhDanh: student.maDinhDanh,
+                          hoVaTen: student.hoVaTen,
+                        });
+                        return;
                       }
-                    }}
 
+                      const weekData = dgtxData[`tuan_${selectedWeek}`] || {};
+
+                      if (weekData.TN_diem != null) {
+                        setDoneStudent({
+                          maDinhDanh: student.maDinhDanh,
+                          hoVaTen: student.hoVaTen,
+                        });
+                        saveRecent();
+                        return;
+                      }
+
+                      navigate("/tracnghiem", {
+                        state: {
+                          studentId: student.maDinhDanh,
+                          fullname: student.hoVaTen,
+                          lop: selectedClass,
+                          selectedWeek,
+                          mon: config.mon,
+                        },
+                      });
+
+                      saveRecent();
+                      return;
+                    }
+
+                    // ================= KTDK =================
+                    if (mode === "ktdk") {
+                      const hocKyMap = {
+                        "Giữa kỳ I": "GKI",
+                        "Cuối kỳ I": "CKI",
+                        "Giữa kỳ II": "GKII",
+                        "Cuối năm": "CN",
+                      };
+
+                      const hocKyCode = hocKyMap[config.hocKy];
+                      const hocKyData = ktdkData?.[hocKyCode] || {};
+
+                      if (hocKyData?.lyThuyet != null) {
+                        setDoneStudent({
+                          maDinhDanh: student.maDinhDanh,
+                          hoVaTen: student.hoVaTen,
+                        });
+                        saveRecent();
+                        return;
+                      }
+
+                      navigate("/tracnghiem", {
+                        state: {
+                          studentId: student.maDinhDanh,
+                          fullname: student.hoVaTen,
+                          lop: selectedClass,
+                          selectedWeek,
+                          mon: config.mon,
+                        },
+                      });
+
+                      saveRecent();
+                      return;
+                    }
+
+                    // ================= ÔN TẬP =================
+                    if (mode === "ontap") {
+                      navigate("/tracnghiem-ontap", {
+                        state: {
+                          fullname: student.hoVaTen,
+                          lop: selectedClass,
+                        },
+                      });
+
+                      saveRecent();
+                      return;
+                    }
+
+                    // ================= DGT =================
+                    if (mode === "dgt") {
+                      const weekData = dgtxData[`tuan_${selectedWeek}`] || {};
+
+                      setExpandedStudent({
+                        ...student,
+                        status: weekData.status || "",
+                      });
+
+                      saveRecent();
+                      return;
+                    }
+
+                    // ================= DEFAULT =================
+                    setStudentForDanhGia(student);
+                    saveRecent();
+                  } catch (err) {
+                    console.error(err);
+                    setDoneStudent({
+                      maDinhDanh: student.maDinhDanh,
+                      hoVaTen: student.hoVaTen,
+                    });
+                  }
+                }}
+                elevation={0}
+                sx={{
+                  flexShrink: 0,
+                  width: { xs: "100%", sm: 260 },
+                  minWidth: { xs: "100%", sm: 260 },
+                  borderRadius: "30px",
+                  cursor: "pointer",
+                  overflow: "hidden",
+                  position: "relative",
+                  border: "1px solid rgba(226,232,240,.9)",
+                  background: "linear-gradient(180deg,#ffffff,#f8fbff)",
+                  boxShadow: "0 8px 28px rgba(15,23,42,.06)",
+                  transition: ".25s ease",
+
+                  "&:hover": {
+                    boxShadow: "0 18px 40px rgba(37,99,235,.16)",
+                    borderColor: "#93c5fd",
+                  },
+
+                  "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 6,
+                    background:
+                      index % 2 === 0
+                        ? "linear-gradient(90deg,#2563eb,#60a5fa)"
+                        : "linear-gradient(90deg,#7c3aed,#a78bfa)",
+                  },
+                }}
+              >
+                <Box sx={{ p: 2.5, textAlign: "center" }}>
+                  <Box
                     sx={{
-                      minWidth: 120,
-                      width: { xs: "75vw", sm: "auto" },
-                      p: 2,
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      textAlign: "left",
+                      width: 72,
+                      height: 72,
+                      borderRadius: "24px",
+                      mx: "auto",
+                      mb: 2,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between",
-                      bgcolor: "#ffffff",
-                      transition: "0.2s",
-                      boxShadow: 1,
-                      "&:hover": {
-                        transform: "scale(1.03)",
-                        boxShadow: 4,
-                        bgcolor: "#f5f5f5",
-                      },
+                      justifyContent: "center",
+                      background:
+                        index % 2 === 0
+                          ? "linear-gradient(135deg,#2563eb,#60a5fa)"
+                          : "linear-gradient(135deg,#7c3aed,#a78bfa)",
                     }}
                   >
-                    <Typography variant="subtitle2" fontWeight="medium" noWrap>
-                      {student.stt}. {student.hoVaTen}
-                    </Typography>
+                    <GroupIcon sx={{ color: "#fff", fontSize: 34 }} />
+                  </Box>
 
-                    {/* CHIP BTT hoặc KTDK cùng màu */}
-                      {(() => {
-                        const mode = getMode(config);   // ← dùng chung
+                  <Typography
+                    sx={{
+                      fontSize: 18,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      textTransform: "uppercase",
+                      minHeight: 48,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {student.hoVaTen}
+                  </Typography>
 
-                        let chipProps = null;
+                  <Typography
+                    sx={{
+                      mt: 1,
+                      fontSize: 13,
+                      color: "#64748b",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Học sinh lớp {selectedClass}
+                  </Typography>
 
-                        // --- KTDK ---
-                        if (mode === "ktdk") {
-                          const { lyThuyet, lyThuyetPhanTram } = studentScores[student.maDinhDanh] || {};
-                          if (lyThuyet != null && lyThuyetPhanTram != null) {
-                            let color = "warning";
-                            if (lyThuyetPhanTram >= 85) color = "primary";
-                            else if (lyThuyetPhanTram >= 50) color = "secondary";
+                  {/*<Box
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      px: 1.2,
+                      py: 0.35,
+                      borderRadius: "14px",
+                      background: "#eff6ff",
+                      color: "#2563eb",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      border: "1px solid #dbeafe",
+                      mt: 0.8,
+                    }}
+                  >
+                    STT: {student.stt ?? index + 1}
+                  </Box>*/}
 
-                            chipProps = { label: String(lyThuyet), color };
-                          }
-                        }
+                  <Box
+                    sx={{
+                      mt: 2.5,
+                      py: 1.2,
+                      borderRadius: "16px",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: "#2563eb",
+                      background: "#eff6ff",
+                      transition: ".2s",
+                    }}
+                  >
+                    Xem kết quả
+                  </Box>
+                </Box>
+              </Paper>
+            ))}
+          </Box>
 
-                        // --- BÀI TẬP TUẦN (BTT) ---
-                        else if (mode === "btt") {
-                          const m = (studentScores[student.maDinhDanh]?.TN_status || "").trim();
-
-                          chipProps =
-                            {
-                              "Hoàn thành tốt": { label: "T", color: "primary" },
-                              "Hoàn thành": { label: "H", color: "secondary" },
-                              "Chưa hoàn thành": { label: "C", color: "warning" },
-                            }[m] || null;
-                        }
-
-                        // --- ĐÁNH GIÁ TUẦN (DGTX) ---
-                        else if (mode === "dgt") {
-                          const s = String(studentStatus[student.maDinhDanh] || "").trim();
-
-                          chipProps =
-                            {
-                              "Hoàn thành tốt": { label: "T", color: "primary" },
-                              "Hoàn thành": { label: "H", color: "secondary" },
-                              "Chưa hoàn thành": { label: "C", color: "warning" },
-                            }[s] || null;
-                        }
-
-                        // --- fallback ---
-                        else {
-                          chipProps = null;
-                        }
-
-                        return (
-                          chipProps && (
-                            <Chip
-                              key={`chip-${student.maDinhDanh}-${mode}`}
-                              label={chipProps.label}
-                              color={chipProps.color}
-                              size="small"
-                              sx={{
-                                fontWeight: "bold",
-                                borderRadius: "50%",
-                                width: 28,
-                                height: 28,
-                                minWidth: 0,
-                              }}
-                            />
-                          )
-                        );
-                      })()}
-
-
-                  </Paper>
-                );
-              })}
+          {/* BUTTON */}
+          <Box sx={{ display: "flex", justifyContent: "flex-start", mt: 3 }}>
+            <Box
+              onClick={() => {
+                if (!selectedClass) return;
+                setShowAll(true);
+              }}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                px: 3,
+                py: 1.6,
+                borderRadius: "18px",
+                cursor: "pointer",
+                background: "linear-gradient(135deg,#eff6ff,#f8fbff)",
+                border: "1px solid #dbeafe",
+              }}
+            >
+              <GroupsIcon sx={{ color: "#2563eb", fontSize: 28 }} />
+              <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#2563eb" }}>
+                Xem toàn bộ lớp
+              </Typography>
             </Box>
+          </Box>
+        </Box>
+      )}
+
+      {/* ================= DIALOG KẾT QUẢ ================= */}
+      <StatusResultDialogGV
+        studentForTracNghiem={
+          doneStudent
+            ? {
+                maDinhDanh: doneStudent.maDinhDanh,
+                hoVaTen: doneStudent.hoVaTen,
+              }
+            : null
+        }
+        setStudentForTracNghiem={setDoneStudent}
+        studentScores={studentScores}
+        config={config}
+        convertPercentToScore={convertPercentToScore}
+        deleteStudentScore={deleteStudentScore}
+      />
+
+
+      {/* Danh sách học sinh */}
+      {(
+        (!config?.hienThiTenGanDay || recentStudents.length === 0) || showAll
+      ) && (
+        <>
+          <Grid container spacing={2} justifyContent="center">
+            {columns.map((col, colIdx) => (
+              <Grid item key={colIdx}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {col.map((student) => {
+                    return (
+                      <Paper
+                        key={student.maDinhDanh}
+                        elevation={3}
+                        onClick={() => {
+                          const mode = getMode(config);
+
+                          saveRecentStudent(student); // 👈 THÊM DÒNG NÀY
+
+                          if (mode === "ktdk" || mode === "btt") {
+                            setStudentForTracNghiem(student);
+                          } else {
+                            setStudentForDanhGia(student);
+                          }
+                        }}
+                        sx={{
+                          minWidth: 120,
+                          width: { xs: "75vw", sm: "auto" },
+                          p: 2,
+                          borderRadius: 2,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          bgcolor: "#ffffff",
+                          transition: "0.2s",
+                          boxShadow: 1,
+                          "&:hover": {
+                            transform: "scale(1.03)",
+                            boxShadow: 4,
+                            bgcolor: "#f5f5f5",
+                          },
+                        }}
+                      >
+                        <Typography variant="subtitle2" fontWeight="medium" noWrap>
+                          {student.stt}. {student.hoVaTen}
+                        </Typography>
+
+                        {(() => {
+                          const mode = getMode(config);
+                          let chipProps = null;
+
+                          if (mode === "ktdk") {
+                            const { lyThuyet, lyThuyetPhanTram } =
+                              studentScores[student.maDinhDanh] || {};
+
+                            if (lyThuyet != null && lyThuyetPhanTram != null) {
+                              let color = "warning";
+                              if (lyThuyetPhanTram >= 85) color = "primary";
+                              else if (lyThuyetPhanTram >= 50) color = "secondary";
+
+                              chipProps = { label: String(lyThuyet), color };
+                            }
+                          } else if (mode === "btt") {
+                            const m =
+                              (studentScores[student.maDinhDanh]?.TN_status || "").trim();
+
+                            chipProps =
+                              {
+                                "Hoàn thành tốt": { label: "T", color: "primary" },
+                                "Hoàn thành": { label: "H", color: "secondary" },
+                                "Chưa hoàn thành": { label: "C", color: "warning" },
+                              }[m] || null;
+                          } else if (mode === "dgt") {
+                            const s =
+                              String(studentStatus[student.maDinhDanh] || "").trim();
+
+                            chipProps =
+                              {
+                                "Hoàn thành tốt": { label: "T", color: "primary" },
+                                "Hoàn thành": { label: "H", color: "secondary" },
+                                "Chưa hoàn thành": { label: "C", color: "warning" },
+                              }[s] || null;
+                          }
+
+                          return (
+                            chipProps && (
+                              <Chip
+                                key={`chip-${student.maDinhDanh}-${mode}`}
+                                label={chipProps.label}
+                                color={chipProps.color}
+                                size="small"
+                                sx={{
+                                  fontWeight: "bold",
+                                  borderRadius: "50%",
+                                  width: 28,
+                                  height: 28,
+                                  minWidth: 0,
+                                }}
+                              />
+                            )
+                          );
+                        })()}
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
+
+          {/* NÚT QUAY LẠI */}
+          {recentStudents.length > 0 && (
+            <Box sx={{ display: "flex", justifyContent: "flex-start", mt: 3 }}>
+              <Box
+                onClick={() => setShowAll(false)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  px: 3,
+                  py: 1.6,
+                  borderRadius: "18px",
+                  cursor: "pointer",
+                  background: "linear-gradient(135deg,#eff6ff,#f8fbff)",
+                  border: "1px solid #dbeafe",
+                  boxShadow: "0 8px 22px rgba(37,99,235,.12)",
+                }}
+              >
+                <HistoryIcon sx={{ color: "#2563eb" }} />
+
+                <Typography sx={{ fontWeight: 700, color: "#2563eb" }}>
+                  Chế độ xem: Gần đây
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </>
+      )}
 
     </Paper>
 

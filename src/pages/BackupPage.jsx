@@ -662,21 +662,39 @@ export default function BackupPage({ onClose, config }) {
           py: 2,
           borderTop: "1px solid #e2e8f0",
           bgcolor: "#fff",
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 1,
         }}
       >
-        <Button onClick={onClose}>Hủy</Button>
+        <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+          <Button
+            onClick={onClose}
+            sx={{
+              textTransform: "none",
+            }}
+          >
+            Hủy
+          </Button>
 
-        <Button
-          variant="contained"
-          startIcon={<BackupIcon />}
-          onClick={handleBackup}
-          disabled={loading}
-        >
-          Sao lưu
-        </Button>
+          <Button
+            variant="contained"
+            startIcon={<BackupIcon />}
+            onClick={handleBackup}
+            disabled={loading}
+            sx={{
+              textTransform: "none",
+              borderRadius: "12px",
+              fontWeight: 700,
+              boxShadow: "none",
+              px: 2.5,
+              py: 1,
+
+              "&:hover": {
+                boxShadow: "none",
+              },
+            }}
+          >
+            Sao lưu
+          </Button>
+        </Stack>
       </Box>
 
       {/* ===== SNACKBAR ===== */}

@@ -693,7 +693,7 @@ export default function DanhSachHS() {
         </Box>
 
         {/* TIÊU ĐỀ */}
-        <Box sx={{ textAlign: "center", mb: 3 }}>
+        <Box sx={{ textAlign: "center", mt: { xs: 4, sm: 0 }, mb: 3 }}>
           <Typography variant="h5" fontWeight="bold" sx={{ color: "#1976d2" }}>
             {viewMode === "students"
               ? "DANH SÁCH HỌC SINH"

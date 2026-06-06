@@ -17,6 +17,7 @@ import {
   Stack,
   Chip,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
@@ -28,8 +29,10 @@ import { useTheme, useMediaQuery } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DanhGiaGVDialog from "../dialog/DanhGiaGVDialog";
 import StatusResultDialogGV from "../dialog/StatusResultDialogGV";
+import ConfirmDeleteCoreDialog from "../dialog/ConfirmDeleteCoreDialog";
 
 export default function GiaoVien() {
+  const navigate = useNavigate();
   const { studentData, setStudentData, setClassData } = useContext(StudentContext);
   const { config, setConfig } = useContext(ConfigContext);
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
@@ -46,6 +49,9 @@ export default function GiaoVien() {
   const [studentForDanhGia, setStudentForDanhGia] = useState(null);
   const [studentForTracNghiem, setStudentForTracNghiem] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState(null);
 
   // ref cho dialog draggable
   const dialogNodeRef = useRef(null);
@@ -79,7 +85,7 @@ export default function GiaoVien() {
   // Lấy danh sách lớp
   useEffect(() => {
     const fetchClasses = async () => {
-      const snapshot = await getDocs(collection(db, "DANHSACH"));
+      const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
       const classList = snapshot.docs.map(d => d.id);
       setClasses(classList);
       setClassData(classList);
@@ -100,7 +106,7 @@ export default function GiaoVien() {
       return;
     }
     const fetchStudents = async () => {
-      const ref = doc(db, "DANHSACH", selectedClass);
+      const ref = doc(db, `DANHSACH_${namHocKey}`, selectedClass);
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const data = snap.data();
@@ -138,7 +144,7 @@ export default function GiaoVien() {
 
     const classKey = lop.replace(".", "_");
     const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
-    const classRef = collection(db, "DATA", classKey, "HOCSINH");
+    const classRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
 
     const unsubscribe = onSnapshot(classRef, snapshot => {
       const updatedStatus = {};
@@ -205,7 +211,7 @@ export default function GiaoVien() {
       const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
       // Document học sinh trong DATA
-      const hsRef = doc(db, "DATA", classKey, "HOCSINH", studentId);
+      const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId);
 
       // Path tới tuần cần lưu trạng thái
       const tuanField = `${subjectKey}.dgtx.tuan_${tuan}.status`;
@@ -273,15 +279,12 @@ const handleStatusChange = (maDinhDanh, status) => {
   };
 
   const deleteStudentScore = async (studentId, hoVaTen) => {
-    const confirmDelete = window.confirm(`Bạn có chắc muốn xóa kết quả của ${hoVaTen}?`);
-    if (!confirmDelete) return;
-
     const { lop, tuan, mon, baiTapTuan, kiemTraDinhKi, hocKy } = config;
     if (!lop || !mon) return;
 
     const classKey = lop.replace(".", "_");
     const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
-    const studentRef = doc(db, "DATA", classKey, "HOCSINH", studentId);
+    const studentRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId);
 
     try {
       if (baiTapTuan && tuan) {
@@ -317,15 +320,23 @@ const handleStatusChange = (maDinhDanh, status) => {
     }
   };
 
-
-
   // Hàm dùng chung
   const getMode = (config) => {
-    if (config.kiemTraDinhKi) return "ktdk";
-    if (config.baiTapTuan)    return "btt";
-    if (config.danhGiaTuan)   return "dgt";
-    return "normal";
-  };
+  console.log("👉 CONFIG DEBUG:", config);
+  console.log("👉 examType:", config?.examType);
+  console.log("👉 flags:", {
+    kiemTraDinhKi: config?.kiemTraDinhKi,
+    baiTapTuan: config?.baiTapTuan,
+    danhGiaTuan: config?.danhGiaTuan,
+  });
+
+  if (config.kiemTraDinhKi) return "ktdk";
+  if (config.baiTapTuan) return "btt";
+  if (config.danhGiaTuan) return "dgt";
+  if (config.examType === "ontap") return "ontap";
+
+  return "normal";
+};
 
   const deleteClassScores = async (config) => {
     const { lop, tuan, mon, hocKy } = config;
@@ -338,14 +349,11 @@ const handleStatusChange = (maDinhDanh, status) => {
       ktdk:`Bạn có chắc muốn xóa điểm kiểm tra định kỳ của lớp ${lop}?`,
     };
 
-    const confirmed = window.confirm(confirmMessages[mode] || "Bạn có chắc muốn xoá?");
-    if (!confirmed) return;
-
     const classKey = lop.replace(".", "_");
     const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
     // Lấy toàn bộ học sinh
-    const hsRef = collection(db, "DATA", classKey, "HOCSINH");
+    const hsRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
     const snapshot = await getDocs(hsRef);
 
     snapshot.forEach(docSnap => {
@@ -386,7 +394,7 @@ const handleStatusChange = (maDinhDanh, status) => {
       }
 
       if (Object.keys(updates).length > 0) {
-        updateDoc(doc(db, "DATA", classKey, "HOCSINH", studentId), updates)
+        updateDoc(doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId), updates)
           .then(() => console.log(`✅ Đã xóa dữ liệu ${mode} của HS ${studentId}`))
           .catch(err => console.error(`❌ Lỗi xóa dữ liệu HS ${studentId}:`, err));
       }
@@ -404,6 +412,53 @@ const handleStatusChange = (maDinhDanh, status) => {
     setStudentScores({});
   }, [config.kiemTraDinhKi, config.baiTapTuan]);
 ;
+
+  const openDeleteStudentDialog = (studentId, hoVaTen) => {
+    setConfirmData({
+      type: "student",
+      studentId,
+      hoVaTen,
+    });
+    setConfirmOpen(true);
+  };
+
+  const openDeleteClassDialog = (config, mode) => {
+    setConfirmData({
+      type: "class",
+      config,
+      mode,
+    });
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmData) return;
+
+    setConfirmOpen(false);
+
+    if (confirmData.type === "student") {
+      await deleteStudentScore(
+        confirmData.studentId,
+        confirmData.hoVaTen
+      );
+    }
+
+    if (confirmData.type === "class") {
+      await deleteClassScores(
+        confirmData.config,
+        confirmData.mode
+      );
+    }
+
+    setConfirmData(null);
+  };
+
+  const handleCloseConfirm = () => {
+    setConfirmOpen(false);
+    setConfirmData(null);
+  };
+
+  const mode = getMode(config);
 
   return (
   <Box
@@ -428,11 +483,29 @@ const handleStatusChange = (maDinhDanh, status) => {
         position: "relative", // cần để đặt icon tuyệt đối
       }}
     >
+      <IconButton
+        onClick={() => navigate("/dashboard")}
+        sx={{
+          position: "absolute",
+          top: 12,
+          right: 12,
+          color: "#64748b",
+          backgroundColor: "#f1f5f9",
+          "&:hover": {
+            backgroundColor: "#e2e8f0",
+            color: "#ef4444",
+          },
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          zIndex: 10,
+        }}
+      >
+        <CloseIcon />
+      </IconButton>
       {/* Icon Xóa ở góc trên/trái */}
       <IconButton
         size="small"
         color="error"
-        onClick={() => deleteClassScores(config)} // gọi hàm xóa cả lớp
+        onClick={() => openDeleteClassDialog(config, getMode(config))}
         sx={{
           position: "absolute",
           top: 8,
@@ -459,7 +532,7 @@ const handleStatusChange = (maDinhDanh, status) => {
             ? `BÀI TẬP TRẮC NGHIỆM`
             : config?.danhGiaTuan
             ? `TỰ ĐÁNH GIÁ`
-            : "KIỂM TRA ĐỊNH KỲ"}
+            : "KẾT QUẢ KIỂM TRA ĐỊNH KỲ"}
         </Typography>
       </Box>
 
@@ -489,16 +562,22 @@ const handleStatusChange = (maDinhDanh, status) => {
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Tuần</InputLabel>
-          <Select value={config.tuan || 1} onChange={handleWeekChange} label="Tuần">
-            {[...Array(35)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>
-                Tuần {i + 1}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {mode !== "ktdk" && mode !== "ontap" && (
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Tuần</InputLabel>
+            <Select
+              value={config.tuan || 1}
+              onChange={handleWeekChange}
+              label="Tuần"
+            >
+              {[...Array(35)].map((_, i) => (
+                <MenuItem key={i + 1} value={i + 1}>
+                  Tuần {i + 1}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
       </Box>
 
       {/* Danh sách học sinh */}
@@ -647,6 +726,18 @@ const handleStatusChange = (maDinhDanh, status) => {
       convertPercentToScore={convertPercentToScore}
       deleteStudentScore={deleteStudentScore}
     />
+
+    <ConfirmDeleteCoreDialog
+      open={confirmOpen}
+      onClose={handleCloseConfirm}
+      onConfirm={handleConfirmDelete}
+      message={
+        confirmData?.type === "student"
+          ? `Xóa học sinh ${confirmData?.hoVaTen || ""}?`
+          : `Xóa dữ liệu lớp ${confirmData?.config?.lop || ""}?`
+      }
+    />
+
   </Box>
 );
 }

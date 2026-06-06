@@ -576,21 +576,39 @@ export default function RestorePage({ open, onClose }) {
             py: 2,
             borderTop: "1px solid #e2e8f0",
             bgcolor: "#fff",
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 1,
           }}
         >
-          <Button onClick={onClose}>Hủy</Button>
+          <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+            <Button
+              onClick={onClose}
+              sx={{
+                textTransform: "none",
+              }}
+            >
+              Hủy
+            </Button>
 
-          <Button
-            variant="contained"
-            startIcon={<RestoreIcon />}
-            onClick={handleRestore}
-            disabled={loading || !hasAnyChecked}
-          >
-            PHỤC HỒI
-          </Button>
+            <Button
+              variant="contained"
+              startIcon={<RestoreIcon />}
+              onClick={handleRestore}
+              disabled={loading || !hasAnyChecked}
+              sx={{
+                textTransform: "none",
+                borderRadius: "12px",
+                fontWeight: 700,
+                boxShadow: "none",
+                px: 2.5,
+                py: 1,
+
+                "&:hover": {
+                  boxShadow: "none",
+                },
+              }}
+            >
+              Phục hồi
+            </Button>
+          </Stack>
         </Box>
       </Card>
     </Box>

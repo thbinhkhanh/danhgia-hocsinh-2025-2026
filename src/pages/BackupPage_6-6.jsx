@@ -27,8 +27,8 @@ export default function BackupPage({ open, onClose, config }) {
   const BACKUP_KEYS = [
     // ===== HỌC SINH =====
     { key: `DANHSACH_${namHocKey}`, label: "Danh sách lớp" },
-    { key: `DATA_${namHocKey}`, label: "Kết quả KTĐK" },
-    { key: `DATA_ONTAP_${namHocKey}`, label: "Kết quả ôn tập" },
+    { key: `DATA_${namHocKey}`, label: "Kết quả đánh giá" },
+    //{ key: `DATA_ONTAP_${namHocKey}`, label: "Ôn tập" },
 
     // ===== ĐỀ KIỂM TRA =====
     { key: "NGANHANG_DE", label: "Ngân hàng đề KTĐK" },
@@ -130,8 +130,8 @@ export default function BackupPage({ open, onClose, config }) {
 
       // ❗ DATA + DANHSACH theo năm (KHÔNG còn raw nữa)
       const hasDATA = selectedCollections.includes(`DATA_${namHocKey}`);
-      const hasONTAP = selectedCollections.includes(`DATA_ONTAP_${namHocKey}`);
       const hasDANHSACH = selectedCollections.includes(`DANHSACH_${namHocKey}`);
+      const hasONTAP = selectedCollections.includes(`DATA_ONTAP_${namHocKey}`);
 
       const otherCollections = selectedCollections.filter(
         (c) =>
@@ -140,7 +140,7 @@ export default function BackupPage({ open, onClose, config }) {
           c !== `DATA_ONTAP_${namHocKey}`
       );
 
-      const DATA_WEIGHT = hasDATA ? 50 : 0;
+      const DATA_WEIGHT = hasDATA ? 60 : 0;
       const ONTAP_WEIGHT = hasONTAP ? 30 : 0;
       const OTHERS_WEIGHT = Math.max(0, 100 - DATA_WEIGHT - ONTAP_WEIGHT);
 
@@ -182,53 +182,70 @@ export default function BackupPage({ open, onClose, config }) {
         const classListSnap = await getDocs(collection(db, "DANHSACH"));
         const classList = classListSnap.docs.map((d) => d.id);
 
-        const perClassStep = DATA_WEIGHT / (classList.length || 1);
+        if (classList.length === 0) {
+          progressCount += DATA_WEIGHT;
+          if (onProgress)
+            onProgress(Math.min(Math.round(progressCount), 99));
+        } else {
+          const perClassStep = DATA_WEIGHT / classList.length;
 
-        for (const classId of classList) {
-          const classKey = classId.replace(".", "_");
+          for (const classId of classList) {
+            const classKey = classId.replace(".", "_");
 
-          const studentsSnap = await getDocs(
-            collection(db, "DATA", classKey, "HOCSINH")
-          );
+            const studentsSnap = await getDocs(
+              collection(db, "DATA", classKey, "HOCSINH")
+            );
 
-          backupData[`DATA_${namHocKey}`][classKey] = { HOCSINH: {} };
+            backupData[`DATA_${namHocKey}`][classKey] = {
+              HOCSINH: {},
+            };
 
-          studentsSnap.forEach((doc) => {
-            backupData[`DATA_${namHocKey}`][classKey].HOCSINH[doc.id] =
-              doc.data();
-          });
+            studentsSnap.forEach((studentDoc) => {
+              backupData[`DATA_${namHocKey}`][classKey].HOCSINH[
+                studentDoc.id
+              ] = studentDoc.data();
+            });
 
-          progressCount += perClassStep;
-          onProgress?.(Math.round(progressCount));
+            progressCount += perClassStep;
+            if (onProgress)
+              onProgress(Math.min(Math.round(progressCount), 99));
+          }
         }
       }
 
-      // ================== ONTAP (THEO NĂM) ==================
       if (hasONTAP) {
         backupData[`DATA_ONTAP_${namHocKey}`] = {};
 
         const classListSnap = await getDocs(collection(db, "DANHSACH"));
-        const classList = classListSnap.docs.map((d) => d.id);
+        const classList = classListSnap.docs.map(d => d.id);
 
-        const perClassStep = ONTAP_WEIGHT / (classList.length || 1);
+        // Nếu không có danh sách lớp thì vẫn xử lý an toàn
+        if (classList.length === 0) {
+          console.warn("⚠️ NO CLASS LIST - fallback ONTAP");
+
+          progressCount += ONTAP_WEIGHT;
+          onProgress?.(Math.round(progressCount));
+
+          return; // chỉ return khi KHÔNG có gì để backup toàn bộ function
+        }
+
+        const step = ONTAP_WEIGHT / classList.length;
 
         for (const classId of classList) {
           const classKey = classId.replace(".", "_");
-
+          const colPath = `DATA_ONTAP_${namHocKey}/${classKey}/HOCSINH`;
           const studentSnap = await getDocs(
             collection(db, `DATA_ONTAP_${namHocKey}`, classKey, "HOCSINH")
           );
 
           backupData[`DATA_ONTAP_${namHocKey}`][classKey] = {
-            HOCSINH: {},
+            HOCSINH: {}
           };
-
           studentSnap.forEach((s) => {
-            backupData[`DATA_ONTAP_${namHocKey}`][classKey].HOCSINH[s.id] =
-              s.data();
+            backupData[`DATA_ONTAP_${namHocKey}`][classKey].HOCSINH[s.id] = s.data();
           });
 
-          progressCount += perClassStep;
+          progressCount += step;
           onProgress?.(Math.round(progressCount));
         }
       }
@@ -252,6 +269,11 @@ export default function BackupPage({ open, onClose, config }) {
     let selected = Object.keys(backupOptions).filter(
       (k) => backupOptions[k] && VALID_KEYS.includes(k)
     );
+
+    // 🔥 AUTO INCLUDE ÔN TẬP khi chọn KẾT QUẢ ĐÁNH GIÁ
+    if (selected.includes(dataKey) && !selected.includes(ontapKey)) {
+      selected.push(ontapKey);
+    }
 
     if (selected.length === 0) {
       setSnackbar({
@@ -443,18 +465,7 @@ export default function BackupPage({ open, onClose, config }) {
                       onChange={() => toggleOption(`DATA_${namHocKey}`)}
                     />
                   }
-                  label="Kết quả KTĐK"
-                />
-
-                <FormControlLabel
-                  sx={{ ml: 0 }}
-                  control={
-                    <Checkbox
-                      checked={backupOptions[`DATA_ONTAP_${namHocKey}`]}
-                      onChange={() => toggleOption(`DATA_ONTAP_${namHocKey}`)}
-                    />
-                  }
-                  label="Kết quả ôn tập"
+                  label="Kết quả đánh giá"
                 />
               </Box>
             </Box>

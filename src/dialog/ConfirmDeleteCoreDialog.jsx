@@ -81,7 +81,7 @@ const ConfirmDeleteCoreDialog = ({ open, onClose, onConfirm, message }) => {
 
       {/* CONTENT */}
       <DialogContent sx={{ px: 3, py: 4 }}>
-        <Stack spacing={2} alignItems="center">
+        <Stack spacing={4} alignItems="center">
           <Typography
             sx={{
               fontSize: 15,

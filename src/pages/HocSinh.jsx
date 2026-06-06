@@ -482,13 +482,15 @@ return (
               pb: 1,
             }}
           >
-            {config?.baiTapTuan
-              ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
-              : config?.danhGiaTuan
-              ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
-              : config?.onTap
-              ? `ÔN TẬP - ${config?.hocKy?.toUpperCase() || ""}`
-              : `KIỂM TRA ĐỊNH KỲ`}
+            {
+              config?.loaiKiemTra === "baitap"
+                ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
+                : config?.loaiKiemTra === "danhgia"
+                ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
+                : config?.loaiKiemTra === "ontap"
+                ? `ÔN TẬP - ${config?.hocKy?.toUpperCase() || ""}`
+                : `KTĐK - ${(config?.hocKy || "").toUpperCase()}`
+            }
           </Typography>
         </Box>
 
@@ -848,7 +850,6 @@ return (
                       Học sinh lớp {selectedClass}
                     </Typography>
 
-                    {/* STT */}
                     {/* STT */}
                   <Box sx={{ mt: 1.5, textAlign: "center" }}>
                     <Box

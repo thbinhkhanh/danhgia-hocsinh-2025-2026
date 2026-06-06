@@ -84,6 +84,7 @@ function DashboardCard({ item, onClick }) {
             fontSize: 13,
             color: "#64748b",
             lineHeight: 1.6,
+            minHeight: 42,
           }}
         >
           {item.description}

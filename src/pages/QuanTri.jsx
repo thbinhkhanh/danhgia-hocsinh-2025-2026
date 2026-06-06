@@ -122,6 +122,9 @@ export default function QuanTri() {
           baiTapTuan: data.baiTapTuan || false,
           kiemTraDinhKi: data.kiemTraDinhKi || false,
           onTap: data.onTap || false, 
+
+          loaiKiemTra: data.loaiKiemTra || "kiemtra", // ✅ THÊM MỚI
+
           choXemDiem: data.choXemDiem || false,
           choXemDapAn: data.choXemDapAn || false,
           xuatFileBaiLam: data.xuatFileBaiLam || false,
@@ -683,6 +686,18 @@ export default function QuanTri() {
                     v === "onTap"
                       ? "ontap"
                       : config.examType,
+                  
+                  // ===== field mới (chuẩn hoá tương lai) =====
+                  loaiKiemTra:
+                    v === "danhGiaTuan"
+                      ? "danhgia"
+                      : v === "baiTapTuan"
+                      ? "baitap"
+                      : v === "kiemTraDinhKi"
+                      ? "kiemtra"
+                      : v === "onTap"
+                      ? "ontap"
+                      : "",
                 });
               }}
             >
