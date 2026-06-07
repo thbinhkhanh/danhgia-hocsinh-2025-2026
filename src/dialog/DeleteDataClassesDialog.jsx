@@ -134,6 +134,7 @@ export default function DeleteDataClassesDialog({
       <Box
         sx={{
           px: 3,
+          pr: 1.5, // 12px bên phải
           py: 1.5,
           bgcolor: "#1976d2",
           color: "#fff",
@@ -159,7 +160,13 @@ export default function DeleteDataClassesDialog({
             onClick={onClose}
             sx={{
               color: "#fff",
-              p: 0.5,
+              bgcolor: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              p: 0.8,
+              "&:hover": {
+                bgcolor: "#fff",
+                color: "#ef4444",
+              },
             }}
           >
             <CloseIcon />

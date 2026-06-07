@@ -295,6 +295,7 @@ export default function QuanTri() {
       <Box
         sx={{
           px: 3,
+          pr: 1.5, // 12px
           py: 1.4,
           bgcolor: "#1976d2",
           color: "#fff",

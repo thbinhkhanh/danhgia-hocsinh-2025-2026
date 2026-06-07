@@ -359,6 +359,7 @@ export default function BackupPage({ onClose, config }) {
       <Box
         sx={{
           px: 3,
+          pr: 1.5, // 12px
           py: 1.4,
           background: "#1976d2",
           color: "#fff",

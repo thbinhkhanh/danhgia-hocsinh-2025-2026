@@ -222,6 +222,7 @@ export default function XuatDanhGia() {
         <Box
           sx={{
             px: 3,
+            pr: 1.5, // 12px bên phải
             py: 1.5,
             bgcolor: "#1976d2",
             color: "#fff",
