@@ -74,7 +74,6 @@ export const ConfigProvider = ({ children }) => {
 
     const docRef = doc(db, "CONFIG", "config");
     await setDoc(docRef, filtered, { merge: true });
-    //console.log("✅ Firestore cập nhật:", filtered);
   };
 
   return (

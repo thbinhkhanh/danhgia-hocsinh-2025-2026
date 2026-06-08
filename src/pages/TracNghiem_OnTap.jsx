@@ -98,11 +98,6 @@ export default function TracNghiem_OnTap() {
   const studentName = location.state?.fullname || "";
   const studentClass = location.state?.lop || "";
 
-  // ===== debug =====
-  useEffect(() => {
-    console.log("📦 location.state =", location.state);
-  }, []);
-
   // ===== responsive =====
   const theme = useTheme();
   const isBelow1024 = useMediaQuery("(max-width:1023px)");
@@ -278,14 +273,6 @@ export default function TracNghiem_OnTap() {
 
   const result = { mon, lop, hocKy, namHoc };
 
-  // 🔥 LOG RÕ INPUT + OUTPUT
-  console.log("🧩 [normalizeExam INPUT]");
-  console.log("state:", state);
-  console.log("config:", config);
-
-  console.log("🧩 [normalizeExam OUTPUT]");
-  console.log(result);
-
   return result;
 };
 
@@ -315,10 +302,6 @@ export default function TracNghiem_OnTap() {
 
   // Sử dụng:
   const hoVaTen = capitalizeName(studentName);
-
-  // Ví dụ:
-  //console.log(capitalizeName("thái phạm")); // "Thái Phạm"
-
 
   const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";

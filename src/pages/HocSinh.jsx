@@ -140,7 +140,6 @@ export default function HocSinh() {
   // Khi thay đổi lớp
   const handleClassChange = (e) => {
     const newClass = e.target.value;
-    //console.log("🎯 Chọn lớp:", newClass);
 
     // Chỉ cập nhật context lớp và state local
     setSelectedClass(newClass);
@@ -193,7 +192,6 @@ export default function HocSinh() {
     // 🔵 Nếu chưa có trong context thì tải từ Firestore
     const fetchStudents = async () => {
       try {
-        //console.log(`🌐 Đang tải học sinh lớp "${selectedClass}" từ Firestore...`);
         const classDocRef = doc(db, "DANHSACH", selectedClass);
         const classSnap = await getDoc(classDocRef);
         if (classSnap.exists()) {
@@ -211,8 +209,6 @@ export default function HocSinh() {
           });
 
           studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
-
-          //console.log(`✅ Đã tải học sinh lớp "${selectedClass}" từ Firestore:`, studentList);
 
           // ⬇️ Lưu vào context và state
           setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
@@ -258,7 +254,6 @@ export default function HocSinh() {
           }
         }
 
-        //console.log("[INIT] studentStatus từ DATA:", statusMap);
         setStudentStatus(statusMap);
       } catch (err) {
         console.error("❌ Lỗi khi lấy status từ DATA:", err);

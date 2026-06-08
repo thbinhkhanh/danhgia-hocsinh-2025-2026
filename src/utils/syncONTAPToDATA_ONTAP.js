@@ -81,10 +81,6 @@ export const syncONTAPToDATA_ONTAP = async ({
       );
     });
 
-    console.log("DONE");
-    console.log("classes:", totalClassesHasData);
-    console.log("students:", totalStudents);
-
   } catch (err) {
     console.error("SYNC ERROR:", err);
   }

@@ -328,7 +328,6 @@ const handleStatusChange = (maDinhDanh, status) => {
           [`${subjectKey}.dgtx.tuan_${tuan}.TN_diem`]: null,
           [`${subjectKey}.dgtx.tuan_${tuan}.TN_status`]: "",
         });
-        //console.log(`✅ Đã xóa bài tập tuần ${tuan} của HS ${hoVaTen}`);
       }
 
       if (kiemTraDinhKi && hocKy) {
@@ -348,7 +347,6 @@ const handleStatusChange = (maDinhDanh, status) => {
           [`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`]: null,
         });
 
-        //console.log(`✅ Đã reset điểm KTDK ${hocKy} của HS ${hoVaTen} (giữ nhận xét)`);
       }
     } catch (err) {
       console.error("❌ Lỗi xóa dữ liệu trong DATA:", err);
@@ -357,21 +355,13 @@ const handleStatusChange = (maDinhDanh, status) => {
 
   // Hàm dùng chung
   const getMode = (config) => {
-  console.log("👉 CONFIG DEBUG:", config);
-  console.log("👉 examType:", config?.examType);
-  console.log("👉 flags:", {
-    kiemTraDinhKi: config?.kiemTraDinhKi,
-    baiTapTuan: config?.baiTapTuan,
-    danhGiaTuan: config?.danhGiaTuan,
-  });
+    if (config.kiemTraDinhKi) return "ktdk";
+    if (config.baiTapTuan) return "btt";
+    if (config.danhGiaTuan) return "dgt";
+    if (config.examType === "ontap") return "ontap";
 
-  if (config.kiemTraDinhKi) return "ktdk";
-  if (config.baiTapTuan) return "btt";
-  if (config.danhGiaTuan) return "dgt";
-  if (config.examType === "ontap") return "ontap";
-
-  return "normal";
-};
+    return "normal";
+  };
 
   const deleteClassScores = async (config) => {
     const { lop, tuan, mon, hocKy } = config;
@@ -429,9 +419,10 @@ const handleStatusChange = (maDinhDanh, status) => {
       }
 
       if (Object.keys(updates).length > 0) {
-        updateDoc(doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId), updates)
-          .then(() => console.log(`✅ Đã xóa dữ liệu ${mode} của HS ${studentId}`))
-          .catch(err => console.error(`❌ Lỗi xóa dữ liệu HS ${studentId}:`, err));
+        updateDoc(
+          doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId),
+          updates
+        ).catch(() => {});
       }
     });
   };
