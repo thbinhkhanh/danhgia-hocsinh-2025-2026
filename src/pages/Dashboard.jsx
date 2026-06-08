@@ -22,14 +22,21 @@ function DashboardCard({ item, onClick }) {
         overflow: "hidden",
         bgcolor: "#fff",
         borderRadius: "24px",
-        p: 2.5,
-        minHeight: {
-          xs: 140,
-          sm: 170,
+
+        p: {
+          xs: 1.75,
+          sm: 2.5,
         },
+
+        height: {
+          xs: 165,
+          sm: 180,
+        },
+
         cursor: "pointer",
         border: "1px solid #e5e7eb",
         transition: "all .25s ease",
+
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
@@ -51,31 +58,43 @@ function DashboardCard({ item, onClick }) {
         },
       }}
     >
-      {/* ICON */}
       <Box
         sx={{
-          width: 54,
-          height: 54,
+          width: { xs: 46, sm: 54 },
+          height: { xs: 46, sm: 54 },
           borderRadius: "18px",
           bgcolor: `${item.color}15`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 26,
+
+          "& svg": {
+            fontSize: {
+              xs: 24,
+              sm: 28,
+            },
+          },
         }}
       >
         {item.icon}
       </Box>
 
-      {/* TEXT */}
       <Box sx={{ flexGrow: 1 }}>
         <Typography
           sx={{
             mt: 2,
             fontWeight: 700,
-            fontSize: 16,
+            fontSize: {
+              xs: 14,
+              sm: 16,
+            },
             color: "#0f172a",
             lineHeight: 1.35,
+
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
           }}
         >
           {item.label}
@@ -86,15 +105,18 @@ function DashboardCard({ item, onClick }) {
             mt: 1,
             fontSize: 13,
             color: "#64748b",
-            lineHeight: 1.6,
-            minHeight: 42,
+            lineHeight: 1.5,
+
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
           }}
         >
           {item.description}
         </Typography>
       </Box>
 
-      {/* ARROW */}
       <Box
         sx={{
           mt: 2,
@@ -111,7 +133,6 @@ function DashboardCard({ item, onClick }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 18,
             color: "#64748b",
             transition: ".2s",
 
@@ -239,8 +260,9 @@ export default function Dashboard({ isLoggedIn }) {
           sx={{
             display: "grid",
             gap: 2,
+
             gridTemplateColumns: {
-              xs: "repeat(2, minmax(0, 1fr))", // điện thoại: 2 thẻ/hàng
+              xs: "repeat(2, minmax(0, 1fr))",
               md: "repeat(3, minmax(0, 1fr))",
               lg: "repeat(5, minmax(0, 1fr))",
             },
