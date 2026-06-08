@@ -163,7 +163,7 @@ export default function Dashboard({ isLoggedIn }) {
       color: "#1976d2",
     },
     {
-      label: "Theo dõi, quản lí KTĐK",
+      label: "Quản lí KTĐK",
       description: "Tra cứu kết quả kiểm tra và ôn tập của học sinh theo lớp",
       path: "/giaovien",
       icon: <AnalyticsRoundedIcon sx={{ fontSize: 28, color: "#2e7d32" }} />,
