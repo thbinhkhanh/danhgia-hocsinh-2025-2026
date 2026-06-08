@@ -23,10 +23,7 @@ function DashboardCard({ item, onClick }) {
         bgcolor: "#fff",
         borderRadius: "24px",
         p: 2.5,
-        minHeight: {
-          xs: 140,
-          sm: 170,
-        },
+        minHeight: 170,
         cursor: "pointer",
         border: "1px solid #e5e7eb",
         transition: "all .25s ease",
@@ -238,11 +235,14 @@ export default function Dashboard({ isLoggedIn }) {
         <Box
           sx={{
             display: "grid",
-            gap: 2,
+            gap: 2.5,
+            justifyContent: "center",
+
             gridTemplateColumns: {
-              xs: "repeat(2, minmax(0, 1fr))", // điện thoại: 2 thẻ/hàng
-              md: "repeat(3, minmax(0, 1fr))",
-              lg: "repeat(5, minmax(0, 1fr))",
+              xs: "92%", // điện thoại
+              sm: "repeat(2, 220px)",
+              md: "repeat(3, 220px)",
+              lg: "repeat(5, 220px)", // desktop: 5 thẻ mỗi hàng
             },
           }}
         >
