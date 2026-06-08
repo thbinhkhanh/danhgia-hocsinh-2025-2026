@@ -22,9 +22,6 @@ import {
   InputLabel,
   Snackbar,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
 } from "@mui/material";
 
 // ================= FIREBASE =================
@@ -52,7 +49,6 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import PrintIcon from "@mui/icons-material/Print";
 import EditIcon from "@mui/icons-material/Edit";
 import CloseIcon from "@mui/icons-material/Close";
-import RateReviewIcon from "@mui/icons-material/RateReview";
 
 // ================= UTILS =================
 import { exportKTDK } from "../utils/exportKTDK";
@@ -63,8 +59,6 @@ import {
   nhanXetCongNgheCuoiKy,
   nhanXetCongNgheGiuaKy
 } from "../utils/nhanXet.js";
-
-import QuanLyNhanXet from "../dialog/QuanLyNhanXet";
 
 export default function NhapdiemKTDK() {
   const navigate = useNavigate();
@@ -87,7 +81,6 @@ export default function NhapdiemKTDK() {
 
   // ================= DIALOG STATE =================
   const [openLTDialog, setOpenLTDialog] = useState(false);
-  const [openNhanXet, setOpenNhanXet] = useState(false);
 
   // ================= EDITING STATE =================
   const [editingStudent, setEditingStudent] = useState(null);
@@ -877,101 +870,80 @@ const fetchStudentsAndStatus = async (cls) => {
         </IconButton>
 
         {/* 🟩 Nút Lưu, Tải Excel, In */}
-        <Box
-  sx={{
-    position: "absolute",
-    top: 12,
-    left: 12,
-    display: "flex",
-    gap: 1,
-    alignItems: "center",
-  }}
->
-  <Tooltip title="Lưu dữ liệu" arrow>
-    <IconButton
-      onClick={handleSaveAll}
-      sx={{
-        color: "primary.main",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": { bgcolor: "primary.light", color: "white" },
-      }}
-    >
-      <SaveIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+        <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
+          <Tooltip title="Lưu dữ liệu" arrow>
+            <IconButton
+              onClick={handleSaveAll}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" }
+              }}
+            >
+              <SaveIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-  <Tooltip title="Tải xuống Excel" arrow>
-    <IconButton
-      onClick={handleDownload}
-      sx={{
-        color: "primary.main",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": { bgcolor: "primary.light", color: "white" },
-      }}
-    >
-      <DownloadIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+          <Tooltip title="Tải xuống Excel" arrow>
+            <IconButton
+              onClick={handleDownload}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" }
+              }}
+            >
+              <DownloadIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-  <Tooltip title="In danh sách KTĐK" arrow>
-    <IconButton
-      onClick={handlePrint}
-      sx={{
-        color: "primary.main",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": { bgcolor: "primary.light", color: "white" },
-      }}
-    >
-      <PrintIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+          <Tooltip title="In danh sách KTĐK" arrow>
+            <IconButton
+              onClick={handlePrint}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <PrintIcon fontSize="small" />
+            </IconButton>
 
-  <Tooltip title="Làm mới nhận xét" arrow>
-    <IconButton
-      onClick={() => {
-        setStudents((prev) =>
-          prev.map((s) => ({
-            ...s,
-            nhanXet: generateNhanXet(
-              s,
-              selectedSubject,
-              s.tongCong,
-              s.mucDat
-            ),
-          }))
-        );
-      }}
-      sx={{
-        color: "primary.main",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": { bgcolor: "primary.light", color: "white" },
-      }}
-    >
-      <RefreshIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+          </Tooltip>
 
-  {/* ✅ NÚT NHẬN XÉT → ĐẶT SAU REFRESH */}
-  <Tooltip title="Quản lý nhận xét" arrow>
-    <IconButton
-      onClick={() => setOpenNhanXet(true)}
-      sx={{
-        color: "#1976d2",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": {
-          bgcolor: "#e3f2fd",
-        },
-      }}
-    >
-      <RateReviewIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
-</Box>
+          <Tooltip title="Làm mới nhận xét" arrow>
+            <IconButton
+              onClick={() => {
+                setStudents((prev) =>
+                  prev.map((s) => {
+                    return {
+                      ...s,
+                      nhanXet: generateNhanXet(
+                        s,
+                        selectedSubject,
+                        s.tongCong,
+                        s.mucDat
+                      ),
+                    };
+                  })
+                );
+              }}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        
 
         {/* 🟨 Tiêu đề & Học kỳ hiện tại */}
         <Box sx={{ textAlign: "center", mt: 3, mb: 3 }}>
@@ -1829,11 +1801,16 @@ const fetchStudentsAndStatus = async (cls) => {
         </Alert>
       </Snackbar>
 
-      <QuanLyNhanXet
-        open={openNhanXet}
-        onClose={() => setOpenNhanXet(false)}
-      />
-
+      {/*<CapNhatLyThuyetDialog
+        open={openLTDialog}
+        onClose={handleCloseLTDialog}
+        student={editingStudent}
+        lop={selectedClass}
+        value={ltValue}
+        setValue={setLtValue}
+        handleCellChange={handleCellChange}
+        onSaveOne={handleSaveOne} 
+      />*/}
     </Box>
   );
 
