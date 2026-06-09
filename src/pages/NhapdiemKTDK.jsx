@@ -57,43 +57,51 @@ import RateReviewIcon from "@mui/icons-material/RateReview";
 // ================= UTILS =================
 import { exportKTDK } from "../utils/exportKTDK";
 import { printKTDK } from "../utils/printKTDK";
-import {
-  nhanXetTinHocCuoiKy,
-  nhanXetTinHocGiuaKy,
-  nhanXetCongNgheCuoiKy,
-  nhanXetCongNgheGiuaKy
-} from "../utils/nhanXet.js";
 
 import QuanLyNhanXet from "../dialog/QuanLyNhanXet";
 
 export default function NhapdiemKTDK() {
-  const navigate = useNavigate();
-  const { classData, setClassData, studentData, setStudentData } = useContext(StudentContext);
-  const { config, setConfig } = useContext(ConfigContext);
-  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
-  const { getStudentsForClass, setStudentsForClass } = useContext(StudentKTDKContext);
+  // ================= ROUTER =================
+const navigate = useNavigate();
 
-  // ================= CLASS / DATA STATE =================
-  const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState("");
-  const [students, setStudents] = useState([]);
-  const [originalStudents, setOriginalStudents] = useState([]);
+// ================= CONTEXT =================
+const { classData, setClassData, studentData, setStudentData } =
+  useContext(StudentContext);
 
-  // ================= SUBJECT =================
-  const [selectedSubject, setSelectedSubject] = useState(() => config?.mon || "Tin học");
+const { config, setConfig } = useContext(ConfigContext);
 
-  // ================= UI / RESPONSIVE =================
-  const isMobile = useMediaQuery("(max-width: 768px)");
+const { getStudentsForClass, setStudentsForClass } =
+  useContext(StudentKTDKContext);
 
-  // ================= DIALOG STATE =================
-  const [openLTDialog, setOpenLTDialog] = useState(false);
-  const [openNhanXet, setOpenNhanXet] = useState(false);
+// ================= CONFIG DERIVED =================
+const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
-  // ================= EDITING STATE =================
-  const [editingStudent, setEditingStudent] = useState(null);
-  const [ltValue, setLtValue] = useState("");
-  const [fillThucHanh, setFillThucHanh] = useState("");
-  const [fillLyThuyet, setFillLyThuyet] = useState("");
+// ================= CLASS / DATA STATE =================
+const [classes, setClasses] = useState([]);
+const [selectedClass, setSelectedClass] = useState("");
+const [students, setStudents] = useState([]);
+const [originalStudents, setOriginalStudents] = useState([]);
+
+// ================= SUBJECT =================
+const [selectedSubject, setSelectedSubject] = useState(
+  () => config?.mon || "Tin học"
+);
+
+// ================= UI / RESPONSIVE =================
+const isMobile = useMediaQuery("(max-width: 768px)");
+
+// ================= DIALOG STATE =================
+const [openLTDialog, setOpenLTDialog] = useState(false);
+const [openNhanXet, setOpenNhanXet] = useState(false);
+
+// ================= EDITING STATE =================
+const [editingStudent, setEditingStudent] = useState(null);
+const [ltValue, setLtValue] = useState("");
+const [fillThucHanh, setFillThucHanh] = useState("");
+const [fillLyThuyet, setFillLyThuyet] = useState("");
+
+// ================= DATA STATE =================
+const [nhanXetData, setNhanXetData] = useState(null);
 
   useEffect(() => {
     if (config?.mon && config.mon !== selectedSubject) {
@@ -129,95 +137,173 @@ export default function NhapdiemKTDK() {
     fetchClasses();
   }, [classData, setClassData]);
 
-  /*const getNhanXetMuc = (subject) => {
-    if (subject === "Công nghệ") return nhanXetCongNgheCuoiKy;
-    return nhanXetTinHocCuoiKy; // mặc định Tin học
-  };*/
+  const loadNhanXet = async () => {
+  try {
+    const col = `NHAN_XET_${namHocKey}`;
+    const hocKy = config.hocKy;
+
+    const docId =
+      selectedSubject === "Công nghệ"
+        ? (hocKy.includes("Cuối") ? "CongNghe_CuoiKy" : "CongNghe_GiuaKy")
+        : (hocKy.includes("Cuối") ? "TinHoc_CuoiKy" : "TinHoc_GiuaKy");
+
+    const snap = await getDoc(doc(db, col, docId));
+
+    // =========================
+    // 🔥 SAFE NORMALIZER (FIX [object Object])
+    // =========================
+    const safe = (v) => {
+      if (!v) return [];
+
+      // array case
+      if (Array.isArray(v)) {
+        return v.map(i =>
+          typeof i === "string"
+            ? i
+            : (i?.text || i?.value || "")
+        ).filter(Boolean);
+      }
+
+      // object case (Firestore map)
+      if (typeof v === "object") {
+        return Object.values(v).map(i =>
+          typeof i === "string"
+            ? i
+            : (i?.text || i?.value || "")
+        ).filter(Boolean);
+      }
+
+      return [];
+    };
+
+    // =========================
+    // 🔥 DEFAULT DATA
+    // =========================
+    if (!snap.exists()) {
+      setNhanXetData({
+        TỐT: { lyThuyet: [], thucHanh: [] },
+        KHÁ: { lyThuyet: [], thucHanh: [] },
+        ĐẠT: { lyThuyet: [], thucHanh: [] },
+        "CHƯA ĐẠT": { lyThuyet: [], thucHanh: [] },
+      });
+      return;
+    }
+
+    const raw = snap.data();
+
+    // =========================
+    // 🔥 NORMALIZE FIRESTORE → UI FORMAT
+    // =========================
+    const normalized = {
+      TỐT: {
+        lyThuyet: safe(raw?.tot?.lyThuyet),
+        thucHanh: safe(raw?.tot?.thucHanh),
+      },
+      KHÁ: {
+        lyThuyet: safe(raw?.kha?.lyThuyet),
+        thucHanh: safe(raw?.kha?.thucHanh),
+      },
+      ĐẠT: {
+        lyThuyet: safe(raw?.trungbinh?.lyThuyet),
+        thucHanh: safe(raw?.trungbinh?.thucHanh),
+      },
+      "CHƯA ĐẠT": {
+        lyThuyet: safe(raw?.yeu?.lyThuyet),
+        thucHanh: safe(raw?.yeu?.thucHanh),
+      },
+    };
+
+    setNhanXetData(normalized);
+
+  } catch (err) {
+    console.error("loadNhanXet error:", err);
+  }
+};
+
+useEffect(() => {
+  loadNhanXet();
+}, [selectedSubject, config.hocKy]);
 
   // ------------------------
 // 🔹 HÀM SINH NHẬN XÉT TỰ ĐỘNG
 // ------------------------
 const generateNhanXet = (student, subject, tongCong = null, mucDat = null) => {
-  // Xác định mức đạt nếu chưa có
+  if (!nhanXetData) return student.nhanXet || "";
+
+  // ===== 1. xác định mức đạt =====
   let computedMucDat = mucDat;
+
   if (!computedMucDat && subject === "Tin học" && tongCong != null) {
     computedMucDat = tongCong >= 9 ? "T" : tongCong >= 5 ? "H" : "C";
-  } else if (!computedMucDat && subject === "Công nghệ" && student.thucHanh) {
+  } 
+  else if (!computedMucDat && subject === "Công nghệ" && student.thucHanh) {
     const lt = parseFloat(student.lyThuyet);
-    const ltLoai = !isNaN(lt) ? (lt >= 9 ? "T" : lt >= 5 ? "H" : "C") : "C";
-    computedMucDat = ltLoai; // ưu tiên LT
+    computedMucDat = !isNaN(lt) ? (lt >= 9 ? "T" : lt >= 5 ? "H" : "C") : "C";
   }
 
   if (!computedMucDat) return student.nhanXet || "";
 
-  // Chuyển mức đạt sang loại nhận xét
-  const getLoaiMucDat = (xepLoai) =>
-    xepLoai === "T"
-      ? "tot"
-      : xepLoai === "H"
-      ? "kha"
-      : xepLoai === "C"
-      ? "trungbinh"
-      : "yeu";
+  // ===== 2. map mức đạt =====
+  const map = {
+    T: "TỐT",
+    H: "KHÁ",
+    C: "ĐẠT",
+  };
 
-  const loai = getLoaiMucDat(computedMucDat);
-
-  // Chọn bộ nhận xét theo môn và theo kỳ
-  let source;
-  const isCuoiKy = tongCong > 0;
-  if (subject === "Công nghệ") {
-    source = isCuoiKy ? nhanXetCongNgheCuoiKy : nhanXetCongNgheGiuaKy;
-  } else {
-    source = isCuoiKy ? nhanXetTinHocCuoiKy : nhanXetTinHocGiuaKy;
-  }
+  const loai = map[computedMucDat] || "ĐẠT";
 
   const pickRandom = (arr) =>
-    arr.length ? arr[Math.floor(Math.random() * arr.length)] : "";
+    Array.isArray(arr) && arr.length
+      ? arr[Math.floor(Math.random() * arr.length)]
+      : "";
 
+  const isCuoiKy = tongCong > 0;
+
+  // ===== 3. CÔNG NGHỆ =====
   if (subject === "Công nghệ") {
+    const source = nhanXetData;
+
     if (isCuoiKy) {
-      // Cuối kỳ: vế 1 theo LT, vế 2 theo TH
       const lt = parseFloat(student.lyThuyet);
       const th = student.thucHanh;
 
       const loaiLT =
-        !isNaN(lt) ? (lt >= 9 ? "tot" : lt >= 7 ? "kha" : lt >= 5 ? "trungbinh" : "yeu") : loai;
+        !isNaN(lt)
+          ? (lt >= 9 ? "TỐT" : lt >= 7 ? "KHÁ" : lt >= 5 ? "ĐẠT" : "CHƯA ĐẠT")
+          : loai;
+
       const loaiTH =
-        th === "T" ? "tot" : th === "H" ? "kha" : th === "C" ? "yeu" : loai;
+        th === "T" ? "TỐT"
+        : th === "H" ? "KHÁ"
+        : th === "C" ? "CHƯA ĐẠT"
+        : loai;
 
-      const arrLT = source[loaiLT]?.lyThuyet || [];
-      const arrTH = source[loaiTH]?.thucHanh || [];
+      const arrLT = source?.[loaiLT]?.lyThuyet || [];
+      const arrTH = source?.[loaiTH]?.thucHanh || [];
 
-      let nxLT = pickRandom(arrLT);
-      let nxTH = pickRandom(arrTH);
-
-      if (!nxLT && nxTH) nxLT = nxTH;
-      if (!nxTH && nxLT) nxTH = nxLT;
+      const nxLT = pickRandom(arrLT);
+      const nxTH = pickRandom(arrTH);
 
       return nxLT && nxTH ? `${nxLT}; ${nxTH}` : nxLT || nxTH || "";
-    } else {
-      // Giữa kỳ: chỉ cần một câu theo mức đạt
-      const arr = source[loai] || [];
-      return pickRandom(arr);
     }
+
+    return pickRandom(source?.[loai]?.lyThuyet || []);
   }
+
+  // ===== 4. TIN HỌC =====
+  const source = nhanXetData;
 
   if (isCuoiKy) {
-    // Tin học cuối kỳ: có lyThuyet và thucHanh
-    const arrLT = source[loai]?.lyThuyet || [];
-    const arrTH = source[loai]?.thucHanh || [];
-    let nxLT = pickRandom(arrLT);
-    let nxTH = pickRandom(arrTH);
+    const arrLT = source?.[loai]?.lyThuyet || [];
+    const arrTH = source?.[loai]?.thucHanh || [];
 
-    if (!nxLT && nxTH) nxLT = nxTH;
-    if (!nxTH && nxLT) nxTH = nxLT;
+    const nxLT = pickRandom(arrLT);
+    const nxTH = pickRandom(arrTH);
 
     return nxLT && nxTH ? `${nxLT}; ${nxTH}` : nxLT || nxTH || "";
-  } else {
-    // Tin học giữa kỳ: chỉ cần một câu
-    const arr = source[loai] || [];
-    return pickRandom(arr);
   }
+
+  return pickRandom(source?.[loai]?.lyThuyet || []);
 };
 
 const fetchStudentsAndStatus = async (cls) => {
@@ -878,100 +964,100 @@ const fetchStudentsAndStatus = async (cls) => {
 
         {/* 🟩 Nút Lưu, Tải Excel, In */}
         <Box
-  sx={{
-    position: "absolute",
-    top: 12,
-    left: 12,
-    display: "flex",
-    gap: 1,
-    alignItems: "center",
-  }}
->
-  <Tooltip title="Lưu dữ liệu" arrow>
-    <IconButton
-      onClick={handleSaveAll}
-      sx={{
-        color: "primary.main",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": { bgcolor: "primary.light", color: "white" },
-      }}
-    >
-      <SaveIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+          sx={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            display: "flex",
+            gap: 1,
+            alignItems: "center",
+          }}
+        >
+          <Tooltip title="Lưu dữ liệu" arrow>
+            <IconButton
+              onClick={handleSaveAll}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <SaveIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-  <Tooltip title="Tải xuống Excel" arrow>
-    <IconButton
-      onClick={handleDownload}
-      sx={{
-        color: "primary.main",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": { bgcolor: "primary.light", color: "white" },
-      }}
-    >
-      <DownloadIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+          <Tooltip title="Tải xuống Excel" arrow>
+            <IconButton
+              onClick={handleDownload}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <DownloadIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-  <Tooltip title="In danh sách KTĐK" arrow>
-    <IconButton
-      onClick={handlePrint}
-      sx={{
-        color: "primary.main",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": { bgcolor: "primary.light", color: "white" },
-      }}
-    >
-      <PrintIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+          <Tooltip title="In danh sách KTĐK" arrow>
+            <IconButton
+              onClick={handlePrint}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <PrintIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-  <Tooltip title="Làm mới nhận xét" arrow>
-    <IconButton
-      onClick={() => {
-        setStudents((prev) =>
-          prev.map((s) => ({
-            ...s,
-            nhanXet: generateNhanXet(
-              s,
-              selectedSubject,
-              s.tongCong,
-              s.mucDat
-            ),
-          }))
-        );
-      }}
-      sx={{
-        color: "primary.main",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": { bgcolor: "primary.light", color: "white" },
-      }}
-    >
-      <RefreshIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+          <Tooltip title="Làm mới nhận xét" arrow>
+            <IconButton
+              onClick={() => {
+                setStudents((prev) =>
+                  prev.map((s) => ({
+                    ...s,
+                    nhanXet: generateNhanXet(
+                      s,
+                      selectedSubject,
+                      s.tongCong,
+                      s.mucDat
+                    ),
+                  }))
+                );
+              }}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-  {/* ✅ NÚT NHẬN XÉT → ĐẶT SAU REFRESH */}
-  <Tooltip title="Quản lý nhận xét" arrow>
-    <IconButton
-      onClick={() => setOpenNhanXet(true)}
-      sx={{
-        color: "#1976d2",
-        bgcolor: "white",
-        boxShadow: 2,
-        "&:hover": {
-          bgcolor: "#e3f2fd",
-        },
-      }}
-    >
-      <RateReviewIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
-</Box>
+          {/* ✅ NÚT NHẬN XÉT → ĐẶT SAU REFRESH */}
+          <Tooltip title="Quản lý nhận xét" arrow>
+            <IconButton
+              onClick={() => setOpenNhanXet(true)}
+              sx={{
+                color: "#1976d2",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": {
+                  bgcolor: "#e3f2fd",
+                },
+              }}
+            >
+              <RateReviewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
 
         {/* 🟨 Tiêu đề & Học kỳ hiện tại */}
         <Box sx={{ textAlign: "center", mt: 3, mb: 3 }}>

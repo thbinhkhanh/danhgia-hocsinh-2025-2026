@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
+
+// ================= MUI CORE =================
 import {
   Dialog,
   DialogContent,
@@ -11,7 +13,7 @@ import {
   MenuItem,
   Paper,
   Stack,
-  Tabs, 
+  Tabs,
   Tab,
   Table,
   TableBody,
@@ -19,9 +21,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 
+import * as XLSX from "xlsx";
+import { db } from "../firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
+// ================= MUI ICONS =================
 import CloseIcon from "@mui/icons-material/Close";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import SaveIcon from "@mui/icons-material/Save";
@@ -29,30 +37,32 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+
+// ================= CONTEXT =================
 import { ConfigContext } from "../context/ConfigContext";
 
-
-import * as XLSX from "xlsx";
-
-import { db } from "../firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-
 export default function QuanLyNhanXet({ open, onClose }) {
-  const currentYear = new Date().getFullYear();
+ // ================= TIME =================
+const currentYear = new Date().getFullYear();
 
-  const [namHoc, setNamHoc] = useState(
-    `${currentYear}-${currentYear + 1}`
-  );
-  const [monHoc, setMonHoc] = useState("Tin học");
-  const [loaiKy, setLoaiKy] = useState("Giữa kỳ");
+// ================= CONTEXT =================
+const { config, setConfig } = useContext(ConfigContext);
 
-  const [selectedLevel, setSelectedLevel] = useState("TỐT");
-  const [mode, setMode] = useState("lyThuyet");
+// ================= CONFIG DERIVED =================
+const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
-  const { config, setConfig } = useContext(ConfigContext);
+// ================= STATE: FILTERS =================
+const [namHoc, setNamHoc] = useState(
+  `${currentYear}-${currentYear + 1}`
+);
 
-  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
-  const [tab, setTab] = useState(0); // 0 = Lý thuyết, 1 = Thực hành
+const [monHoc, setMonHoc] = useState("Tin học");
+const [loaiKy, setLoaiKy] = useState("Giữa kỳ");
+
+// ================= STATE: UI CONTROL =================
+const [selectedLevel, setSelectedLevel] = useState("TỐT");
+const [mode, setMode] = useState("lyThuyet");
+const [tab, setTab] = useState(0); // 0 = Lý thuyết, 1 = Thực hành
 
   const [data, setData] = useState({
     TỐT: [],
@@ -111,52 +121,52 @@ export default function QuanLyNhanXet({ open, onClose }) {
   };
 
   const loadData = async () => {
-  try {
-    const col = `NHAN_XET_${namHocKey}`;
-    const docId = getDocId(); 
-    // => TinHoc_GiuaKy hoặc CongNghe_GiuaKy
+    try {
+      const col = `NHAN_XET_${namHocKey}`;
+      const docId = getDocId(); 
+      // => TinHoc_GiuaKy hoặc CongNghe_GiuaKy
 
-    const snap = await getDoc(doc(db, col, docId));
+      const snap = await getDoc(doc(db, col, docId));
 
-    if (!snap.exists()) {
-      setData({
-        TỐT: { lyThuyet: [], thucHanh: [] },
-        KHÁ: { lyThuyet: [], thucHanh: [] },
-        ĐẠT: { lyThuyet: [], thucHanh: [] },
-        "CHƯA ĐẠT": { lyThuyet: [], thucHanh: [] },
-      });
-      return;
+      if (!snap.exists()) {
+        setData({
+          TỐT: { lyThuyet: [], thucHanh: [] },
+          KHÁ: { lyThuyet: [], thucHanh: [] },
+          ĐẠT: { lyThuyet: [], thucHanh: [] },
+          "CHƯA ĐẠT": { lyThuyet: [], thucHanh: [] },
+        });
+        return;
+      }
+
+      const raw = snap.data();
+
+      const safe = (v) => Array.isArray(v) ? v : [];
+
+      const normalized = {
+        TỐT: {
+          lyThuyet: safe(raw?.tot?.lyThuyet),
+          thucHanh: safe(raw?.tot?.thucHanh),
+        },
+        KHÁ: {
+          lyThuyet: safe(raw?.kha?.lyThuyet),
+          thucHanh: safe(raw?.kha?.thucHanh),
+        },
+        ĐẠT: {
+          lyThuyet: safe(raw?.trungbinh?.lyThuyet),
+          thucHanh: safe(raw?.trungbinh?.thucHanh),
+        },
+        "CHƯA ĐẠT": {
+          lyThuyet: safe(raw?.yeu?.lyThuyet),
+          thucHanh: safe(raw?.yeu?.thucHanh),
+        },
+      };
+
+      setData(normalized);
+
+    } catch (err) {
+      console.error("loadData error:", err);
     }
-
-    const raw = snap.data();
-
-    const safe = (v) => Array.isArray(v) ? v : [];
-
-    const normalized = {
-      TỐT: {
-        lyThuyet: safe(raw?.tot?.lyThuyet),
-        thucHanh: safe(raw?.tot?.thucHanh),
-      },
-      KHÁ: {
-        lyThuyet: safe(raw?.kha?.lyThuyet),
-        thucHanh: safe(raw?.kha?.thucHanh),
-      },
-      ĐẠT: {
-        lyThuyet: safe(raw?.trungbinh?.lyThuyet),
-        thucHanh: safe(raw?.trungbinh?.thucHanh),
-      },
-      "CHƯA ĐẠT": {
-        lyThuyet: safe(raw?.yeu?.lyThuyet),
-        thucHanh: safe(raw?.yeu?.thucHanh),
-      },
-    };
-
-    setData(normalized);
-
-  } catch (err) {
-    console.error("loadData error:", err);
-  }
-};
+  };
 
   useEffect(() => {
     if (open) loadData();
@@ -211,76 +221,77 @@ export default function QuanLyNhanXet({ open, onClose }) {
   // ✅ FIX IMPORT EXCEL
   // =========================
   const handleImport = (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const reader = new FileReader();
+    const reader = new FileReader();
 
-  const norm = (s) =>
-    s?.toString().normalize("NFC").replace(/\s+/g, " ").trim();
+    const norm = (s) =>
+      s?.toString().normalize("NFC").replace(/\s+/g, " ").trim();
 
-  reader.onload = (ev) => {
-    try {
-      const workbook = XLSX.read(ev.target.result, { type: "binary" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet);
+    reader.onload = (ev) => {
+      try {
+        const workbook = XLSX.read(ev.target.result, { type: "binary" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet);
 
-      const newData = {
-        TỐT: { lyThuyet: [], thucHanh: [] },
-        KHÁ: { lyThuyet: [], thucHanh: [] },
-        ĐẠT: { lyThuyet: [], thucHanh: [] },
-        "CHƯA ĐẠT": { lyThuyet: [], thucHanh: [] },
-      };
-
-      json.forEach((row) => {
-        const mon = norm(row["Môn"]);
-        const ky = norm(row["Học kỳ"]);
-        const loai = norm(row["Loại"])?.toLowerCase();
-        const level = norm(row["Mức độ"])?.toUpperCase();
-        const text = norm(row["Nội dung"]);
-
-        if (!mon || !ky || !loai || !level || !text) return;
-
-        // chỉ lấy đúng view đang chọn
-        if (mon !== monHoc || ky !== loaiKy) return;
-
-        const item = {
-          id: crypto.randomUUID(),
-          text,
+        const newData = {
+          TỐT: { lyThuyet: [], thucHanh: [] },
+          KHÁ: { lyThuyet: [], thucHanh: [] },
+          ĐẠT: { lyThuyet: [], thucHanh: [] },
+          "CHƯA ĐẠT": { lyThuyet: [], thucHanh: [] },
         };
 
-        const isLyThuyet = loai.includes("lý");
+        json.forEach((row) => {
+          const mon = norm(row["Môn"]);
+          const ky = norm(row["Học kỳ"]);
+          const loai = norm(row["Loại"])?.toLowerCase();
+          const level = norm(row["Mức độ"])?.toUpperCase();
+          const text = norm(row["Nội dung"]);
 
-        const target = isLyThuyet ? "lyThuyet" : "thucHanh";
+          if (!mon || !ky || !loai || !level || !text) return;
 
-        if (level === "TỐT") newData.TỐT[target].push(item);
-        else if (level === "KHÁ") newData.KHÁ[target].push(item);
-        else if (level === "ĐẠT") newData.ĐẠT[target].push(item);
-        else newData["CHƯA ĐẠT"][target].push(item);
-      });
+          // chỉ lấy đúng view đang chọn
+          if (mon !== monHoc || ky !== loaiKy) return;
 
-      console.log("IMPORT DONE:", newData);
+          const item = {
+            id: crypto.randomUUID(),
+            text,
+          };
 
-      setData(newData);
+          const isLyThuyet = loai.includes("lý");
 
-      e.target.value = "";
-    } catch (err) {
-      console.error(err);
-      alert("File Excel sai định dạng");
-    }
+          const target = isLyThuyet ? "lyThuyet" : "thucHanh";
+
+          if (level === "TỐT") newData.TỐT[target].push(item);
+          else if (level === "KHÁ") newData.KHÁ[target].push(item);
+          else if (level === "ĐẠT") newData.ĐẠT[target].push(item);
+          else newData["CHƯA ĐẠT"][target].push(item);
+        });
+
+        console.log("IMPORT DONE:", newData);
+
+        setData(newData);
+
+        e.target.value = "";
+      } catch (err) {
+        console.error(err);
+        alert("File Excel sai định dạng");
+      }
+    };
+
+    reader.readAsBinaryString(file);
   };
 
-  reader.readAsBinaryString(file);
-};
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   const saveFirestore = async () => {
-  try {
     const col = `NHAN_XET_${namHocKey}`;
     const docId = getDocId();
-
-    console.log("💾 [saveFirestore] collection:", col);
-    console.log("💾 [saveFirestore] docId:", docId);
-    console.log("💾 [saveFirestore] data:", data);
 
     const payload = {
       tot: {
@@ -301,14 +312,25 @@ export default function QuanLyNhanXet({ open, onClose }) {
       },
     };
 
-    await setDoc(doc(db, col, docId), payload);
+    // ⚡ BÁO THÀNH CÔNG NGAY KHI BẤM
+    setSnackbar({
+      open: true,
+      message: "Lưu dữ liệu thành công!",
+      severity: "success",
+    });
 
-    console.log("✅ Save success");
-    alert("Đã lưu dữ liệu");
-  } catch (err) {
-    console.error("❌ saveFirestore error:", err);
-  }
-};
+    try {
+      await setDoc(doc(db, col, docId), payload);
+    } catch (err) {
+      console.error("❌ saveFirestore error:", err);
+
+      setSnackbar({
+        open: true,
+        message: "Lỗi khi lưu dữ liệu!",
+        severity: "error",
+      });
+    }
+  };
 
   const currentList = data[selectedLevel]?.[mode] || [];
 
@@ -518,7 +540,15 @@ export default function QuanLyNhanXet({ open, onClose }) {
         </Box>
 
         <TableContainer>
-          <Table size="small" sx={{ "& td": { borderColor: "#eee" } }}>
+          <Table
+            size="medium"
+            sx={{
+              "& td": {
+                borderColor: "#eee",
+                fontSize: 16,
+              },
+            }}
+          >
             <TableBody>
               {(() => {
                 const current = data[selectedLevel] || {};
@@ -537,13 +567,13 @@ export default function QuanLyNhanXet({ open, onClose }) {
                         setEditText(item.text || "");
                       }}
                       sx={{
-                        height: 36,
+                        height: 44,
                         cursor: "pointer",
                         verticalAlign: "middle",
                       }}
                     >
                       {/* TEXT */}
-                      <TableCell sx={{ py: 0.3 }}>
+                      <TableCell sx={{ py: 0.4 }}>
                         {isEditing ? (
                           <input
                             value={editText}
@@ -570,14 +600,16 @@ export default function QuanLyNhanXet({ open, onClose }) {
                             }}
                             style={{
                               width: "100%",
-                              fontSize: "14px",
+                              fontSize: "16px",
+                              lineHeight: "1.5",
                               border: "none",
                               outline: "none",
                               background: "transparent",
+                              padding: 0,
                             }}
                           />
                         ) : (
-                          <Typography fontSize={14} lineHeight={1.3}>
+                          <Typography fontSize={16} lineHeight={1.5}>
                             {item.text}
                           </Typography>
                         )}
@@ -586,7 +618,7 @@ export default function QuanLyNhanXet({ open, onClose }) {
                       {/* DELETE */}
                       <TableCell
                         align="right"
-                        sx={{ py: 0.3, whiteSpace: "nowrap" }}
+                        sx={{ py: 0.4, whiteSpace: "nowrap" }}
                       >
                         <IconButton
                           size="small"
@@ -674,25 +706,41 @@ export default function QuanLyNhanXet({ open, onClose }) {
 
         <Button
           onClick={onClose}
+          variant="outlined"
           sx={{
+            minWidth: 110,
+            height: 42,
+            borderRadius: "12px",
             textTransform: "none",
+            fontWeight: 600,
+            borderColor: "#cbd5e1",
+            color: "#475569",
+            background: "#fff",
+            "&:hover": {
+              borderColor: "#94a3b8",
+              background: "#f1f5f9",
+            },
           }}
         >
           Đóng
         </Button>
 
         <Button
-          variant="contained"
           onClick={saveFirestore}
+          variant="contained"
           sx={{
-            textTransform: "none",
+            minWidth: 110,
+            height: 42,
             borderRadius: "12px",
+            textTransform: "none",
             fontWeight: 700,
-            boxShadow: "none",
-            px: 2.5,
-            py: 1,
+
+            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+            boxShadow: "0 10px 20px rgba(59,130,246,0.25)",
+
             "&:hover": {
-              boxShadow: "none",
+              background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+              boxShadow: "0 12px 24px rgba(37,99,235,0.35)",
             },
           }}
         >
@@ -701,6 +749,28 @@ export default function QuanLyNhanXet({ open, onClose }) {
 
       </Stack>
     </Box>
+
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={() =>
+        setSnackbar((prev) => ({ ...prev, open: false }))
+      }
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+    >
+      <Alert
+        onClose={() =>
+          setSnackbar((prev) => ({ ...prev, open: false }))
+        }
+        severity={snackbar.severity}
+        variant="filled"
+        sx={{ width: "100%" }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+
   </Dialog>
+  
 );
 }
