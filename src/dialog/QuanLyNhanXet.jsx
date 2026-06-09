@@ -342,11 +342,12 @@ const [tab, setTab] = useState(0); // 0 = Lý thuyết, 1 = Thực hành
     maxWidth="md"
     PaperProps={{
       sx: {
-        width: "700px",
+        width: { xs: "100%", sm: "700px" },
+        maxWidth: "100%",
         height: "85vh",
         display: "flex",
         flexDirection: "column",
-        borderRadius: 3,
+        borderRadius: { xs: 0, sm: 3 },
       },
     }}
   >
@@ -560,92 +561,126 @@ const [tab, setTab] = useState(0); // 0 = Lý thuyết, 1 = Thực hành
 
                   return (
                     <TableRow
-                      key={item.id}
-                      hover
-                      onClick={() => {
-                        setEditingId(item.id);
-                        setEditText(item.text || "");
-                      }}
-                      sx={{
-                        height: 44,
-                        cursor: "pointer",
-                        verticalAlign: "middle",
-                      }}
-                    >
-                      {/* TEXT */}
-                      <TableCell sx={{ py: 0.4 }}>
-                        {isEditing ? (
-                          <input
-                            value={editText}
-                            autoFocus
-                            onChange={(e) => setEditText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                saveEdit(
-                                  selectedLevel,
-                                  tab === 0 ? "lyThuyet" : "thucHanh"
-                                );
-                                setEditingId(null);
-                              }
-                              if (e.key === "Escape") {
-                                setEditingId(null);
-                              }
-                            }}
-                            onBlur={() => {
-                              saveEdit(
-                                selectedLevel,
-                                tab === 0 ? "lyThuyet" : "thucHanh"
-                              );
-                              setEditingId(null);
-                            }}
-                            style={{
-                              width: "100%",
-                              fontSize: "16px",
-                              lineHeight: "1.5",
-                              border: "none",
-                              outline: "none",
-                              background: "transparent",
-                              padding: 0,
-                            }}
-                          />
-                        ) : (
-                          <Typography fontSize={16} lineHeight={1.5}>
-                            {item.text}
-                          </Typography>
-                        )}
-                      </TableCell>
+  key={item.id}
+  hover
+  onClick={() => {
+    setEditingId(item.id);
+    setEditText(item.text || "");
+  }}
+  sx={{
+    height: 44,
+    cursor: "pointer",
+    verticalAlign: "middle",
+  }}
+>
+  {/* TEXT */}
+  <TableCell
+    sx={{
+      py: 0.4,
 
-                      {/* DELETE */}
-                      <TableCell
-                        align="right"
-                        sx={{ py: 0.4, whiteSpace: "nowrap" }}
-                      >
-                        <IconButton
-                          size="small"
-                          sx={{
-                            opacity: 0,
-                            color: "#ef4444",
-                            transition: "0.2s",
-                            ".MuiTableRow-root:hover &": {
-                              opacity: 1,
-                            },
-                            "&:hover": {
-                              backgroundColor: "rgba(239, 68, 68, 0.08)",
-                            },
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteItem(
-                              selectedLevel,
-                              tab === 0 ? "lyThuyet" : "thucHanh",
-                              item.id
-                            );
-                          }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
+      // 👇 GIẢM PADDING TRÁI / PHẢI
+      pl: { xs: 1, sm: 1.5 },
+      pr: 0.5, // 👈 quan trọng: giảm khoảng cách với icon
+
+      verticalAlign: "middle",
+    }}
+  >
+    {isEditing ? (
+      <input
+        value={editText}
+        autoFocus
+        onChange={(e) => setEditText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            saveEdit(
+              selectedLevel,
+              tab === 0 ? "lyThuyet" : "thucHanh"
+            );
+            setEditingId(null);
+          }
+
+          if (e.key === "Escape") {
+            setEditingId(null);
+          }
+        }}
+        onBlur={() => {
+          saveEdit(
+            selectedLevel,
+            tab === 0 ? "lyThuyet" : "thucHanh"
+          );
+          setEditingId(null);
+        }}
+        style={{
+          width: "100%",
+          fontSize: "16px",
+          lineHeight: "1.5",
+          border: "none",
+          outline: "none",
+          background: "transparent",
+          padding: 0,
+          wordBreak: "break-word",
+        }}
+      />
+    ) : (
+      <Typography
+        sx={{
+          fontSize: 16,
+          lineHeight: 1.5,
+          wordBreak: "break-word",
+          whiteSpace: "normal",
+        }}
+      >
+        {item.text}
+      </Typography>
+    )}
+  </TableCell>
+
+  {/* DELETE */}
+  <TableCell
+    align="right"
+    sx={{
+      py: 0.4,
+
+      // 👇 GIẢM PADDING ICON CELL
+      pl: 0,
+      pr: 0.5, // sát mép phải hơn
+
+      whiteSpace: "nowrap",
+      width: 40, // 👈 cố định để không bị giãn
+    }}
+  >
+    <IconButton
+      size="small"
+      sx={{
+        opacity: 0,
+        color: "#ef4444",
+        transition: "0.2s",
+
+        // hover row mới hiện
+        ".MuiTableRow-root:hover &": {
+          opacity: 1,
+        },
+
+        // 👇 GIẢM CLICK AREA + padding
+        padding: 0.3,
+
+        "&:hover": {
+          backgroundColor: "rgba(239, 68, 68, 0.08)",
+        },
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        deleteItem(
+          selectedLevel,
+          tab === 0 ? "lyThuyet" : "thucHanh",
+          item.id
+        );
+      }}
+    >
+      <DeleteIcon fontSize="small" />
+    </IconButton>
+  </TableCell>
+</TableRow>
                   );
                 });
               })()}
