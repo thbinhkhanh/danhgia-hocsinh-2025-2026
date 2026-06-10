@@ -435,27 +435,62 @@ export default function DanhSachHS() {
 
     const ma = newMaDinhDanh.trim();
     const ten = newName.trim().toUpperCase();
-    const sttMoi = students.length + 1; // STT mới
-    const lop = selectedClass; // ví dụ "4.1"
+    const sttMoi = students.length + 1;
+    const lop = selectedClass;
+    const classKey = selectedClass.replace(".", "_");
 
     // 🔹 Đóng dialog ngay
     setIsAdding(false);
     setEditingStudent(null);
 
     try {
-      // 1️⃣ Ghi Firestore DANHSACH với lop + stt
-      await updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
-        [ma]: {
-          hoVaTen: ten,
-          lop,
-          stt: sttMoi,
-        },
-      });
+      // 1️⃣ Cập nhật Firestore
+      await Promise.all([
+        // DANHSACH
+        updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
+          [ma]: {
+            hoVaTen: ten,
+            lop,
+            stt: sttMoi,
+          },
+        }),
+
+        // DATA
+        setDoc(
+          doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma),
+          {
+            hoVaTen: ten,
+            stt: sttMoi,
+          }
+        ),
+
+        // DATA_ONTAP
+        setDoc(
+          doc(db, `DATA_ONTAP_${namHocKey}`, classKey, "HOCSINH", ma),
+          {
+            hoVaTen: newName.trim(), // Giữ kiểu "Huỳnh Văn Gia Phú"
+            lop,
+            subjects: {
+              CongNghe: {
+                lyThuyet: null,
+              },
+              TinHoc: {
+                lyThuyet: null,
+              },
+            },
+          }
+        ),
+      ]);
 
       // 2️⃣ Cập nhật UI ngay
       const updatedStudents = [
         ...students,
-        { maDinhDanh: ma, hoVaTen: ten, stt: sttMoi, lop },
+        {
+          maDinhDanh: ma,
+          hoVaTen: ten,
+          stt: sttMoi,
+          lop,
+        },
       ];
 
       setStudents(updatedStudents);
@@ -470,13 +505,17 @@ export default function DanhSachHS() {
       setNewMaDinhDanh("");
       setNewName("");
 
-      // 5️⃣ Cập nhật DATA chạy nền
-      await updateDATAForStudent(selectedClass, {
-        maDinhDanh: ma,
-        hoVaTen: ten,
-        stt: sttMoi,
-        lop,
-      }, updatedStudents);
+      // 5️⃣ Cập nhật DATA chạy nền (nếu vẫn cần)
+      await updateDATAForStudent(
+        selectedClass,
+        {
+          maDinhDanh: ma,
+          hoVaTen: ten,
+          stt: sttMoi,
+          lop,
+        },
+        updatedStudents
+      );
     } catch (err) {
       console.error("❌ Lỗi khi thêm học sinh:", err);
     }
@@ -488,16 +527,36 @@ export default function DanhSachHS() {
 
     const ma = editingStudent.maDinhDanh;
     const ten = newName.trim().toUpperCase();
+    const classKey = selectedClass.replace(".", "_");
 
     // 🔹 Đóng dialog ngay
     setIsAdding(false);
     setEditingStudent(null);
 
     try {
-      // 1️⃣ Ghi Firestore DANHSACH
-      await updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
-        [ma]: { hoVaTen: ten },
-      });
+      // 1️⃣ Cập nhật Firestore
+      await Promise.all([
+        // DANHSACH
+        updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
+          [ma]: { hoVaTen: ten },
+        }),
+
+        // DATA
+        updateDoc(
+          doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma),
+          {
+            hoVaTen: ten,
+          }
+        ),
+
+        // DATA_ONTAP
+        updateDoc(
+          doc(db, `DATA_ONTAP_${namHocKey}`, classKey, "HOCSINH", ma),
+          {
+            hoVaTen: ten,
+          }
+        ),
+      ]);
 
       // 2️⃣ Cập nhật UI ngay
       const updatedStudents = students.map((s) =>
@@ -511,8 +570,12 @@ export default function DanhSachHS() {
         [selectedClass]: updatedStudents,
       }));
 
-      // 4️⃣ 🔹 Cập nhật DATA chạy nền
-      await updateDATAForStudent(selectedClass, { maDinhDanh: ma, hoVaTen: ten }, updatedStudents);
+      // 4️⃣ Cập nhật DATA chạy nền (nếu vẫn cần)
+      await updateDATAForStudent(
+        selectedClass,
+        { maDinhDanh: ma, hoVaTen: ten },
+        updatedStudents
+      );
     } catch (err) {
       console.error("❌ Lỗi khi cập nhật học sinh:", err);
     }
@@ -523,36 +586,48 @@ export default function DanhSachHS() {
     if (!student) return;
 
     const ma = student.maDinhDanh;
+    const classKey = selectedClass.replace(".", "_");
 
-    // 🔹 Đóng dialog ngay nếu đang mở
+    // 🔹 Đóng dialog ngay
     setIsAdding(false);
     setEditingStudent(null);
 
     try {
-      // 1️⃣ Xóa trên Firestore DANHSACH
-      await updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
-        [ma]: deleteField(),
-      });
+      // 1️⃣ Xóa Firestore
+      await Promise.all([
+        // DANHSACH
+        updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
+          [ma]: deleteField(),
+        }),
 
-      // 2️⃣ Xóa document DATA của học sinh (bao gồm mã định danh)
-      const lopKey = selectedClass.replace(".", "_");
-      const hsRef = doc(db, `DATA_${namHocKey}`, lopKey, "HOCSINH", ma);
-      await deleteDoc(hsRef); // ✅ xóa hẳn document
+        // DATA
+        deleteDoc(
+          doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma)
+        ),
 
-      // 3️⃣ Cập nhật UI ngay
+        // DATA_ONTAP
+        deleteDoc(
+          doc(db, `DATA_ONTAP_${namHocKey}`, classKey, "HOCSINH", ma)
+        ),
+      ]);
+
+      // 2️⃣ Cập nhật UI ngay
       const updatedStudents = students
         .filter((s) => s.maDinhDanh !== ma)
-        .map((s, i) => ({ ...s, stt: i + 1 }));
+        .map((s, i) => ({
+          ...s,
+          stt: i + 1,
+        }));
 
       setStudents(updatedStudents);
 
-      // 4️⃣ Cập nhật cache StudentContext
+      // 3️⃣ Cập nhật cache StudentContext
       setStudentData((prev) => ({
         ...prev,
         [selectedClass]: updatedStudents,
       }));
 
-      // 5️⃣ Reset trạng thái hover nếu cần
+      // 4️⃣ Reset trạng thái
       setHoveredHS(null);
     } catch (err) {
       console.error("❌ Lỗi khi xóa học sinh:", err);

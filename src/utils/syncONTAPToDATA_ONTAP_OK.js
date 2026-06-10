@@ -1,14 +1,8 @@
-import {
-  collection,
-  getDocs,
-  doc,
-  setDoc,
-  getDoc,
-} from "firebase/firestore";
+import { collection, getDocs, doc, setDoc } from "firebase/firestore";
 
 const classList = [
-  "4.1", "4.2", "4.3", "4.4", "4.5", "4.6",
-  "5", "5.1", "5.2", "5.3", "5.4",
+  "4.1","4.2","4.3","4.4","4.5","4.6",
+  "5","5.1","5.2","5.3","5.4",
 ];
 
 // 🔥 LIMIT concurrency để không spam Firestore
@@ -30,8 +24,7 @@ export const syncONTAPToDATA_ONTAP = async ({
   namHoc = "2025-2026",
 }) => {
   try {
-    const namHocKey = namHoc.replace(/-/g, "_");
-    const targetRoot = `DATA_ONTAP_${namHocKey}`;
+    const targetRoot = `DATA_ONTAP_${namHoc.replace(/-/g, "_")}`;
 
     let totalStudents = 0;
     let totalClassesHasData = 0;
@@ -39,7 +32,7 @@ export const syncONTAPToDATA_ONTAP = async ({
     await runWithLimit(classList, 3, async (classKey) => {
       const normalizedClassKey = classKey.replace(".", "_");
 
-      // Nguồn ONTAP
+      // ✅ ĐÚNG PATH NGUỒN
       const snap = await getDocs(
         collection(db, "ONTAP", sourceHocKy, classKey)
       );
@@ -47,25 +40,6 @@ export const syncONTAPToDATA_ONTAP = async ({
       if (snap.empty) return;
 
       totalClassesHasData++;
-
-      // Đọc DANHSACH của lớp 1 lần
-      const dsSnap = await getDoc(
-        doc(db, `DANHSACH_${namHocKey}`, classKey)
-      );
-
-      const nameToId = {};
-
-      if (dsSnap.exists()) {
-        Object.entries(dsSnap.data()).forEach(([maHS, info]) => {
-          const ten = (info?.hoVaTen || "")
-            .trim()
-            .toUpperCase();
-
-          if (ten) {
-            nameToId[ten] = maHS;
-          }
-        });
-      }
 
       await Promise.all(
         snap.docs.map(async (studentDoc) => {
@@ -75,17 +49,13 @@ export const syncONTAPToDATA_ONTAP = async ({
           const tinHoc = subjects.TinHoc || {};
           const congNghe = subjects.CongNghe || {};
 
-          // Tìm mã định danh theo họ tên
-          const maHS =
-            nameToId[(data.hoVaTen || "").trim().toUpperCase()] ||
-            studentDoc.id; // fallback nếu không tìm thấy
-
+          // ✅ ĐÍCH: 4.1 -> 4_1
           const docRef = doc(
             db,
             targetRoot,
             normalizedClassKey,
             "HOCSINH",
-            maHS
+            studentDoc.id
           );
 
           const fixedData = {
@@ -107,15 +77,10 @@ export const syncONTAPToDATA_ONTAP = async ({
           delete fixedData.subjects.CongNghe.diem;
 
           await setDoc(docRef, fixedData, { merge: true });
-
-          totalStudents++;
         })
       );
     });
 
-    console.log(
-      `✅ Đồng bộ xong ${totalStudents} học sinh ở ${totalClassesHasData} lớp`
-    );
   } catch (err) {
     console.error("SYNC ERROR:", err);
   }

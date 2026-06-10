@@ -242,7 +242,12 @@ export default function DeleteDataClassesDialog({
             label="Học kỳ"
             value={hocKi}
             onChange={(e) => setHocKi(e.target.value)}
-            sx={{ width: 150 }}
+            sx={{
+              width: {
+                xs: 120, // điện thoại
+                sm: 150, // tablet trở lên
+              },
+            }}
           >
             <MenuItem value="Giữa kỳ I">Giữa kỳ I</MenuItem>
             <MenuItem value="Cuối kỳ I">Cuối kỳ I</MenuItem>

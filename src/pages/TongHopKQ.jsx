@@ -941,16 +941,33 @@ export default function TongHopKQ() {
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap", justifyContent: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            mb: 3,
+            justifyContent: "center",
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            "&::-webkit-scrollbar": {
+              display: "none",
+            },
+            scrollbarWidth: "none",
+          }}
+        >
           <TextField
             select
             label="Lớp"
             value={selectedLop}
             onChange={(e) => setSelectedLop(e.target.value)}
             size="small"
-            sx={{ width: 80 }}
+            sx={{ width: 80, flexShrink: 0 }}
           >
-            {classesList.map(lop => <MenuItem key={lop} value={lop}>{lop}</MenuItem>)}
+            {classesList.map((lop) => (
+              <MenuItem key={lop} value={lop}>
+                {lop}
+              </MenuItem>
+            ))}
           </TextField>
 
           <TextField
@@ -959,9 +976,13 @@ export default function TongHopKQ() {
             value={selectedMon}
             onChange={(e) => setSelectedMon(e.target.value)}
             size="small"
-            sx={{ width: 130 }}
+            sx={{ width: 130, flexShrink: 0 }}
           >
-            {["Tin học", "Công nghệ"].map(mon => <MenuItem key={mon} value={mon}>{mon}</MenuItem>)}
+            {["Tin học", "Công nghệ"].map((mon) => (
+              <MenuItem key={mon} value={mon}>
+                {mon}
+              </MenuItem>
+            ))}
           </TextField>
 
           <TextField
@@ -970,12 +991,11 @@ export default function TongHopKQ() {
             value={ExamType}
             onChange={(e) => setExamType(e.target.value)}
             size="small"
-            sx={{ width: 120 }}
+            sx={{ width: 120, flexShrink: 0 }}
           >
             <MenuItem value="ktdk">KTĐK</MenuItem>
             <MenuItem value="ontap">Ôn tập</MenuItem>
           </TextField>
-
         </Box>
 
         {loading ? (
