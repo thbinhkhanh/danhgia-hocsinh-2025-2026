@@ -293,17 +293,54 @@ const generateNhanXet = (student, subject, tongCong = null, mucDat = null) => {
   // ===== 4. TIN HỌC =====
   const source = nhanXetData;
 
+  const xepLoaiLT = (diem) => {
+    const s = Number(diem);
+    if (s >= 4.5) return "TỐT";
+    if (s >= 3.5) return "KHÁ";
+    if (s >= 2.5) return "ĐẠT";
+    return "CHƯA ĐẠT";
+  };
+
+  const xepLoaiTH = (diem) => {
+    const s = Number(diem);
+    if (s >= 4.5) return "TỐT";
+    if (s >= 3.5) return "KHÁ";
+    if (s >= 2.5) return "ĐẠT";
+    return "CHƯA ĐẠT";
+  };
+
   if (isCuoiKy) {
-    const arrLT = source?.[loai]?.lyThuyet || [];
-    const arrTH = source?.[loai]?.thucHanh || [];
+    const lt = student.lyThuyet;
+    const th = student.thucHanh;
 
-    const nxLT = pickRandom(arrLT);
-    const nxTH = pickRandom(arrTH);
+    // ❗ nếu thiếu điểm → fallback
+    if (
+      lt === "" || lt == null ||
+      th === "" || th == null
+    ) {
+      return student.nhanXet || "";
+    }
 
-    return nxLT && nxTH ? `${nxLT}; ${nxTH}` : nxLT || nxTH || "";
+    const loaiLT = xepLoaiLT(lt);
+    const loaiTH = xepLoaiTH(th);
+
+    const nxLT = pickRandom(source?.[loaiLT]?.lyThuyet || []);
+    const nxTH = pickRandom(source?.[loaiTH]?.thucHanh || []);
+
+    return nxLT && nxTH
+      ? `${nxLT}; ${nxTH}`
+      : nxLT || nxTH || "";
   }
 
-  return pickRandom(source?.[loai]?.lyThuyet || []);
+  // ===== học kỳ / giữa kỳ: chỉ lấy lý thuyết =====
+  const lt = student.lyThuyet;
+
+  if (lt === "" || lt == null) {
+    return student.nhanXet || "";
+  }
+
+  const loaiLT = xepLoaiLT(lt);
+  return pickRandom(source?.[loaiLT]?.lyThuyet || []);
 };
 
 const fetchStudentsAndStatus = async (cls) => {
@@ -459,168 +496,131 @@ const fetchStudentsAndStatus = async (cls) => {
       prev.map((s) => {
         if (s.maDinhDanh !== maDinhDanh) return s;
 
-        const updated = { ...s, [field]: value };
+        let updated = { ...s, [field]: value };
 
         // =========================
-        // 🧠 1. VALIDATE INPUT
+        // 💬 NHẬN XÉT THỦ CÔNG (ưu tiên cao nhất)
+        // =========================
+        if (field === "nhanXet") {
+          updated.nhanXet = value;
+          return updated;
+        }
+
+        // =========================
+        // 🧠 TIN HỌC
         // =========================
         if (selectedSubject === "Tin học") {
           if (field === "lyThuyet" || field === "thucHanh") {
-
-            // ✅ cho nhập tạm (tránh bị đơ)
             if (value === "" || value === "." || value === "-") {
               updated[field] = value;
+            } else {
+              let num;
+
+              if (/^\d{2}$/.test(value)) {
+                const first = parseInt(value[0]);
+                const second = parseInt(value[1]);
+                num = second === 5 ? first + 0.5 : first;
+              } else {
+                const raw = parseFloat(value);
+                if (isNaN(raw)) return s;
+
+                const integer = Math.floor(raw);
+                const decimal = raw - integer;
+
+                num = decimal === 0.5 ? integer + 0.5 : integer;
+              }
+
+              if (num < 0 || num > 5) return s;
+              updated[field] = num;
+            }
+          }
+
+          // =========================
+          // 🚨 CHECK SỚM (QUAN TRỌNG NHẤT)
+          // =========================
+          const lt = updated.lyThuyet === "" || updated.lyThuyet == null
+            ? null
+            : parseFloat(updated.lyThuyet);
+
+          const th = updated.thucHanh === "" || updated.thucHanh == null
+            ? null
+            : parseFloat(updated.thucHanh);
+
+          if (lt == null || th == null || isNaN(lt) || isNaN(th)) {
+            updated.tongCong = null;
+            updated.mucDat = "";
+            updated.nhanXet = "";
+            return updated;
+          }
+
+          updated.tongCong = Math.round(lt + th);
+        }
+
+        // =========================
+        // 🧠 CÔNG NGHỆ
+        // =========================
+        if (selectedSubject === "Công nghệ") {
+          if (field === "lyThuyet") {
+            if (value === "" || value === "." || value === "-") {
+              updated.lyThuyet = value;
+              updated.tongCong = null;
+              updated.mucDat = "";
+              updated.nhanXet = "";
               return updated;
             }
 
             let num;
 
-            // ✅ dạng 2 chữ số (45 → 4.5, 43 → 4)
-            if (/^\d{2}$/.test(value)) {
+            if (value === "10") {
+              num = 10;
+            } else if (/^\d{2}$/.test(value)) {
               const first = parseInt(value[0]);
               const second = parseInt(value[1]);
-
               num = second === 5 ? first + 0.5 : first;
-            }
-
-            // ✅ nhập số thập phân trực tiếp
-            else {
+            } else {
               const raw = parseFloat(value);
               if (isNaN(raw)) return s;
 
               const integer = Math.floor(raw);
               const decimal = raw - integer;
 
-              // 👉 chỉ giữ .5, còn lại bỏ
-              if (decimal === 0.5) {
-                num = integer + 0.5;
-              } else {
-                num = integer;
-              }
+              num = decimal >= 0.5 ? integer + 0.5 : integer;
             }
 
-            // ❌ ngoài khoảng 0–5
-            if (num < 0 || num > 5) return s;
+            if (num < 0 || num > 10) return s;
 
-            updated[field] = num;
+            updated.lyThuyet = num;
+            updated.tongCong = Math.round(num);
           }
         }
 
-        if (selectedSubject === "Công nghệ") {
-          if (field === "lyThuyet") {
-          // ✅ cho nhập tạm
-          if (value === "" || value === "." || value === "-") {
-            updated.lyThuyet = value;
-            updated.tongCong = null;
-            return updated;
+        // =========================
+        // 🧮 TÍNH MỨC ĐẠT
+        // =========================
+        if (updated.tongCong != null && !isNaN(updated.tongCong)) {
+          if (field !== "mucDat") {
+            updated.mucDat =
+              updated.tongCong >= 9
+                ? "T"
+                : updated.tongCong >= 5
+                ? "H"
+                : "C";
           }
 
-          let num;
-
-          // ✅ giữ nguyên 10
-          if (value === "10") {
-            num = 10;
-          }
-
-          // ✅ dạng 2 chữ số (85 → 8.5, còn lại → 8)
-          else if (/^\d{2}$/.test(value)) {
-            const first = parseInt(value[0]);
-            const second = parseInt(value[1]);
-
-            num = second === 5 ? first + 0.5 : first;
-          }
-
-          // ✅ nhập số thập phân trực tiếp
-          else {
-            const raw = parseFloat(value);
-            if (isNaN(raw)) return s;
-
-            // 👉 chỉ giữ .0 hoặc .5
-            const integer = Math.floor(raw);
-            const decimal = raw - integer;
-
-            if (decimal >= 0.5) {
-              num = integer + 0.5;
-            } else {
-              num = integer;
-            }
-          }
-
-          if (num < 0 || num > 10) return s;
-
-          updated.lyThuyet = num;
-          updated.tongCong = Math.round(num);
+          // =========================
+          // 💬 NHẬN XÉT AUTO
+          // =========================
+          updated.nhanXet = generateNhanXet(
+            updated,
+            selectedSubject,
+            updated.tongCong,
+            updated.mucDat
+          );
+        } else {
+          // nếu không có điểm → KHÔNG sinh lại
+          updated.mucDat = "";
+          updated.nhanXet = "";
         }
-      }
-
-        // =========================
-        // 💬 1b. NHẬN XÉT THỦ CÔNG
-        // =========================
-        if (field === "nhanXet") {
-          // Cho phép nhập tự do, không sinh lại tự động
-          updated.nhanXet = value;
-          return updated;
-        }
-
-        // =========================
-        // 🧮 2. TÍNH TỔNG
-        // =========================
-        if (selectedSubject === "Tin học") {
-          const lt = updated.lyThuyet != null ? parseFloat(updated.lyThuyet) : null;
-          const th = updated.thucHanh != null ? parseFloat(updated.thucHanh) : null;
-
-          updated.tongCong =
-            lt != null && th != null && !isNaN(lt) && !isNaN(th)
-              ? Math.round(lt + th)
-              : null;
-        }
-
-        // =========================
-        // 🎯 3. XÉT THEO TỔNG
-        // =========================
-        const isNoScore =
-          updated.tongCong === null ||
-          updated.tongCong === undefined ||
-          isNaN(updated.tongCong);
-
-        // =========================
-        // 🔄 4. RESET VỀ DB
-        // =========================
-        if (isNoScore && field !== "mucDat") {
-          updated.mucDat =
-            s.dgtx_mucdat && s.dgtx_mucdat !== ""
-              ? s.dgtx_mucdat
-              : s.mucDat_goc || "";
-
-          updated.nhanXet =
-            s.dgtx_nx && s.dgtx_nx.trim() !== ""
-              ? s.dgtx_nx
-              : s.nhanXet_goc || "";
-
-          return updated;
-        }
-
-        // =========================
-        // 🌟 5. SINH MỨC ĐẠT (nếu không chỉnh thủ công)
-        // =========================
-        if (field !== "mucDat") {
-          updated.mucDat =
-            updated.tongCong >= 9
-              ? "T"
-              : updated.tongCong >= 5
-              ? "H"
-              : "C";
-        }
-
-        // =========================
-        // 💬 6. SINH NHẬN XÉT TỰ ĐỘNG
-        // =========================
-        updated.nhanXet = generateNhanXet(
-          updated,
-          selectedSubject,
-          updated.tongCong,
-          updated.mucDat
-        );
 
         return updated;
       })
