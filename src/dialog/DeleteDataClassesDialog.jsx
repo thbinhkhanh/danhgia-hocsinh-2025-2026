@@ -362,7 +362,8 @@ export default function DeleteDataClassesDialog({
         sx={{
           px: 3,
           pb: 3,
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
+          gap: 2,
         }}
       >
         <Button
@@ -370,8 +371,23 @@ export default function DeleteDataClassesDialog({
             setSelected([]);
             onClose();
           }}
+          variant="outlined"
+          sx={{
+            minWidth: 110,
+            height: 42,
+            borderRadius: "12px",
+            textTransform: "none",
+            fontWeight: 600,
+            borderColor: "#cbd5e1",
+            color: "#475569",
+            background: "#fff",
+            "&:hover": {
+              borderColor: "#94a3b8",
+              background: "#f1f5f9",
+            },
+          }}
         >
-          Đóng
+          Hủy
         </Button>
 
         <Button
@@ -381,7 +397,21 @@ export default function DeleteDataClassesDialog({
           startIcon={<DeleteOutlineIcon />}
           onClick={() => setConfirmOpen(true)}
           sx={{
+            minWidth: 130,
+            height: 42,
             borderRadius: "12px",
+            textTransform: "none",
+            fontWeight: 700,
+            background: "linear-gradient(135deg, #ef4444, #dc2626)",
+            boxShadow: "0 10px 20px rgba(239,68,68,0.25)",
+            "&:hover": {
+              background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+              boxShadow: "0 12px 24px rgba(220,38,38,0.35)",
+            },
+            "&.Mui-disabled": {
+              background: "#fca5a5",
+              color: "#fff",
+            },
           }}
         >
           Xóa ({selected.length})
