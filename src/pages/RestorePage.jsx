@@ -35,12 +35,10 @@ export default function RestorePage({ open, onClose }) {
 
   const BACKUP_KEYS = [
     // ===== HỌC SINH =====
-    { key: `DANHSACH_${namHocKey}`, label: "Danh sách lớp" },
     { key: `DATA_${namHocKey}`, label: "Kết quả đánh giá" },
-    { key: `DATA_ONTAP_${namHocKey}`, label: "Kết quả ôn tập" },
 
     // ===== ĐỀ KIỂM TRA =====
-    { key: "NGANHANG_DE", label: "Ngân hàng đề KTĐK" },
+    { key: "NGANHANG_DE", label: "Ngân hàng đề" },
     { key: "DETHI", label: "Đề chọn thi" },
     { key: "BAITAP_TUAN", label: "Bài tập tuần" },
 
@@ -140,9 +138,7 @@ export default function RestorePage({ open, onClose }) {
       .filter((k) => restoreOptions[k]);
 
     const VALID_KEYS = [
-      `DANHSACH_${namHocKey}`,
       `DATA_${namHocKey}`,
-      `DATA_ONTAP_${namHocKey}`,
 
       "NGANHANG_DE",
       "DETHI",
@@ -202,12 +198,6 @@ export default function RestorePage({ open, onClose }) {
               docs[c]?.HOCSINH || {}
             ).length;
           }
-        } else if (key === `DATA_ONTAP_${namHocKey}`) {
-          for (const c of Object.keys(docs)) {
-            totalDocs += Object.keys(
-              docs[c]?.HOCSINH || {}
-            ).length;
-          }
         } else {
           totalDocs += Object.keys(docs).length;
         }
@@ -222,7 +212,7 @@ export default function RestorePage({ open, onClose }) {
         if (!docs) continue;
 
         // ===== DATA (gộp luôn ONTAP xử lý riêng) =====
-        if (key === `DATA_${namHocKey}` || key === `DATA_ONTAP_${namHocKey}`) {
+        if (key === `DATA_${namHocKey}`) {
           for (const classId of Object.keys(docs)) {
             const hsObj = docs[classId]?.HOCSINH || {};
 
@@ -283,9 +273,7 @@ export default function RestorePage({ open, onClose }) {
   // ================= GROUPS =================
   const GROUPS = {
     HOCSINH: [
-      `DANHSACH_${namHocKey}`,
       `DATA_${namHocKey}`,
-      `DATA_ONTAP_${namHocKey}`, // 👈 THÊM MỚI
     ],
 
     DETHI: [
@@ -362,7 +350,7 @@ export default function RestorePage({ open, onClose }) {
         elevation={6}
         sx={{
           width: "100%",
-          maxWidth: 900,
+          maxWidth: 600,
           borderRadius: 3,
           overflow: "hidden",
           bgcolor: "#f8fafc",
@@ -446,73 +434,124 @@ export default function RestorePage({ open, onClose }) {
           )}
         </Box>
 
-        {/* ===== CONTENT (3 CỘT) ===== */}
-        <Box sx={{ p: 2 }}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2.2}>
+        {/* ===== CONTENT ===== */}
+        <Box sx={{ bgcolor: "#f8fafc", p: 2 }}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
 
-            {/* ===== HỌC SINH ===== */}
-            <Box sx={{ p: 2, bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, flex: 1 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={isGroupChecked(GROUPS.HOCSINH)}
-                    indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
-                    onChange={() => toggleGroup(GROUPS.HOCSINH)}
-                  />
-                }
-                label={<Typography fontWeight={700}>Học sinh</Typography>}
-              />
+            {/* ===== CỘT TRÁI ===== */}
+            <Stack flex={1} spacing={2}>
 
-              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
-                {GROUPS.HOCSINH.map((key) => (
-                  <FormControlLabel
-                    key={key}
-                    control={
-                      <Checkbox
-                        checked={restoreOptions[key] || false}
-                        disabled={disabledOptions[key]}
-                        onChange={() => toggleOption(key)}
-                      />
-                    }
-                    label={BACKUP_KEYS.find((b) => b.key === key)?.label || key}
-                  />
-                ))}
+              {/* ===== HỌC SINH ===== */}
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: "#fff",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isGroupChecked(GROUPS.HOCSINH)}
+                      indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
+                      onChange={() => toggleGroup(GROUPS.HOCSINH)}
+                      disabled={getEnabledKeys(GROUPS.HOCSINH).length === 0}
+                    />
+                  }
+                  label={<Typography fontWeight={700}>Học sinh</Typography>}
+                />
+
+                <Box
+                  sx={{
+                    ml: 3,
+                    mt: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.5,
+                  }}
+                >
+                  {GROUPS.HOCSINH.map((key) => (
+                    <FormControlLabel
+                      key={key}
+                      control={
+                        <Checkbox
+                          checked={restoreOptions[key] || false}
+                          disabled={disabledOptions[key]}
+                          onChange={() => toggleOption(key)}
+                        />
+                      }
+                      label={
+                        BACKUP_KEYS.find((b) => b.key === key)?.label || key
+                      }
+                    />
+                  ))}
+                </Box>
               </Box>
-            </Box>
 
-            {/* ===== ĐỀ THI ===== */}
-            <Box sx={{ p: 2, bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, flex: 1 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={isGroupChecked(GROUPS.DETHI)}
-                    indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
-                    onChange={() => toggleGroup(GROUPS.DETHI)}
-                    disabled={getEnabledKeys(GROUPS.DETHI).length === 0}
-                  />
-                }
-                label={<Typography fontWeight={700}>Đề kiểm tra</Typography>}
-              />
+              {/* ===== ĐỀ KIỂM TRA ===== */}
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: "#fff",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isGroupChecked(GROUPS.DETHI)}
+                      indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
+                      onChange={() => toggleGroup(GROUPS.DETHI)}
+                      disabled={getEnabledKeys(GROUPS.DETHI).length === 0}
+                    />
+                  }
+                  label={
+                    <Typography fontWeight={700}>
+                      Đề kiểm tra
+                    </Typography>
+                  }
+                />
 
-              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
-                {GROUPS.DETHI.map((key) => (
-                  <FormControlLabel
-                    key={key}
-                    control={
-                      <Checkbox
-                        checked={restoreOptions[key] || false}
-                        disabled={disabledOptions[key]}
-                        onChange={() => toggleOption(key)}
-                      />
-                    }
-                    label={BACKUP_KEYS.find((b) => b.key === key)?.label || key}
-                  />
-                ))}
+                <Box
+                  sx={{
+                    ml: 3,
+                    mt: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.5,
+                  }}
+                >
+                  {GROUPS.DETHI.map((key) => (
+                    <FormControlLabel
+                      key={key}
+                      control={
+                        <Checkbox
+                          checked={restoreOptions[key] || false}
+                          disabled={disabledOptions[key]}
+                          onChange={() => toggleOption(key)}
+                        />
+                      }
+                      label={
+                        BACKUP_KEYS.find((b) => b.key === key)?.label || key
+                      }
+                    />
+                  ))}
+                </Box>
               </Box>
-            </Box>
+            </Stack>
 
-            {/* ===== LUYỆN TẬP ===== */}
-            <Box sx={{ p: 2, bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, flex: 1 }}>
+            {/* ===== CỘT PHẢI ===== */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+                flex: 1,
+              }}
+            >
               <FormControlLabel
                 control={
                   <Checkbox
@@ -522,10 +561,22 @@ export default function RestorePage({ open, onClose }) {
                     disabled={getEnabledKeys(GROUPS.TRACNGHIEM).length === 0}
                   />
                 }
-                label={<Typography fontWeight={700}>Luyện tập tin học</Typography>}
+                label={
+                  <Typography fontWeight={700}>
+                    Luyện tập tin học
+                  </Typography>
+                }
               />
 
-              <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
+              <Box
+                sx={{
+                  ml: 3,
+                  mt: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.5,
+                }}
+              >
                 {GROUPS.TRACNGHIEM.map((key) => (
                   <FormControlLabel
                     key={key}
@@ -536,7 +587,9 @@ export default function RestorePage({ open, onClose }) {
                         onChange={() => toggleOption(key)}
                       />
                     }
-                    label={BACKUP_KEYS.find((b) => b.key === key)?.label || key}
+                    label={
+                      BACKUP_KEYS.find((b) => b.key === key)?.label || key
+                    }
                   />
                 ))}
               </Box>

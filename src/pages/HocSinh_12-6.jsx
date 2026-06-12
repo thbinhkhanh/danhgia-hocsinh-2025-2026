@@ -69,7 +69,6 @@ export default function HocSinh() {
 
   // ================= CONTEXT CONFIG =================
   const { config, setConfig } = useContext(ConfigContext);
-  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   // ================= CLASS STATE =================
   const { selectedClass, setSelectedClass } = useSelectedClass();
@@ -159,36 +158,15 @@ export default function HocSinh() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        // DANHSACH_LOP/2025_2026
-        const snap = await getDoc(
-          doc(db, "DANHSACH_LOP", namHocKey)
-        );
-
-        let classList = [];
-
-        if (snap.exists()) {
-          classList = (snap.data().list || []).sort((a, b) =>
-            a.localeCompare(b, undefined, {
-              numeric: true,
-              sensitivity: "base",
-            })
-          );
-        }
+        const snapshot = await getDocs(collection(db, "DANHSACH"));
+        const classList = snapshot.docs.map((doc) => doc.id);
 
         setClassData(classList);
         setClasses(classList);
 
-        // Ưu tiên lớp đang lưu trong config
+        // ✅ Chọn lớp từ config trước, nếu không có mới dùng lớp đầu tiên
         if (classList.length > 0) {
-          setSelectedClass((prev) => {
-            if (prev) return prev;
-
-            if (config?.lop && classList.includes(config.lop)) {
-              return config.lop;
-            }
-
-            return classList[0];
-          });
+          setSelectedClass((prev) => prev || config.lop || classList[0]);
         }
       } catch (err) {
         console.error("❌ Lỗi khi lấy danh sách lớp:", err);
@@ -198,65 +176,56 @@ export default function HocSinh() {
     };
 
     fetchClasses();
-  }, [namHocKey, config?.lop]);
+  }, [config.lop]); // ✅ phụ thuộc config.lop để set lớp đúng
 
     // 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
   useEffect(() => {
     if (!selectedClass) return;
 
     const cached = studentData[selectedClass];
-    if (cached?.length > 0) {
+    if (cached && cached.length > 0) {
+      // 🟢 Dùng cache nếu có
       setStudents(cached);
       return;
     }
 
+    // 🔵 Nếu chưa có trong context thì tải từ Firestore
     const fetchStudents = async () => {
       try {
-        const classKey = selectedClass.replace(/\./g, "_");
+        const classDocRef = doc(db, "DANHSACH", selectedClass);
+        const classSnap = await getDoc(classDocRef);
+        if (classSnap.exists()) {
+          const data = classSnap.data();
+          let studentList = Object.entries(data).map(([maDinhDanh, info]) => ({
+            maDinhDanh,
+            hoVaTen: info.hoVaTen,
+          }));
 
-        const snapshot = await getDocs(
-          collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH")
-        );
+          // Sắp xếp theo tên
+          studentList.sort((a, b) => {
+            const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+            const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
 
-        let studentList = snapshot.docs.map((docSnap) => ({
-          maDinhDanh: docSnap.id,
-          hoVaTen: docSnap.data().hoVaTen || "",
-        }));
+          studentList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-        // sắp xếp theo tên
-        studentList.sort((a, b) => {
-          const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-          const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0].toLowerCase();
-          return nameA.localeCompare(nameB, "vi");
-        });
-
-        studentList = studentList.map((s, idx) => ({
-          ...s,
-          stt: idx + 1,
-        }));
-
-        setStudentData((prev) => ({
-          ...prev,
-          [selectedClass]: studentList,
-        }));
-
-        setStudents(studentList);
-
-        console.log(
-          `✅ Lấy ${studentList.length} học sinh từ DATA_${namHocKey}/${classKey}/HOCSINH`
-        );
+          // ⬇️ Lưu vào context và state
+          setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
+          setStudents(studentList);
+        } else {
+          console.warn(`⚠️ Không tìm thấy dữ liệu lớp "${selectedClass}" trong Firestore.`);
+          setStudents([]);
+          setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
+        }
       } catch (err) {
         console.error(`❌ Lỗi khi lấy học sinh lớp "${selectedClass}":`, err);
         setStudents([]);
-        setStudentData((prev) => ({
-          ...prev,
-          [selectedClass]: [],
-        }));
       }
     };
 
     fetchStudents();
-  }, [selectedClass]);
+  }, [selectedClass, studentData, setStudentData]);
 
   //tải dữ liệu tuần
   useEffect(() => {
@@ -270,17 +239,10 @@ export default function HocSinh() {
 
       const statusMap = {};
 
-      console.log("🚀 START FETCH WEEK STATUS");
-      console.log("📌 Class:", selectedClass);
-      console.log("📌 ClassKey:", classKey);
-      console.log("📌 SubjectKey:", subjectKey);
-      console.log("📌 Week:", selectedWeek);
-      console.log("📌 Total students:", students.length);
-
       for (const student of students) {
         const hsRef = doc(
           db,
-          `DATA_${namHocKey}`,
+          `DATA_${namHocKey}`,   // 🔥 CHỈ ĐỔI NGUỒN Ở ĐÂY
           classKey,
           "HOCSINH",
           student.maDinhDanh
@@ -294,25 +256,11 @@ export default function HocSinh() {
           const weekData =
             data?.[subjectKey]?.dgtx?.[`tuan_${selectedWeek}`] || {};
 
-          // 🔥 LOG CHI TIẾT TỪNG HỌC SINH
-          console.log("────────────────────────────");
-          console.log("👤 Student:", student.hoVaTen);
-          console.log("🆔 ID:", student.maDinhDanh);
-          console.log("📦 RAW DATA:", data);
-          console.log("📊 DGTX:", data?.[subjectKey]?.dgtx);
-          console.log("📅 Week Data:", weekData);
-          console.log("⭐ STATUS:", weekData.status);
-          console.log("────────────────────────────");
-
           statusMap[student.maDinhDanh] = weekData.status || "";
         } else {
-          console.log("❌ NOT FOUND:", student.hoVaTen, student.maDinhDanh);
-
           statusMap[student.maDinhDanh] = "";
         }
       }
-
-      console.log("✅ FINAL STATUS MAP:", statusMap);
 
       setStudentStatus(statusMap);
     } catch (err) {
@@ -353,7 +301,7 @@ export default function HocSinh() {
       // Document học sinh trong DATA
       const hsRef = doc(
         db,
-        `DATA_${namHocKey}`,
+        "DATA",
         classKey,
         "HOCSINH",
         studentId
@@ -666,7 +614,7 @@ return (
                     try {
                       const hsRef = doc(
                         db,
-                        `DATA_${namHocKey}`,
+                        "DATA",
                         classKey,
                         "HOCSINH",
                         student.maDinhDanh
@@ -1040,7 +988,7 @@ return (
                                     setOpenDoneDialog(true);
                                     return;
                                   }
-                                  const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
+                                  const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
                                   const hsSnap = await getDoc(hsRef);
                                   const data = hsSnap.exists() ? hsSnap.data() : {};
                                   const dgtxData = data?.[subjectKey]?.dgtx || {};
@@ -1083,7 +1031,7 @@ return (
                                     return;
                                   }
   
-                                  const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
+                                  const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
                                   const hsSnap = await getDoc(hsRef);
                                   const data = hsSnap.exists() ? hsSnap.data() : {};
                                   const ktdkData = data?.[subjectKey]?.ktdk?.[hocKyCode] || {};
@@ -1150,7 +1098,7 @@ return (
                                     return;
                                   }
   
-                                  const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", student.maDinhDanh);
+                                  const hsRef = doc(db, "DATA", classKey, "HOCSINH", student.maDinhDanh);
                                   const hsSnap = await getDoc(hsRef);
                                   const data = hsSnap.exists() ? hsSnap.data() : {};
                                   const dgtxData = data?.[subjectKey]?.dgtx || {};

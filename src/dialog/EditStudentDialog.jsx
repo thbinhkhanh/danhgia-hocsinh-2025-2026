@@ -116,17 +116,20 @@ export default function EditStudentDialog({
           >
             <Typography sx={{ fontSize: 14, color: "#334155" }}>
               Bạn có chắc chắn muốn xóa học sinh
+              <br />
+              <br />
+              <b>{student?.hoVaTen || ""}</b>
+              ?
             </Typography>
 
             <Typography
               sx={{
-                mt: 1,
-                fontSize: 16,
-                fontWeight: 600,
+                mt: 3,
+                fontSize: 13,
                 color: "#ef4444",
               }}
             >
-              {student?.hoVaTen}
+              ⚠ Học sinh sẽ bị xóa khỏi hệ thống cùng toàn bộ dữ liệu.
             </Typography>
           </Box>
         ) : (
@@ -134,7 +137,11 @@ export default function EditStudentDialog({
             {/* Mã định danh */}
             <TextField
               label="Mã định danh"
-              value={isAdding ? newMaDinhDanh : student?.maDinhDanh || ""}
+              value={
+                isAdding
+                  ? newMaDinhDanh
+                  : student?.maDinhDanh || ""
+              }
               onChange={(e) => setNewMaDinhDanh?.(e.target.value)}
               InputProps={{ readOnly: !isAdding }}
               size="small"
@@ -165,85 +172,84 @@ export default function EditStudentDialog({
       </DialogContent>
 
       {/* ===== ACTIONS ===== */}
-      {/* ===== ACTIONS (MATCH STYLE MẪU) ===== */}
-<Box
-  sx={{
-    px: 3,
-    pb: 3,
-    display: "flex",
-    justifyContent: "center",
-  }}
->
-  <Stack direction="row" spacing={2}>
-    {/* CANCEL */}
-    <Button
-      onClick={onClose}
-      variant="outlined"
-      sx={{
-        minWidth: 110,
-        height: 42,
-        borderRadius: "12px",
-        textTransform: "none",
-        fontWeight: 600,
-        borderColor: "#cbd5e1",
-        color: "#475569",
-        background: "#fff",
-        "&:hover": {
-          borderColor: "#94a3b8",
-          background: "#f1f5f9",
-        },
-      }}
-    >
-      Hủy
-    </Button>
+      <Box
+        sx={{
+          px: 3,
+          pb: 3,
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <Stack direction="row" spacing={2}>
+          {/* CANCEL */}
+          <Button
+            onClick={onClose}
+            variant="outlined"
+            sx={{
+              minWidth: 110,
+              height: 42,
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: 600,
+              borderColor: "#cbd5e1",
+              color: "#475569",
+              background: "#fff",
+              "&:hover": {
+                borderColor: "#94a3b8",
+                background: "#f1f5f9",
+              },
+            }}
+          >
+            Hủy
+          </Button>
 
-    {/* CONFIRM / SAVE / DELETE */}
-    {isConfirm ? (
-      <Button
-        onClick={onConfirm}
-        variant="contained"
-        sx={{
-          minWidth: 130,
-          height: 42,
-          borderRadius: "12px",
-          textTransform: "none",
-          fontWeight: 700,
-          background: "linear-gradient(135deg, #ef4444, #f97316)",
-          boxShadow: "0 10px 20px rgba(239,68,68,0.25)",
-          "&:hover": {
-            background: "linear-gradient(135deg, #dc2626, #ef4444)",
-          },
-        }}
-      >
-        Xóa
-      </Button>
-    ) : (
-      <Button
-        onClick={onSave}
-        disabled={!newName.trim() || (isAdding && !newMaDinhDanh?.trim())}
-        variant="contained"
-        sx={{
-          minWidth: 130,
-          height: 42,
-          borderRadius: "12px",
-          textTransform: "none",
-          fontWeight: 700,
-          background: "linear-gradient(135deg, #1976d2, #42a5f5)",
-          boxShadow: "0 10px 20px rgba(25,118,210,0.25)",
-          "&:hover": {
-            background: "linear-gradient(135deg, #1565c0, #1976d2)",
-          },
-          "&.Mui-disabled": {
-            background: "#cbd5e1",
-            color: "#fff",
-          },
-        }}
-      >
-        {isAdding ? "Thêm" : "Lưu"}
-      </Button>
-    )}
-  </Stack>
-</Box>
+          {/* CONFIRM / SAVE / DELETE */}
+          {isConfirm ? (
+            <Button
+              onClick={onConfirm}
+              variant="contained"
+              sx={{
+                minWidth: 130,
+                height: 42,
+                borderRadius: "12px",
+                textTransform: "none",
+                fontWeight: 700,
+                background: "linear-gradient(135deg, #ef4444, #f97316)",
+                boxShadow: "0 10px 20px rgba(239,68,68,0.25)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #dc2626, #ef4444)",
+                },
+              }}
+            >
+              Xóa
+            </Button>
+          ) : (
+            <Button
+              onClick={onSave}
+              disabled={!newName.trim() || (isAdding && !newMaDinhDanh?.trim())}
+              variant="contained"
+              sx={{
+                minWidth: 130,
+                height: 42,
+                borderRadius: "12px",
+                textTransform: "none",
+                fontWeight: 700,
+                background: "linear-gradient(135deg, #1976d2, #42a5f5)",
+                boxShadow: "0 10px 20px rgba(25,118,210,0.25)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #1565c0, #1976d2)",
+                },
+                "&.Mui-disabled": {
+                  background: "#cbd5e1",
+                  color: "#fff",
+                },
+              }}
+            >
+              {isAdding ? "Thêm" : "Lưu"}
+            </Button>
+          )}
+        </Stack>
+      </Box>
     </Dialog>
   );
 }

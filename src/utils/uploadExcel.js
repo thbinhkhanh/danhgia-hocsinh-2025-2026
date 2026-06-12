@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, writeBatch } from "firebase/firestore";
 
-/* ================== UPLOAD HỌC SINH ================== */
+/* ================== UPLOAD HỌC SINH (FAST) ================== */
 export const uploadStudents = async ({
   file,
   files,
@@ -14,7 +14,6 @@ export const uploadStudents = async ({
     throw new Error("namHocKey is undefined ❌");
   }
 
-  // file đơn hoặc thư mục
   const fileList = files
     ? Array.from(files)
     : file
@@ -23,39 +22,37 @@ export const uploadStudents = async ({
 
   if (!fileList.length) return;
 
-  const groupedByClass = {};
+  let allRows = [];
 
-  // ===== Đọc tất cả file =====
+  // ===== LOAD ALL ROWS =====
   for (const f of fileList) {
     const path = f.webkitRelativePath || f.name;
 
-    // tên file => tên lớp nếu không có cột LỚP
     const fileClass = path
       .split("/")
       .pop()
       .replace(/\.[^/.]+$/, "")
       .trim();
 
-    const data = await f.arrayBuffer();
-
-    const workbook = XLSX.read(data);
+    const workbook = XLSX.read(await f.arrayBuffer());
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = XLSX.utils.sheet_to_json(sheet);
+    const rows = XLSX.utils.sheet_to_json(sheet);
 
-    jsonData.forEach((item) => {
-      const ma =
-        item.maDinhDanh ||
-        item["MÃ ĐỊNH DANH"];
+    rows.forEach((item) => {
+      const ma = item.maDinhDanh || item["MÃ ĐỊNH DANH"];
+      const ten = item.hoVaTen || item["HỌ VÀ TÊN"];
 
-      const ten =
-        item.hoVaTen ||
-        item["HỌ VÀ TÊN"];
+      if (!ma || !ten) return;
 
-      const lop =
+      const rawLop =
         item.lop ||
         item["LỚP"] ||
         selectedClass ||
         fileClass;
+
+      const lop = String(rawLop)
+        .replaceAll("_", ".")
+        .trim();
 
       const stt =
         item.stt ||
@@ -63,36 +60,96 @@ export const uploadStudents = async ({
         item["SỐ THỨ TỰ"] ||
         item["SO THU TU"];
 
-      if (!ma || !ten) return;
-
-      if (!groupedByClass[lop]) {
-        groupedByClass[lop] = {};
-      }
-
-      groupedByClass[lop][String(ma).trim()] = {
-        hoVaTen: String(ten).trim().toUpperCase(),
-        lop: String(lop),
-        stt: stt ? Number(stt) : null,
-      };
+      allRows.push({
+        ma,
+        ten,
+        lop,
+        stt,
+      });
     });
   }
 
-  // ===== Upload Firestore =====
-  const classKeys = Object.keys(groupedByClass);
+  // ===== 📌 1. AUTO ADD CLASS TO DANHSACH_LOP =====
+  const classSet = new Set(allRows.map((r) => r.lop));
+  const newClasses = Array.from(classSet);
 
-  for (let i = 0; i < classKeys.length; i++) {
-    const lop = classKeys[i];
+  const classRef = doc(db, "DANHSACH_LOP", namHocKey);
+  const classSnap = await getDoc(classRef);
 
-    await setDoc(
-      doc(db, `DANHSACH_${namHocKey}`, lop),
-      groupedByClass[lop],
-      { merge: true }
-    );
+  let existingClasses = [];
+
+  if (classSnap.exists()) {
+    existingClasses = classSnap.data().list || [];
+  }
+
+  const mergedClasses = Array.from(
+    new Set([...existingClasses, ...newClasses])
+  ).sort((a, b) =>
+    a.localeCompare(b, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    })
+  );
+
+  await setDoc(
+    classRef,
+    { list: mergedClasses },
+    { merge: true }
+  );
+
+  // ===== TEMPLATE =====
+  const buildSubject = () => ({
+    dgtx: {},
+    ktdk: {
+      CN: {},
+      CKI: {},
+      GKI: {},
+      GKII: {},
+    },
+    ontap: {
+      CN: {},
+      CKI: {},
+      GKI: {},
+      GKII: {},
+    },
+  });
+
+  const batchSize = 450;
+  let done = 0;
+
+  // ===== UPLOAD STUDENTS =====
+  for (let i = 0; i < allRows.length; i += batchSize) {
+    const batch = writeBatch(db);
+    const chunk = allRows.slice(i, i + batchSize);
+
+    chunk.forEach(({ ma, ten, lop, stt }) => {
+      const ref = doc(
+        db,
+        `DATA_${namHocKey}`,
+        lop,
+        "HOCSINH",
+        String(ma).trim()
+      );
+
+      batch.set(
+        ref,
+        {
+          hoVaTen: ten.toUpperCase(),
+          lop,
+          stt: stt ? Number(stt) : null,
+          TinHoc: buildSubject(),
+          CongNghe: buildSubject(),
+        },
+        { merge: true }
+      );
+    });
+
+    await batch.commit();
+
+    done += chunk.length;
 
     if (onProgress) {
-      onProgress(
-        Math.round(((i + 1) / classKeys.length) * 100)
-      );
+      onProgress(Math.round((done / allRows.length) * 100));
     }
   }
 };

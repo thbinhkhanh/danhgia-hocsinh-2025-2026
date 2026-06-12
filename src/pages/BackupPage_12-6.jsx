@@ -27,7 +27,9 @@ export default function BackupPage({ onClose, config }) {
 
   const BACKUP_KEYS = [
     // ===== HỌC SINH =====
+    { key: `DANHSACH_${namHocKey}`, label: "Danh sách lớp" },
     { key: `DATA_${namHocKey}`, label: "Kết quả KTĐK" },
+    { key: `DATA_ONTAP_${namHocKey}`, label: "Kết quả ôn tập" },
 
     // ===== ĐỀ KIỂM TRA =====
     { key: "NGANHANG_DE", label: "Ngân hàng đề KTĐK" },
@@ -107,35 +109,48 @@ export default function BackupPage({ onClose, config }) {
     URL.revokeObjectURL(url);
   };
 
-  const fetchAllBackup = async (onProgress, selectedCollections) => {
+  const fetchAllBackup = async (onProgress, selectedCollections, config) => {
+    const DATA_KEY = `DATA_${namHocKey}`;
+    const DANHSACH_KEY = `DANHSACH_${namHocKey}`;
+    const ONTAP_KEY = `DATA_ONTAP_${namHocKey}`;
+
+    const TRACNGHIEM_COLLECTIONS = [
+      "TRACNGHIEM3",
+      "TRACNGHIEM4",
+      "TRACNGHIEM5",
+      "TRACNGHIEM3_New",
+      "TRACNGHIEM4_New",
+      "TRACNGHIEM5_New",
+    ];
+
     try {
       const backupData = {};
-      if (!selectedCollections?.length) return {};
+      if (!selectedCollections || selectedCollections.length === 0) return {};
 
       let progressCount = 0;
 
-      const DATA_KEY = `DATA_${namHocKey}`;
-
-      // ========================
-      // CHỈ GIỮ DATA + KHÁC
-      // ========================
-      const hasDATA = selectedCollections.includes(DATA_KEY);
+      // ❗ DATA + DANHSACH theo năm (KHÔNG còn raw nữa)
+      const hasDATA = selectedCollections.includes(`DATA_${namHocKey}`);
+      const hasONTAP = selectedCollections.includes(`DATA_ONTAP_${namHocKey}`);
+      const hasDANHSACH = selectedCollections.includes(`DANHSACH_${namHocKey}`);
 
       const otherCollections = selectedCollections.filter(
-        (c) => c !== DATA_KEY
+        (c) =>
+          c !== `DATA_${namHocKey}` &&
+          c !== `DANHSACH_${namHocKey}` &&
+          c !== `DATA_ONTAP_${namHocKey}`
       );
 
-      const DATA_WEIGHT = hasDATA ? 100 : 0;
-      const OTHERS_WEIGHT = hasDATA ? 0 : 100;
+      const DATA_WEIGHT = hasDATA ? 50 : 0;
+      const ONTAP_WEIGHT = hasONTAP ? 30 : 0;
+      const OTHERS_WEIGHT = Math.max(0, 100 - DATA_WEIGHT - ONTAP_WEIGHT);
 
       const otherStep =
         otherCollections.length > 0
           ? OTHERS_WEIGHT / otherCollections.length
           : 0;
 
-      // ========================
-      // 1. FETCH COLLECTION KHÁC
-      // ========================
+      // ================== NHÓM KHÁC DATA ==================
       for (const colName of otherCollections) {
         const snap = await getDocs(collection(db, colName));
 
@@ -146,14 +161,24 @@ export default function BackupPage({ onClose, config }) {
         });
 
         progressCount += otherStep;
-        onProgress?.(Math.min(Math.round(progressCount), 99));
+        if (onProgress)
+          onProgress(Math.min(Math.round(progressCount), 99));
       }
 
-      // ========================
-      // 2. FETCH DATA (KTĐK)
-      // ========================
+      // ================== DANHSACH (THEO NĂM) ==================
+      if (hasDANHSACH) {
+        const snap = await getDocs(collection(db, "DANHSACH"));
+
+        backupData[`DANHSACH_${namHocKey}`] = {};
+
+        snap.forEach((d) => {
+          backupData[`DANHSACH_${namHocKey}`][d.id] = d.data();
+        });
+      }
+
+      // ================== DATA (THEO NĂM) ==================
       if (hasDATA) {
-        backupData[DATA_KEY] = {};
+        backupData[`DATA_${namHocKey}`] = {};
 
         const classListSnap = await getDocs(collection(db, "DANHSACH"));
         const classList = classListSnap.docs.map((d) => d.id);
@@ -164,13 +189,14 @@ export default function BackupPage({ onClose, config }) {
           const classKey = classId.replace(".", "_");
 
           const studentsSnap = await getDocs(
-            collection(db, DATA_KEY, classKey, "HOCSINH")
+            collection(db, "DATA", classKey, "HOCSINH")
           );
 
-          backupData[DATA_KEY][classKey] = { HOCSINH: {} };
+          backupData[`DATA_${namHocKey}`][classKey] = { HOCSINH: {} };
 
           studentsSnap.forEach((doc) => {
-            backupData[DATA_KEY][classKey].HOCSINH[doc.id] = doc.data();
+            backupData[`DATA_${namHocKey}`][classKey].HOCSINH[doc.id] =
+              doc.data();
           });
 
           progressCount += perClassStep;
@@ -178,10 +204,38 @@ export default function BackupPage({ onClose, config }) {
         }
       }
 
-      // ========================
-      // 3. DONE
-      // ========================
-      onProgress?.(100);
+      // ================== ONTAP (THEO NĂM) ==================
+      if (hasONTAP) {
+        backupData[`DATA_ONTAP_${namHocKey}`] = {};
+
+        const classListSnap = await getDocs(collection(db, "DANHSACH"));
+        const classList = classListSnap.docs.map((d) => d.id);
+
+        const perClassStep = ONTAP_WEIGHT / (classList.length || 1);
+
+        for (const classId of classList) {
+          const classKey = classId.replace(".", "_");
+
+          const studentSnap = await getDocs(
+            collection(db, `DATA_ONTAP_${namHocKey}`, classKey, "HOCSINH")
+          );
+
+          backupData[`DATA_ONTAP_${namHocKey}`][classKey] = {
+            HOCSINH: {},
+          };
+
+          studentSnap.forEach((s) => {
+            backupData[`DATA_ONTAP_${namHocKey}`][classKey].HOCSINH[s.id] =
+              s.data();
+          });
+
+          progressCount += perClassStep;
+          onProgress?.(Math.round(progressCount));
+        }
+      }
+
+      // ================== HOÀN TẤT ==================
+      if (onProgress) onProgress(100);
 
       return backupData;
     } catch (err) {
@@ -194,6 +248,7 @@ export default function BackupPage({ onClose, config }) {
     const VALID_KEYS = BACKUP_KEYS.map(k => k.key);
 
     const dataKey = `DATA_${namHocKey}`;
+    const ontapKey = `DATA_ONTAP_${namHocKey}`;
 
     let selected = Object.keys(backupOptions).filter(
       (k) => backupOptions[k] && VALID_KEYS.includes(k)
@@ -243,7 +298,9 @@ export default function BackupPage({ onClose, config }) {
 
   const GROUPS = {
     HOCSINH: [
+      `DANHSACH_${namHocKey}`,
       `DATA_${namHocKey}`,
+      `DATA_ONTAP_${namHocKey}`,
     ],
     DETHI: ["NGANHANG_DE", "DETHI", "BAITAP_TUAN"],
     TRACNGHIEM: [
@@ -277,7 +334,7 @@ export default function BackupPage({ onClose, config }) {
 
 
 
-  return (
+    return (
     <Box
       sx={{
         minHeight: "100vh",
@@ -293,7 +350,7 @@ export default function BackupPage({ onClose, config }) {
         elevation={6}
         sx={{
           width: "100%",
-          maxWidth: 600,
+          maxWidth: 900,
           borderRadius: 3,
           overflow: "hidden",
         }}
@@ -336,121 +393,143 @@ export default function BackupPage({ onClose, config }) {
 
         {/* ===== CONTENT ===== */}
         <Box sx={{ bgcolor: "#f8fafc", p: 2 }}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-            <Stack flex={1} spacing={2}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2.2}>
             
-              {/* ===== HỌC SINH ===== */}
+            {/* ===== HỌC SINH ===== */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+                flex: 1,
+                width: { xs: "100%", md: "auto" },
+              }}
+            >
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.HOCSINH)}
+                    indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
+                    onChange={() => toggleGroup(GROUPS.HOCSINH)}
+                  />
+                }
+                label={
+                  <Typography fontWeight={700}>
+                    Học sinh
+                  </Typography>
+                }
+              />
+
               <Box
                 sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: "#fff",
-                  border: "1px solid #e2e8f0",
-                  flex: 1,
-                  width: { xs: "100%", md: "auto" },
+                  ml: 3,
+                  mt: 1,
+                  display: "flex",
+                  flexDirection: "column", // ⭐ mobile luôn dọc
+                  gap: 0.5,
                 }}
               >
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={isGroupChecked(GROUPS.HOCSINH)}
-                      indeterminate={isGroupIndeterminate(GROUPS.HOCSINH)}
-                      onChange={() => toggleGroup(GROUPS.HOCSINH)}
+                      checked={backupOptions[`DANHSACH_${namHocKey}`]}
+                      onChange={() =>
+                        toggleOption(`DANHSACH_${namHocKey}`)
+                      }
                     />
                   }
-                  label={
-                    <Typography fontWeight={700}>
-                      Học sinh
-                    </Typography>
-                  }
+                  label="Danh sách lớp"
                 />
 
-                <Box
-                  sx={{
-                    ml: 3,
-                    mt: 1,
-                    display: "flex",
-                    flexDirection: "column", // ⭐ mobile luôn dọc
-                    gap: 0.5,
-                  }}
-                >
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={backupOptions[`DATA_${namHocKey}`]}
-                        onChange={() =>
-                          toggleOption(`DATA_${namHocKey}`)
-                        }
-                      />
-                    }
-                    label="Kết quả đánh giá"
-                  />
-                </Box>
-              </Box>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={backupOptions[`DATA_${namHocKey}`]}
+                      onChange={() =>
+                        toggleOption(`DATA_${namHocKey}`)
+                      }
+                    />
+                  }
+                  label="Kết quả KTĐK"
+                />
 
-              {/* ===== ĐỀ KIỂM TRA ===== */}
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={backupOptions[`DATA_ONTAP_${namHocKey}`]}
+                      onChange={() =>
+                        toggleOption(`DATA_ONTAP_${namHocKey}`)
+                      }
+                    />
+                  }
+                  label="Kết quả ôn tập"
+                />
+              </Box>
+            </Box>
+
+            {/* ===== ĐỀ KIỂM TRA ===== */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "#fff",
+                border: "1px solid #e2e8f0",
+                flex: 1,
+                width: { xs: "100%", md: "auto" },
+              }}
+            >
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isGroupChecked(GROUPS.DETHI)}
+                    indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
+                    onChange={() => toggleGroup(GROUPS.DETHI)}
+                  />
+                }
+                label={<Typography fontWeight={700}>Đề kiểm tra</Typography>}
+              />
+
               <Box
                 sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: "#fff",
-                  border: "1px solid #e2e8f0",
-                  flex: 1,
-                  width: { xs: "100%", md: "auto" },
+                  ml: 3,
+                  mt: 1,
+                  display: "flex",
+                  flexDirection: "column", // ⭐ mobile luôn dọc
+                  gap: 0.5,
                 }}
               >
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={isGroupChecked(GROUPS.DETHI)}
-                      indeterminate={isGroupIndeterminate(GROUPS.DETHI)}
-                      onChange={() => toggleGroup(GROUPS.DETHI)}
+                      checked={backupOptions["NGANHANG_DE"]}
+                      onChange={() => toggleOption("NGANHANG_DE")}
                     />
                   }
-                  label={<Typography fontWeight={700}>Đề kiểm tra</Typography>}
+                  label="Ngân hàng đề"
                 />
 
-                <Box
-                  sx={{
-                    ml: 3,
-                    mt: 1,
-                    display: "flex",
-                    flexDirection: "column", // ⭐ mobile luôn dọc
-                    gap: 0.5,
-                  }}
-                >
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={backupOptions["NGANHANG_DE"]}
-                        onChange={() => toggleOption("NGANHANG_DE")}
-                      />
-                    }
-                    label="Ngân hàng đề"
-                  />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={backupOptions["DETHI"]}
+                      onChange={() => toggleOption("DETHI")}
+                    />
+                  }
+                  label="Đề thi"
+                />
 
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={backupOptions["DETHI"]}
-                        onChange={() => toggleOption("DETHI")}
-                      />
-                    }
-                    label="Đề thi"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={backupOptions["BAITAP_TUAN"]}
-                        onChange={() => toggleOption("BAITAP_TUAN")}
-                      />
-                    }
-                    label="Bài tập tuần"
-                  />
-                </Box>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={backupOptions["BAITAP_TUAN"]}
+                      onChange={() => toggleOption("BAITAP_TUAN")}
+                    />
+                  }
+                  label="Bài tập tuần"
+                />
               </Box>
-            </Stack>
+            </Box>
 
             {/* ===== LUYỆN TẬP ===== */}
             <Box

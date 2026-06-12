@@ -95,16 +95,41 @@ export default function GiaoVien() {
   // Lấy danh sách lớp
   useEffect(() => {
     const fetchClasses = async () => {
-      const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
-      const classList = snapshot.docs.map(d => d.id);
-      setClasses(classList);
-      setClassData(classList);
-      if (!config.lop && classList.length > 0) {
-        updateConfig("lop", classList[0]);
+      try {
+        // document DANHSACH_LOP/{2025_2026}
+        const lopRef = doc(db, "DANHSACH_LOP", namHocKey);
+        const lopSnap = await getDoc(lopRef);
+
+        let classList = [];
+
+        if (lopSnap.exists()) {
+          classList = (lopSnap.data().list || []).sort((a, b) =>
+            a.localeCompare(b, undefined, {
+              numeric: true,
+              sensitivity: "base",
+            })
+          );
+        }
+
+        setClasses(classList);
+        setClassData(classList);
+
+        // nếu chưa có lớp đang chọn hoặc lớp hiện tại không còn tồn tại
+        if (
+          classList.length > 0 &&
+          (!config.lop || !classList.includes(config.lop))
+        ) {
+          updateConfig("lop", classList[0]);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi lấy danh sách lớp:", err);
+        setClasses([]);
+        setClassData([]);
       }
     };
+
     fetchClasses();
-  }, []);
+  }, [namHocKey]);
 
   useEffect(() => {
     if (!config.lop) return;
@@ -135,28 +160,62 @@ export default function GiaoVien() {
   useEffect(() => {
     const selectedClass = config.lop;
     if (!selectedClass) return;
+
     const cached = studentData[selectedClass];
     if (cached?.length > 0) {
       setStudents(cached);
       return;
     }
+
     const fetchStudents = async () => {
-      const ref = doc(db, `DANHSACH_${namHocKey}`, selectedClass);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data();
-        const list = Object.entries(data)
-          .map(([id, info]) => ({ maDinhDanh: id, hoVaTen: info.hoVaTen }))
+      try {
+        const classKey = selectedClass.replace(/\./g, "_");
+
+        // DATA_2025_2026 / 4_1 / HOCSINH
+        const snapshot = await getDocs(
+          collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH")
+        );
+
+        const list = snapshot.docs
+          .map((docSnap) => {
+            const data = docSnap.data();
+
+            return {
+              maDinhDanh: docSnap.id,
+              hoVaTen: data.hoVaTen || "",
+            };
+          })
           .sort((a, b) =>
-            a.hoVaTen.split(" ").slice(-1)[0].localeCompare(b.hoVaTen.split(" ").slice(-1)[0])
+            a.hoVaTen
+              .split(" ")
+              .slice(-1)[0]
+              .localeCompare(
+                b.hoVaTen.split(" ").slice(-1)[0],
+                "vi"
+              )
           )
-          .map((s, i) => ({ ...s, stt: i + 1 }));
+          .map((s, i) => ({
+            ...s,
+            stt: i + 1,
+          }));
+
         setStudents(list);
-        setStudentData(prev => ({ ...prev, [selectedClass]: list }));
-      } else setStudents([]);
+        setStudentData((prev) => ({
+          ...prev,
+          [selectedClass]: list,
+        }));
+
+        console.log(
+          `✅ Lấy ${list.length} học sinh từ DATA_${namHocKey}/${classKey}/HOCSINH`
+        );
+      } catch (err) {
+        console.error("❌ Lỗi lấy học sinh:", err);
+        setStudents([]);
+      }
     };
+
     fetchStudents();
-  }, [config.lop, studentData]);
+  }, [config.lop]);
 
   const convertPercentToScore = (percent) => {
     if (percent === undefined || percent === null) return "?";

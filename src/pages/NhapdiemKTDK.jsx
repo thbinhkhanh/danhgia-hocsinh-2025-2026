@@ -116,26 +116,44 @@ const [nhanXetData, setNhanXetData] = useState(null);
   useEffect(() => {
     const fetchClasses = async () => {
       try {
+        // 🔹 ưu tiên cache từ context
         if (classData && classData.length > 0) {
           setClasses(classData);
           setSelectedClass((prev) => prev || classData[0]);
           return;
         }
 
-        const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
-        const classList = snapshot.docs.map((doc) => doc.id);
+        // 🔹 lấy từ Firestore chuẩn mới
+        const snap = await getDoc(
+          doc(db, "DANHSACH_LOP", namHocKey)
+        );
+
+        let classList = [];
+
+        if (snap.exists()) {
+          classList = (snap.data().list || []).sort((a, b) =>
+            a.localeCompare(b, undefined, {
+              numeric: true,
+              sensitivity: "base",
+            })
+          );
+        }
+
         setClassData(classList);
         setClasses(classList);
-        if (classList.length > 0) setSelectedClass(classList[0]);
+
+        if (classList.length > 0) {
+          setSelectedClass((prev) => prev || classList[0]);
+        }
       } catch (err) {
-        console.error("Lỗi lấy danh sách lớp:", err);
+        console.error("❌ Lỗi lấy danh sách lớp:", err);
         setClasses([]);
         setClassData([]);
       }
     };
 
     fetchClasses();
-  }, [classData, setClassData]);
+  }, [namHocKey, classData]);
 
   const loadNhanXet = async () => {
   try {
