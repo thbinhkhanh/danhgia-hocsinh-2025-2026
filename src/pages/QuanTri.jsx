@@ -285,7 +285,7 @@ export default function QuanTri() {
       elevation={6}
       sx={{
         borderRadius: 3,
-        maxWidth: 900,
+        maxWidth: 700,
         mx: "auto",
         mt: 0,
         overflow: "hidden",
@@ -578,7 +578,7 @@ export default function QuanTri() {
               direction="row"
               spacing={1.5}
             >
-              <Button
+              {/*<Button
                 fullWidth
                 variant="contained"
                 color="success"
@@ -595,7 +595,7 @@ export default function QuanTri() {
                 }}
               >
                 Năm mới
-              </Button>
+              </Button>*/}
 
               <Button
                 fullWidth

@@ -857,7 +857,7 @@ export default function DanhSachHS() {
           </Tooltip>
 
           {viewMode === "students" && (
-            <Tooltip title="Tải thư mục danh sách học sinh từ Excel">
+            <Tooltip title="Tải thư mục danh sách học sinh từ C1">
               <IconButton
                 onClick={() => folderInputRef.current?.click()}
                 sx={{
@@ -873,7 +873,7 @@ export default function DanhSachHS() {
             </Tooltip>
           )}
 
-          {viewMode === "students" && (
+          {/*{viewMode === "students" && (
             <Tooltip title="Khởi tạo DATA năm mới">
               <IconButton
                 onClick={() => setCreateDataDialogOpen(true)}
@@ -886,7 +886,7 @@ export default function DanhSachHS() {
                 <StorageIcon />
               </IconButton>
             </Tooltip>
-          )}
+          )}*/}
 
           {/*{viewMode === "students" && (
             <>
