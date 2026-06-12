@@ -334,60 +334,54 @@ export const handleSubmitQuiz = async ({
         const subjectKey =
           config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-        const docRef = doc(
+        const termDoc = mapHocKyToDocKey(configData?.hocKy || "CKI");
+
+        const hsRef = doc(
           db,
-          `DATA_ONTAP_${namHocKey}`,
+          `DATA_${namHocKey}`,
           classKey,
           "HOCSINH",
           studentId
         );
 
-        const ngayLam = new Date().toLocaleDateString("vi-VN");
+        const today = new Date().toLocaleDateString("vi-VN");
 
-        const docSnap = await getDoc(docRef);
+        const snap = await getDoc(hsRef);
+        const data = snap.exists() ? snap.data() : {};
 
-        if (docSnap.exists()) {
-          const oldData = docSnap.data();
+        const current =
+          data?.[subjectKey]?.ontap?.[termDoc] || {};
 
-          const oldSubject = oldData?.subjects?.[subjectKey] || {};
+        const oldScore = current.lyThuyet ?? 0;
+        const isHigh = total > oldScore;
 
-          const oldScore = oldSubject.lyThuyet ?? 0;
-          const soLanLam = (oldSubject.soLanLam ?? 0) + 1;
+        const base = {
+          lyThuyet: isHigh ? total : oldScore,
+          phanTram: isHigh ? phanTram : (current.phanTram ?? phanTram),
+          ngayLam: today,
+          thoiGianLamBai: isHigh ? durationStr : (current.thoiGianLamBai ?? durationStr),
+          soLanLam: (current.soLanLam ?? 0) + 1,
+        };
 
-          const updateData = {
-            hoVaTen: capitalizeName(studentName),
-            lop: studentClass,
-
-            [`subjects.${subjectKey}.lyThuyet`]:
-              total > oldScore ? total : oldScore,
-
-            [`subjects.${subjectKey}.soLanLam`]: soLanLam,
-
-            [`subjects.${subjectKey}.ngayLam`]: ngayLam,
-
-            [`subjects.${subjectKey}.thoiGianLamBai`]: durationStr,
-          };
-
-          if (total > oldScore) {
-            updateData[`subjects.${subjectKey}.phanTram`] = phanTram;
-          }
-
-          await updateDoc(docRef, updateData);
-        } else {
-          await setDoc(docRef, {
-            hoVaTen: capitalizeName(studentName),
-            lop: studentClass,
-            subjects: {
-              [subjectKey]: {
-                lyThuyet: total,
-                phanTram,
-                ngayLam,
-                thoiGianLamBai: durationStr,
-                soLanLam: 1,
+        await updateDoc(hsRef, {
+          [`${subjectKey}.ontap.${termDoc}`]: base,
+        }).catch(async (err) => {
+          if (err.code === "not-found") {
+            await setDoc(
+              hsRef,
+              {
+                [subjectKey]: {
+                  ontap: {
+                    [termDoc]: base,
+                  },
+                },
               },
-            },
-          });
-        }
+              { merge: true }
+            );
+          } else {
+            throw err;
+          }
+        });
       }
 
     // ❗ Nếu là bài tập tuần (DGTX)

@@ -143,6 +143,7 @@ export default function EditStudentDialog({
                   : student?.maDinhDanh || ""
               }
               onChange={(e) => setNewMaDinhDanh?.(e.target.value)}
+              disabled={!isAdding}   // ✅ CHỈNH Ở ĐÂY
               InputProps={{ readOnly: !isAdding }}
               size="small"
               sx={{

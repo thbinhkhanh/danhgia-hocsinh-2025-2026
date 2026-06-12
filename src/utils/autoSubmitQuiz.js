@@ -301,67 +301,58 @@ export const autoSubmitQuiz = async ({
         }
       });
     } else if (configData?.examType === "ontap") {
-        const collectionRoot = `DATA_ONTAP_${namHocKey}`;
-        const studentDocId = normalizeName(studentName);
-
+        const classKey = studentClass.replace(".", "_");
         const subjectKey =
           config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-        const docRef = doc(
+        const termDoc = mapHocKyToDocKey(configData?.hocKy || "CKI");
+
+        const hsRef = doc(
           db,
-          collectionRoot,
-          configData.hocKy,
-          studentClass,
-          studentDocId
+          `DATA_${namHocKey}`,
+          classKey,
+          "HOCSINH",
+          studentId
         );
 
-        const ngayLam = new Date().toLocaleDateString("vi-VN");
+        const today = new Date().toLocaleDateString("vi-VN");
 
-        const docSnap = await getDoc(docRef);
+        const snap = await getDoc(hsRef);
+        const data = snap.exists() ? snap.data() : {};
 
-        if (docSnap.exists()) {
-          const oldData = docSnap.data();
+        const current =
+          data?.[subjectKey]?.ontap?.[termDoc] || {};
 
-          // ✅ HỖ TRỢ cả data cũ + mới
-          const oldSubject =
-            oldData?.subjects?.[subjectKey] ||
-            oldData?.[subjectKey] || {};
+        const oldScore = current.lyThuyet ?? 0;
+        const isHigh = total > oldScore;
 
-          const oldScore = oldSubject.diem ?? 0;
-          const soLanLam = (oldSubject.soLanLam ?? 0) + 1;
+        const base = {
+          lyThuyet: isHigh ? total : oldScore,
+          phanTram: isHigh ? phanTram : (current.phanTram ?? phanTram),
+          ngayLam: today,
+          thoiGianLamBai: isHigh ? durationStr : (current.thoiGianLamBai ?? durationStr),
+          soLanLam: (current.soLanLam ?? 0) + 1,
+        };
 
-          // 🔥 LUÔN dùng updateDoc để tránh lỗi field sai
-          if (total > oldScore) {
-            await updateDoc(docRef, {
-              [`subjects.${subjectKey}.diem`]: total,
-              [`subjects.${subjectKey}.phanTram`]: phanTram,
-              [`subjects.${subjectKey}.ngayLam`]: ngayLam,
-              [`subjects.${subjectKey}.thoiGianLamBai`]: durationStr,
-              [`subjects.${subjectKey}.soLanLam`]: soLanLam,
-            });
-          } else {
-            await updateDoc(docRef, {
-              [`subjects.${subjectKey}.ngayLam`]: ngayLam,
-              [`subjects.${subjectKey}.thoiGianLamBai`]: durationStr,
-              [`subjects.${subjectKey}.soLanLam`]: soLanLam,
-            });
-          }
-        } else {
-          // 🆕 Lần đầu
-          await setDoc(docRef, {
-            hoVaTen: capitalizeName(studentName),
-            lop: studentClass,
-            subjects: {
-              [subjectKey]: {
-                diem: total,
-                phanTram,
-                ngayLam,
-                thoiGianLamBai: durationStr,
-                soLanLam: 1,
+        await updateDoc(hsRef, {
+          [`${subjectKey}.ontap.${termDoc}`]: base,
+        }).catch(async (err) => {
+          if (err.code === "not-found") {
+            await setDoc(
+              hsRef,
+              {
+                [subjectKey]: {
+                  ontap: {
+                    [termDoc]: base,
+                  },
+                },
               },
-            },
-          });
-        }
+              { merge: true }
+            );
+          } else {
+            throw err;
+          }
+        });
       }
 
     // ❗ Nếu là bài tập tuần (DGTX)
