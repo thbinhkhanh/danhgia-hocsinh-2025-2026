@@ -250,9 +250,26 @@ function AppContent() {
               </Box>
 
               {/* 👤 ICON TÀI KHOẢN */}
-              <IconButton sx={{ color: "#fff" }}>
-                <PersonIcon />
-              </IconButton>
+              <Box
+                sx={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  bgcolor: "#FFD700",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(255,215,0,0.4)",
+                }}
+              >
+                <AdminPanelSettingsIcon
+                  sx={{
+                    color: "#5D4037",
+                    fontSize: 22,
+                  }}
+                />
+              </Box>
 
               {/* 🟦 MENU 9 Ô VUÔNG */}
             <IconButton onClick={handleMenuOpen} sx={{ color: "#fff" }}>

@@ -61,7 +61,7 @@ export default function Login() {
 
   const handleLogin = async () => {
     try {
-      const docRef = doc(db, "MATKHAU", "ADMIN");
+      const docRef = doc(db, "MATKHAU", "Admin");
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
