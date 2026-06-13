@@ -242,9 +242,6 @@ export default function HocSinh() {
 
         setStudents(studentList);
 
-        console.log(
-          `✅ Lấy ${studentList.length} học sinh từ DATA_${namHocKey}/${classKey}/HOCSINH`
-        );
       } catch (err) {
         console.error(`❌ Lỗi khi lấy học sinh lớp "${selectedClass}":`, err);
         setStudents([]);
@@ -270,13 +267,6 @@ export default function HocSinh() {
 
       const statusMap = {};
 
-      console.log("🚀 START FETCH WEEK STATUS");
-      console.log("📌 Class:", selectedClass);
-      console.log("📌 ClassKey:", classKey);
-      console.log("📌 SubjectKey:", subjectKey);
-      console.log("📌 Week:", selectedWeek);
-      console.log("📌 Total students:", students.length);
-
       for (const student of students) {
         const hsRef = doc(
           db,
@@ -294,26 +284,11 @@ export default function HocSinh() {
           const weekData =
             data?.[subjectKey]?.dgtx?.[`tuan_${selectedWeek}`] || {};
 
-          // 🔥 LOG CHI TIẾT TỪNG HỌC SINH
-          console.log("────────────────────────────");
-          console.log("👤 Student:", student.hoVaTen);
-          console.log("🆔 ID:", student.maDinhDanh);
-          console.log("📦 RAW DATA:", data);
-          console.log("📊 DGTX:", data?.[subjectKey]?.dgtx);
-          console.log("📅 Week Data:", weekData);
-          console.log("⭐ STATUS:", weekData.status);
-          console.log("────────────────────────────");
-
           statusMap[student.maDinhDanh] = weekData.status || "";
         } else {
-          console.log("❌ NOT FOUND:", student.hoVaTen, student.maDinhDanh);
-
           statusMap[student.maDinhDanh] = "";
         }
       }
-
-      console.log("✅ FINAL STATUS MAP:", statusMap);
-
       setStudentStatus(statusMap);
     } catch (err) {
       console.error("❌ Lỗi khi lấy status từ DATA:", err);

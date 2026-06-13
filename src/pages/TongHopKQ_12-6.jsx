@@ -890,7 +890,6 @@ export default function TongHopKQ() {
       })
     );
 
-    console.log("🎉 Sync ôn tập CN hoàn tất!");
   } catch (err) {
     console.error("❌ Lỗi sync ôn tập:", err);
   }

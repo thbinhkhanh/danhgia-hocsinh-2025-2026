@@ -205,9 +205,6 @@ export default function GiaoVien() {
           [selectedClass]: list,
         }));
 
-        console.log(
-          `✅ Lấy ${list.length} học sinh từ DATA_${namHocKey}/${classKey}/HOCSINH`
-        );
       } catch (err) {
         console.error("❌ Lỗi lấy học sinh:", err);
         setStudents([]);

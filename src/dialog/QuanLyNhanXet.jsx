@@ -269,8 +269,6 @@ const [tab, setTab] = useState(0); // 0 = Lý thuyết, 1 = Thực hành
           else newData["CHƯA ĐẠT"][target].push(item);
         });
 
-        console.log("IMPORT DONE:", newData);
-
         setData(newData);
 
         e.target.value = "";

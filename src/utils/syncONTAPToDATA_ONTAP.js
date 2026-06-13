@@ -112,10 +112,6 @@ export const syncONTAPToDATA_ONTAP = async ({
         })
       );
     });
-
-    console.log(
-      `✅ Đồng bộ xong ${totalStudents} học sinh ở ${totalClassesHasData} lớp`
-    );
   } catch (err) {
     console.error("SYNC ERROR:", err);
   }
