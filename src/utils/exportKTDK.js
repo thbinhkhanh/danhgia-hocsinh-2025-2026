@@ -48,10 +48,15 @@ export const exportKTDK = async (students, className, term = "CKI", subject = "T
 
     // 🔹 Tiêu đề trường
     const schoolRow = sheet.addRow(["TRƯỜNG TIỂU HỌC BÌNH KHÁNH"]);
-    schoolRow.font = { bold: true, size: 12 };
     sheet.mergeCells(`A1:H1`);
-    schoolRow.alignment = { horizontal: "left" };
+    schoolRow.font = { bold: true, size: 12 };
+    schoolRow.alignment = {
+      horizontal: "left",
+      vertical: "middle", // 👈 căn giữa theo chiều cao
+    };
 
+    // nếu muốn tăng chiều cao cho đẹp
+    sheet.getRow(1).height = 35;
     // 🔹 Tiêu đề chính
     //const titleRow = sheet.addRow([`KẾT QUẢ KTĐK - LỚP ${className}`]);
     const titleRow = sheet.addRow([
@@ -61,13 +66,19 @@ export const exportKTDK = async (students, className, term = "CKI", subject = "T
     titleRow.font = { bold: true, size: 14, color: { argb: "FF0D47A1" } };
     sheet.mergeCells(`A2:H2`);
     titleRow.alignment = { horizontal: "center", vertical: "middle" };
-    titleRow.height = 25;
+    titleRow.height = 35;
 
     // 🔹 Dòng học kỳ & năm học
     const subRow = sheet.addRow([`${termLabel} – NH: ${namHoc}`]);
     subRow.font = { italic: true, size: 12 };
     sheet.mergeCells(`A3:H3`);
-    subRow.alignment = { horizontal: "center" };
+    subRow.alignment = {
+      horizontal: "center",
+      vertical: "middle", // 👈 căn giữa theo chiều cao
+    };
+    // (khuyến nghị) tăng chiều cao cho đẹp
+    sheet.getRow(3).height = 35;
+
     sheet.addRow([]);
 
     // 🔹 Header
@@ -83,7 +94,7 @@ export const exportKTDK = async (students, className, term = "CKI", subject = "T
     ];
     const headerRow = sheet.addRow(header);
     headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    headerRow.height = 22;
+    headerRow.height = 35;
     headerRow.eachCell((cell) => {
       cell.fill = {
         type: "pattern",

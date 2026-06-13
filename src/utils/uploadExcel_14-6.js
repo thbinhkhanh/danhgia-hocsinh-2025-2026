@@ -1,14 +1,7 @@
 import * as XLSX from "xlsx";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  writeBatch,
-  collection,
-  getDocs,
-} from "firebase/firestore";
+import { doc, getDoc, setDoc, writeBatch } from "firebase/firestore";
 
-/* ================== UPLOAD HỌC SINH (FAST DIFF MAP VERSION) ================== */
+/* ================== UPLOAD HỌC SINH (FAST) ================== */
 export const uploadStudents = async ({
   file,
   files,
@@ -31,22 +24,7 @@ export const uploadStudents = async ({
 
   let allRows = [];
 
-  // ================= NORMALIZE =================
-  const normalizeId = (id) =>
-    String(id)
-      .replace(/\.0$/, "")
-      .trim()
-      .replace(/\s+/g, "");
-
-  const normalizeClass = (lop) =>
-    String(lop)
-      .trim()
-      .replace(/\./g, "_"); // 4.1 -> 4_1
-
-  const makeKey = (lop, ma) =>
-    `${normalizeClass(lop)}_${normalizeId(ma)}`;
-
-  // ================= LOAD EXCEL =================
+  // ===== LOAD ALL ROWS =====
   for (const f of fileList) {
     const path = f.webkitRelativePath || f.name;
 
@@ -58,82 +36,68 @@ export const uploadStudents = async ({
 
     const workbook = XLSX.read(await f.arrayBuffer());
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
-    if (!rows.length) continue;
+    const rows = XLSX.utils.sheet_to_json(sheet);
 
     rows.forEach((item) => {
-      const ma =
-        item["Mã học sinh"] ||
-        item["MÃ HỌC SINH"] ||
-        item.maDinhDanh;
-
-      const ten =
-        item["Họ và tên"] ||
-        item["HỌ VÀ TÊN"] ||
-        item.hoVaTen;
+      const ma = item.maDinhDanh || item["MÃ ĐỊNH DANH"];
+      const ten = item.hoVaTen || item["HỌ VÀ TÊN"];
 
       if (!ma || !ten) return;
 
-      // 👉 cột lớp hoặc fallback file name
-      let rawLop =
-        item["Lớp"] ||
+      const rawLop =
+        item.lop ||
         item["LỚP"] ||
-        item.lop;
+        selectedClass ||
+        fileClass;
 
-      if (!rawLop) rawLop = fileClass;
+      const lop = String(rawLop)
+        .replaceAll("_", ".")
+        .trim();
 
-      const lop = normalizeClass(rawLop);
+      const stt =
+        item.stt ||
+        item["STT"] ||
+        item["SỐ THỨ TỰ"] ||
+        item["SO THU TU"];
 
       allRows.push({
-        ma: normalizeId(ma),
+        ma,
         ten,
         lop,
-        stt:
-          item.stt ||
-          item["STT"] ||
-          item["SỐ THỨ TỰ"] ||
-          item["SO THU TU"],
+        stt,
       });
     });
   }
 
+  // ===== 📌 1. AUTO ADD CLASS TO DANHSACH_LOP =====
+  const classSet = new Set(allRows.map((r) => r.lop));
+  const newClasses = Array.from(classSet);
 
-  // ================= BUILD SOURCE SET (EXCEL) =================
-  const sourceSet = new Set(
-    allRows.map((r) => makeKey(r.lop, r.ma))
-  );
+  const classRef = doc(db, "DANHSACH_LOP", namHocKey);
+  const classSnap = await getDoc(classRef);
 
-  // ================= BUILD TARGET SET (FIRESTORE) =================
-  const targetSet = new Set();
+  let existingClasses = [];
 
-  const classList = [...new Set(allRows.map((r) => r.lop))];
-
-  for (const lop of classList) {
-    const snap = await getDocs(
-      collection(db, `DATA_${namHocKey}`, lop, "HOCSINH")
-    );
-
-    snap.forEach((doc) => {
-      targetSet.add(makeKey(lop, doc.id));
-    });
+  if (classSnap.exists()) {
+    existingClasses = classSnap.data().list || [];
   }
 
-  // ================= DIFF =================
-  const missingKeys = [...sourceSet].filter(
-    (key) => !targetSet.has(key)
+  const mergedClasses = Array.from(
+    new Set([...existingClasses, ...newClasses])
+  ).sort((a, b) =>
+    a.localeCompare(b, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    })
   );
 
-  if (!missingKeys.length) {
-    return;
-  }
-
-  // ================= MAP BACK TO STUDENTS =================
-  const missingStudents = allRows.filter((row) =>
-    missingKeys.includes(makeKey(row.lop, row.ma))
+  await setDoc(
+    classRef,
+    { list: mergedClasses },
+    { merge: true }
   );
 
-  // ================= BATCH INSERT =================
+  // ===== TEMPLATE =====
   const buildSubject = () => ({
     dgtx: {},
     ktdk: {
@@ -153,36 +117,43 @@ export const uploadStudents = async ({
   const batchSize = 450;
   let done = 0;
 
-  for (let i = 0; i < missingStudents.length; i += batchSize) {
+  // ===== UPLOAD STUDENTS =====
+  for (let i = 0; i < allRows.length; i += batchSize) {
     const batch = writeBatch(db);
-    const chunk = missingStudents.slice(i, i + batchSize);
+    const chunk = allRows.slice(i, i + batchSize);
 
-    for (const { ma, ten, lop, stt } of chunk) {
+    chunk.forEach(({ ma, ten, lop, stt }) => {
+      const ref = doc(
+        db,
+        `DATA_${namHocKey}`,
+        lop,
+        "HOCSINH",
+        String(ma).trim()
+      );
+
       batch.set(
-        doc(db, `DATA_${namHocKey}`, lop, "HOCSINH", ma),
+        ref,
         {
           hoVaTen: ten.toUpperCase(),
           lop,
           stt: stt ? Number(stt) : null,
           TinHoc: buildSubject(),
           CongNghe: buildSubject(),
-        }
+        },
+        { merge: true }
       );
-
-    }
+    });
 
     await batch.commit();
 
     done += chunk.length;
 
     if (onProgress) {
-      onProgress(
-        Math.round((done / missingStudents.length) * 100)
-      );
+      onProgress(Math.round((done / allRows.length) * 100));
     }
   }
-
 };
+
 
 /* ================== UPLOAD PHÂN PHỐI CHƯƠNG TRÌNH ================== */
 export const uploadPPCT = async ({

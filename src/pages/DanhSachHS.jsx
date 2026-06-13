@@ -979,8 +979,8 @@ export default function DanhSachHS() {
                       sx={{
                         color: "#fff",
                         bgcolor: "#22c55e",
-                        width: 38,
-                        height: 38,
+                        width: 30,
+                        height: 30,
                         "&:hover": {
                           bgcolor: "#16a34a",
                         },
@@ -997,8 +997,8 @@ export default function DanhSachHS() {
                       sx={{
                         color: "#fff",
                         bgcolor: "#ef4444",
-                        width: 38,
-                        height: 38,
+                        width: 30,
+                        height: 30,
                         "&:hover": {
                           bgcolor: "#dc2626",
                         },

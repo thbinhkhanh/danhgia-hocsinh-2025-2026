@@ -34,6 +34,7 @@ import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 
 import DeleteDataClassesDialog from "../dialog/DeleteDataClassesDialog";
 import DeleteStudentConfirmDialog from "../dialog/DeleteStudentConfirmDialog";
+import ConfirmExportExcelDialog from "../dialog/ConfirmExportExcelDialog";
 
 // ================= FIREBASE =================
 import { db } from "../firebase";
@@ -82,6 +83,7 @@ export default function TongHopKQ() {
   const [dialogContent, setDialogContent] = useState("");
   const [dialogAction, setDialogAction] = useState(null);
   const [dialogSeverity, setDialogSeverity] = useState("info");
+  const [openExportDialog, setOpenExportDialog] = useState(false);
 
   // ================= VIEW MODE =================
   const [ExamType, setExamType] = useState("ktdk");
@@ -510,24 +512,29 @@ export default function TongHopKQ() {
 
   // Xuất Excel
   const handleExportExcel = () => {
-    openConfirmDialog(
-      "Xuất Excel",
-      `Bạn có muốn xuất kết quả lớp ${selectedLop} ra file Excel không?`,
-      () => {
-        if (!results || results.length === 0) {
-          setSnackbarSeverity("error");
-          setSnackbarMessage("Không có dữ liệu để xuất Excel!");
-          setSnackbarOpen(true);
-          return;
-        }
+      setOpenExportDialog(true);
+    };
 
-        exportKetQuaExcel(results, selectedLop, selectedMon, config.hocKy);
+    const handleConfirmExport = () => {
+    setOpenExportDialog(false);
 
-        setSnackbarSeverity("success");
-        setSnackbarMessage("✅ Xuất file Excel thành công!");
-        setSnackbarOpen(true);
-      }
+    if (!results || results.length === 0) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage("Không có dữ liệu để xuất Excel!");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    exportKetQuaExcel(
+      results,
+      selectedLop,
+      selectedMon,
+      config.hocKy
     );
+
+    setSnackbarSeverity("success");
+    setSnackbarMessage("✅ Xuất file Excel thành công!");
+    setSnackbarOpen(true);
   };
 
   const openConfirmDialog = (title, content, onConfirm, severity = "info") => {
@@ -964,6 +971,14 @@ export default function TongHopKQ() {
             {snackbarMessage}
           </Alert>
         </Snackbar>
+
+        <ConfirmExportExcelDialog
+          open={openExportDialog}
+          title="Xuất Excel"
+          content={`Bạn có muốn xuất kết quả lớp ${selectedLop} ra file Excel không?`}
+          onClose={() => setOpenExportDialog(false)}
+          onConfirm={handleConfirmExport}
+        />
       
         <DeleteDataClassesDialog
           open={deleteDialogOpen}
