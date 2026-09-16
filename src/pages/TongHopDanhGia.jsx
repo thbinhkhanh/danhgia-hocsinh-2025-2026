@@ -43,6 +43,7 @@ import {
 // ================= CONTEXT =================
 import { StudentDataContext } from "../context/StudentDataContext";
 import { ConfigContext } from "../context/ConfigContext";
+import { StudentKTDKContext } from "../context/StudentKTDKContext";
 
 // ================= ICONS =================
 import SaveIcon from "@mui/icons-material/Save";
@@ -62,10 +63,13 @@ import {
 
 export default function TongHopDanhGia() {
   // ================= CONTEXT =================
-  const { studentData, setStudentData, classData, setClassData } =
-    useContext(StudentDataContext);
+  const { studentData, setStudentData, classData, setClassData } = useContext(StudentDataContext);
 
   const { config, setConfig } = useContext(ConfigContext);
+
+  // 🔹 Context lưu Mức đạt ĐGTX để tái sử dụng ở NhapdiemKTDK
+  const { setDgtxMucDatForClass } = useContext(StudentKTDKContext);
+
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
   const selectedSemester = config.hocKy || "Giữa kỳ I";
 
@@ -399,7 +403,29 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
 
     // 🔹 CACHE
     if (!forceReload && studentData[cacheKey]?.length) {
-      setStudents(studentData[cacheKey]);
+      const cachedStudents = studentData[cacheKey];
+
+      setStudents(cachedStudents);
+
+      // ============================================================
+      // 🔹 LƯU MỨC ĐẠT ĐGTX TỪ CACHE VÀO StudentKTDKContext
+      // ============================================================
+      const dgtxMucDatData = {};
+
+      cachedStudents.forEach((s) => {
+        if (!s.maDinhDanh) return;
+
+        dgtxMucDatData[s.maDinhDanh] = s.dgtx || "";
+      });
+
+      setDgtxMucDatForClass(
+        namHocKey,
+        classKey,
+        subjectKey,
+        termDoc,
+        dgtxMucDatData
+      );
+
       setLoadingMessage("✅ Đã tải dữ liệu từ cache");
       setTimeout(() => setLoadingMessage(""), 1000);
       return;
@@ -512,6 +538,25 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
       ...s,
       stt: i + 1,
     }));
+
+    // ============================================================
+    // 🔹 LƯU MỨC ĐẠT ĐGTX VÀO StudentKTDKContext
+    // ============================================================
+    const dgtxMucDatData = {};
+
+    finalList.forEach((s) => {
+      if (!s.maDinhDanh) return;
+
+      dgtxMucDatData[s.maDinhDanh] = s.dgtx || "";
+    });
+
+    setDgtxMucDatForClass(
+      namHocKey,
+      classKey,
+      subjectKey,
+      termDoc,
+      dgtxMucDatData
+    );
 
     // 🔹 LƯU STATE + CACHE
     setStudentData(prev => ({ ...prev, [cacheKey]: finalList }));
@@ -1079,6 +1124,30 @@ return (
 
                               // 🔥 LUÔN dùng chung
                               updated.dgtx = chung;
+
+                              // 🔥 CẬP NHẬT NGAY MỨC ĐẠT VÀO CONTEXT
+                              const classKey = (selectedClass || "").replace(".", "_");
+                              const subjectKey =
+                                selectedSubject === "Công nghệ" ? "CongNghe" : "TinHoc";
+
+                              const mapTerm = {
+                                "Giữa kỳ I": "GKI",
+                                "Cuối kỳ I": "CKI",
+                                "Giữa kỳ II": "GKII",
+                                "Cuối năm": "CN",
+                              };
+
+                              const termDoc = mapTerm[selectedSemester] || "CN";
+
+                              setDgtxMucDatForClass(
+                                namHocKey,
+                                classKey,
+                                subjectKey,
+                                termDoc,
+                                {
+                                  [student.maDinhDanh]: chung || "",
+                                }
+                              );
 
                               // 🔥 cập nhật nhận xét
                               /*updated.nhanXet = chung

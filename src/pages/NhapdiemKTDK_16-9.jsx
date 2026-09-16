@@ -70,11 +70,8 @@ const { classData, setClassData, studentData, setStudentData } =
 
 const { config, setConfig } = useContext(ConfigContext);
 
-const {
-  getStudentsForClass,
-  setStudentsForClass,
-  getDgtxMucDat,
-} = useContext(StudentKTDKContext);
+const { getStudentsForClass, setStudentsForClass } =
+  useContext(StudentKTDKContext);
 
 // ================= CONFIG DERIVED =================
 const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
@@ -379,20 +376,6 @@ const fetchStudentsAndStatus = async (cls) => {
 
     const isGiuaKy = termDoc === "GKI" || termDoc === "GKII";
     const classKey = currentClass.replace(".", "_");
-    
-    const subjectKey =
-      selectedSubject === "Công nghệ"
-        ? "CongNghe"
-        : "TinHoc";
-
-    const mucDatFromContext = (maHS) =>
-      getDgtxMucDat(
-        namHocKey,
-        classKey,
-        subjectKey,
-        termDoc,
-        maHS
-      );
 
     const hsCollection = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
     const snap = await getDocs(hsCollection);
@@ -428,12 +411,10 @@ const fetchStudentsAndStatus = async (cls) => {
       const mucDat_GKII = ktdkAll?.GKII?.mucDat || "";
       const mucDat_CN = ktdkAll?.CN?.mucDat || "";
 
-      
-
       if (selectedSubject === "Công nghệ") {
         const congNghe = data.CongNghe || data.dgtx?.CongNghe || {};
         termData = congNghe.ktdk?.[termDoc] || {};
-        dgtx_mucdat = mucDatFromContext(maHS) ?? termData.dgtx_mucdat ?? "";
+        dgtx_mucdat = termData.dgtx_mucdat || "";
         dgtx_nx = termData.dgtx_nx || "";
         nhanXet = termData.nhanXet || "";
         lyThuyet = termData.lyThuyet ?? null;
@@ -450,7 +431,7 @@ const fetchStudentsAndStatus = async (cls) => {
       } else {
         const tinHoc = data.TinHoc || data.dgtx?.TinHoc || {};
         termData = tinHoc.ktdk?.[termDoc] || {};
-        dgtx_mucdat = mucDatFromContext(maHS) ?? termData.dgtx_mucdat ?? "";
+        dgtx_mucdat = termData.dgtx_mucdat || "";
         dgtx_nx = termData.dgtx_nx || "";
         nhanXet = termData.nhanXet || "";
         lyThuyet = termData.lyThuyet != null ? Number(termData.lyThuyet) : null;
@@ -462,16 +443,11 @@ const fetchStudentsAndStatus = async (cls) => {
             ? Math.round(lyThuyet + thucHanh)
             : null;
 
-        mucDat =
-          tongCong == null || tongCong === ""
-            ? ""
-            : isGiuaKy
-            ? (dgtx_mucdat || "")
-            : tongCong >= 9
-            ? "T"
-            : tongCong >= 5
-            ? "H"
-            : "C";
+        mucDat = isGiuaKy
+          ? (dgtx_mucdat || "")
+          : tongCong != null
+          ? (tongCong >= 9 ? "T" : tongCong >= 5 ? "H" : "C")
+          : "";
       }
 
       // 🔹 Sinh nhận xét nếu rỗng
