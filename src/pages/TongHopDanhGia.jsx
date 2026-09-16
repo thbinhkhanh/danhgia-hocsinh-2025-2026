@@ -71,7 +71,7 @@ export default function TongHopDanhGia() {
 
   // ================= CLASS / DATA =================
   const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState([]);
+  const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
 
   // ================= WEEK RANGE =================
@@ -320,34 +320,52 @@ useEffect(() => {
 }, [setConfig]);
 
 
-  // Lấy danh sách lớp
-  useEffect(() => {
-  // Nếu context đã có dữ liệu lớp thì dùng luôn
-    if (classData && classData.length > 0) {
+// Lấy danh sách lớp
+useEffect(() => {
+  const fetchClasses = async () => {
+    try {
+      // 🔹 Ưu tiên dữ liệu lớp đã có trong Context
+      if (classData && classData.length > 0) {
         setClasses(classData);
-        setSelectedClass(prev => prev || classData[0]);
+        setSelectedClass((prev) => prev || classData[0]);
         return;
+      }
+
+      // 🔹 Nếu Context chưa có => lấy từ Firestore chuẩn mới
+      const snap = await getDoc(
+        doc(db, "DANHSACH_LOP", namHocKey)
+      );
+
+      let classList = [];
+
+      if (snap.exists()) {
+        classList = (snap.data().list || []).sort((a, b) =>
+          a.localeCompare(b, undefined, {
+            numeric: true,
+            sensitivity: "base",
+          })
+        );
+      }
+
+      // 🔹 Cập nhật Context
+      setClassData(classList);
+
+      // 🔹 Cập nhật danh sách hiển thị
+      setClasses(classList);
+
+      // 🔹 Chọn lớp đầu tiên nếu chưa có lớp
+      if (classList.length > 0) {
+        setSelectedClass((prev) => prev || classList[0]);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi lấy danh sách lớp:", err);
+      setClasses([]);
+      setClassData([]);
     }
+  };
 
-    // Nếu chưa có dữ liệu lớp => fetch từ Firestore
-    const fetchClasses = async () => {
-        try {
-        const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`)); // sửa cú pháp
-        const classList = snapshot.docs.map(doc => doc.id);
-
-        setClassData(classList);
-        setClasses(classList);
-
-        if (classList.length > 0) setSelectedClass(classList[0]);
-        } catch (err) {
-        console.error("❌ Lỗi khi lấy danh sách lớp:", err);
-        setClasses([]);
-        setClassData([]);
-        }
-    };
-
-    fetchClasses();
-  }, [setClassData]); // chỉ dependency là setClassData
+  fetchClasses();
+}, [namHocKey, classData, setClassData]);
 
 const hocKyMap = {
   "Giữa kỳ I": { from: 1, to: 9 },
@@ -657,7 +675,7 @@ return (
         gutterBottom
         sx={{ textAlign: "center", width: "100%", display: "block", mt: 3, mb: 2, textTransform: "uppercase" }}
       >
-        NHẬN XÉT {selectedSemester ? `${selectedSemester}` : ""}
+        ĐÁNH GIÁ {selectedSemester ? `${selectedSemester}` : ""}
       </Typography>
 
       {/* 🔹 Hàng chọn lớp và bộ lọc */}

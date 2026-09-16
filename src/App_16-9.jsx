@@ -479,12 +479,6 @@ function AppContent() {
             path="/danhsach"
             element={isLoggedIn ? <DanhSachHS /> : <Navigate to="/login" replace />}
           />
-
-          <Route
-            path="/tonghopdanhgia"
-            element={<TongHopDanhGia isLoggedIn={isLoggedIn} />}
-          />
-
           <Route
             path="/nhapdiemktdk"
             element={isLoggedIn ? <NhapdiemKTDK /> : <Navigate to="/login" replace />}
