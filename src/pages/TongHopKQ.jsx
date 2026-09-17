@@ -50,6 +50,7 @@ import {
 
 // ================= CONTEXT =================
 import { ConfigContext } from "../context/ConfigContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
 
 // ================= UTILS =================
 import { exportKetQuaExcel } from "../utils/exportKetQuaExcel";
@@ -60,11 +61,16 @@ export default function TongHopKQ() {
   const navigate = useNavigate();
   // ================= CONTEXT =================
   const { config } = useContext(ConfigContext);
+
+  const {
+    classes: classesList,
+    selectedClass: selectedLop,
+    setSelectedClass: setSelectedLop,
+  } = useSelectedClass();
+
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   // ================= DATA STATE =================
-  const [classesList, setClassesList] = useState([]);
-  const [selectedLop, setSelectedLop] = useState("");
   const [selectedMon, setSelectedMon] = useState("Tin học");
   const [results, setResults] = useState([]);
 
@@ -107,48 +113,6 @@ export default function TongHopKQ() {
       color: "white",
     },
   };
-
-  // Lấy danh sách lớp
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const snap = await getDoc(
-          doc(db, "DANHSACH_LOP", namHocKey)
-        );
-
-        let classList = [];
-
-        if (snap.exists()) {
-          classList = (snap.data().list || []).sort((a, b) =>
-            a.localeCompare(b, undefined, {
-              numeric: true,
-              sensitivity: "base",
-            })
-          );
-        }
-
-        setClassesList(classList);
-
-        // chỉ set mặc định nếu chưa có lớp được chọn
-        setSelectedLop((prev) => {
-          if (prev) return prev;
-
-          if (config?.lop && classList.includes(config.lop)) {
-            return config.lop;
-          }
-
-          return classList[0] || "";
-        });
-
-      } catch (err) {
-        console.error("❌ Lỗi khi lấy danh sách lớp:", err);
-        setClassesList([]);
-        setSelectedLop("");
-      }
-    };
-
-    fetchClasses();
-  }, [namHocKey, config?.lop]);
 
   // Load kết quả và sắp xếp tên chuẩn Việt Nam
   const hocKyMap = {

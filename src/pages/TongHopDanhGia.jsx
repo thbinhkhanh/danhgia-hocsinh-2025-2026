@@ -44,6 +44,7 @@ import {
 import { StudentDataContext } from "../context/StudentDataContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentKTDKContext } from "../context/StudentKTDKContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
 
 // ================= ICONS =================
 import SaveIcon from "@mui/icons-material/Save";
@@ -63,19 +64,24 @@ import {
 
 export default function TongHopDanhGia() {
   // ================= CONTEXT =================
-  const { studentData, setStudentData, classData, setClassData } = useContext(StudentDataContext);
+  const { studentData, setStudentData } = useContext(StudentDataContext);
 
   const { config, setConfig } = useContext(ConfigContext);
 
   // 🔹 Context lưu Mức đạt ĐGTX để tái sử dụng ở NhapdiemKTDK
   const { setDgtxMucDatForClass } = useContext(StudentKTDKContext);
 
+  // 🔹 Dùng chung danh sách lớp + lớp đang chọn
+  const {
+    classes,
+    selectedClass,
+    setSelectedClass,
+  } = useSelectedClass();
+
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
   const selectedSemester = config.hocKy || "Giữa kỳ I";
 
   // ================= CLASS / DATA =================
-  const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
 
   // ================= WEEK RANGE =================
@@ -271,14 +277,7 @@ const handleSaveAll = async () => {
   }
 };
 
- // Khi context có lớp (VD từ trang khác), cập nhật selectedClass và fetch lại
-  useEffect(() => {
-    if (config?.lop) {
-      setSelectedClass(config.lop);
-    }
-  }, [config?.lop]);
-
-  const [selectedWeek, setSelectedWeek] = useState(null); // ban đầu null
+const [selectedWeek, setSelectedWeek] = useState(null); // ban đầu null
 
   // --- Khi load config ---
 useEffect(() => {
@@ -299,7 +298,6 @@ useEffect(() => {
         setSelectedWeek(data.tuan || 1);
 
         // Cập nhật lớp/môn
-        setSelectedClass(prev => prev || data.lop || "");
         setSelectedSubject(prev => prev || data.mon || "Tin học"); // 🔹 đồng bộ môn
       } else {
         setWeekFrom(1);
@@ -323,53 +321,6 @@ useEffect(() => {
   fetchConfig();
 }, [setConfig]);
 
-
-// Lấy danh sách lớp
-useEffect(() => {
-  const fetchClasses = async () => {
-    try {
-      // 🔹 Ưu tiên dữ liệu lớp đã có trong Context
-      if (classData && classData.length > 0) {
-        setClasses(classData);
-        setSelectedClass((prev) => prev || classData[0]);
-        return;
-      }
-
-      // 🔹 Nếu Context chưa có => lấy từ Firestore chuẩn mới
-      const snap = await getDoc(
-        doc(db, "DANHSACH_LOP", namHocKey)
-      );
-
-      let classList = [];
-
-      if (snap.exists()) {
-        classList = (snap.data().list || []).sort((a, b) =>
-          a.localeCompare(b, undefined, {
-            numeric: true,
-            sensitivity: "base",
-          })
-        );
-      }
-
-      // 🔹 Cập nhật Context
-      setClassData(classList);
-
-      // 🔹 Cập nhật danh sách hiển thị
-      setClasses(classList);
-
-      // 🔹 Chọn lớp đầu tiên nếu chưa có lớp
-      if (classList.length > 0) {
-        setSelectedClass((prev) => prev || classList[0]);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi lấy danh sách lớp:", err);
-      setClasses([]);
-      setClassData([]);
-    }
-  };
-
-  fetchClasses();
-}, [namHocKey, classData, setClassData]);
 
 const hocKyMap = {
   "Giữa kỳ I": { from: 1, to: 9 },

@@ -72,12 +72,8 @@ export default function HocSinh() {
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   // ================= CLASS STATE =================
-  const {
-    classes,
-    selectedClass,
-    setSelectedClass,
-  } = useSelectedClass();
-
+  const { selectedClass, setSelectedClass } = useSelectedClass();
+  const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
 
   // ================= STUDENT STATE =================
@@ -158,6 +154,51 @@ export default function HocSinh() {
 
     setRecentStudents(stored);
   }, [selectedClass, students]);
+
+  // 🔹 Lấy danh sách lớp (ưu tiên cache từ context)
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        // DANHSACH_LOP/2025_2026
+        const snap = await getDoc(
+          doc(db, "DANHSACH_LOP", namHocKey)
+        );
+
+        let classList = [];
+
+        if (snap.exists()) {
+          classList = (snap.data().list || []).sort((a, b) =>
+            a.localeCompare(b, undefined, {
+              numeric: true,
+              sensitivity: "base",
+            })
+          );
+        }
+
+        setClassData(classList);
+        setClasses(classList);
+
+        // Ưu tiên lớp đang lưu trong config
+        if (classList.length > 0) {
+          setSelectedClass((prev) => {
+            if (prev) return prev;
+
+            if (config?.lop && classList.includes(config.lop)) {
+              return config.lop;
+            }
+
+            return classList[0];
+          });
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi lấy danh sách lớp:", err);
+        setClasses([]);
+        setClassData([]);
+      }
+    };
+
+    fetchClasses();
+  }, [namHocKey, config?.lop]);
 
     // 🔹 Lấy học sinh (ưu tiên dữ liệu từ context)
   useEffect(() => {

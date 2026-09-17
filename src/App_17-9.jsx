@@ -526,19 +526,19 @@ function AppContent() {
 export default function App() {
   return (
     <ConfigProvider>
-      <SelectedClassProvider>
-        <AdminProvider>
+      <AdminProvider>        
           <TracNghiemProvider>
             <StudentProvider>
               <StudentDataProvider>
                 <StudentKTDKProvider>
-                  <AppContent />
+                  <SelectedClassProvider>  {/* ← Thêm vào đây */}
+                    <AppContent />
+                  </SelectedClassProvider>
                 </StudentKTDKProvider>
               </StudentDataProvider>
             </StudentProvider>
-          </TracNghiemProvider>
-        </AdminProvider>
-      </SelectedClassProvider>
+          </TracNghiemProvider>        
+      </AdminProvider>
     </ConfigProvider>
   );
 }

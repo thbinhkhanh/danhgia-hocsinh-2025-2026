@@ -28,6 +28,8 @@ import {
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
+
 import { doc, getDoc, getDocs, collection, setDoc, onSnapshot } from "firebase/firestore";
 import { updateDoc, deleteField, deleteDoc } from "firebase/firestore";
 import { exportDanhsach } from "../utils/exportDanhSach";
@@ -65,8 +67,14 @@ export default function DanhSachHS() {
   const { config, setConfig } = useContext(ConfigContext);
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
-  const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState("");
+  const {
+    classes,
+    selectedClass,
+    setSelectedClass,
+    addClass,
+    deleteClass,
+  } = useSelectedClass();
+
   const [students, setStudents] = useState([]);
   const [ppct, setPpct] = useState([]);
   const [viewMode, setViewMode] = useState("ppct"); 
@@ -115,7 +123,7 @@ export default function DanhSachHS() {
 
       // ✅ sync local state cho UI
       setSelectedNamHoc(namHoc);
-      setSelectedClass(lop);
+      //setSelectedClass(lop);
     });
 
     return () => unsubscribe();
@@ -125,40 +133,31 @@ export default function DanhSachHS() {
 
   // 🔹 Lấy danh sách lớp
   useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const docRef = doc(db, "DANHSACH_LOP", namHocKey);
-        const snap = await getDoc(docRef);
+    // Danh sách lớp đã được SelectedClassProvider
+    // quản lý và tải từ localStorage / Firestore.
+    // DanhSachHS chỉ đồng bộ classData nếu các component
+    // cũ vẫn còn sử dụng StudentContext.
 
-        if (snap.exists()) {
-          const classList = (snap.data().list || []).sort();
+    if (Array.isArray(classes)) {
+      setClassData(classes);
+    }
 
-          setClassData(classList);
-          setClasses(classList);
+    // Nếu chưa có lớp được chọn thì ưu tiên lớp trong CONFIG
+    if (!selectedClass && config?.lop && classes.includes(config.lop)) {
+      setSelectedClass(config.lop);
+    }
 
-          setSelectedClass((prev) => {
-            if (prev) return prev;
-
-            // ưu tiên lớp lưu trong CONFIG
-            if (config?.lop && classList.includes(config.lop)) {
-              return config.lop;
-            }
-
-            return classList[0] || "";
-          });
-        } else {
-          setClasses([]);
-          setClassData([]);
-        }
-      } catch (err) {
-        console.error("❌ Lỗi khi lấy danh sách lớp:", err);
-        setClasses([]);
-        setClassData([]);
-      }
-    };
-
-    fetchClasses();
-  }, [namHocKey, config?.lop, setClassData]);
+    // Nếu CONFIG chưa có lớp thì chọn lớp đầu tiên
+    if (!selectedClass && !config?.lop && classes.length > 0) {
+      setSelectedClass(classes[0]);
+    }
+  }, [
+    classes,
+    selectedClass,
+    config?.lop,
+    setClassData,
+    setSelectedClass,
+  ]);
   
   // 🔹 Lấy danh sách học sinh
   useEffect(() => {
@@ -447,6 +446,7 @@ export default function DanhSachHS() {
 
   const handleEditStudent = (student) => {
     setEditingStudent(student);
+    setNewMaDinhDanh(student.maDinhDanh || "");
     setNewName(student.hoVaTen);
   };
 
@@ -557,48 +557,125 @@ export default function DanhSachHS() {
 
   // ===== Chỉnh sửa học sinh =====
   const handleSaveStudent = async () => {
-    if (!editingStudent || !newName.trim()) return;
+    if (
+      !editingStudent ||
+      !newName.trim() ||
+      !newMaDinhDanh.trim()
+    ) return;
 
-    const ma = editingStudent.maDinhDanh;
+    const maCu = editingStudent.maDinhDanh;
+    const maMoi = newMaDinhDanh.trim();
     const ten = newName.trim();
     const classKey = selectedClass.replace(".", "_");
 
     // lưu lại snapshot để rollback nếu cần
     const oldStudents = students;
 
-    setIsAdding(false);
-    setEditingStudent(null);
-
     // ===== 1. UPDATE UI NGAY LẬP TỨC (OPTIMISTIC) =====
-    const updatedList = students.map(s =>
-      s.maDinhDanh === ma
-        ? { ...s, hoVaTen: ten }
+    const updatedList = students.map((s) =>
+      s.maDinhDanh === maCu
+        ? {
+            ...s,
+            maDinhDanh: maMoi,
+            hoVaTen: ten,
+          }
         : s
     );
 
     setStudents(updatedList);
 
-    setStudentData(prev => ({
+    setStudentData((prev) => ({
       ...prev,
       [selectedClass]: updatedList,
     }));
 
+    setIsAdding(false);
+    setEditingStudent(null);
+
     try {
-      // ===== 2. FIRESTORE CHẠY NỀN =====
-      await updateDoc(
-        doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma),
-        { hoVaTen: ten }
+      // ===== 2. KHÔNG ĐỔI MÃ =====
+      if (maCu === maMoi) {
+        await updateDoc(
+          doc(
+            db,
+            `DATA_${namHocKey}`,
+            classKey,
+            "HOCSINH",
+            maCu
+          ),
+          {
+            hoVaTen: ten,
+          }
+        );
+
+        return;
+      }
+
+      // ===== 3. ĐỔI MÃ ĐỊNH DANH =====
+
+      const oldRef = doc(
+        db,
+        `DATA_${namHocKey}`,
+        classKey,
+        "HOCSINH",
+        maCu
       );
+
+      const newRef = doc(
+        db,
+        `DATA_${namHocKey}`,
+        classKey,
+        "HOCSINH",
+        maMoi
+      );
+
+      // Kiểm tra mã mới đã tồn tại chưa
+      const newSnap = await getDoc(newRef);
+
+      if (newSnap.exists()) {
+        alert(`Mã định danh "${maMoi}" đã tồn tại.`);
+
+        // rollback UI
+        setStudents(oldStudents);
+        setStudentData((prev) => ({
+          ...prev,
+          [selectedClass]: oldStudents,
+        }));
+
+        return;
+      }
+
+      // Lấy toàn bộ dữ liệu document cũ
+      const oldSnap = await getDoc(oldRef);
+
+      if (!oldSnap.exists()) {
+        throw new Error("Không tìm thấy học sinh với mã định danh cũ.");
+      }
+
+      const oldData = oldSnap.data();
+
+      // Tạo document mới, giữ nguyên toàn bộ dữ liệu
+      await setDoc(newRef, {
+        ...oldData,
+        maDinhDanh: maMoi,
+        hoVaTen: ten,
+      });
+
+      // Xóa document cũ
+      await deleteDoc(oldRef);
 
     } catch (err) {
       console.error("❌ Lỗi update Firestore:", err);
 
-      // ===== 3. (OPTIONAL) ROLLBACK =====
+      // ===== 4. ROLLBACK =====
       setStudents(oldStudents);
-      setStudentData(prev => ({
+
+      setStudentData((prev) => ({
         ...prev,
         [selectedClass]: oldStudents,
       }));
+
+      alert("Không thể lưu thông tin học sinh.");
     }
   };
 
@@ -1292,8 +1369,6 @@ export default function DanhSachHS() {
                         </IconButton>
                       </Box>
                     </TableCell>
-
-
                   </TableRow>
                 ))}
               </TableBody>

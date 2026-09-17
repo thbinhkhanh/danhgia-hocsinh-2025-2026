@@ -44,6 +44,7 @@ import { useNavigate } from "react-router-dom";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentKTDKContext } from "../context/StudentKTDKContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
 
 // ================= ICONS =================
 import SaveIcon from "@mui/icons-material/Save";
@@ -65,7 +66,7 @@ export default function NhapdiemKTDK() {
 const navigate = useNavigate();
 
 // ================= CONTEXT =================
-const { classData, setClassData, studentData, setStudentData } =
+const { studentData, setStudentData } =
   useContext(StudentContext);
 
 const { config, setConfig } = useContext(ConfigContext);
@@ -76,12 +77,17 @@ const {
   getDgtxMucDat,
 } = useContext(StudentKTDKContext);
 
+// 🔹 Dùng chung danh sách lớp + lớp đang chọn
+const {
+  classes,
+  selectedClass,
+  setSelectedClass,
+} = useSelectedClass();
+
 // ================= CONFIG DERIVED =================
 const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
 // ================= CLASS / DATA STATE =================
-const [classes, setClasses] = useState([]);
-const [selectedClass, setSelectedClass] = useState("");
 const [students, setStudents] = useState([]);
 const [originalStudents, setOriginalStudents] = useState([]);
 
@@ -111,52 +117,6 @@ const [nhanXetData, setNhanXetData] = useState(null);
       setSelectedSubject(config.mon);
     }
   }, [config?.mon]);
-
-  useEffect(() => {
-    if (config?.lop) setSelectedClass(config.lop);
-  }, [config?.lop]);
-
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        // 🔹 ưu tiên cache từ context
-        if (classData && classData.length > 0) {
-          setClasses(classData);
-          setSelectedClass((prev) => prev || classData[0]);
-          return;
-        }
-
-        // 🔹 lấy từ Firestore chuẩn mới
-        const snap = await getDoc(
-          doc(db, "DANHSACH_LOP", namHocKey)
-        );
-
-        let classList = [];
-
-        if (snap.exists()) {
-          classList = (snap.data().list || []).sort((a, b) =>
-            a.localeCompare(b, undefined, {
-              numeric: true,
-              sensitivity: "base",
-            })
-          );
-        }
-
-        setClassData(classList);
-        setClasses(classList);
-
-        if (classList.length > 0) {
-          setSelectedClass((prev) => prev || classList[0]);
-        }
-      } catch (err) {
-        console.error("❌ Lỗi lấy danh sách lớp:", err);
-        setClasses([]);
-        setClassData([]);
-      }
-    };
-
-    fetchClasses();
-  }, [namHocKey, classData]);
 
   const loadNhanXet = async () => {
   try {

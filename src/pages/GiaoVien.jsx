@@ -22,6 +22,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
+
 import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteField, onSnapshot, FieldPath } from "firebase/firestore";
 
 import Draggable from "react-draggable";
@@ -36,13 +38,21 @@ import GroupsIcon from "@mui/icons-material/Groups";
 
 export default function GiaoVien() {
   const navigate = useNavigate();
-  const { studentData, setStudentData, setClassData } = useContext(StudentContext);
+
+
+  const { studentData, setStudentData } = useContext(StudentContext);
+
   const { config, setConfig } = useContext(ConfigContext);
-  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
+
+  // 🔹 Dùng chung danh sách lớp từ SelectedClassContext
+  const { classes } = useSelectedClass();
+
+  const namHocKey =
+    (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   // Local state
-  const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
+
   const [studentStatus, setStudentStatus] = useState({});
   const [studentScores, setStudentScores] = useState({}); // 👈 thêm dòng này
   
@@ -91,45 +101,6 @@ export default function GiaoVien() {
       console.error(`❌ Lỗi cập nhật ${field}:`, err);
     }
   };
-
-  // Lấy danh sách lớp
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        // document DANHSACH_LOP/{2025_2026}
-        const lopRef = doc(db, "DANHSACH_LOP", namHocKey);
-        const lopSnap = await getDoc(lopRef);
-
-        let classList = [];
-
-        if (lopSnap.exists()) {
-          classList = (lopSnap.data().list || []).sort((a, b) =>
-            a.localeCompare(b, undefined, {
-              numeric: true,
-              sensitivity: "base",
-            })
-          );
-        }
-
-        setClasses(classList);
-        setClassData(classList);
-
-        // nếu chưa có lớp đang chọn hoặc lớp hiện tại không còn tồn tại
-        if (
-          classList.length > 0 &&
-          (!config.lop || !classList.includes(config.lop))
-        ) {
-          updateConfig("lop", classList[0]);
-        }
-      } catch (err) {
-        console.error("❌ Lỗi khi lấy danh sách lớp:", err);
-        setClasses([]);
-        setClassData([]);
-      }
-    };
-
-    fetchClasses();
-  }, [namHocKey]);
 
   useEffect(() => {
     if (!config.lop) return;

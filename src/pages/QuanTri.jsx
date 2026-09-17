@@ -51,6 +51,7 @@ import { useNavigate } from "react-router-dom";
 // ================= CONTEXT =================
 import { ConfigContext } from "../context/ConfigContext";
 import { StudentContext } from "../context/StudentContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
 
 // ================= COMPONENTS =================
 import CreateDataConfirmDialog from "../dialog/CreateDataConfirmDialog";
@@ -78,7 +79,8 @@ export default function QuanTri() {
   const [openCreateDataDialog, setOpenCreateDataDialog] = useState(false);
 
   // ================= CLASS / DATA =================
-  const [classes, setClasses] = useState([]);
+  const { classes } = useSelectedClass();
+
   const [selectedClass, setSelectedClass] = useState("");
   const [subject, setSubject] = useState("Tin học");
 
@@ -138,22 +140,11 @@ export default function QuanTri() {
         setSelectedSemester(data.hocKy || "Giữa kỳ I");
         setSubject(data.mon || "Tin học");
 
-        // Danh sách lớp
-        let classList = [];
-        if (classData && classData.length > 0) {
-          classList = classData;
-        } else {
-          const snapshot = await getDocs(collection(db, "DANHSACH"));
-          classList = snapshot.docs.map((doc) => doc.id);
-          setClassData(classList);
-        }
-        setClasses(classList);
-
-        if (data.lop && classList.includes(data.lop)) {
+        // Danh sách lớp lấy từ SelectedClassContext
+        if (data.lop && classes.includes(data.lop)) {
           setSelectedClass(data.lop);
-        } else if (classList.length > 0) {
-          setSelectedClass(classList[0]);
-          setConfig((prev) => ({ ...prev, lop: classList[0] }));
+        } else if (classes.length > 0) {
+          setSelectedClass(classes[0]);
         }
       } catch (err) {
         console.error("❌ Lỗi khi khởi tạo cấu hình:", err);

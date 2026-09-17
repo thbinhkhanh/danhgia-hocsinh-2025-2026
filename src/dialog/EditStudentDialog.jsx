@@ -137,14 +137,8 @@ export default function EditStudentDialog({
             {/* Mã định danh */}
             <TextField
               label="Mã định danh"
-              value={
-                isAdding
-                  ? newMaDinhDanh
-                  : student?.maDinhDanh || ""
-              }
+              value={newMaDinhDanh || ""}
               onChange={(e) => setNewMaDinhDanh?.(e.target.value)}
-              disabled={!isAdding}   // ✅ CHỈNH Ở ĐÂY
-              InputProps={{ readOnly: !isAdding }}
               size="small"
               sx={{
                 "& .MuiOutlinedInput-root": {
