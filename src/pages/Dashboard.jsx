@@ -246,7 +246,7 @@ export default function Dashboard({ isLoggedIn }) {
     >
       <Box
         sx={{
-          maxWidth: 1180,
+          maxWidth: 1400,
           mx: "auto",
         }}
       >
@@ -273,7 +273,7 @@ export default function Dashboard({ isLoggedIn }) {
             gridTemplateColumns: {
               xs: "repeat(2, minmax(0, 1fr))",
               md: "repeat(3, minmax(0, 1fr))",
-              lg: "repeat(5, minmax(0, 1fr))",
+              lg: "repeat(6, minmax(0, 1fr))",
             },
           }}
         >
