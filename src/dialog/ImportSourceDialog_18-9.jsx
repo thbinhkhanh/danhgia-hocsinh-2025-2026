@@ -10,13 +10,15 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import DescriptionIcon from "@mui/icons-material/Description";
+import StorageIcon from "@mui/icons-material/Storage";
+import DescriptionIcon from "@mui/icons-material/Description"; // 👈 Word icon
 
 const ImportSourceDialog = ({
   open,
   onClose,
   onSelectJSON,
-  onSelectWord,
+  onSelectFirestore,
+  onSelectWord, // 👈 thêm prop
 }) => {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
@@ -78,21 +80,17 @@ const ImportSourceDialog = ({
               },
             }}
           >
-            <DescriptionIcon
-              sx={{ fontSize: 36, color: "#1976d2" }}
-            />
-
+            <DescriptionIcon sx={{ fontSize: 36, color: "#1976d2" }} />
             <Box>
               <Typography fontWeight="bold">
                 Import từ file Word
               </Typography>
-
               <Typography variant="body2" color="text.secondary">
                 Hỗ trợ .docx (trắc nghiệm)
               </Typography>
             </Box>
           </Paper>
-
+          
           {/* JSON */}
           <Paper
             elevation={2}
@@ -114,17 +112,45 @@ const ImportSourceDialog = ({
               },
             }}
           >
-            <UploadFileIcon
-              sx={{ fontSize: 36, color: "#2e7d32" }}
-            />
-
+            <UploadFileIcon sx={{ fontSize: 36, color: "#2e7d32" }} />
             <Box>
               <Typography fontWeight="bold">
                 Import từ file JSON
               </Typography>
-
               <Typography variant="body2" color="text.secondary">
                 Tải file từ máy tính
+              </Typography>
+            </Box>
+          </Paper>
+
+          {/* FIRESTORE */}
+          <Paper
+            elevation={2}
+            onClick={() => {
+              onClose();
+              onSelectFirestore?.();
+            }}
+            sx={{
+              p: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              cursor: "pointer",
+              borderRadius: 2,
+              transition: "0.2s",
+              "&:hover": {
+                backgroundColor: "#f3e5f5",
+                transform: "translateY(-2px)",
+              },
+            }}
+          >
+            <StorageIcon sx={{ fontSize: 36, color: "#6a1b9a" }} />
+            <Box>
+              <Typography fontWeight="bold">
+                Import từ đề đã có
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Lấy từ Firestore
               </Typography>
             </Box>
           </Paper>

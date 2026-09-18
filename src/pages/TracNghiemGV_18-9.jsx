@@ -51,7 +51,7 @@ import ExportDialog from "../dialog/ExportDialog";
 import OpenExamDialog from "../dialog/OpenExamDialog";
 import ExamDeleteConfirmDialog from "../dialog/ExamDeleteConfirmDialog";
 import ImportSourceDialog from "../dialog/ImportSourceDialog";
-
+import ImportFromFirestoreDialog from "../dialog/ImportFromFirestoreDialog";
 import ImportModeDialog from "../dialog/ImportModeDialog";
 import DeleteQuestionDialog from "../dialog/DeleteQuestionDialog";
 import ExportSourceDialog from "../dialog/ExportSourceDialog";
@@ -109,7 +109,7 @@ const [openDialog, setOpenDialog] = useState(false);
 const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 const [openExportDialog, setOpenExportDialog] = useState(false);
 const [openImportSourceDialog, setOpenImportSourceDialog] = useState(false);
-
+const [openFirestoreDialog, setOpenFirestoreDialog] = useState(false);
 const [openImportModeDialog, setOpenImportModeDialog] = useState(false);
 const [openExport, setOpenExport] = useState(false);
 const [openDelete, setOpenDelete] = useState(false);
@@ -1399,6 +1399,9 @@ return (
         onSelectWord={() => {
           setOpenImportSourceDialog(false);
           wordInputRef.current?.click();
+        }}
+        onSelectFirestore={() => {
+          setOpenFirestoreDialog(true);
         }}
       />
 
