@@ -42,7 +42,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 
-import { uploadStudents } from "../utils/uploadExcel";
+import { uploadStudents } from "../utils/uploadStudents";
 
 import EditStudentDialog from "../dialog/EditStudentDialog";
 import CreateDataConfirmDialog from "../dialog/CreateDataConfirmDialog";

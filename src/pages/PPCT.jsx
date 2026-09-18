@@ -37,7 +37,7 @@ import { db } from "../firebase";
 
 import { ConfigContext } from "../context/ConfigContext";
 
-import { uploadPPCT } from "../utils/uploadExcel";
+import { uploadPPCT } from "../utils/uploadPPCT";
 
 export default function PPCT() {
   const navigate = useNavigate();
@@ -500,758 +500,638 @@ export default function PPCT() {
   // RENDER
   // =========================================================
 
-  return (
-    <Box
+return (
+  <Box
+    sx={{
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      background:
+        "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
+      pt: 3,
+      px: 3,
+    }}
+  >
+    <Paper
+      elevation={6}
       sx={{
-        minHeight: "100vh",
-
-        display: "flex",
-
-        flexDirection: "column",
-
-        alignItems: "center",
-
-        background:
-          "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
-
-        pt: 3,
-
-        px: 3,
+        p: 4,
+        borderRadius: 3,
+        width: "100%",
+        maxWidth: showChuDe ? 1100 : 700,
+        bgcolor: "white",
+        position: "relative",
       }}
     >
-      <Paper
-        elevation={6}
+      {/* ===================================================
+          NÚT ĐÓNG
+      =================================================== */}
+
+      <IconButton
+        onClick={() => navigate("/dashboard")}
         sx={{
-          p: 4,
-
-          borderRadius: 3,
-
-          width: "100%",
-
-          maxWidth: showChuDe
-            ? 1100
-            : 700,
-
-          bgcolor: "white",
-
-          position: "relative",
+          position: "absolute",
+          top: 12,
+          right: 12,
+          color: "#64748b",
+          backgroundColor: "#f1f5f9",
+          "&:hover": {
+            backgroundColor: "#e2e8f0",
+            color: "#ef4444",
+          },
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         }}
       >
-        {/* ===================================================
-            NÚT ĐÓNG
-        =================================================== */}
+        <CloseIcon />
+      </IconButton>
 
-        <IconButton
-          onClick={() =>
-            navigate("/dashboard")
-          }
-          sx={{
-            position: "absolute",
+      {/* ===================================================
+          ICON UPLOAD
+      =================================================== */}
 
-            top: 12,
-
-            right: 12,
-
-            color: "#64748b",
-
-            backgroundColor:
-              "#f1f5f9",
-
-            "&:hover": {
-              backgroundColor:
-                "#e2e8f0",
-
-              color: "#ef4444",
-            },
-
-            boxShadow:
-              "0 4px 12px rgba(0,0,0,0.08)",
-          }}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 12,
+          left: 12,
+          display: "flex",
+          gap: 1,
+          zIndex: 1000,
+        }}
+      >
+        <Tooltip
+          title={`Tải PPCT môn ${selectedMon} từ Excel`}
         >
-          <CloseIcon />
-        </IconButton>
-
-        {/* ===================================================
-            ICON UPLOAD
-        =================================================== */}
-
-        <Box
-          sx={{
-            position: "absolute",
-
-            top: 12,
-
-            left: 12,
-
-            display: "flex",
-
-            gap: 1,
-
-            zIndex: 1000,
-          }}
-        >
-          <Tooltip
-            title={
-              `Tải PPCT môn ${selectedMon} từ Excel`
-            }
-          >
-            <IconButton
-              onClick={
-                handleUploadClick
-              }
-              disabled={uploading}
-              sx={{
-                color: "#1976d2",
-
-                bgcolor:
-                  "rgba(25,118,210,0.1)",
-
-                "&:hover": {
-                  bgcolor:
-                    "rgba(25,118,210,0.2)",
-                },
-              }}
-            >
-              <FileUploadIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-
-        {/* ===================================================
-            TIÊU ĐỀ
-        =================================================== */}
-
-        <Box
-          sx={{
-            textAlign: "center",
-
-            mt: {
-              xs: 4,
-              sm: 0,
-            },
-
-            mb: 3,
-          }}
-        >
-          <Typography
-            variant="h5"
-            fontWeight="bold"
+          <IconButton
+            onClick={handleUploadClick}
+            disabled={uploading}
             sx={{
               color: "#1976d2",
+              bgcolor: "rgba(25,118,210,0.1)",
+              "&:hover": {
+                bgcolor: "rgba(25,118,210,0.2)",
+              },
             }}
           >
-            PHÂN PHỐI CHƯƠNG TRÌNH
-          </Typography>
-        </Box>
+            <FileUploadIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
-        {/* ===================================================
-            BỘ LỌC
-        =================================================== */}
+      {/* ===================================================
+          TIÊU ĐỀ
+      =================================================== */}
 
+      <Box
+        sx={{
+          textAlign: "center",
+          mt: {
+            xs: 4,
+            sm: 0,
+          },
+          mb: 3,
+        }}
+      >
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          sx={{
+            color: "#1976d2",
+          }}
+        >
+          PHÂN PHỐI CHƯƠNG TRÌNH
+        </Typography>
+      </Box>
+
+      {/* ===================================================
+          BỘ LỌC
+      =================================================== */}
+
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          mb: 2,
+          gap: 1.5,
+          flexWrap: {
+            xs: "wrap",
+            sm: "nowrap",
+          },
+        }}
+      >
+
+        {/* =================================================
+            MÔN
+        ================================================= */}
+
+        <FormControl
+          size="small"
+          sx={{
+            width: {
+              xs: 130,
+              sm: 130,
+            },
+            flexShrink: 0,
+          }}
+        >
+          <InputLabel id="label-mon">
+            Môn
+          </InputLabel>
+
+          <Select
+            labelId="label-mon"
+            value={selectedMon}
+            onChange={(e) =>
+              setSelectedMon(e.target.value)
+            }
+            label="Môn"
+          >
+            <MenuItem value="Tin học">
+              Tin học
+            </MenuItem>
+
+            <MenuItem value="Công nghệ">
+              Công nghệ
+            </MenuItem>
+          </Select>
+        </FormControl>
+
+        {/* =================================================
+            LỚP
+        ================================================= */}
+
+        <FormControl
+          size="small"
+          sx={{
+            width: {
+              xs: 80,
+              sm: 80,
+            },
+            flexShrink: 0,
+          }}
+        >
+          <InputLabel id="label-khoi">
+            Lớp
+          </InputLabel>
+
+          <Select
+            labelId="label-khoi"
+            value={selectedKhoi}
+            onChange={(e) =>
+              setSelectedKhoi(e.target.value)
+            }
+            label="Lớp"
+          >
+            <MenuItem value="khoi4">
+              4
+            </MenuItem>
+
+            <MenuItem value="khoi5">
+              5
+            </MenuItem>
+          </Select>
+        </FormControl>
+
+        {/* =================================================
+            NĂM HỌC
+        ================================================= */}
+
+        <FormControl
+          size="small"
+          sx={{
+            width: {
+              xs: 140,
+              sm: 140,
+            },
+            flexShrink: 0,
+          }}
+        >
+          <InputLabel id="label-namhoc">
+            Năm học
+          </InputLabel>
+
+          <Select
+            labelId="label-namhoc"
+            value={selectedNamHoc}
+            onChange={handleNamHocChange}
+            label="Năm học"
+          >
+            <MenuItem value="2025-2026">
+              2025-2026
+            </MenuItem>
+
+            <MenuItem value="2026-2027">
+              2026-2027
+            </MenuItem>
+
+            <MenuItem value="2027-2028">
+              2027-2028
+            </MenuItem>
+
+            <MenuItem value="2028-2029">
+              2028-2029
+            </MenuItem>
+
+            <MenuItem value="2029-2030">
+              2029-2030
+            </MenuItem>
+          </Select>
+        </FormControl>
+
+        {/* =================================================
+            HIỆN CHỦ ĐỀ
+            - Desktop: cùng hàng
+            - Điện thoại: xuống hàng
+        ================================================= */}
+
+        <FormControlLabel
+          sx={{
+            ml: {
+              xs: 0,
+              sm: 1,
+            },
+            width: {
+              xs: "100%",
+              sm: "auto",
+            },
+            justifyContent: {
+              xs: "center",
+              sm: "flex-start",
+            },
+            flexShrink: 0,
+          }}
+          control={
+            <Switch
+              checked={showChuDe}
+              onChange={(e) =>
+                setShowChuDe(e.target.checked)
+              }
+              color="primary"
+            />
+          }
+          label="Hiện Chủ đề"
+        />
+      </Box>
+
+      {/* ===================================================
+          PROGRESS UPLOAD
+      =================================================== */}
+
+      {uploading && (
         <Box
           sx={{
-            display: "flex",
-
-            justifyContent:
-              "center",
-
-            alignItems: "center",
-
+            mt: 3,
             mb: 2,
-
-            gap: 2,
-
-            flexWrap: "wrap",
+            display: "flex",
+            justifyContent: "center",
           }}
         >
-          {/* MÔN */}
-
-          <FormControl
-            size="small"
-            sx={{
-              width: 130,
-            }}
-          >
-            <InputLabel id="label-mon">
-              Môn
-            </InputLabel>
-
-            <Select
-              labelId="label-mon"
-              value={selectedMon}
-              onChange={(e) =>
-                setSelectedMon(
-                  e.target.value
-                )
-              }
-              label="Môn"
-            >
-              <MenuItem value="Tin học">
-                Tin học
-              </MenuItem>
-
-              <MenuItem value="Công nghệ">
-                Công nghệ
-              </MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* KHỐI */}
-
-          <FormControl
-            size="small"
-            sx={{
-              width: 80,
-            }}
-          >
-            <InputLabel id="label-khoi">
-              Khối
-            </InputLabel>
-
-            <Select
-              labelId="label-khoi"
-              value={selectedKhoi}
-              onChange={(e) =>
-                setSelectedKhoi(
-                  e.target.value
-                )
-              }
-              label="Khối"
-            >
-              <MenuItem value="khoi4">
-                4
-              </MenuItem>
-
-              <MenuItem value="khoi5">
-                5
-              </MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* NĂM HỌC */}
-
-          <FormControl
-            size="small"
-            sx={{
-              width: 140,
-            }}
-          >
-            <InputLabel id="label-namhoc">
-              Năm học
-            </InputLabel>
-
-            <Select
-              labelId="label-namhoc"
-              value={selectedNamHoc}
-              onChange={
-                handleNamHocChange
-              }
-              label="Năm học"
-            >
-              <MenuItem value="2025-2026">
-                2025-2026
-              </MenuItem>
-
-              <MenuItem value="2026-2027">
-                2026-2027
-              </MenuItem>
-
-              <MenuItem value="2027-2028">
-                2027-2028
-              </MenuItem>
-
-              <MenuItem value="2028-2029">
-                2028-2029
-              </MenuItem>
-
-              <MenuItem value="2029-2030">
-                2029-2030
-              </MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* HIỆN CHỦ ĐỀ */}
-
-          <FormControlLabel
-            sx={{
-              ml: 2,
-            }}
-            control={
-              <Switch
-                checked={showChuDe}
-                onChange={(e) =>
-                  setShowChuDe(
-                    e.target.checked
-                  )
-                }
-                color="primary"
-              />
-            }
-            label="Hiện Chủ đề"
-          />
-        </Box>
-
-        {/* ===================================================
-            PROGRESS UPLOAD
-        =================================================== */}
-
-        {uploading && (
           <Box
             sx={{
-              mt: 3,
-
-              mb: 2,
-
-              display: "flex",
-
-              justifyContent:
-                "center",
+              width: "25%",
+              minWidth: 220,
             }}
           >
-            <Box
+            <LinearProgress
+              variant="determinate"
+              value={uploadProgress}
               sx={{
-                width: "25%",
-
-                minWidth: 220,
-              }}
-            >
-              <LinearProgress
-                variant="determinate"
-                value={
-                  uploadProgress
-                }
-                sx={{
-                  height: 3,
-
+                height: 3,
+                borderRadius: 5,
+                bgcolor: "rgba(25,118,210,0.15)",
+                "& .MuiLinearProgress-bar": {
                   borderRadius: 5,
+                },
+                mb: 1,
+              }}
+            />
 
-                  bgcolor:
-                    "rgba(25,118,210,0.15)",
-
-                  "& .MuiLinearProgress-bar":
-                    {
-                      borderRadius: 5,
-                    },
-
-                  mb: 1,
-                }}
-              />
-
-              <Typography
-                fontSize={14}
-                mb={0.5}
-                textAlign="center"
-              >
-                Đang tải dữ liệu:{" "}
-                {uploadProgress}%
-              </Typography>
-            </Box>
+            <Typography
+              fontSize={14}
+              mb={0.5}
+              textAlign="center"
+            >
+              Đang tải dữ liệu: {uploadProgress}%
+            </Typography>
           </Box>
-        )}
+        </Box>
+      )}
 
-        {/* ===================================================
-            BẢNG PPCT
-        =================================================== */}
+      {/* ===================================================
+          BẢNG PPCT
+      =================================================== */}
 
-        <TableContainer
-          component={Paper}
+      <TableContainer
+        component={Paper}
+        sx={{
+          boxShadow: "none",
+          border: "1px solid rgba(0,0,0,0.12)",
+          overflowX: "auto",
+        }}
+      >
+        <Table
+          size="small"
           sx={{
-            boxShadow: "none",
-
-            border:
-              "1px solid rgba(0,0,0,0.12)",
-
-            overflowX: "auto",
+            tableLayout: "fixed",
+            minWidth: showChuDe ? 1020 : 700,
           }}
         >
-          <Table
-            size="small"
-            sx={{
-              tableLayout:
-                "fixed",
+          {/* =================================================
+              HEADER
+          ================================================= */}
 
-              minWidth: showChuDe
-                ? 1020
-                : 700,
-            }}
-          >
-            {/* =================================================
-                HEADER
-            ================================================= */}
+          <TableHead>
+            <TableRow>
 
-            <TableHead>
-              <TableRow>
-                {/* TUẦN */}
+              {/* TUẦN */}
 
-                <TableCell
-                  align="center"
-                  sx={{
-                    width: 80,
+              <TableCell
+                align="center"
+                sx={{
+                  width: 80,
+                  bgcolor: "#1976d2",
+                  color: "#fff",
+                  border:
+                    "1px solid rgba(0,0,0,0.12)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                TUẦN
+              </TableCell>
 
-                    bgcolor:
-                      "#1976d2",
+              {/* CHỦ ĐỀ */}
 
-                    color: "#fff",
-
-                    border:
-                      "1px solid rgba(0,0,0,0.12)",
-
-                    whiteSpace:
-                      "nowrap",
-                  }}
-                >
-                  TUẦN
-                </TableCell>
-
-                {/* CHỦ ĐỀ */}
-
-                {showChuDe && (
-                  <TableCell
-                    align="center"
-                    sx={{
-                      width: 320,
-
-                      bgcolor:
-                        "#1976d2",
-
-                      color: "#fff",
-
-                      border:
-                        "1px solid rgba(0,0,0,0.12)",
-
-                      whiteSpace:
-                        "nowrap",
-                    }}
-                  >
-                    CHỦ ĐỀ
-                  </TableCell>
-                )}
-
-                {/* TÊN BÀI HỌC */}
-
+              {showChuDe && (
                 <TableCell
                   align="center"
                   sx={{
                     width: 320,
-
-                    bgcolor:
-                      "#1976d2",
-
+                    bgcolor: "#1976d2",
                     color: "#fff",
-
                     border:
                       "1px solid rgba(0,0,0,0.12)",
-
-                    whiteSpace:
-                      "nowrap",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  TÊN BÀI HỌC
+                  CHỦ ĐỀ
                 </TableCell>
-
-                {/* LÝ THUYẾT */}
-
-                <TableCell
-                  align="center"
-                  sx={{
-                    width: 60,
-
-                    bgcolor:
-                      "#1976d2",
-
-                    color: "#fff",
-
-                    border:
-                      "1px solid rgba(0,0,0,0.12)",
-
-                    whiteSpace:
-                      "nowrap",
-                  }}
-                >
-                  L.THUYẾT
-                </TableCell>
-
-                {/* THỰC HÀNH */}
-
-                <TableCell
-                  align="center"
-                  sx={{
-                    width: 60,
-
-                    bgcolor:
-                      "#1976d2",
-
-                    color: "#fff",
-
-                    border:
-                      "1px solid rgba(0,0,0,0.12)",
-
-                    whiteSpace:
-                      "nowrap",
-                  }}
-                >
-                  T.HÀNH
-                </TableCell>
-              </TableRow>
-            </TableHead>
-
-            {/* =================================================
-                BODY
-            ================================================= */}
-
-            <TableBody>
-              {ppct.map(
-                (row, idx) => {
-                  const isOnTap =
-                    row.tenBaiHoc
-                      ?.toLowerCase()
-                      .includes(
-                        "ôn tập"
-                      );
-
-                  const isKiemTra =
-                    row.tenBaiHoc
-                      ?.toLowerCase()
-                      .includes(
-                        "kiểm tra"
-                      );
-
-                  const bgColor =
-                    isOnTap
-                      ? "#fff8e1"
-                      : isKiemTra
-                      ? "#e3f2fd"
-                      : "transparent";
-
-                  return (
-                    <TableRow
-                      key={idx}
-                      sx={{
-                        bgcolor:
-                          bgColor,
-                      }}
-                    >
-                      {/* TUẦN */}
-
-                      <TableCell
-                        align="center"
-                        sx={{
-                          width: 80,
-
-                          border:
-                            "1px solid rgba(0,0,0,0.12)",
-
-                          whiteSpace:
-                            "nowrap",
-                        }}
-                      >
-                        {row.tuan}
-                      </TableCell>
-
-                      {/* CHỦ ĐỀ */}
-
-                      {showChuDe &&
-                        row._showChuDe && (
-                          <TableCell
-                            rowSpan={
-                              row._rowSpan
-                            }
-                            sx={{
-                              width: 320,
-
-                              maxWidth: 320,
-
-                              border:
-                                "1px solid rgba(0,0,0,0.12)",
-
-                              whiteSpace:
-                                "nowrap",
-
-                              overflow:
-                                "hidden",
-
-                              textOverflow:
-                                "ellipsis",
-
-                              verticalAlign:
-                                "middle",
-
-                              textTransform:
-                                "uppercase",
-                            }}
-                            title={
-                              row.chuDe
-                            }
-                          >
-                            {
-                              row.chuDe
-                            }
-                          </TableCell>
-                        )}
-
-                      {/* TÊN BÀI HỌC */}
-
-                      <TableCell
-                        sx={{
-                          width: 320,
-
-                          maxWidth: 320,
-
-                          border:
-                            "1px solid rgba(0,0,0,0.12)",
-
-                          whiteSpace:
-                            "nowrap",
-
-                          overflow:
-                            "hidden",
-
-                          textOverflow:
-                            "ellipsis",
-
-                          fontWeight:
-                            isKiemTra
-                              ? 600
-                              : 400,
-                        }}
-                        title={
-                          row.tenBaiHoc
-                        }
-                      >
-                        {
-                          row.tenBaiHoc
-                        }
-                      </TableCell>
-
-                      {/* LT */}
-
-                      <TableCell
-                        align="center"
-                        sx={{
-                          width: 60,
-
-                          border:
-                            "1px solid rgba(0,0,0,0.12)",
-
-                          whiteSpace:
-                            "nowrap",
-                        }}
-                      >
-                        {row.lt || ""}
-                      </TableCell>
-
-                      {/* TH */}
-
-                      <TableCell
-                        align="center"
-                        sx={{
-                          width: 60,
-
-                          border:
-                            "1px solid rgba(0,0,0,0.12)",
-
-                          whiteSpace:
-                            "nowrap",
-                        }}
-                      >
-                        {row.th || ""}
-                      </TableCell>
-                    </TableRow>
-                  );
-                }
               )}
 
-              {/* =================================================
-                  DÒNG TỔNG
-              ================================================= */}
+              {/* TÊN BÀI HỌC */}
 
-              <TableRow
+              <TableCell
+                align="center"
                 sx={{
-                  bgcolor:
-                    "#ffcc80",
+                  width: 320,
+                  bgcolor: "#1976d2",
+                  color: "#fff",
+                  border:
+                    "1px solid rgba(0,0,0,0.12)",
+                  whiteSpace: "nowrap",
                 }}
               >
-                {/* TUẦN */}
+                TÊN BÀI HỌC
+              </TableCell>
 
-                <TableCell
-                  align="center"
+              {/* LÝ THUYẾT */}
+
+              <TableCell
+                align="center"
+                sx={{
+                  width: 60,
+                  bgcolor: "#1976d2",
+                  color: "#fff",
+                  border:
+                    "1px solid rgba(0,0,0,0.12)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                L.THUYẾT
+              </TableCell>
+
+              {/* THỰC HÀNH */}
+
+              <TableCell
+                align="center"
+                sx={{
+                  width: 60,
+                  bgcolor: "#1976d2",
+                  color: "#fff",
+                  border:
+                    "1px solid rgba(0,0,0,0.12)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                T.HÀNH
+              </TableCell>
+            </TableRow>
+          </TableHead>
+
+          {/* =================================================
+              BODY
+          ================================================= */}
+
+          <TableBody>
+            {ppct.map((row, idx) => {
+              const isOnTap =
+                row.tenBaiHoc
+                  ?.toLowerCase()
+                  .includes("ôn tập");
+
+              const isKiemTra =
+                row.tenBaiHoc
+                  ?.toLowerCase()
+                  .includes("kiểm tra");
+
+              const bgColor = isOnTap
+                ? "#fff8e1"
+                : isKiemTra
+                ? "#e3f2fd"
+                : "transparent";
+
+              return (
+                <TableRow
+                  key={idx}
                   sx={{
-                    border:
-                      "1px solid rgba(0,0,0,0.12)",
-
-                    fontWeight: 600,
+                    bgcolor: bgColor,
                   }}
                 >
-                  TỔNG
-                </TableCell>
+                  {/* TUẦN */}
 
-                {/* CHỦ ĐỀ */}
-
-                {showChuDe && (
                   <TableCell
+                    align="center"
                     sx={{
+                      width: 80,
                       border:
                         "1px solid rgba(0,0,0,0.12)",
+                      whiteSpace: "nowrap",
                     }}
-                  />
-                )}
+                  >
+                    {row.tuan}
+                  </TableCell>
 
-                {/* TÊN BÀI HỌC */}
+                  {/* CHỦ ĐỀ */}
 
+                  {showChuDe &&
+                    row._showChuDe && (
+                      <TableCell
+                        rowSpan={row._rowSpan}
+                        sx={{
+                          width: 320,
+                          maxWidth: 320,
+                          border:
+                            "1px solid rgba(0,0,0,0.12)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          verticalAlign: "middle",
+                          textTransform: "uppercase",
+                        }}
+                        title={row.chuDe}
+                      >
+                        {row.chuDe}
+                      </TableCell>
+                    )}
+
+                  {/* TÊN BÀI HỌC */}
+
+                  <TableCell
+                    sx={{
+                      width: 320,
+                      maxWidth: 320,
+                      border:
+                        "1px solid rgba(0,0,0,0.12)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      fontWeight: isKiemTra
+                        ? 600
+                        : 400,
+                    }}
+                    title={row.tenBaiHoc}
+                  >
+                    {row.tenBaiHoc}
+                  </TableCell>
+
+                  {/* LT */}
+
+                  <TableCell
+                    align="center"
+                    sx={{
+                      width: 60,
+                      border:
+                        "1px solid rgba(0,0,0,0.12)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {row.lt || ""}
+                  </TableCell>
+
+                  {/* TH */}
+
+                  <TableCell
+                    align="center"
+                    sx={{
+                      width: 60,
+                      border:
+                        "1px solid rgba(0,0,0,0.12)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {row.th || ""}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+
+            {/* =================================================
+                DÒNG TỔNG
+            ================================================= */}
+
+            <TableRow
+              sx={{
+                bgcolor: "#ffcc80",
+              }}
+            >
+              {/* TUẦN */}
+
+              <TableCell
+                align="center"
+                sx={{
+                  border:
+                    "1px solid rgba(0,0,0,0.12)",
+                  fontWeight: 600,
+                }}
+              >
+                TỔNG
+              </TableCell>
+
+              {/* CHỦ ĐỀ */}
+
+              {showChuDe && (
                 <TableCell
                   sx={{
                     border:
                       "1px solid rgba(0,0,0,0.12)",
-
-                    fontWeight: 600,
                   }}
                 />
+              )}
 
-                {/* LT */}
+              {/* TÊN BÀI HỌC */}
 
-                <TableCell
-                  align="center"
-                  sx={{
-                    border:
-                      "1px solid rgba(0,0,0,0.12)",
+              <TableCell
+                sx={{
+                  border:
+                    "1px solid rgba(0,0,0,0.12)",
+                  fontWeight: 600,
+                }}
+              />
 
-                    fontWeight: 700,
-                  }}
-                >
-                  {tongLT}
-                </TableCell>
+              {/* LT */}
 
-                {/* TH */}
+              <TableCell
+                align="center"
+                sx={{
+                  border:
+                    "1px solid rgba(0,0,0,0.12)",
+                  fontWeight: 700,
+                }}
+              >
+                {tongLT}
+              </TableCell>
 
-                <TableCell
-                  align="center"
-                  sx={{
-                    border:
-                      "1px solid rgba(0,0,0,0.12)",
+              {/* TH */}
 
-                    fontWeight: 700,
-                  }}
-                >
-                  {tongTH}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+              <TableCell
+                align="center"
+                sx={{
+                  border:
+                    "1px solid rgba(0,0,0,0.12)",
+                  fontWeight: 700,
+                }}
+              >
+                {tongTH}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
 
-      {/* =====================================================
-          FILE INPUT
-      ===================================================== */}
+    {/* =====================================================
+        FILE INPUT
+    ===================================================== */}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        hidden
-        accept=".xlsx"
-        multiple
-        onChange={handleFileChange}
-      />
-    </Box>
-  );
+    <input
+      ref={fileInputRef}
+      type="file"
+      hidden
+      accept=".xlsx"
+      multiple
+      onChange={handleFileChange}
+    />
+  </Box>
+);
 }
