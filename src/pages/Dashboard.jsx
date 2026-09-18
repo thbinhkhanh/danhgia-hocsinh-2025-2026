@@ -200,11 +200,18 @@ export default function Dashboard({ isLoggedIn }) {
       color: "#0288d1",
     },
     {
-      label: "Danh sách học sinh",
+      label: "Danh sách HS",
       description: "Thêm, sửa, xóa học sinh và quản lý dữ liệu lớp học",
       path: "/danhsach",
       icon: <GroupsRoundedIcon sx={{ fontSize: 28, color: "#00796b" }} />,
       color: "#00796b",
+    },
+    {
+      label: "PPCT",
+      description: "Quản lý và cập nhật phân phối chương trình theo khối, năm học",
+      path: "/ppct",
+      icon: <LibraryBooksRoundedIcon sx={{ fontSize: 28, color: "#1565c0" }} />,
+      color: "#1565c0",
     },
     {
       label: "Soạn đề",

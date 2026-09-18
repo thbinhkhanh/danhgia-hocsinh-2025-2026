@@ -31,6 +31,7 @@ import XuatDanhGia from "./pages/XuatDanhGia";
 import TongHopKQ from "./pages/TongHopKQ";
 import ThongKe from "./pages/ThongKe";
 import DanhSachHS from "./pages/DanhSachHS";
+import PPCT from "./pages/PPCT";
 import TracNghiem from "./pages/TracNghiem";
 import TracNghiemGV from "./pages/TracNghiemGV";
 //import TracNghiemGV_TN from "./pages/TracNghiemGV_TN";
@@ -479,6 +480,7 @@ function AppContent() {
             path="/danhsach"
             element={isLoggedIn ? <DanhSachHS /> : <Navigate to="/login" replace />}
           />
+          <Route path="/ppct" element={<PPCT />} />
 
           <Route
             path="/tonghopdanhgia"

@@ -22,11 +22,14 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Stack
 } from "@mui/material";
 
 import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
+import { useSelectedClass } from "../context/SelectedClassContext";
+
 import { doc, getDoc, getDocs, collection, setDoc, onSnapshot } from "firebase/firestore";
 import { updateDoc, deleteField, deleteDoc } from "firebase/firestore";
 import { exportDanhsach } from "../utils/exportDanhSach";
@@ -47,6 +50,8 @@ import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
 import CloseIcon from "@mui/icons-material/Close";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon2 from "@mui/icons-material/Delete";
 
 import { useNavigate } from "react-router-dom";
 
@@ -62,8 +67,14 @@ export default function DanhSachHS() {
   const { config, setConfig } = useContext(ConfigContext);
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
-  const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState("");
+  const {
+    classes,
+    selectedClass,
+    setSelectedClass,
+    addClass,
+    deleteClass,
+  } = useSelectedClass();
+
   const [students, setStudents] = useState([]);
   const [ppct, setPpct] = useState([]);
   const [viewMode, setViewMode] = useState("ppct"); 
@@ -88,6 +99,9 @@ export default function DanhSachHS() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [createDataDialogOpen, setCreateDataDialogOpen] = useState(false);
 
+  const [addingClass, setAddingClass] = useState(false);
+  const [newClass, setNewClass] = useState("");
+
   // 🔹 Lấy config realtime (nguồn sự thật duy nhất)
   useEffect(() => {
     const docRef = doc(db, "CONFIG", "config");
@@ -109,36 +123,47 @@ export default function DanhSachHS() {
 
       // ✅ sync local state cho UI
       setSelectedNamHoc(namHoc);
-      setSelectedClass(lop);
+      //setSelectedClass(lop);
     });
 
     return () => unsubscribe();
   }, [setConfig]);
 
+  const normalizeClassKey = (cls) => String(cls || "").replaceAll(".", "_");
 
   // 🔹 Lấy danh sách lớp
   useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, `DANHSACH_${namHocKey}`));
-        const classList = snapshot.docs.map((doc) => doc.id);
-        setClassData(classList);
-        setClasses(classList);
-        if (classList.length > 0) {
-          setSelectedClass((prev) => prev || config.lop || classList[0]);
-        }
-      } catch (err) {
-        console.error("❌ Lỗi khi lấy danh sách lớp:", err);
-        setClasses([]);
-        setClassData([]);
-      }
-    };
-    fetchClasses();
-  }, [config.lop, setClassData]);
+    // Danh sách lớp đã được SelectedClassProvider
+    // quản lý và tải từ localStorage / Firestore.
+    // DanhSachHS chỉ đồng bộ classData nếu các component
+    // cũ vẫn còn sử dụng StudentContext.
 
+    if (Array.isArray(classes)) {
+      setClassData(classes);
+    }
+
+    // Nếu chưa có lớp được chọn thì ưu tiên lớp trong CONFIG
+    if (!selectedClass && config?.lop && classes.includes(config.lop)) {
+      setSelectedClass(config.lop);
+    }
+
+    // Nếu CONFIG chưa có lớp thì chọn lớp đầu tiên
+    if (!selectedClass && !config?.lop && classes.length > 0) {
+      setSelectedClass(classes[0]);
+    }
+  }, [
+    classes,
+    selectedClass,
+    config?.lop,
+    setClassData,
+    setSelectedClass,
+  ]);
+  
   // 🔹 Lấy danh sách học sinh
   useEffect(() => {
     if (!selectedClass) return;
+
+    const classKey = normalizeClassKey(selectedClass);
 
     // Hàm so sánh từng chữ từ phải sang trái
     const compareFullNamesRightToLeft = (a, b) => {
@@ -146,7 +171,7 @@ export default function DanhSachHS() {
       const partsB = b.hoVaTen.replace(/\//g, " ").trim().split(/\s+/);
       const len = Math.max(partsA.length, partsB.length);
 
-      for (let i = 1; i <= len; i++) { // bắt đầu từ cuối
+      for (let i = 1; i <= len; i++) {
         const wordA = partsA[partsA.length - i] || "";
         const wordB = partsB[partsB.length - i] || "";
         const cmp = wordA.localeCompare(wordB, "vi", { sensitivity: "base" });
@@ -156,47 +181,54 @@ export default function DanhSachHS() {
       return 0;
     };
 
-    // Lấy dữ liệu từ cache nếu có
+    // Lấy dữ liệu từ cache (UI vẫn dùng 4.1)
     const cached = studentData[selectedClass];
     if (cached && cached.length > 0) {
-      const sorted = [...cached].sort(compareFullNamesRightToLeft).map((stu, idx) => ({
-        ...stu,
-        stt: idx + 1,
-      }));
+      const sorted = [...cached]
+        .sort(compareFullNamesRightToLeft)
+        .map((stu, idx) => ({
+          ...stu,
+          stt: idx + 1,
+        }));
+
       setStudents(sorted);
       return;
     }
 
-    // Nếu chưa có cache, fetch từ Firestore
+    // Fetch Firestore (ĐÚNG: 4_1)
     const fetchStudents = async () => {
       try {
-       const classDocRef = doc(db, `DANHSACH_${namHocKey}`, selectedClass);
-        const classSnap = await getDoc(classDocRef);
+        const classRef = collection(
+          db,
+          `DATA_${namHocKey}`,
+          classKey,
+          "HOCSINH"
+        );
 
-        if (!classSnap.exists()) {
-          setStudents([]);
-          setStudentData((prev) => ({ ...prev, [selectedClass]: [] }));
-          return;
-        }
+        const snapshot = await getDocs(classRef);
 
-        const data = classSnap.data();
-        let studentList = Object.entries(data).map(([maDinhDanh, info]) => ({
-          maDinhDanh,
-          hoVaTen: info.hoVaTen,
-          ghiChu: "",
-        }));
+        const studentList = snapshot.docs.map((docSnap, idx) => {
+          const data = docSnap.data();
 
-        // 🔹 Sắp xếp theo từng chữ từ phải sang trái
+          return {
+            maDinhDanh: docSnap.id,
+            hoVaTen: data.hoVaTen || "",
+            stt: idx + 1,
+            ghiChu: "",
+          };
+        });
+
         studentList.sort(compareFullNamesRightToLeft);
 
-        // Thêm STT
-        studentList = studentList.map((stu, idx) => ({ ...stu, stt: idx + 1 }));
-
-        // Cập nhật cache và state
-        setStudentData((prev) => ({ ...prev, [selectedClass]: studentList }));
         setStudents(studentList);
+
+        setStudentData((prev) => ({
+          ...prev,
+          [selectedClass]: studentList, // cache giữ UI key 4.1
+        }));
+
       } catch (err) {
-        console.error(`❌ Lỗi khi lấy học sinh lớp "${selectedClass}":`, err);
+        console.error("❌ Lỗi load students:", err);
         setStudents([]);
       }
     };
@@ -205,65 +237,65 @@ export default function DanhSachHS() {
   }, [selectedClass, studentData, setStudentData]);
 
   useEffect(() => {
-  if (viewMode !== "ppct" || !selectedKhoi || !config?.namHoc) return;
+    if (viewMode !== "ppct" || !selectedKhoi || !config?.namHoc) return;
 
-  const fetchPPCT = async () => {
-    try {
-      const khoiNamHoc = `${selectedKhoi}_${config.namHoc}`;
-      const docRef = doc(db, "PPCT", khoiNamHoc);
-      const snap = await getDoc(docRef);
+    const fetchPPCT = async () => {
+      try {
+        const khoiNamHoc = `${selectedKhoi}_${config.namHoc}`;
+        const docRef = doc(db, "PPCT", khoiNamHoc);
+        const snap = await getDoc(docRef);
 
-      if (!snap.exists()) {
+        if (!snap.exists()) {
+          setPpct([]);
+          return;
+        }
+
+        const data = snap.data();
+
+        // Xử lý dữ liệu như trước...
+        const list = Object.entries(data)
+          .map(([key, value]) => {
+            const weekText = key.replace("tuan_", "").replace(/_/g, " + ");
+            const firstWeek = parseInt(weekText.split("+")[0].trim(), 10);
+            return {
+              tuan: weekText,
+              chuDe: value.chuDe || "",
+              tenBaiHoc: value.tenBaiHoc || "",
+              lt: value.lt || "",
+              th: value.th || "",
+              _sortWeek: firstWeek,
+            };
+          })
+          .sort((a, b) => a._sortWeek - b._sortWeek)
+          .map(({ _sortWeek, ...rest }) => rest);
+
+        // Merge chủ đề rowSpan
+        const processed = [];
+        let i = 0;
+        while (i < list.length) {
+          const currentChuDe = list[i].chuDe;
+          let rowSpan = 1;
+          for (let j = i + 1; j < list.length; j++) {
+            if (list[j].chuDe === currentChuDe) rowSpan++;
+            else break;
+          }
+
+          processed.push({ ...list[i], _showChuDe: true, _rowSpan: rowSpan });
+          for (let k = 1; k < rowSpan; k++) {
+            processed.push({ ...list[i + k], _showChuDe: false, _rowSpan: 0 });
+          }
+          i += rowSpan;
+        }
+
+        setPpct(processed);
+      } catch (err) {
+        console.error("❌ Lỗi lấy PPCT:", err);
         setPpct([]);
-        return;
       }
+    };
 
-      const data = snap.data();
-
-      // Xử lý dữ liệu như trước...
-      const list = Object.entries(data)
-        .map(([key, value]) => {
-          const weekText = key.replace("tuan_", "").replace(/_/g, " + ");
-          const firstWeek = parseInt(weekText.split("+")[0].trim(), 10);
-          return {
-            tuan: weekText,
-            chuDe: value.chuDe || "",
-            tenBaiHoc: value.tenBaiHoc || "",
-            lt: value.lt || "",
-            th: value.th || "",
-            _sortWeek: firstWeek,
-          };
-        })
-        .sort((a, b) => a._sortWeek - b._sortWeek)
-        .map(({ _sortWeek, ...rest }) => rest);
-
-      // Merge chủ đề rowSpan
-      const processed = [];
-      let i = 0;
-      while (i < list.length) {
-        const currentChuDe = list[i].chuDe;
-        let rowSpan = 1;
-        for (let j = i + 1; j < list.length; j++) {
-          if (list[j].chuDe === currentChuDe) rowSpan++;
-          else break;
-        }
-
-        processed.push({ ...list[i], _showChuDe: true, _rowSpan: rowSpan });
-        for (let k = 1; k < rowSpan; k++) {
-          processed.push({ ...list[i + k], _showChuDe: false, _rowSpan: 0 });
-        }
-        i += rowSpan;
-      }
-
-      setPpct(processed);
-    } catch (err) {
-      console.error("❌ Lỗi lấy PPCT:", err);
-      setPpct([]);
-    }
-  };
-
-  fetchPPCT();
-}, [viewMode, selectedKhoi, config?.namHoc, ppctReloadKey]);
+    fetchPPCT();
+  }, [viewMode, selectedKhoi, config?.namHoc, ppctReloadKey]);
 
   
   const handleClassChange = (e) => {
@@ -414,6 +446,7 @@ export default function DanhSachHS() {
 
   const handleEditStudent = (student) => {
     setEditingStudent(student);
+    setNewMaDinhDanh(student.maDinhDanh || "");
     setNewName(student.hoVaTen);
   };
 
@@ -435,149 +468,214 @@ export default function DanhSachHS() {
 
     const ma = newMaDinhDanh.trim();
     const ten = newName.trim().toUpperCase();
-    const sttMoi = students.length + 1;
-    const lop = selectedClass;
     const classKey = selectedClass.replace(".", "_");
 
-    // 🔹 Đóng dialog ngay
+    const sttMoi = students.length + 1;
+    const lop = selectedClass;
+
     setIsAdding(false);
     setEditingStudent(null);
 
+    // ===== 1. OPTIMISTIC UI UPDATE =====
+    const newStudent = {
+      maDinhDanh: ma,
+      hoVaTen: ten,
+      lop,
+      stt: sttMoi,
+      TinHoc: {},
+      CongNghe: {},
+    };
+
+    const updatedStudents = [...students, newStudent];
+
+    setStudents(updatedStudents);
+
+    setStudentData((prev) => ({
+      ...prev,
+      [selectedClass]: updatedStudents,
+    }));
+
     try {
-      // 1️⃣ Cập nhật Firestore
-      await Promise.all([
-        // DANHSACH
-        updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
-          [ma]: {
-            hoVaTen: ten,
-            lop,
-            stt: sttMoi,
-          },
-        }),
+      // ===== 2. FIRESTORE (GIỐNG uploadStudents) =====
+      await setDoc(
+        doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma),
+        {
+          hoVaTen: ten.toUpperCase(), // giống uploadStudents
+          lop,
+          stt: sttMoi,
 
-        // DATA
-        setDoc(
-          doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma),
-          {
-            hoVaTen: ten,
-            stt: sttMoi,
-          }
-        ),
-
-        // DATA_ONTAP
-        setDoc(
-          doc(db, `DATA_ONTAP_${namHocKey}`, classKey, "HOCSINH", ma),
-          {
-            hoVaTen: newName.trim(), // Giữ kiểu "Huỳnh Văn Gia Phú"
-            lop,
-            subjects: {
-              CongNghe: {
-                lyThuyet: null,
-              },
-              TinHoc: {
-                lyThuyet: null,
-              },
+          TinHoc: {
+            dgtx: {},
+            ktdk: {
+              CN: {},
+              CKI: {},
+              GKI: {},
+              GKII: {},
             },
-          }
-        ),
-      ]);
+            ontap: {
+              CN: {},
+              CKI: {},
+              GKI: {},
+              GKII: {},
+            },
+          },
 
-      // 2️⃣ Cập nhật UI ngay
-      const updatedStudents = [
-        ...students,
-        {
-          maDinhDanh: ma,
-          hoVaTen: ten,
-          stt: sttMoi,
-          lop,
+          CongNghe: {
+            dgtx: {},
+            ktdk: {
+              CN: {},
+              CKI: {},
+              GKI: {},
+              GKII: {},
+            },
+            ontap: {
+              CN: {},
+              CKI: {},
+              GKI: {},
+              GKII: {},
+            },
+          },
         },
-      ];
-
-      setStudents(updatedStudents);
-
-      // 3️⃣ Cập nhật cache StudentContext
-      setStudentData((prev) => ({
-        ...prev,
-        [selectedClass]: updatedStudents,
-      }));
-
-      // 4️⃣ Reset input
-      setNewMaDinhDanh("");
-      setNewName("");
-
-      // 5️⃣ Cập nhật DATA chạy nền (nếu vẫn cần)
-      await updateDATAForStudent(
-        selectedClass,
-        {
-          maDinhDanh: ma,
-          hoVaTen: ten,
-          stt: sttMoi,
-          lop,
-        },
-        updatedStudents
+        { merge: true }
       );
+
     } catch (err) {
       console.error("❌ Lỗi khi thêm học sinh:", err);
+
+      // ===== rollback nếu lỗi =====
+      setStudents(students);
+      setStudentData((prev) => ({
+        ...prev,
+        [selectedClass]: students,
+      }));
     }
+
+    // ===== reset input =====
+    setNewMaDinhDanh("");
+    setNewName("");
   };
 
   // ===== Chỉnh sửa học sinh =====
   const handleSaveStudent = async () => {
-    if (!editingStudent || !newName.trim()) return;
+    if (
+      !editingStudent ||
+      !newName.trim() ||
+      !newMaDinhDanh.trim()
+    ) return;
 
-    const ma = editingStudent.maDinhDanh;
-    const ten = newName.trim().toUpperCase();
+    const maCu = editingStudent.maDinhDanh;
+    const maMoi = newMaDinhDanh.trim();
+    const ten = newName.trim();
     const classKey = selectedClass.replace(".", "_");
 
-    // 🔹 Đóng dialog ngay
+    // lưu lại snapshot để rollback nếu cần
+    const oldStudents = students;
+
+    // ===== 1. UPDATE UI NGAY LẬP TỨC (OPTIMISTIC) =====
+    const updatedList = students.map((s) =>
+      s.maDinhDanh === maCu
+        ? {
+            ...s,
+            maDinhDanh: maMoi,
+            hoVaTen: ten,
+          }
+        : s
+    );
+
+    setStudents(updatedList);
+
+    setStudentData((prev) => ({
+      ...prev,
+      [selectedClass]: updatedList,
+    }));
+
     setIsAdding(false);
     setEditingStudent(null);
 
     try {
-      // 1️⃣ Cập nhật Firestore
-      await Promise.all([
-        // DANHSACH
-        updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
-          [ma]: { hoVaTen: ten },
-        }),
-
-        // DATA
-        updateDoc(
-          doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma),
+      // ===== 2. KHÔNG ĐỔI MÃ =====
+      if (maCu === maMoi) {
+        await updateDoc(
+          doc(
+            db,
+            `DATA_${namHocKey}`,
+            classKey,
+            "HOCSINH",
+            maCu
+          ),
           {
             hoVaTen: ten,
           }
-        ),
+        );
 
-        // DATA_ONTAP
-        updateDoc(
-          doc(db, `DATA_ONTAP_${namHocKey}`, classKey, "HOCSINH", ma),
-          {
-            hoVaTen: ten,
-          }
-        ),
-      ]);
+        return;
+      }
 
-      // 2️⃣ Cập nhật UI ngay
-      const updatedStudents = students.map((s) =>
-        s.maDinhDanh === ma ? { ...s, hoVaTen: ten } : s
+      // ===== 3. ĐỔI MÃ ĐỊNH DANH =====
+
+      const oldRef = doc(
+        db,
+        `DATA_${namHocKey}`,
+        classKey,
+        "HOCSINH",
+        maCu
       );
-      setStudents(updatedStudents);
 
-      // 3️⃣ Cập nhật cache StudentContext
+      const newRef = doc(
+        db,
+        `DATA_${namHocKey}`,
+        classKey,
+        "HOCSINH",
+        maMoi
+      );
+
+      // Kiểm tra mã mới đã tồn tại chưa
+      const newSnap = await getDoc(newRef);
+
+      if (newSnap.exists()) {
+        alert(`Mã định danh "${maMoi}" đã tồn tại.`);
+
+        // rollback UI
+        setStudents(oldStudents);
+        setStudentData((prev) => ({
+          ...prev,
+          [selectedClass]: oldStudents,
+        }));
+
+        return;
+      }
+
+      // Lấy toàn bộ dữ liệu document cũ
+      const oldSnap = await getDoc(oldRef);
+
+      if (!oldSnap.exists()) {
+        throw new Error("Không tìm thấy học sinh với mã định danh cũ.");
+      }
+
+      const oldData = oldSnap.data();
+
+      // Tạo document mới, giữ nguyên toàn bộ dữ liệu
+      await setDoc(newRef, {
+        ...oldData,
+        maDinhDanh: maMoi,
+        hoVaTen: ten,
+      });
+
+      // Xóa document cũ
+      await deleteDoc(oldRef);
+
+    } catch (err) {
+      console.error("❌ Lỗi update Firestore:", err);
+
+      // ===== 4. ROLLBACK =====
+      setStudents(oldStudents);
+
       setStudentData((prev) => ({
         ...prev,
-        [selectedClass]: updatedStudents,
+        [selectedClass]: oldStudents,
       }));
 
-      // 4️⃣ Cập nhật DATA chạy nền (nếu vẫn cần)
-      await updateDATAForStudent(
-        selectedClass,
-        { maDinhDanh: ma, hoVaTen: ten },
-        updatedStudents
-      );
-    } catch (err) {
-      console.error("❌ Lỗi khi cập nhật học sinh:", err);
+      alert("Không thể lưu thông tin học sinh.");
     }
   };
 
@@ -588,50 +686,173 @@ export default function DanhSachHS() {
     const ma = student.maDinhDanh;
     const classKey = selectedClass.replace(".", "_");
 
-    // 🔹 Đóng dialog ngay
     setIsAdding(false);
     setEditingStudent(null);
 
-    try {
-      // 1️⃣ Xóa Firestore
-      await Promise.all([
-        // DANHSACH
-        updateDoc(doc(db, `DANHSACH_${namHocKey}`, selectedClass), {
-          [ma]: deleteField(),
-        }),
+    const oldStudents = students;
 
-        // DATA
-        deleteDoc(
-          doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma)
-        ),
-
-        // DATA_ONTAP
-        deleteDoc(
-          doc(db, `DATA_ONTAP_${namHocKey}`, classKey, "HOCSINH", ma)
-        ),
-      ]);
-
-      // 2️⃣ Cập nhật UI ngay
-      const updatedStudents = students
-        .filter((s) => s.maDinhDanh !== ma)
-        .map((s, i) => ({
-          ...s,
-          stt: i + 1,
-        }));
-
-      setStudents(updatedStudents);
-
-      // 3️⃣ Cập nhật cache StudentContext
-      setStudentData((prev) => ({
-        ...prev,
-        [selectedClass]: updatedStudents,
+    // ===== 1. UPDATE UI NGAY =====
+    const updatedStudents = students
+      .filter((s) => s.maDinhDanh !== ma)
+      .map((s, i) => ({
+        ...s,
+        stt: i + 1,
       }));
 
-      // 4️⃣ Reset trạng thái
-      setHoveredHS(null);
+    setStudents(updatedStudents);
+
+    setStudentData((prev) => ({
+      ...prev,
+      [selectedClass]: updatedStudents,
+    }));
+
+    try {
+      // ===== 2. FIRESTORE CHỈ CÒN DATA =====
+      await deleteDoc(
+        doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", ma)
+      );
+
     } catch (err) {
       console.error("❌ Lỗi khi xóa học sinh:", err);
+
+      // rollback
+      setStudents(oldStudents);
+      setStudentData((prev) => ({
+        ...prev,
+        [selectedClass]: oldStudents,
+      }));
     }
+
+    setHoveredHS(null);
+  };
+
+  // ===== THÊM LỚP =====
+  const handleAddClass = async () => {
+    if (!newClass.trim()) return;
+
+    const input = newClass.toUpperCase().replace(/\s+/g, "");
+    let generatedClasses = [];
+
+    const parts = input.split(",");
+
+    for (let part of parts) {
+
+      // 3A->3K
+      let matchLetter = part.match(/^(\d+)([A-Z])->(\d+)?([A-Z])$/);
+      if (matchLetter) {
+        const grade = matchLetter[1];
+        const start = matchLetter[2].charCodeAt(0);
+        const end = matchLetter[4].charCodeAt(0);
+
+        if (start > end) continue;
+
+        for (let c = start; c <= end; c++) {
+          generatedClasses.push(`${grade}${String.fromCharCode(c)}`);
+        }
+
+        continue;
+      }
+
+      // 4.1->4.6
+      let matchNumber = part.match(/^(\d+)\.(\d+)->(\d+)\.(\d+)$/);
+
+      if (matchNumber) {
+        const grade = matchNumber[1];
+        const start = Number(matchNumber[2]);
+        const end = Number(matchNumber[4]);
+
+        if (start > end) continue;
+
+        for (let i = start; i <= end; i++) {
+          generatedClasses.push(`${grade}.${i}`);
+        }
+
+        continue;
+      }
+
+      // 1 lớp đơn
+      if (/^\d+(\.\d+|[A-Z])$/.test(part)) {
+        generatedClasses.push(part);
+      }
+    }
+
+    if (generatedClasses.length === 0) {
+      alert("❌ Định dạng không hợp lệ!");
+      return;
+    }
+
+    // loại lớp đã tồn tại
+    const uniqueNew = generatedClasses.filter(
+      cls => !classes.includes(cls)
+    );
+
+    if (uniqueNew.length === 0) {
+      alert("⚠️ Các lớp đã tồn tại!");
+      return;
+    }
+
+    const updated = [...classes, ...uniqueNew].sort();
+
+    // update state
+    setClasses(updated);
+    setClassData(updated);
+
+    setSelectedClass(uniqueNew[0]);
+
+    // lưu Firestore
+    await setDoc(
+      doc(db, "DANHSACH_LOP", namHocKey),
+      {
+        list: updated,
+      },
+      { merge: true }
+    );
+
+    // lưu lớp đang chọn
+    await setDoc(
+      doc(db, "CONFIG", "config"),
+      {
+        lop: uniqueNew[0],
+      },
+      { merge: true }
+    );
+
+    setAddingClass(false);
+    setNewClass("");
+  };
+
+  const handleDeleteClass = async () => {
+
+    if (!selectedClass) return;
+
+    if (!window.confirm(`Xóa lớp ${selectedClass}?`)) return;
+
+    const updated = classes
+      .filter(c => c !== selectedClass)
+      .sort();
+
+    setClasses(updated);
+    setClassData(updated);
+
+    const nextClass = updated[0] || "";
+
+    setSelectedClass(nextClass);
+
+    await setDoc(
+      doc(db, "DANHSACH_LOP", namHocKey),
+      {
+        list: updated,
+      },
+      { merge: true }
+    );
+
+    await setDoc(
+      doc(db, "CONFIG", "config"),
+      {
+        lop: nextClass,
+      },
+      { merge: true }
+    );
   };
 
   return (
@@ -713,7 +934,7 @@ export default function DanhSachHS() {
           </Tooltip>
 
           {viewMode === "students" && (
-            <Tooltip title="Tải thư mục danh sách học sinh từ Excel">
+            <Tooltip title="Tải thư mục danh sách học sinh từ C1">
               <IconButton
                 onClick={() => folderInputRef.current?.click()}
                 sx={{
@@ -729,7 +950,7 @@ export default function DanhSachHS() {
             </Tooltip>
           )}
 
-          {viewMode === "students" && (
+          {/*{viewMode === "students" && (
             <Tooltip title="Khởi tạo DATA năm mới">
               <IconButton
                 onClick={() => setCreateDataDialogOpen(true)}
@@ -742,7 +963,7 @@ export default function DanhSachHS() {
                 <StorageIcon />
               </IconButton>
             </Tooltip>
-          )}
+          )}*/}
 
           {/*{viewMode === "students" && (
             <>
@@ -789,19 +1010,136 @@ export default function DanhSachHS() {
         >
           {viewMode === "students" ? (
             <>
-              <Typography fontWeight={500}>Lớp:</Typography>
-              <Select
-                value={selectedClass}
-                onChange={handleClassChange}
-                size="small"
-                sx={{ width: 80 }}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 1,
+                }}
               >
-                {classes.map((cls) => (
-                  <MenuItem key={cls} value={cls}>
-                    {cls}
-                  </MenuItem>
-                ))}
-              </Select>
+                {/* Hàng trên */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 16,
+                      fontWeight: 500,
+                      color: "#1e293b",
+                    }}
+                  >
+                    Lớp:
+                  </Typography>
+
+                  <Select
+                    value={selectedClass}
+                    onChange={handleClassChange}
+                    size="small"
+                    sx={{ width: 80 }}
+                  >
+                    {classes.map((cls) => (
+                      <MenuItem key={cls} value={cls}>
+                        {cls}
+                      </MenuItem>
+                    ))}
+                  </Select>
+
+                  {/* Icon thêm lớp */}
+                  <Tooltip title="Thêm lớp">
+                    <IconButton
+                      onClick={() => setAddingClass(true)}
+                      sx={{
+                        color: "#fff",
+                        bgcolor: "#22c55e",
+                        width: 30,
+                        height: 30,
+                        "&:hover": {
+                          bgcolor: "#16a34a",
+                        },
+                      }}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                  </Tooltip>
+
+                  {/* Icon xóa lớp */}
+                  <Tooltip title="Xóa lớp">
+                    <IconButton
+                      onClick={handleDeleteClass}
+                      sx={{
+                        color: "#fff",
+                        bgcolor: "#ef4444",
+                        width: 30,
+                        height: 30,
+                        "&:hover": {
+                          bgcolor: "#dc2626",
+                        },
+                      }}
+                    >
+                      <DeleteIcon2 />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+
+                {/* Hàng dưới */}
+                {addingClass && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      ml: 5, // thụt vào dưới dòng trên
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <TextField
+                      size="small"
+                      label="Tên lớp"
+                      placeholder="VD: 4.1->4.6"
+                      value={newClass}
+                      onChange={(e) => setNewClass(e.target.value)}
+                      sx={{ width: 240 }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddClass();
+                      }}
+                    />
+
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={handleAddClass}
+                      sx={{
+                        textTransform: "none",
+                        fontWeight: 700,
+                        borderRadius: "8px",
+                        px: 2,
+                      }}
+                    >
+                      Lưu
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        setAddingClass(false);
+                        setNewClass("");
+                      }}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: "8px",
+                        px: 2,
+                      }}
+                    >
+                      Hủy
+                    </Button>
+                  </Box>
+                )}
+              </Box>
             </>
           ) : (
             <>
@@ -1031,8 +1369,6 @@ export default function DanhSachHS() {
                         </IconButton>
                       </Box>
                     </TableCell>
-
-
                   </TableRow>
                 ))}
               </TableBody>
