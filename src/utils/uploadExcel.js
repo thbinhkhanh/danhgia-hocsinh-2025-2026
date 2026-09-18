@@ -189,63 +189,281 @@ export const uploadPPCT = async ({
   file,
   db,
   namHoc,
+  mon = "Tin học",
+  khoi,
   onProgress,
 }) => {
-  const data = await file.arrayBuffer();
-  const workbook = XLSX.read(data);
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const jsonData = XLSX.utils.sheet_to_json(sheet);
+  if (!file) {
+    throw new Error("Chưa chọn file PPCT ❌");
+  }
 
-  const validRows = jsonData.filter(
-    (i) =>
-      i["Tuần"] &&
-      i["Chủ đề"] &&
-      i["Tên bài học"] &&
-      i["Khối"] &&
-      (i["LT"] || i["TH"])
+  if (!namHoc) {
+    throw new Error("Năm học không xác định ❌");
+  }
+
+  if (!mon) {
+    throw new Error("Môn học không xác định ❌");
+  }
+
+  if (!khoi) {
+    throw new Error("Khối không xác định ❌");
+  }
+
+  // ================= ĐỌC FILE EXCEL =================
+
+  const data = await file.arrayBuffer();
+
+  const workbook = XLSX.read(data);
+
+  const sheet =
+    workbook.Sheets[workbook.SheetNames[0]];
+
+  const jsonData = XLSX.utils.sheet_to_json(
+    sheet,
+    {
+      defval: "",
+    }
   );
 
-  const khoiData = {};
-  const updatedKhoiSet = new Set();
+  if (!jsonData.length) {
+    throw new Error(
+      "File Excel không có dữ liệu ❌"
+    );
+  }
 
-  for (let i = 0; i < validRows.length; i++) {
-    const item = validRows[i];
+  // ================= XÁC ĐỊNH DOCUMENT =================
 
-    const khoi = `khoi${item["Khối"]}`;
-    const khoiNamHoc = `${khoi}_${namHoc}`;
+  /*
+   * Tin học:
+   *
+   * PPCT/khoi4_2025-2026
+   * PPCT/khoi5_2025-2026
+   *
+   * Công nghệ:
+   *
+   * PPCT/CongNghe_khoi4_2025-2026
+   * PPCT/CongNghe_khoi5_2025-2026
+   */
 
-    updatedKhoiSet.add(khoi);
+  const ppctDocId =
+    mon === "Tin học"
+      ? `${khoi}_${namHoc}`
+      : `CongNghe_${khoi}_${namHoc}`;
+
+  console.log(
+    "================================="
+  );
+
+  console.log("📚 UPLOAD PPCT");
+
+  console.log("Môn:", mon);
+
+  console.log("Khối:", khoi);
+
+  console.log("Năm học:", namHoc);
+
+  console.log(
+    "Document:",
+    `PPCT/${ppctDocId}`
+  );
+
+  console.log(
+    "================================="
+  );
+
+  // ================= XỬ LÝ DỮ LIỆU =================
+
+  const ppctData = {};
+
+  let currentChuDe = "";
+
+  const rows = jsonData;
+
+  for (let i = 0; i < rows.length; i++) {
+    const item = rows[i];
+
+    // -----------------------------
+    // Lấy tuần
+    // -----------------------------
+
+    const rawTuan = String(
+      item["Tuần"] || ""
+    ).trim();
+
+    if (!rawTuan) {
+      continue;
+    }
+
+    // -----------------------------
+    // Lấy chủ đề
+    // -----------------------------
+
+    const rawChuDe = String(
+      item["Chủ đề"] || ""
+    ).trim();
+
+    /*
+     * Nếu dòng có Chủ đề mới
+     * thì cập nhật chủ đề hiện tại.
+     *
+     * Nếu Chủ đề trống:
+     * dùng lại Chủ đề của dòng trước.
+     */
+
+    if (rawChuDe) {
+      currentChuDe = rawChuDe;
+    }
+
+    // -----------------------------
+    // Lấy tên bài học
+    // -----------------------------
+
+    const tenBaiHoc = String(
+      item["Tên bài học"] || ""
+    ).trim();
+
+    if (!tenBaiHoc) {
+      continue;
+    }
+
+    // -----------------------------
+    // LT / TH
+    // -----------------------------
+
+    const lt =
+      item["LT"] === "" ||
+      item["LT"] === null ||
+      item["LT"] === undefined
+        ? 0
+        : Number(item["LT"]) || 0;
+
+    const th =
+      item["TH"] === "" ||
+      item["TH"] === null ||
+      item["TH"] === undefined
+        ? 0
+        : Number(item["TH"]) || 0;
+
+    // -----------------------------
+    // TẠO KEY TUẦN
+    // -----------------------------
+
+    /*
+     * CHUẨN LƯU CHUNG CHO CẢ
+     * TIN HỌC VÀ CÔNG NGHỆ
+     *
+     * Excel:
+     *
+     * 1 – 2   → tuan_1,2
+     * 3 – 6   → tuan_3,6
+     * 7 – 8   → tuan_7,8
+     * 13 – 16 → tuan_13,16
+     * 17      → tuan_17
+     *
+     * Lưu ý:
+     * KHÔNG dùng "_" để ngăn cách
+     * hai số tuần.
+     *
+     * "_" chỉ nằm sau "tuan".
+     */
 
     const tuanKey =
       "tuan_" +
-      String(item["Tuần"])
+      rawTuan
         .replace(/\s+/g, "")
-        .replace(/\+/g, "_");
+        .replace(/[–—−-]/g, ",")
+        .replace(/\+/g, ",");
 
-    if (!khoiData[khoiNamHoc]) {
-      khoiData[khoiNamHoc] = {};
-    }
+    // -----------------------------
+    // Ghi vào object
+    // -----------------------------
 
-    khoiData[khoiNamHoc][tuanKey] = {
-      chuDe: item["Chủ đề"],
-      tenBaiHoc: item["Tên bài học"],
-      lt: Number(item["LT"] || 0),
-      th: Number(item["TH"] || 0),
+    ppctData[tuanKey] = {
+      chuDe: currentChuDe,
+
+      tenBaiHoc,
+
+      lt,
+
+      th,
     };
+
+    console.log(
+      `📌 ${tuanKey}`,
+      ppctData[tuanKey]
+    );
+
+    // -----------------------------
+    // Tiến trình
+    // -----------------------------
 
     if (onProgress) {
       onProgress(
-        Math.round(((i + 1) / validRows.length) * 100)
+        Math.round(
+          ((i + 1) / rows.length) * 80
+        )
       );
     }
   }
 
-  for (const khoiNamHoc in khoiData) {
-    await setDoc(
-      doc(db, "PPCT", khoiNamHoc),
-      khoiData[khoiNamHoc]
+  // ================= KIỂM TRA =================
+
+  const totalRows =
+    Object.keys(ppctData).length;
+
+  if (!totalRows) {
+    throw new Error(
+      "Không tìm thấy dòng PPCT hợp lệ. Kiểm tra các cột: Tuần, Chủ đề, Tên bài học, LT, TH."
     );
   }
 
-  return Array.from(updatedKhoiSet);
+  // ================= GHI FIRESTORE =================
+
+  try {
+    const ref = doc(
+      db,
+      "PPCT",
+      ppctDocId
+    );
+
+    console.log(
+      "⏳ Đang ghi Firestore:",
+      `PPCT/${ppctDocId}`
+    );
+
+    await setDoc(
+      ref,
+      ppctData
+    );
+
+    console.log(
+      "✅ Ghi Firestore thành công:",
+      `PPCT/${ppctDocId}`
+    );
+
+    if (onProgress) {
+      onProgress(100);
+    }
+
+    return {
+      success: true,
+
+      docId: ppctDocId,
+
+      mon,
+
+      khoi,
+
+      namHoc,
+
+      totalRows,
+    };
+  } catch (error) {
+    console.error(
+      "❌ Lỗi ghi PPCT vào Firestore:",
+      error
+    );
+
+    throw error;
+  }
 };

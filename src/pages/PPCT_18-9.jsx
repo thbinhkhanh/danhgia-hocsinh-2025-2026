@@ -42,8 +42,7 @@ import { uploadPPCT } from "../utils/uploadExcel";
 export default function PPCT() {
   const navigate = useNavigate();
 
-  const { config, setConfig } =
-    React.useContext(ConfigContext);
+  const { config, setConfig } = React.useContext(ConfigContext);
 
   // =========================================================
   // STATE
@@ -51,29 +50,19 @@ export default function PPCT() {
 
   const [ppct, setPpct] = useState([]);
 
-  // MÔN
-  // Tin học dùng dữ liệu Firestore hiện tại.
-  // Công nghệ dùng document riêng.
-  const [selectedMon, setSelectedMon] =
-    useState("Tin học");
+  const [selectedKhoi, setSelectedKhoi] = useState("khoi4");
 
-  const [selectedKhoi, setSelectedKhoi] =
-    useState("khoi4");
+  const [showChuDe, setShowChuDe] = useState(false);
 
-  const [showChuDe, setShowChuDe] =
-    useState(false);
+  const [ppctReloadKey, setPpctReloadKey] = useState(0);
 
-  const [ppctReloadKey, setPpctReloadKey] =
-    useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  const [uploadProgress, setUploadProgress] =
-    useState(0);
+  const [uploading, setUploading] = useState(false);
 
-  const [uploading, setUploading] =
-    useState(false);
-
-  const [selectedNamHoc, setSelectedNamHoc] =
-    useState(config?.namHoc || "");
+  const [selectedNamHoc, setSelectedNamHoc] = useState(
+    config?.namHoc || ""
+  );
 
   const fileInputRef = React.useRef(null);
 
@@ -86,71 +75,32 @@ export default function PPCT() {
   ).replace(/-/g, "_");
 
   // =========================================================
-  // XÁC ĐỊNH DOCUMENT PPCT
-  // =========================================================
-  //
-  // TIN HỌC:
-  // Giữ nguyên dữ liệu hiện tại:
-  //
-  // PPCT/khoi4_2025-2026
-  // PPCT/khoi4_2026-2027
-  // PPCT/khoi5_2025-2026
-  // PPCT/khoi5_2026-2027
-  //
-  // CÔNG NGHỆ:
-  //
-  // PPCT/CongNghe_khoi4_2025-2026
-  // PPCT/CongNghe_khoi4_2026-2027
-  // PPCT/CongNghe_khoi5_2025-2026
-  // PPCT/CongNghe_khoi5_2026-2027
-  //
-  // =========================================================
-
-  const getPPCTDocId = () => {
-    if (selectedMon === "Tin học") {
-      return `${selectedKhoi}_${config?.namHoc}`;
-    }
-
-    return `CongNghe_${selectedKhoi}_${config?.namHoc}`;
-  };
-
-  // =========================================================
   // LẤY CONFIG REALTIME
   // Nguồn sự thật duy nhất
   // =========================================================
 
   useEffect(() => {
-    const docRef = doc(
-      db,
-      "CONFIG",
-      "config"
-    );
+    const docRef = doc(db, "CONFIG", "config");
 
-    const unsubscribe = onSnapshot(
-      docRef,
-      (docSnap) => {
-        if (!docSnap.exists()) return;
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (!docSnap.exists()) return;
 
-        const data = docSnap.data();
+      const data = docSnap.data();
 
-        const namHoc =
-          data.namHoc || "2025-2026";
+      const namHoc = data.namHoc || "2025-2026";
 
-        const lop =
-          data.lop || "";
+      const lop = data.lop || "";
 
-        // Merge config
-        // Không overwrite các trường khác
-        setConfig((prev) => ({
-          ...prev,
-          namHoc,
-          lop,
-        }));
+      // Merge config - không overwrite các trường khác
+      setConfig((prev) => ({
+        ...prev,
+        namHoc,
+        lop,
+      }));
 
-        // Đồng bộ năm học cho UI
-        setSelectedNamHoc(namHoc);
-      }
-    );
+      // Đồng bộ năm học cho UI
+      setSelectedNamHoc(namHoc);
+    });
 
     return () => unsubscribe();
   }, [setConfig]);
@@ -160,33 +110,19 @@ export default function PPCT() {
   // =========================================================
 
   useEffect(() => {
-    if (
-      !selectedMon ||
-      !selectedKhoi ||
-      !config?.namHoc
-    ) {
-      return;
-    }
+    if (!selectedKhoi || !config?.namHoc) return;
 
     const fetchPPCT = async () => {
       try {
-        // =====================================================
-        // XÁC ĐỊNH DOCUMENT THEO MÔN
-        // =====================================================
-
-        const ppctDocId =
-          selectedMon === "Tin học"
-            ? `${selectedKhoi}_${config.namHoc}`
-            : `CongNghe_${selectedKhoi}_${config.namHoc}`;
+        const khoiNamHoc = `${selectedKhoi}_${config.namHoc}`;
 
         const docRef = doc(
           db,
           "PPCT",
-          ppctDocId
+          khoiNamHoc
         );
 
-        const snap =
-          await getDoc(docRef);
+        const snap = await getDoc(docRef);
 
         if (!snap.exists()) {
           setPpct([]);
@@ -201,59 +137,25 @@ export default function PPCT() {
 
         const list = Object.entries(data)
           .map(([key, value]) => {
-            const weekRaw = key.replace("tuan_", "");
-
-            const weekParts = weekRaw
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean);
-
-            let weekText = weekRaw;
-
-            if (weekParts.length === 1) {
-              // 17 → 17
-              weekText = weekParts[0];
-            } else if (weekParts.length === 2) {
-              const start = Number(weekParts[0]);
-              const end = Number(weekParts[1]);
-
-              // Nếu là đúng 2 tuần liên tiếp → +
-              // Ví dụ: 1,2 → 1 + 2
-              //        7,8 → 7 + 8
-              if (end - start === 1) {
-                weekText = `${weekParts[0]} + ${weekParts[1]}`;
-              } else {
-                // Khoảng từ 2 số nhưng không liên tiếp → -
-                weekText = `${weekParts[0]} - ${weekParts[1]}`;
-              }
-            } else {
-              // Có từ 3 tuần trở lên → -
-              // Ví dụ: 6,7,8 → 6 - 8
-              //        9,10,11,12 → 9 - 12
-              weekText = `${weekParts[0]} - ${
-                weekParts[weekParts.length - 1]
-              }`;
-            }
+            const weekText = key
+              .replace("tuan_", "")
+              .replace(/_/g, " + ");
 
             const firstWeek = parseInt(
-              weekParts[0],
+              weekText.split("+")[0].trim(),
               10
             );
 
             return {
               tuan: weekText,
 
-              chuDe:
-                value?.chuDe || "",
+              chuDe: value.chuDe || "",
 
-              tenBaiHoc:
-                value?.tenBaiHoc || "",
+              tenBaiHoc: value.tenBaiHoc || "",
 
-              lt:
-                value?.lt || "",
+              lt: value.lt || "",
 
-              th:
-                value?.th || "",
+              th: value.th || "",
 
               _sortWeek: firstWeek,
             };
@@ -261,8 +163,7 @@ export default function PPCT() {
 
           .sort(
             (a, b) =>
-              a._sortWeek -
-              b._sortWeek
+              a._sortWeek - b._sortWeek
           )
 
           .map(
@@ -339,7 +240,6 @@ export default function PPCT() {
 
     fetchPPCT();
   }, [
-    selectedMon,
     selectedKhoi,
     config?.namHoc,
     ppctReloadKey,
@@ -419,31 +319,19 @@ export default function PPCT() {
 
           namHoc: config?.namHoc,
 
-          // MÔN
-          mon: selectedMon,
-
-          // KHỐI
-          khoi: selectedKhoi,
-
           onProgress: (p) => {
-            const global =
-              Math.round(
-                ((i + p / 100) /
-                  files.length) *
-                  100
-              );
-
-            setUploadProgress(
-              global
+            const global = Math.round(
+              ((i + p / 100) /
+                files.length) *
+                100
             );
+
+            setUploadProgress(global);
           },
         });
       }
 
-      // =====================================================
-      // RELOAD PPCT
-      // =====================================================
-
+      // Reload PPCT
       setPpctReloadKey(
         (key) => key + 1
       );
@@ -591,15 +479,12 @@ export default function PPCT() {
           }}
         >
           <Tooltip
-            title={
-              `Tải PPCT môn ${selectedMon} từ Excel`
-            }
+            title="Tải phân phối chương trình từ Excel"
           >
             <IconButton
               onClick={
                 handleUploadClick
               }
-              disabled={uploading}
               sx={{
                 color: "#1976d2",
 
@@ -664,38 +549,6 @@ export default function PPCT() {
             flexWrap: "wrap",
           }}
         >
-          {/* MÔN */}
-
-          <FormControl
-            size="small"
-            sx={{
-              width: 130,
-            }}
-          >
-            <InputLabel id="label-mon">
-              Môn
-            </InputLabel>
-
-            <Select
-              labelId="label-mon"
-              value={selectedMon}
-              onChange={(e) =>
-                setSelectedMon(
-                  e.target.value
-                )
-              }
-              label="Môn"
-            >
-              <MenuItem value="Tin học">
-                Tin học
-              </MenuItem>
-
-              <MenuItem value="Công nghệ">
-                Công nghệ
-              </MenuItem>
-            </Select>
-          </FormControl>
-
           {/* KHỐI */}
 
           <FormControl
