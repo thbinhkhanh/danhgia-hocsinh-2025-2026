@@ -927,7 +927,7 @@ return (
           <Box
             sx={{
               width: "100%",
-              maxWidth: 1400,
+              maxWidth: 1200,
               mx: "auto",
               mb: 4,
             }}
@@ -944,17 +944,16 @@ return (
                         <Paper
                           key={student.maDinhDanh}
                           elevation={3}
-                          sx={{ 
-                            minWidth: 200, 
-                            maxWidth: 230,
-                            //width: 230,
-                            p: 2, 
-                            borderRadius: 2, 
-                            cursor: "pointer", 
-                            textAlign: "left", 
-                            bgcolor: "#ffffff", 
-                            transition: "0.2s", 
-                            "&:hover": { transform: "scale(1.03)", boxShadow: 4, bgcolor: "#f5f5f5" }, 
+                          sx={{
+                            minWidth: 120,
+                            width: { xs: "75vw", sm: "auto" },
+                            p: 2,
+                            borderRadius: 2,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            bgcolor: "#ffffff",
+                            transition: "0.2s",
+                            "&:hover": { transform: "scale(1.03)", boxShadow: 4, bgcolor: "#f5f5f5" },
                           }}
                             onClick={async () => {      
                               if (config?.khoaHeThong) {
@@ -1135,32 +1134,10 @@ return (
                             }}
   
                         >
-                          <Box
-                            sx={{
-                              width: "100%",
-                              maxWidth: "100%",
-                              overflowX: "auto",
-                              overflowY: "hidden",
-                              whiteSpace: "nowrap",
-                              "&::-webkit-scrollbar": {
-                                height: 5,
-                              },
-                              "&::-webkit-scrollbar-thumb": {
-                                background: "#cbd5e1",
-                                borderRadius: 5,
-                              },
-                            }}
-                          >
-                            <Typography
-                              variant="subtitle2"
-                              fontWeight="medium"
-                              sx={{
-                                display: "inline-block",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <Typography variant="subtitle2" fontWeight="medium">
                               {student.stt}. {student.hoVaTen}
-                            </Typography>
+                            </Typography>                          
                           </Box>
                         </Paper>
                       );
