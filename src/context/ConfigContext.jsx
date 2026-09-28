@@ -17,6 +17,7 @@ export const ConfigProvider = ({ children }) => {
     danhGiaTuan: false,
     examType: "danhGiaTuan", 
     loaiKiemTra: "kiemtra", 
+    giaoDien: "dang_nhap",
     timeLimit: 1, 
     choXemDiem: false, 
     choXemDapAn: false,      

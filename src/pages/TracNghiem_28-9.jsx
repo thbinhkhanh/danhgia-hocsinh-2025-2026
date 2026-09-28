@@ -49,7 +49,6 @@ import QuizSidebar from "../components/quiz/QuizSidebar";
 import QuizNavigation from "../components/quiz/QuizNavigation";
 import QuizLoading from "../components/quiz/QuizLoading";
 import QuizQuestion from "../Types/questions/options/QuizQuestion";
-import QuizQuestion_Kahoot from "../Types/questions/options/QuizQuestion_Kahoot";
 
 // ================= DIALOGS =================
 import ImageZoomDialog from "../dialog/ImageZoomDialog";
@@ -711,42 +710,22 @@ return (
 
           {/* QUESTION */}
           {!loading && currentQuestion && (
-            configData?.giaoDien === "kahoot" ? (
-              <QuizQuestion_Kahoot
-                currentQuestion={currentQuestion}
-                currentIndex={currentIndex}
-                answers={answers}
-                setAnswers={setAnswers}
-                submitted={submitted}
-                started={started}
-                choXemDapAn={choXemDapAn}
-                setZoomImage={setZoomImage}
-                handleSingleSelect={handleSingleSelect}
-                handleMultipleSelect={handleMultipleSelect}
-                handleDragEnd={handleDragEnd}
-                reorder={reorder}
-                normalizeValue={normalizeValue}
-                ratio={ratio}
-                kahootMode={true}
-              />
-            ) : (
-              <QuizQuestion
-                currentQuestion={currentQuestion}
-                currentIndex={currentIndex}
-                answers={answers}
-                setAnswers={setAnswers}
-                submitted={submitted}
-                started={started}
-                choXemDapAn={choXemDapAn}
-                setZoomImage={setZoomImage}
-                handleSingleSelect={handleSingleSelect}
-                handleMultipleSelect={handleMultipleSelect}
-                handleDragEnd={handleDragEnd}
-                reorder={reorder}
-                normalizeValue={normalizeValue}
-                ratio={ratio}
-              />
-            )
+            <QuizQuestion
+              currentQuestion={currentQuestion}
+              currentIndex={currentIndex}
+              answers={answers}
+              setAnswers={setAnswers}
+              submitted={submitted}
+              started={started}
+              choXemDapAn={choXemDapAn}
+              setZoomImage={setZoomImage}
+              handleSingleSelect={handleSingleSelect}
+              handleMultipleSelect={handleMultipleSelect}
+              handleDragEnd={handleDragEnd}
+              reorder={reorder}
+              normalizeValue={normalizeValue}
+              ratio={ratio}
+            />
           )}
 
           <Box sx={{ flexGrow: 1 }} />

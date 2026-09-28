@@ -25,7 +25,6 @@ import QuanTri from "./pages/QuanTri";
 //import QuanTri_KTDK from "./pages/QuanTri_KTDK";
 
 import GiaoVien from "./pages/GiaoVien";
-import GiaoVien_Kahoot from "./pages/GiaoVien_Kahoot";
 import TongHopDanhGia from "./pages/TongHopDanhGia";
 import NhapdiemKTDK from "./pages/NhapdiemKTDK";
 import XuatDanhGia from "./pages/XuatDanhGia";
@@ -475,17 +474,7 @@ function AppContent() {
           {/* PRIVATE FUNCTIONS */}
           <Route
             path="/giaovien"
-            element={
-              isLoggedIn ? (
-                config?.giaoDien === "kahoot" ? (
-                  <GiaoVien_Kahoot />
-                ) : (
-                  <GiaoVien />
-                )
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
+            element={isLoggedIn ? <GiaoVien /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/danhsach"

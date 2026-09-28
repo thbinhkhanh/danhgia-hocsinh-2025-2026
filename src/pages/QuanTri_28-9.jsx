@@ -525,21 +525,6 @@ export default function QuanTri() {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={config.giaoDien === "kahoot"}
-                    onChange={(e) =>
-                      updateFirestoreAndContext(
-                        "giaoDien",
-                        e.target.checked ? "kahoot" : "dang_nhap"
-                      )
-                    }
-                  />
-                }
-                label="Giao diện Kahoot"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
                     checked={config.khoaHeThong || false}
                     onChange={(e) =>
                       updateFirestoreAndContext(

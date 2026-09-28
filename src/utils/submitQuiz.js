@@ -418,6 +418,7 @@ export const handleSubmitQuiz = async ({
         : {
             TN_diem: percent,
             TN_status: resultText,
+            thoiGianLamBai: durationStr,
           };
 
       await setDoc(
