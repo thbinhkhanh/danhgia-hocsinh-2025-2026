@@ -974,835 +974,833 @@ const statusColors = {
 
       {/* ================= XẾP HẠNG KAHOOT ================= */}
       {showRanking && (
-  <Box
-    sx={{
-      width: "100%",
-      mt: 4,
-      mb: 2,
-      display: "grid",
-      gridTemplateColumns: {
-        xs: "1fr",
-        md: "4fr 1fr",
-      },
-      gap: {
-        xs: 2,
-        md: 1,
-      },
-      alignItems: "start",
-    }}
-  >
-    {/* ================= CỘT TRÁI ================= */}
-    <Box
-      sx={{
-        width: "100%",
-        maxWidth: 700,
-        mx: "auto",
-      }}
-    >
-      {/* ================= BẢNG XẾP HẠNG ================= */}
-      <Box
-        sx={{
-          width: "100%",
-          maxWidth: 700,
-          mx: "auto",
-          mb: 2,
-        }}
-      >
-        {/* TIÊU ĐỀ */}
         <Box
           sx={{
-            textAlign: "center",
-            mb: 2.5,
+            width: "100%",
+            mt: 4,
+            mb: 2,
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: "4fr 1fr",
+            },
+            gap: {
+              xs: 2,
+              md: 1,
+            },
+            alignItems: "start",
           }}
         >
-          <Typography
+          {/* ================= CỘT TRÁI ================= */}
+          <Box
             sx={{
-              fontSize: {
-                xs: "1.5rem",
-                sm: "1.9rem",
-              },
-              fontWeight: 900,
-              color: "#0f172a",
-              letterSpacing: 0.3,
+              width: "100%",
+              maxWidth: 700,
+              mx: "auto",
             }}
           >
-            🏆 BẢNG XẾP HẠNG
-          </Typography>
-
-          <Typography
-            sx={{
-              mt: 0.4,
-              fontSize: 13,
-              color: "#64748b",
-              fontWeight: 600,
-            }}
-          >
-            {/*Danh sách kết quả của toàn bộ học sinh*/}
-          </Typography>
-        </Box>
-
-        {rankedStudents.length === 0 ? (
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              textAlign: "center",
-              borderRadius: 3,
-              border: "1px solid #e2e8f0",
-              background:
-                "linear-gradient(135deg,#f8fafc,#ffffff)",
-              color: "#64748b",
-            }}
-          >
-            <Typography
+            {/* ================= BẢNG XẾP HẠNG ================= */}
+            <Box
               sx={{
-                fontWeight: 600,
-                fontSize: 15,
+                width: "100%",
+                maxWidth: 700,
+                mx: "auto",
+                mb: 2,
               }}
             >
-              Chưa có học sinh hoàn thành bài.
-            </Typography>
-          </Paper>
-        ) : (
-          <Stack spacing={1.4}>
-            {rankedStudents.map((student) => {
-              const isTop1 = student.rank === 1;
-              const isTop2 = student.rank === 2;
-              const isTop3 = student.rank === 3;
-              const isTop = student.rank <= 3;
-
-              return (
-                <Paper
-                  key={student.maDinhDanh}
-                  elevation={0}
-                  onClick={() => {
-                    saveRecentStudent(student);
-                    setStudentForTracNghiem(student);
-                  }}
+              {/* TIÊU ĐỀ */}
+              <Box
+                sx={{
+                  textAlign: "center",
+                  mb: 2.5,
+                }}
+              >
+                <Typography
                   sx={{
-                    position: "relative",
-                    display: "grid",
-
-                    // Hạng | Tên | Điểm + Thời gian
-                    gridTemplateColumns: {
-                      xs: "52px minmax(0,1fr) auto",
-                      sm: "72px minmax(0,1fr) 175px",
+                    fontSize: {
+                      xs: "1.5rem",
+                      sm: "1.9rem",
                     },
-
-                    alignItems: "center",
-
-                    minHeight: {
-                      xs: isTop1 ? 76 : 64,
-                      sm: isTop1 ? 86 : 70,
-                    },
-
-                    px: {
-                      xs: 1.2,
-                      sm: 2,
-                    },
-
-                    borderRadius: {
-                      xs: 2.5,
-                      sm: 3,
-                    },
-
-                    cursor: "pointer",
-                    overflow: "hidden",
-
-                    background:
-                      isTop1
-                        ? "linear-gradient(135deg,#fffdf0,#fff8d8)"
-                        : isTop2
-                        ? "linear-gradient(135deg,#ffffff,#f5f7fa)"
-                        : isTop3
-                        ? "linear-gradient(135deg,#fffaf5,#fff1e6)"
-                        : "#ffffff",
-
-                    border:
-                      isTop1
-                        ? "2px solid #f5c542"
-                        : isTop2
-                        ? "1px solid #cbd5e1"
-                        : isTop3
-                        ? "1px solid #e5b58c"
-                        : "1px solid #e2e8f0",
-
-                    boxShadow:
-                      isTop1
-                        ? "0 8px 25px rgba(234,179,8,.18)"
-                        : isTop
-                        ? "0 5px 18px rgba(15,23,42,.07)"
-                        : "0 3px 12px rgba(15,23,42,.04)",
-
-                    transition:
-                      "transform .2s ease, box-shadow .2s ease",
-
-                    "&:hover": {
-                      transform: "translateY(-2px)",
-                      boxShadow:
-                        "0 10px 25px rgba(37,99,235,.14)",
-                    },
-
-                    "&::before": {
-                      content: '""',
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: isTop1 ? 6 : 4,
-                      background:
-                        isTop1
-                          ? "linear-gradient(180deg,#facc15,#f59e0b)"
-                          : isTop2
-                          ? "#94a3b8"
-                          : isTop3
-                          ? "#d97706"
-                          : "#dbeafe",
-                    },
+                    fontWeight: 900,
+                    color: "#0f172a",
+                    letterSpacing: 0.3,
                   }}
                 >
-                  {/* ================= HẠNG ================= */}
-                  <Box
+                  🏆 BẢNG XẾP HẠNG
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 0.4,
+                    fontSize: 13,
+                    color: "#64748b",
+                    fontWeight: 600,
+                  }}
+                >
+                  {/*Danh sách kết quả của toàn bộ học sinh*/}
+                </Typography>
+              </Box>
+
+              {rankedStudents.length === 0 ? (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    textAlign: "center",
+                    borderRadius: 3,
+                    border: "1px solid #e2e8f0",
+                    background:
+                      "linear-gradient(135deg,#f8fafc,#ffffff)",
+                    color: "#64748b",
+                  }}
+                >
+                  <Typography
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      position: "relative",
-                      zIndex: 1,
+                      fontWeight: 600,
+                      fontSize: 15,
                     }}
                   >
-                    {isTop ? (
-                      <Box
+                    Chưa có học sinh hoàn thành bài.
+                  </Typography>
+                </Paper>
+              ) : (
+                <Stack spacing={1.4}>
+                  {rankedStudents.map((student) => {
+                    const isTop1 = student.rank === 1;
+                    const isTop2 = student.rank === 2;
+                    const isTop3 = student.rank === 3;
+                    const isTop = student.rank <= 3;
+
+                    return (
+                      <Paper
+                        key={student.maDinhDanh}
+                        elevation={0}
+                        onClick={() => {
+                          saveRecentStudent(student);
+                          setStudentForTracNghiem(student);
+                        }}
                         sx={{
-                          width: {
-                            xs: 40,
-                            sm: isTop1 ? 52 : 46,
+                          position: "relative",
+                          display: "grid",
+
+                          // Hạng | Tên | Điểm + Thời gian
+                          gridTemplateColumns: {
+                            xs: "52px minmax(0,1fr) auto",
+                            sm: "72px minmax(0,1fr) 175px",
                           },
-                          height: {
-                            xs: 40,
-                            sm: isTop1 ? 52 : 46,
-                          },
-                          borderRadius: "50%",
-                          display: "flex",
+
                           alignItems: "center",
-                          justifyContent: "center",
+
+                          minHeight: {
+                            xs: isTop1 ? 76 : 64,
+                            sm: isTop1 ? 86 : 70,
+                          },
+
+                          px: {
+                            xs: 1.2,
+                            sm: 2,
+                          },
+
+                          borderRadius: {
+                            xs: 2.5,
+                            sm: 3,
+                          },
+
+                          cursor: "pointer",
+                          overflow: "hidden",
 
                           background:
                             isTop1
-                              ? "linear-gradient(135deg,#facc15,#f59e0b)"
+                              ? "linear-gradient(135deg,#fffdf0,#fff8d8)"
                               : isTop2
-                              ? "linear-gradient(135deg,#e2e8f0,#94a3b8)"
-                              : "linear-gradient(135deg,#fdba74,#d97706)",
+                              ? "linear-gradient(135deg,#ffffff,#f5f7fa)"
+                              : isTop3
+                              ? "linear-gradient(135deg,#fffaf5,#fff1e6)"
+                              : "#ffffff",
+
+                          border:
+                            isTop1
+                              ? "2px solid #f5c542"
+                              : isTop2
+                              ? "1px solid #cbd5e1"
+                              : isTop3
+                              ? "1px solid #e5b58c"
+                              : "1px solid #e2e8f0",
 
                           boxShadow:
                             isTop1
-                              ? "0 5px 15px rgba(245,158,11,.3)"
-                              : "0 3px 10px rgba(100,116,139,.2)",
+                              ? "0 8px 25px rgba(234,179,8,.18)"
+                              : isTop
+                              ? "0 5px 18px rgba(15,23,42,.07)"
+                              : "0 3px 12px rgba(15,23,42,.04)",
 
-                          fontSize: {
-                            xs: "1.3rem",
-                            sm: isTop1 ? "1.6rem" : "1.4rem",
+                          transition:
+                            "transform .2s ease, box-shadow .2s ease",
+
+                          "&:hover": {
+                            transform: "translateY(-2px)",
+                            boxShadow:
+                              "0 10px 25px rgba(37,99,235,.14)",
+                          },
+
+                          "&::before": {
+                            content: '""',
+                            position: "absolute",
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: isTop1 ? 6 : 4,
+                            background:
+                              isTop1
+                                ? "linear-gradient(180deg,#facc15,#f59e0b)"
+                                : isTop2
+                                ? "#94a3b8"
+                                : isTop3
+                                ? "#d97706"
+                                : "#dbeafe",
                           },
                         }}
                       >
-                        {isTop1
-                          ? "🥇"
-                          : isTop2
-                          ? "🥈"
-                          : "🥉"}
-                      </Box>
-                    ) : (
-                      <Typography
-                        sx={{
-                          fontSize: {
-                            xs: "1rem",
-                            sm: "1.15rem",
-                          },
-                          fontWeight: 900,
-                          color: "#64748b",
-                        }}
-                      >
-                        #{student.rank}
-                      </Typography>
-                    )}
-                  </Box>
+                        {/* ================= HẠNG ================= */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            position: "relative",
+                            zIndex: 1,
+                          }}
+                        >
+                          {isTop ? (
+                            <Box
+                              sx={{
+                                width: {
+                                  xs: 40,
+                                  sm: isTop1 ? 52 : 46,
+                                },
+                                height: {
+                                  xs: 40,
+                                  sm: isTop1 ? 52 : 46,
+                                },
+                                borderRadius: "50%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
 
-                  {/* ================= TÊN ================= */}
+                                background:
+                                  isTop1
+                                    ? "linear-gradient(135deg,#facc15,#f59e0b)"
+                                    : isTop2
+                                    ? "linear-gradient(135deg,#e2e8f0,#94a3b8)"
+                                    : "linear-gradient(135deg,#fdba74,#d97706)",
+
+                                boxShadow:
+                                  isTop1
+                                    ? "0 5px 15px rgba(245,158,11,.3)"
+                                    : "0 3px 10px rgba(100,116,139,.2)",
+
+                                fontSize: {
+                                  xs: "1.3rem",
+                                  sm: isTop1 ? "1.6rem" : "1.4rem",
+                                },
+                              }}
+                            >
+                              {isTop1
+                                ? "🥇"
+                                : isTop2
+                                ? "🥈"
+                                : "🥉"}
+                            </Box>
+                          ) : (
+                            <Typography
+                              sx={{
+                                fontSize: {
+                                  xs: "1rem",
+                                  sm: "1.15rem",
+                                },
+                                fontWeight: 900,
+                                color: "#64748b",
+                              }}
+                            >
+                              #{student.rank}
+                            </Typography>
+                          )}
+                        </Box>
+
+                        {/* ================= TÊN ================= */}
+                        <Box
+                          sx={{
+                            minWidth: 0,
+                            pl: {
+                              xs: 0.5,
+                              sm: 1,
+                            },
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontSize: {
+                                xs: isTop1 ? "1rem" : "0.95rem",
+                                sm: isTop1 ? "1.2rem" : "1.05rem",
+                              },
+                              fontWeight: isTop1 ? 900 : 750,
+                              color: "#0f172a",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {student.hoVaTen}
+                          </Typography>
+
+                          <Typography
+                            sx={{
+                              mt: 0.3,
+                              fontSize: {
+                                xs: 11,
+                                sm: 12,
+                              },
+                              color: "#64748b",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Hạng {student.rank}
+                          </Typography>
+                        </Box>
+
+                        {/* ================= ĐIỂM + THỜI GIAN ================= */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-end",
+                            gap: {
+                              xs: 0.8,
+                              sm: 1.2,
+                            },
+                            pr: {
+                              xs: 0.3,
+                              sm: 0.5,
+                            },
+                          }}
+                        >
+                          {/* ĐIỂM */}
+                          <Box
+                            sx={{
+                              minWidth: {
+                                xs: 48,
+                                sm: 65,
+                              },
+                              textAlign: "center",
+                              px: {
+                                xs: 0.6,
+                                sm: 1,
+                              },
+                              py: {
+                                xs: 0.5,
+                                sm: 0.7,
+                              },
+                              borderRadius: 2,
+                              background:
+                                isTop1
+                                  ? "#fff3b0"
+                                  : "#eff6ff",
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontSize: {
+                                  xs: "1.05rem",
+                                  sm: "1.25rem",
+                                },
+                                lineHeight: 1,
+                                fontWeight: 900,
+                                color: "#1976d2",
+                              }}
+                            >
+                              {student.score}
+                            </Typography>
+
+                            <Typography
+                              sx={{
+                                mt: 0.3,
+                                fontSize: 9,
+                                fontWeight: 700,
+                                color: "#64748b",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              điểm
+                            </Typography>
+                          </Box>
+
+                          {/* THỜI GIAN */}
+                          <Box
+                            sx={{
+                              minWidth: {
+                                xs: 50,
+                                sm: 70,
+                              },
+                              textAlign: "center",
+                              px: {
+                                xs: 0.5,
+                                sm: 0.8,
+                              },
+                              py: {
+                                xs: 0.5,
+                                sm: 0.7,
+                              },
+                              borderRadius: 2,
+                              background: "#f8fafc",
+                              border: "1px solid #e2e8f0",
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontSize: {
+                                  xs: "0.85rem",
+                                  sm: "1rem",
+                                },
+                                lineHeight: 1,
+                                fontWeight: 800,
+                                color: "#475569",
+                              }}
+                            >
+                              {student.thoiGianLamBai != null
+                                ? `${student.thoiGianLamBai}s`
+                                : "-"}
+                            </Typography>
+
+                            <Typography
+                              sx={{
+                                mt: 0.3,
+                                fontSize: 9,
+                                fontWeight: 700,
+                                color: "#94a3b8",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              thời gian
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Box>
+
+            {/* ================= NÚT TOÀN BỘ LỚP ================= */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-start",
+                mt: 3,
+                mb: 2,
+              }}
+            >
+              <Box
+                onClick={() => setShowRanking(false)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  px: 3,
+                  py: 1.6,
+                  borderRadius: "18px",
+                  cursor: "pointer",
+                  background:
+                    "linear-gradient(135deg,#eff6ff,#f8fbff)",
+                  border: "1px solid #dbeafe",
+                  boxShadow:
+                    "0 8px 22px rgba(37,99,235,.12)",
+                }}
+              >
+                <HistoryIcon sx={{ color: "#2563eb" }} />
+
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    color: "#2563eb",
+                  }}
+                >
+                  Chế độ xem: Toàn bộ lớp
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* ================= CỘT PHẢI ================= */}
+          {/* CỘT PHẢI */}
+            <Box
+              sx={{
+                width: "100%",
+                maxWidth: 700,
+                mx: "auto",
+                pr: {
+                  xs: 0,
+                  md: 3,
+                },
+              }}
+            >
+            {/* ================= THỐNG KÊ KẾT QUẢ ================= */}
+            {(() => {
+              const studentsWithScore = students
+                .map((student) => ({
+                  ...student,
+                  score:
+                    studentScores[student.maDinhDanh]?.TN_diem ??
+                    null,
+                }))
+                .filter(
+                  (student) =>
+                    student.score !== null &&
+                    student.score !== undefined &&
+                    !Number.isNaN(Number(student.score))
+                );
+
+              const total = studentsWithScore.length;
+
+              const totCount = studentsWithScore.filter(
+                (s) =>
+                  Number(s.score) >= 80 &&
+                  Number(s.score) <= 100
+              ).length;
+
+              const datCount = studentsWithScore.filter(
+                (s) =>
+                  Number(s.score) >= 50 &&
+                  Number(s.score) < 80
+              ).length;
+
+              const chuaDatCount = studentsWithScore.filter(
+                (s) => Number(s.score) < 50
+              ).length;
+
+              const getPercent = (count) =>
+                total > 0
+                  ? Math.round((count / total) * 100)
+                  : 0;
+
+              const statistics = [
+                {
+                  label: "Tốt",
+                  range: "8 – 10",
+                  count: totCount,
+                  percent: getPercent(totCount),
+                  background:
+                    "linear-gradient(90deg,#16a34a,#4ade80)",
+                  light: "#f0fdf4",
+                  text: "#15803d",
+                },
+                {
+                  label: "Đạt",
+                  range: "5 – <8",
+                  count: datCount,
+                  percent: getPercent(datCount),
+                  background:
+                    "linear-gradient(90deg,#2563eb,#60a5fa)",
+                  light: "#eff6ff",
+                  text: "#1d4ed8",
+                },
+                {
+                  label: "Chưa đạt",
+                  range: "<5",
+                  count: chuaDatCount,
+                  percent: getPercent(chuaDatCount),
+                  background:
+                    "linear-gradient(90deg,#dc2626,#f87171)",
+                  light: "#fef2f2",
+                  text: "#b91c1c",
+                },
+              ];
+
+              if (total === 0) return null;
+
+              return (
+                <Box
+                  sx={{
+                    width: "100%",
+                    maxWidth: 1000,
+                    mx: "auto",
+                    mt: 0,
+                    mb: 2,
+                  }}
+                >
+                  {/* TIÊU ĐỀ */}
                   <Box
                     sx={{
-                      minWidth: 0,
-                      pl: {
-                        xs: 0.5,
-                        sm: 1,
-                      },
+                      textAlign: "center",
+                      mb: 3,
+                      mt:8,
                     }}
                   >
                     <Typography
                       sx={{
                         fontSize: {
-                          xs: isTop1 ? "1rem" : "0.95rem",
-                          sm: isTop1 ? "1.2rem" : "1.05rem",
+                          xs: "1.35rem",
+                          sm: "1.4rem",
                         },
-                        fontWeight: isTop1 ? 900 : 750,
+                        fontWeight: 900,
                         color: "#0f172a",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
                       }}
                     >
-                      {student.hoVaTen}
+                      📊 THỐNG KÊ KẾT QUẢ
                     </Typography>
 
                     <Typography
                       sx={{
-                        mt: 0.3,
-                        fontSize: {
-                          xs: 11,
-                          sm: 12,
-                        },
+                        mt: 0.5,
+                        fontSize: 13,
                         color: "#64748b",
                         fontWeight: 600,
                       }}
                     >
-                      Hạng {student.rank}
+                      {/*Tổng số học sinh có điểm: {total}*/}
                     </Typography>
                   </Box>
 
-                  {/* ================= ĐIỂM + THỜI GIAN ================= */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "flex-end",
-                      gap: {
-                        xs: 0.8,
-                        sm: 1.2,
-                      },
-                      pr: {
-                        xs: 0.3,
-                        sm: 0.5,
-                      },
-                    }}
+                  {/* CÁC Ô THỐNG KÊ */}
+                  <Grid
+                    container
+                    spacing={2}
+                    justifyContent="center"
+                    sx={{ mb: 3 }}
                   >
-                    {/* ĐIỂM */}
-                    <Box
-                      sx={{
-                        minWidth: {
-                          xs: 48,
-                          sm: 65,
-                        },
-                        textAlign: "center",
-                        px: {
-                          xs: 0.6,
-                          sm: 1,
-                        },
-                        py: {
-                          xs: 0.5,
-                          sm: 0.7,
-                        },
-                        borderRadius: 2,
-                        background:
-                          isTop1
-                            ? "#fff3b0"
-                            : "#eff6ff",
-                      }}
-                    >
-                      <Typography
+                    {statistics.map((item) => (
+                      <Grid
+                        item
+                        xs={12}
+                        sm={4}
+                        key={item.label}
                         sx={{
-                          fontSize: {
-                            xs: "1.05rem",
-                            sm: "1.25rem",
-                          },
-                          lineHeight: 1,
-                          fontWeight: 900,
-                          color: "#1976d2",
+                          width: 100,
+                          flex: "0 0 100px",
                         }}
                       >
-                        {student.score}
-                      </Typography>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 2,
+                            borderRadius: 2,
+                            background: item.light,
+                            border: "1px solid #e2e8f0",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              mb: 1,
+                            }}
+                          >
+                            <Box>
+                              <Typography
+                                sx={{
+                                  fontSize: 17,
+                                  fontWeight: 900,
+                                  color: item.text,
+                                }}
+                              >
+                                {item.label}
+                              </Typography>
 
-                      <Typography
-                        sx={{
-                          mt: 0.3,
-                          fontSize: 9,
-                          fontWeight: 700,
-                          color: "#64748b",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        điểm
-                      </Typography>
-                    </Box>
+                              <Typography
+                                sx={{
+                                  fontSize: 12,
+                                  color: "#64748b",
+                                  fontWeight: 600,
+                                }}
+                              />
+                            </Box>
 
-                    {/* THỜI GIAN */}
-                    <Box
-                      sx={{
-                        minWidth: {
-                          xs: 50,
-                          sm: 70,
-                        },
-                        textAlign: "center",
-                        px: {
-                          xs: 0.5,
-                          sm: 0.8,
-                        },
-                        py: {
-                          xs: 0.5,
-                          sm: 0.7,
-                        },
-                        borderRadius: 2,
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize: {
-                            xs: "0.85rem",
-                            sm: "1rem",
-                          },
-                          lineHeight: 1,
-                          fontWeight: 800,
-                          color: "#475569",
-                        }}
-                      >
-                        {student.thoiGianLamBai != null
-                          ? `${student.thoiGianLamBai}s`
-                          : "-"}
-                      </Typography>
+                            <Box sx={{ textAlign: "right" }}>
+                              <Typography
+                                sx={{
+                                  fontSize: 24,
+                                  lineHeight: 1,
+                                  fontWeight: 900,
+                                  color: item.text,
+                                }}
+                              >
+                                {item.count}
+                              </Typography>
 
-                      <Typography
-                        sx={{
-                          mt: 0.3,
-                          fontSize: 9,
-                          fontWeight: 700,
-                          color: "#94a3b8",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        thời gian
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Paper>
-              );
-            })}
-          </Stack>
-        )}
-      </Box>
+                              <Typography
+                                sx={{
+                                  fontSize: 11,
+                                  color: "#64748b",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                học sinh
+                              </Typography>
+                            </Box>
+                          </Box>
 
-      {/* ================= NÚT TOÀN BỘ LỚP ================= */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "flex-start",
-          mt: 3,
-          mb: 2,
-        }}
-      >
-        <Box
-          onClick={() => setShowRanking(false)}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            px: 3,
-            py: 1.6,
-            borderRadius: "18px",
-            cursor: "pointer",
-            background:
-              "linear-gradient(135deg,#eff6ff,#f8fbff)",
-            border: "1px solid #dbeafe",
-            boxShadow:
-              "0 8px 22px rgba(37,99,235,.12)",
-          }}
-        >
-          <HistoryIcon sx={{ color: "#2563eb" }} />
+                          {/* PHẦN TRĂM */}
+                          <Typography
+                            sx={{
+                              fontSize: 13,
+                              fontWeight: 800,
+                              color: item.text,
+                              mb: 0.7,
+                            }}
+                          >
+                            {item.percent}%
+                          </Typography>
 
-          <Typography
-            sx={{
-              fontWeight: 700,
-              color: "#2563eb",
-            }}
-          >
-            Chế độ xem: Toàn bộ lớp
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
+                          {/* THANH PHẦN TRĂM */}
+                          <Box
+                            sx={{
+                              width: "100%",
+                              height: 10,
+                              borderRadius: 10,
+                              background: "#e2e8f0",
+                              overflow: "hidden",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: `${item.percent}%`,
+                                height: "100%",
+                                borderRadius: 10,
+                                background: item.background,
+                                transition: "width .5s ease",
+                              }}
+                            />
+                          </Box>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
 
-    {/* ================= CỘT PHẢI ================= */}
-    {/* CỘT PHẢI */}
-      <Box
-        sx={{
-          width: "100%",
-          maxWidth: 700,
-          mx: "auto",
-          pr: {
-            xs: 0,
-            md: 3,
-          },
-        }}
-      >
-      {/* ================= THỐNG KÊ KẾT QUẢ ================= */}
-      {(() => {
-        const studentsWithScore = students
-          .map((student) => ({
-            ...student,
-            score:
-              studentScores[student.maDinhDanh]?.TN_diem ??
-              null,
-          }))
-          .filter(
-            (student) =>
-              student.score !== null &&
-              student.score !== undefined &&
-              !Number.isNaN(Number(student.score))
-          );
-
-        const total = studentsWithScore.length;
-
-        const totCount = studentsWithScore.filter(
-          (s) =>
-            Number(s.score) >= 80 &&
-            Number(s.score) <= 100
-        ).length;
-
-        const datCount = studentsWithScore.filter(
-          (s) =>
-            Number(s.score) >= 50 &&
-            Number(s.score) < 80
-        ).length;
-
-        const chuaDatCount = studentsWithScore.filter(
-          (s) => Number(s.score) < 50
-        ).length;
-
-        const getPercent = (count) =>
-          total > 0
-            ? Math.round((count / total) * 100)
-            : 0;
-
-        const statistics = [
-          {
-            label: "Tốt",
-            range: "8 – 10",
-            count: totCount,
-            percent: getPercent(totCount),
-            background:
-              "linear-gradient(90deg,#16a34a,#4ade80)",
-            light: "#f0fdf4",
-            text: "#15803d",
-          },
-          {
-            label: "Đạt",
-            range: "5 – <8",
-            count: datCount,
-            percent: getPercent(datCount),
-            background:
-              "linear-gradient(90deg,#2563eb,#60a5fa)",
-            light: "#eff6ff",
-            text: "#1d4ed8",
-          },
-          {
-            label: "Chưa đạt",
-            range: "<5",
-            count: chuaDatCount,
-            percent: getPercent(chuaDatCount),
-            background:
-              "linear-gradient(90deg,#dc2626,#f87171)",
-            light: "#fef2f2",
-            text: "#b91c1c",
-          },
-        ];
-
-        if (total === 0) return null;
-
-        return (
-          <Box
-            sx={{
-              width: "100%",
-              maxWidth: 1000,
-              mx: "auto",
-              mt: 0,
-              mb: 2,
-            }}
-          >
-            {/* TIÊU ĐỀ */}
-            <Box
-              sx={{
-                textAlign: "center",
-                mb: 3,
-                mt:8,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: {
-                    xs: "1.35rem",
-                    sm: "1.4rem",
-                  },
-                  fontWeight: 900,
-                  color: "#0f172a",
-                }}
-              >
-                📊 THỐNG KÊ KẾT QUẢ
-              </Typography>
-
-              <Typography
-                sx={{
-                  mt: 0.5,
-                  fontSize: 13,
-                  color: "#64748b",
-                  fontWeight: 600,
-                }}
-              >
-                {/*Tổng số học sinh có điểm: {total}*/}
-              </Typography>
-            </Box>
-
-            {/* CÁC Ô THỐNG KÊ */}
-            <Grid
-              container
-              spacing={2}
-              justifyContent="center"
-              sx={{ mb: 3 }}
-            >
-              {statistics.map((item) => (
-                <Grid
-                  item
-                  xs={12}
-                  sm={4}
-                  key={item.label}
-                  sx={{
-                    width: 100,
-                    flex: "0 0 100px",
-                  }}
-                >
+                  {/* BIỂU ĐỒ */}
                   <Paper
                     elevation={0}
                     sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      background: item.light,
+                      p: {
+                        xs: 2,
+                        sm: 3,
+                      },
+                      width: "100%",
+                      maxWidth: 290,
+                      mx: "auto",
+                      borderRadius: 3,
                       border: "1px solid #e2e8f0",
+                      background:
+                        "linear-gradient(135deg,#f8fafc,#ffffff)",
                     }}
                   >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 1,
-                      }}
-                    >
-                      <Box>
-                        <Typography
-                          sx={{
-                            fontSize: 17,
-                            fontWeight: 900,
-                            color: item.text,
-                          }}
-                        >
-                          {item.label}
-                        </Typography>
-
-                        <Typography
-                          sx={{
-                            fontSize: 12,
-                            color: "#64748b",
-                            fontWeight: 600,
-                          }}
-                        />
-                      </Box>
-
-                      <Box sx={{ textAlign: "right" }}>
-                        <Typography
-                          sx={{
-                            fontSize: 24,
-                            lineHeight: 1,
-                            fontWeight: 900,
-                            color: item.text,
-                          }}
-                        >
-                          {item.count}
-                        </Typography>
-
-                        <Typography
-                          sx={{
-                            fontSize: 11,
-                            color: "#64748b",
-                            fontWeight: 700,
-                          }}
-                        >
-                          học sinh
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    {/* PHẦN TRĂM */}
                     <Typography
                       sx={{
-                        fontSize: 13,
+                        textAlign: "center",
+                        fontSize: 15,
                         fontWeight: 800,
-                        color: item.text,
-                        mb: 0.7,
+                        color: "#334155",
+                        mb: 1.5,
                       }}
                     >
-                      {item.percent}%
+                      BIỂU ĐỒ
                     </Typography>
 
-                    {/* THANH PHẦN TRĂM */}
                     <Box
                       sx={{
-                        width: "100%",
-                        height: 10,
-                        borderRadius: 10,
-                        background: "#e2e8f0",
-                        overflow: "hidden",
+                        height: 180,
+                        display: "flex",
+                        alignItems: "flex-end",
+                        justifyContent: "center",
+                        gap: {
+                          xs: 2,
+                          sm: 3,
+                        },
+                        borderBottom: "2px solid #cbd5e1",
+                        px: 2,
                       }}
                     >
-                      <Box
-                        sx={{
-                          width: `${item.percent}%`,
-                          height: "100%",
-                          borderRadius: 10,
-                          background: item.background,
-                          transition: "width .5s ease",
-                        }}
-                      />
+                      {statistics.map((item) => (
+                        <Box
+                          key={item.label}
+                          sx={{
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "flex-end",
+                            alignItems: "center",
+                            minWidth: {
+                              xs: 65,
+                              sm: 100,
+                            },
+                          }}
+                        >
+                          {/* SỐ LƯỢNG */}
+                          <Typography
+                            sx={{
+                              fontSize: 16,
+                              fontWeight: 900,
+                              color: item.text,
+                              mb: 0.8,
+                            }}
+                          >
+                            {item.count}
+                          </Typography>
+
+                          {/* CỘT */}
+                          <Box
+                            sx={{
+                              width: {
+                                xs: 30,
+                                sm: 40,
+                              },
+
+                              height: `${Math.max(
+                                item.percent * 1.7,
+                                item.count > 0 ? 12 : 0
+                              )}px`,
+
+                              maxHeight: 170,
+
+                              minHeight:
+                                item.count > 0 ? 12 : 0,
+
+                              borderRadius:
+                                "10px 10px 0 0",
+
+                              background:
+                                item.background,
+
+                              transition:
+                                "height .5s ease",
+
+                              boxShadow:
+                                "0 5px 15px rgba(15,23,42,.12)",
+                            }}
+                          />
+
+                          {/* NHÃN */}
+                          <Typography
+                            sx={{
+                              mt: 1,
+                              mb: 1,
+                              fontSize: 13,
+                              fontWeight: 800,
+                              color: item.text,
+                            }}
+                          >
+                            {item.label}
+                          </Typography>
+                        </Box>
+                      ))}
                     </Box>
                   </Paper>
-                </Grid>
-              ))}
-            </Grid>
-
-            {/* BIỂU ĐỒ */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: {
-                  xs: 2,
-                  sm: 3,
-                },
-                width: "100%",
-                maxWidth: 290,
-                mx: "auto",
-                borderRadius: 3,
-                border: "1px solid #e2e8f0",
-                background:
-                  "linear-gradient(135deg,#f8fafc,#ffffff)",
-              }}
-            >
-              <Typography
-                sx={{
-                  textAlign: "center",
-                  fontSize: 15,
-                  fontWeight: 800,
-                  color: "#334155",
-                  mb: 1.5,
-                }}
-              >
-                BIỂU ĐỒ
-              </Typography>
-
-              <Box
-                sx={{
-                  height: 180,
-                  display: "flex",
-                  alignItems: "flex-end",
-                  justifyContent: "center",
-                  gap: {
-                    xs: 2,
-                    sm: 3,
-                  },
-                  borderBottom: "2px solid #cbd5e1",
-                  px: 2,
-                }}
-              >
-                {statistics.map((item) => (
-                  <Box
-                    key={item.label}
-                    sx={{
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "flex-end",
-                      alignItems: "center",
-                      minWidth: {
-                        xs: 65,
-                        sm: 100,
-                      },
-                    }}
-                  >
-                    {/* SỐ LƯỢNG */}
-                    <Typography
-                      sx={{
-                        fontSize: 16,
-                        fontWeight: 900,
-                        color: item.text,
-                        mb: 0.8,
-                      }}
-                    >
-                      {item.count}
-                    </Typography>
-
-                    {/* CỘT */}
-                    <Box
-                      sx={{
-                        width: {
-                          xs: 30,
-                          sm: 40,
-                        },
-
-                        height: `${Math.max(
-                          item.percent * 1.7,
-                          item.count > 0 ? 12 : 0
-                        )}px`,
-
-                        maxHeight: 170,
-
-                        minHeight:
-                          item.count > 0 ? 12 : 0,
-
-                        borderRadius:
-                          "10px 10px 0 0",
-
-                        background:
-                          item.background,
-
-                        transition:
-                          "height .5s ease",
-
-                        boxShadow:
-                          "0 5px 15px rgba(15,23,42,.12)",
-                      }}
-                    />
-
-                    {/* NHÃN */}
-                    <Typography
-                      sx={{
-                        mt: 1,
-                        mb: 1,
-                        fontSize: 13,
-                        fontWeight: 800,
-                        color: item.text,
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Paper>
+                </Box>
+              );
+            })()}
           </Box>
-        );
-      })()}
-    </Box>
-  </Box>
-)}
-
-
+        </Box>
+      )}
 
     </Paper>
 

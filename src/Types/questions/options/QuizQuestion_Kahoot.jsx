@@ -30,7 +30,7 @@ export default function QuizQuestion({
       sx={{
         mb: 2,
         ...(kahootMode && {
-          textAlign: "center",
+          textAlign: "left",
           fontWeight: 700,
           fontSize: { xs: "1.1rem", sm: "1.35rem" },
           bgcolor: "#fff",
@@ -52,21 +52,33 @@ export default function QuizQuestion({
     </Typography>
   );
 
-  const renderQuestionImage = () =>
-    currentQuestion.image ? (
-      <Box sx={{ width: "100%", textAlign: "center", mb: 2 }}>
+  const renderQuestionImage = () => {
+    const image =
+      currentQuestion.image || currentQuestion.questionImage;
+
+    return image ? (
+      <Box
+        sx={{
+          width: "100%",
+          textAlign: "center",
+          mb: 2,
+        }}
+      >
         <img
-          src={currentQuestion.image}
+          src={image}
           alt="question"
           style={{
             maxWidth: "100%",
             maxHeight: 150,
             objectFit: "contain",
             borderRadius: 8,
+            cursor: "zoom-in",
           }}
+          onClick={() => setZoomImage(image)}
         />
       </Box>
     ) : null;
+  };
 
   /* ===================== SORT ===================== */
   const renderSort = () => {
@@ -1692,13 +1704,14 @@ export default function QuizQuestion({
             <Box
               sx={{
                 width: "100%",
+                boxSizing: "border-box",
                 lineHeight: 1.8,
                 fontSize: {
                   xs: "1rem",
                   sm: "1.15rem",
                 },
                 fontFamily: "Roboto, Arial, sans-serif",
-                textAlign: "center",
+                textAlign: "left",
                 bgcolor: "#fff",
                 borderRadius: 2,
                 p: {
@@ -2105,10 +2118,13 @@ export default function QuizQuestion({
       key={currentQuestion.id || currentIndex}
       sx={{
         width: "100%",
+        boxSizing: "border-box",
         ...(kahootMode && {
           bgcolor: "#f5f5f5",
           borderRadius: 2,
           p: { xs: 1, sm: 2 },
+          boxSizing: "border-box",
+          width: "100%",
         }),
       }}
     >
