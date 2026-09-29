@@ -985,8 +985,8 @@ const statusColors = {
         md: "4fr 1fr",
       },
       gap: {
-        xs: 3,
-        md: 4,
+        xs: 2,
+        md: 1,
       },
       alignItems: "start",
     }}
@@ -1432,13 +1432,18 @@ const statusColors = {
     </Box>
 
     {/* ================= CỘT PHẢI ================= */}
-    <Box
-      sx={{
-        width: "100%",
-        maxWidth: 700,
-        mx: "auto",
-      }}
-    >
+    {/* CỘT PHẢI */}
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 700,
+          mx: "auto",
+          pr: {
+            xs: 0,
+            md: 3,
+          },
+        }}
+      >
       {/* ================= THỐNG KÊ KẾT QUẢ ================= */}
       {(() => {
         const studentsWithScore = students
@@ -1561,7 +1566,7 @@ const statusColors = {
               container
               spacing={2}
               justifyContent="center"
-              sx={{ mb: 6 }}
+              sx={{ mb: 3 }}
             >
               {statistics.map((item) => (
                 <Grid
@@ -1577,11 +1582,10 @@ const statusColors = {
                   <Paper
                     elevation={0}
                     sx={{
-                      p: 2.2,
-                      borderRadius: 3,
+                      p: 2,
+                      borderRadius: 2,
                       background: item.light,
                       border: "1px solid #e2e8f0",
-                      height: "100%",
                     }}
                   >
                     <Box
@@ -1696,7 +1700,7 @@ const statusColors = {
                   fontSize: 15,
                   fontWeight: 800,
                   color: "#334155",
-                  mb: 3,
+                  mb: 1.5,
                 }}
               >
                 BIỂU ĐỒ
@@ -1704,7 +1708,7 @@ const statusColors = {
 
               <Box
                 sx={{
-                  height: 220,
+                  height: 180,
                   display: "flex",
                   alignItems: "flex-end",
                   justifyContent: "center",
