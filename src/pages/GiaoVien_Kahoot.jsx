@@ -979,19 +979,34 @@ const statusColors = {
             width: "100%",
             mt: 4,
             mb: 2,
+
             display: "grid",
+
             gridTemplateColumns: {
               xs: "1fr",
-              md: "4fr 1fr",
+              md: "minmax(0, 1fr) 700px minmax(260px, 360px)",
             },
-            gap: {
+
+            columnGap: {
               xs: 2,
-              md: 1,
+              md: 3,
             },
+
             alignItems: "start",
           }}
         >
-          {/* ================= CỘT TRÁI ================= */}
+
+          {/* ================= VÙNG CÂN BẰNG TRÁI ================= */}
+          <Box
+            sx={{
+              display: {
+                xs: "none",
+                md: "block",
+              },
+            }}
+          />
+
+          {/* ================= BẢNG XẾP HẠNG ================= */}
           <Box
             sx={{
               width: "100%",
@@ -1431,19 +1446,15 @@ const statusColors = {
             </Box>
           </Box>
 
-          {/* ================= CỘT PHẢI ================= */}
-          {/* CỘT PHẢI */}
-            <Box
-              sx={{
-                width: "100%",
-                maxWidth: 700,
-                mx: "auto",
-                pr: {
-                  xs: 0,
-                  md: 3,
-                },
-              }}
-            >
+          {/* ================= CỘT PHẢI - THỐNG KÊ ================= */}
+          <Box
+            sx={{
+              width: "100%",
+              maxWidth: 360,
+              mx: "auto",
+              pr: 0,
+            }}
+          >
             {/* ================= THỐNG KÊ KẾT QUẢ ================= */}
             {(() => {
               const studentsWithScore = students
