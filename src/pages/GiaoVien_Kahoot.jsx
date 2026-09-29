@@ -432,6 +432,7 @@ const statusColors = {
         await updateDoc(studentRef, {
           [`${subjectKey}.dgtx.tuan_${tuan}.TN_diem`]: null,
           [`${subjectKey}.dgtx.tuan_${tuan}.TN_status`]: "",
+          [`${subjectKey}.dgtx.tuan_${tuan}.thoiGianLamBai`]: null,
         });
       }
 
@@ -1714,7 +1715,7 @@ const statusColors = {
                         fontSize: 15,
                         fontWeight: 800,
                         color: "#334155",
-                        mb: 1.5,
+                        mb: 0,
                       }}
                     >
                       BIỂU ĐỒ
