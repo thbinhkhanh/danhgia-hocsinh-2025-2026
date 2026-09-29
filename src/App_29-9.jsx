@@ -477,7 +477,11 @@ function AppContent() {
             path="/giaovien"
             element={
               isLoggedIn ? (
-                <GiaoVien_Kahoot />
+                config?.giaoDien === "kahoot" ? (
+                  <GiaoVien_Kahoot />
+                ) : (
+                  <GiaoVien />
+                )
               ) : (
                 <Navigate to="/login" replace />
               )

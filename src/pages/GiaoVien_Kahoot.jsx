@@ -367,11 +367,9 @@ const rankedStudents = [...students]
   .map((student) => ({
     ...student,
     score:
-      studentScores[student.maDinhDanh]?.TN_diem ??
-      null,
+      studentScores[student.maDinhDanh]?.TN_diem ?? null,
     thoiGianLamBai:
-      studentScores[student.maDinhDanh]?.thoiGianLamBai ??
-      null,
+      studentScores[student.maDinhDanh]?.thoiGianLamBai ?? null,
   }))
   .filter(
     (student) =>
@@ -382,23 +380,38 @@ const rankedStudents = [...students]
     const scoreA = Number(a.score);
     const scoreB = Number(b.score);
 
+    // Điểm cao hơn xếp trước
     if (scoreB !== scoreA) {
       return scoreB - scoreA;
     }
 
-    return (
-      Number(a.thoiGianLamBai) -
-      Number(b.thoiGianLamBai)
-    );
+    // Chuyển thời gian về giây để so sánh
+    const parseTime = (value) => {
+      const str = String(value);
+
+      // dạng mm:ss
+      if (str.includes(":")) {
+        const [minutes, seconds] = str.split(":").map(Number);
+        return minutes * 60 + seconds;
+      }
+
+      // dạng số giây, ví dụ "18.5"
+      return Number(str);
+    };
+
+    const timeA = parseTime(a.thoiGianLamBai);
+    const timeB = parseTime(b.thoiGianLamBai);
+
+    // Bằng điểm → thời gian ít hơn xếp trước
+    return timeA - timeB;
   })
-  //.slice(0, 5)
   .map((student, index) => ({
     ...student,
     rank: index + 1,
-  }));
+}));
 
   // Bảng màu
-  const statusColors = {
+const statusColors = {
     "Hoàn thành tốt": { bg: "#1976d2", text: "#ffffff" },
     "Hoàn thành": { bg: "#9C27B0", text: "#ffffff" },
     "Chưa hoàn thành": { bg: "#FF9800", text: "#ffffff" },
@@ -714,8 +727,11 @@ const rankedStudents = [...students]
         <>
           <Grid container spacing={2} justifyContent="center">
             {Array.from({ length: 5 }).map((_, colIdx) => {
-              const col = students.filter(
-                (_, index) => index % 5 === colIdx
+              const rows = Math.ceil(students.length / 5);
+
+              const col = students.slice(
+                colIdx * rows,
+                (colIdx + 1) * rows
               );
 
               return (
