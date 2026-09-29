@@ -1107,7 +1107,7 @@ const statusColors = {
                           alignItems: "center",
 
                           minHeight: {
-                            xs: isTop1 ? 76 : 64,
+                            xs: isTop1 ? 76 : 68,
                             sm: isTop1 ? 86 : 70,
                           },
 
@@ -1260,9 +1260,12 @@ const statusColors = {
                               },
                               fontWeight: isTop1 ? 900 : 750,
                               color: "#0f172a",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
+
+                              // Cho phép tên dài tự xuống dòng
+                              whiteSpace: "normal",
+                              overflowWrap: "anywhere",
+                              wordBreak: "break-word",
+                              lineHeight: 1.35,
                             }}
                           >
                             {student.hoVaTen}
