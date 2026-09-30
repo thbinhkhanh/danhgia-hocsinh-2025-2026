@@ -31,7 +31,7 @@ export default function QuizQuestion({
         mb: 2,
         ...(kahootMode && {
           textAlign: "left",
-          fontWeight: 700,
+          fontWeight: 500,
           fontSize: { xs: "1.1rem", sm: "1.35rem" },
           bgcolor: "#fff",
           borderRadius: 2,
@@ -82,256 +82,256 @@ export default function QuizQuestion({
 
   /* ===================== SORT ===================== */
   const renderSort = () => {
-  const kahootColors = [
-    "#e21b3c", // Đỏ
-    "#1368ce", // Xanh dương
-    "#d89e00", // Vàng
-    "#26890c", // Xanh lá
-  ];
+    const kahootColors = [
+      "#e21b3c", // Đỏ
+      "#1368ce", // Xanh dương
+      "#d89e00", // Vàng
+      "#26890c", // Xanh lá
+    ];
 
-  return (
-    <Box sx={{ width: "100%" }}>
-      <DragDropContext
-        onDragEnd={(result) => {
-          if (!result.destination || submitted || !started) return;
+    return (
+      <Box sx={{ width: "100%" }}>
+        <DragDropContext
+          onDragEnd={(result) => {
+            if (!result.destination || submitted || !started) return;
 
-          const currentOrder =
-            answers[currentQuestion.id] ??
-            currentQuestion.options.map((_, idx) => idx);
-
-          const newOrder = reorder(
-            currentOrder,
-            result.source.index,
-            result.destination.index
-          );
-
-          setAnswers((prev) => ({
-            ...prev,
-            [currentQuestion.id]: newOrder,
-          }));
-        }}
-      >
-        <Droppable
-          droppableId="sort-options"
-          direction="horizontal"
-        >
-          {(provided) => {
-            const orderIdx =
+            const currentOrder =
               answers[currentQuestion.id] ??
               currentQuestion.options.map((_, idx) => idx);
 
-            return (
-              <Box
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: {
-                    xs: 1.2,
-                    sm: 1.5,
-                  },
-                  width: "100%",
-                  maxWidth: 1000,
-                  mx: "auto",
-                }}
-              >
-                {orderIdx.map((optIdx, pos) => {
-                  const optionData =
-                    currentQuestion.options[optIdx];
+            const newOrder = reorder(
+              currentOrder,
+              result.source.index,
+              result.destination.index
+            );
 
-                  const optionText =
-                    typeof optionData === "string"
-                      ? optionData
-                      : optionData?.text ?? "";
+            setAnswers((prev) => ({
+              ...prev,
+              [currentQuestion.id]: newOrder,
+            }));
+          }}
+        >
+          <Droppable
+            droppableId="sort-options"
+            direction="vertical"
+          >
+            {(provided) => {
+              const orderIdx =
+                answers[currentQuestion.id] ??
+                currentQuestion.options.map((_, idx) => idx);
 
-                  const optionImage =
-                    typeof optionData === "object"
-                      ? optionData?.image ?? null
-                      : null;
+              return (
+                <Box
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr",
+                    gap: {
+                      xs: 1.2,
+                      sm: 1.5,
+                    },
+                    width: "100%",
+                    maxWidth: 1000,
+                    mx: "auto",
+                  }}
+                >
+                  {orderIdx.map((optIdx, pos) => {
+                    const optionData =
+                      currentQuestion.options[optIdx];
 
-                  // So sánh với đáp án đúng theo vị trí
-                  const correctData =
-                    currentQuestion.correctTexts[pos];
+                    const optionText =
+                      typeof optionData === "string"
+                        ? optionData
+                        : optionData?.text ?? "";
 
-                  const isCorrectPos =
-                    submitted &&
-                    choXemDapAn &&
-                    normalizeValue(optionData) ===
-                      normalizeValue(correctData);
+                    const optionImage =
+                      typeof optionData === "object"
+                        ? optionData?.image ?? null
+                        : null;
 
-                  let bgcolor =
-                    kahootColors[pos % kahootColors.length];
+                    // So sánh với đáp án đúng theo vị trí
+                    const correctData =
+                      currentQuestion.correctTexts[pos];
 
-                  // Khi hiển thị kết quả
-                  if (submitted && choXemDapAn) {
-                    bgcolor = isCorrectPos
-                      ? "#26890c"
-                      : "#e21b3c";
-                  }
+                    const isCorrectPos =
+                      submitted &&
+                      choXemDapAn &&
+                      normalizeValue(optionData) ===
+                        normalizeValue(correctData);
 
-                  return (
-                    <Draggable
-                      key={optIdx}
-                      draggableId={String(optIdx)}
-                      index={pos}
-                      isDragDisabled={
-                        submitted || !started
-                      }
-                    >
-                      {(provided, snapshot) => (
-                        <Box
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          sx={{
-                            position: "relative",
+                    let bgcolor =
+                      kahootColors[pos % kahootColors.length];
 
-                            minHeight: {
-                              xs: 120,
-                              sm: 150,
-                            },
+                    // Khi hiển thị kết quả
+                    if (submitted && choXemDapAn) {
+                      bgcolor = isCorrectPos
+                        ? "#26890c"
+                        : "#e21b3c";
+                    }
 
-                            p: {
-                              xs: 1.5,
-                              sm: 2,
-                            },
-
-                            bgcolor,
-                            color: "#fff",
-                            borderRadius: 2,
-
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-
-                            textAlign: "center",
-
-                            cursor:
-                              submitted || !started
-                                ? "default"
-                                : snapshot.isDragging
-                                ? "grabbing"
-                                : "grab",
-
-                            border: snapshot.isDragging
-                              ? "5px solid #fff"
-                              : "5px solid transparent",
-
-                            boxSizing: "border-box",
-
-                            boxShadow:
-                              snapshot.isDragging
-                                ? "0 0 0 3px rgba(0,0,0,0.35)"
-                                : "0 3px 8px rgba(0,0,0,0.2)",
-
-                            transition:
-                              "transform 0.15s ease, box-shadow 0.15s ease",
-
-                            "&:hover": {
-                              transform:
-                                submitted || !started
-                                  ? "none"
-                                  : "scale(1.02)",
-
-                              boxShadow:
-                                submitted || !started
-                                  ? "0 3px 8px rgba(0,0,0,0.2)"
-                                  : "0 7px 15px rgba(0,0,0,0.3)",
-                            },
-                          }}
-                        >
-                          {/* ================= VỊ TRÍ ================= */}
+                    return (
+                      <Draggable
+                        key={optIdx}
+                        draggableId={String(optIdx)}
+                        index={pos}
+                        isDragDisabled={
+                          submitted || !started
+                        }
+                      >
+                        {(provided, snapshot) => (
                           <Box
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
                             sx={{
-                              position: "absolute",
-                              top: 8,
-                              left: 10,
+                              position: "relative",
 
-                              width: 32,
-                              height: 32,
+                              minHeight: {
+                                xs: 80,
+                                sm: 100,
+                              },
+
+                              p: {
+                                xs: 1.5,
+                                sm: 2,
+                              },
+
+                              bgcolor,
+                              color: "#fff",
+                              borderRadius: 2,
 
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: "center",
+                              justifyContent: "flex-start",
 
-                              borderRadius: 1,
-                              bgcolor:
-                                "rgba(0,0,0,0.18)",
+                              textAlign: "left",
 
-                              fontSize: "1.15rem",
-                              fontWeight: 800,
+                              gap: 1.5,
+
+                              cursor:
+                                submitted || !started
+                                  ? "default"
+                                  : snapshot.isDragging
+                                  ? "grabbing"
+                                  : "grab",
+
+                              border: snapshot.isDragging
+                                ? "5px solid #fff"
+                                : "5px solid transparent",
+
+                              boxSizing: "border-box",
+
+                              boxShadow:
+                                snapshot.isDragging
+                                  ? "0 0 0 3px rgba(0,0,0,0.35)"
+                                  : "0 3px 8px rgba(0,0,0,0.2)",
+
+                              transition:
+                                "transform 0.15s ease, box-shadow 0.15s ease",
+
+                              "&:hover": {
+                                transform:
+                                  submitted || !started
+                                    ? "none"
+                                    : "scale(1.02)",
+
+                                boxShadow:
+                                  submitted || !started
+                                    ? "0 3px 8px rgba(0,0,0,0.2)"
+                                    : "0 7px 15px rgba(0,0,0,0.3)",
+                              },
                             }}
                           >
-                            {pos + 1}
-                          </Box>
-
-                          {/* ================= ẢNH ĐÁP ÁN ================= */}
-                          {optionImage && (
+                            {/* ================= VỊ TRÍ ================= */}
                             <Box
-                              component="img"
-                              src={optionImage}
-                              alt={`option-${optIdx}`}
                               sx={{
-                                maxWidth: {
-                                  xs: 80,
-                                  sm: 120,
-                                },
+                                flexShrink: 0,
 
-                                maxHeight: {
-                                  xs: 70,
-                                  sm: 100,
-                                },
+                                width: 32,
+                                height: 32,
 
-                                objectFit: "contain",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+
                                 borderRadius: 1,
                                 bgcolor: "#fff",
-                                p: 0.5,
+                                color: "#333",
 
-                                mr: optionText ? 1 : 0,
+                                fontSize: "1.15rem",
+                                fontWeight: 800,
+                              }}
+                            >
+                              {pos + 1}
+                            </Box>
+
+                            {/* ================= ẢNH ĐÁP ÁN ================= */}
+                            {optionImage && (
+                              <Box
+                                component="img"
+                                src={optionImage}
+                                alt={`option-${optIdx}`}
+                                sx={{
+                                  maxWidth: {
+                                    xs: 80,
+                                    sm: 120,
+                                  },
+
+                                  maxHeight: {
+                                    xs: 70,
+                                    sm: 100,
+                                  },
+
+                                  objectFit: "contain",
+                                  borderRadius: 1,
+                                  bgcolor: "#fff",
+                                  p: 0.5,
+
+                                  mr: optionText ? 1 : 0,
+                                }}
+                              />
+                            )}
+
+                            {/* ================= TEXT ================= */}
+                            <Typography
+                              component="div"
+                              sx={{
+                                fontSize: {
+                                  xs: "1rem",
+                                  sm: "1.25rem",
+                                },
+
+                                fontWeight: 400,
+                                lineHeight: 1.35,
+
+                                userSelect: "none",
+                                maxWidth: "90%",
+                                whiteSpace: "pre-wrap",
+
+                                "& p": {
+                                  margin: 0,
+                                },
+                              }}
+                              dangerouslySetInnerHTML={{
+                                __html: optionText,
                               }}
                             />
-                          )}
+                          </Box>
+                        )}
+                      </Draggable>
+                    );
+                  })}
 
-                          {/* ================= TEXT ================= */}
-                          <Typography
-                            component="div"
-                            sx={{
-                              fontSize: {
-                                xs: "1rem",
-                                sm: "1.25rem",
-                              },
-
-                              fontWeight: 700,
-                              lineHeight: 1.35,
-
-                              userSelect: "none",
-                              maxWidth: "90%",
-                              whiteSpace: "pre-wrap",
-
-                              "& p": {
-                                margin: 0,
-                              },
-                            }}
-                            dangerouslySetInnerHTML={{
-                              __html: optionText,
-                            }}
-                          />
-                        </Box>
-                      )}
-                    </Draggable>
-                  );
-                })}
-
-                {provided.placeholder}
-              </Box>
-            );
-          }}
-        </Droppable>
-      </DragDropContext>
-    </Box>
-  );
-};
+                  {provided.placeholder}
+                </Box>
+              );
+            }}
+          </Droppable>
+        </DragDropContext>
+      </Box>
+    );
+  };
 
   /* ===================== MATCHING ===================== */
 
@@ -867,8 +867,8 @@ export default function QuizQuestion({
                   position: "relative",
 
                   minHeight: {
-                    xs: 120,
-                    sm: 150,
+                    xs: 100,
+                    sm: 120,
                   },
 
                   p: {
@@ -882,9 +882,11 @@ export default function QuizQuestion({
 
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
+                  justifyContent: "flex-start",
 
-                  textAlign: "center",
+                  textAlign: "left",
+
+                  gap: 1.5,
 
                   cursor:
                     submitted || !started
@@ -924,11 +926,9 @@ export default function QuizQuestion({
                   onChange={handleSelect}
                   onClick={(e) => e.stopPropagation()}
                   sx={{
-                    position: "absolute",
-                    top: 5,
-                    left: 5,
-                    zIndex: 2,
+                    flexShrink: 0,
                     p: 0.5,
+                    mr: 0.5,
 
                     color: "#fff",
 
@@ -949,6 +949,8 @@ export default function QuizQuestion({
                     src={optionImage}
                     alt={`option-${optIdx}`}
                     sx={{
+                      flexShrink: 0,
+
                       maxWidth: {
                         xs: 80,
                         sm: 120,
@@ -957,6 +959,7 @@ export default function QuizQuestion({
                         xs: 70,
                         sm: 100,
                       },
+
                       objectFit: "contain",
                       borderRadius: 1,
                       bgcolor: "#fff",
@@ -974,11 +977,13 @@ export default function QuizQuestion({
                       xs: "1rem",
                       sm: "1.25rem",
                     },
-                    fontWeight: 700,
+                    fontWeight: 400,
                     lineHeight: 1.35,
                     userSelect: "none",
                     maxWidth: "90%",
                     whiteSpace: "pre-wrap",
+
+                    textAlign: "left",
 
                     "& p": {
                       margin: 0,
@@ -1030,7 +1035,9 @@ export default function QuizQuestion({
                   objectFit: "contain",
                   cursor: "zoom-in",
                 }}
-                onClick={() => setZoomImage(currentQuestion.questionImage)}
+                onClick={() =>
+                  setZoomImage(currentQuestion.questionImage)
+                }
               />
             </Box>
           </Box>
@@ -1062,24 +1069,36 @@ export default function QuizQuestion({
               ? currentQuestion.correct
               : [];
 
-            const isCorrect = submitted && choXemDapAn && correctArray.includes(optIdx);
-            const isWrong = submitted && choXemDapAn && checked && !correctArray.includes(optIdx);
+            const isCorrect =
+              submitted &&
+              choXemDapAn &&
+              correctArray.includes(optIdx);
+
+            const isWrong =
+              submitted &&
+              choXemDapAn &&
+              checked &&
+              !correctArray.includes(optIdx);
 
             const handleSelect = () => {
               if (submitted || !started) return;
-              handleMultipleSelect(currentQuestion.id, optIdx, !checked);
+              handleMultipleSelect(
+                currentQuestion.id,
+                optIdx,
+                !checked
+              );
             };
 
-            // Xác định màu nền của ô theo phong cách Kahoot
-            let bgcolor = kahootColors[answerIndex % kahootColors.length];
+            let bgcolor =
+              kahootColors[answerIndex % kahootColors.length];
 
             if (submitted && choXemDapAn) {
               if (isCorrect) {
-                bgcolor = "#26890c"; // Đúng -> Xanh lá
+                bgcolor = "#26890c";
               } else if (isWrong) {
-                bgcolor = "#e21b3c"; // Sai -> Đỏ
+                bgcolor = "#e21b3c";
               } else {
-                bgcolor = "#777";    // Không chọn / còn lại -> Xám
+                bgcolor = "#777";
               }
             }
 
@@ -1089,29 +1108,47 @@ export default function QuizQuestion({
                 onClick={handleSelect}
                 sx={{
                   position: "relative",
+
                   height: {
-                    xs: 125,
-                    sm: 160,
+                    xs: 100,
+                    sm: 120,
                   },
+
                   bgcolor,
                   borderRadius: 2,
+
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
+                  justifyContent: "flex-start",
+
                   p: { xs: 1.5, sm: 2 },
+
                   color: "#fff",
-                  cursor: submitted || !started ? "default" : "pointer",
+
+                  cursor:
+                    submitted || !started
+                      ? "default"
+                      : "pointer",
+
                   boxSizing: "border-box",
-                  // Nếu được chọn thì hiện viền trắng dày và hiệu ứng nổi lên
+
                   border: checked
                     ? "5px solid #fff"
                     : "5px solid transparent",
+
                   boxShadow: checked
                     ? "0 0 0 3px rgba(0,0,0,0.35)"
                     : "0 3px 8px rgba(0,0,0,0.2)",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+
+                  transition:
+                    "transform 0.15s ease, box-shadow 0.15s ease",
+
                   "&:hover": {
-                    transform: submitted || !started ? "none" : "scale(1.02)",
+                    transform:
+                      submitted || !started
+                        ? "none"
+                        : "scale(1.02)",
+
                     boxShadow:
                       submitted || !started
                         ? "0 3px 8px rgba(0,0,0,0.2)"
@@ -1119,7 +1156,6 @@ export default function QuizQuestion({
                   },
                 }}
               >
-                {/* KÝ HIỆU A, B, C, D (hoặc checkbox thu nhỏ tùy chọn) */}
                 {/* ================= CHECKBOX ================= */}
                 <Checkbox
                   checked={checked}
@@ -1127,12 +1163,9 @@ export default function QuizQuestion({
                   onChange={handleSelect}
                   onClick={(e) => e.stopPropagation()}
                   sx={{
-                    position: "absolute",
-                    top: 5,
-                    left: 5,
-                    zIndex: 2,
-
+                    flexShrink: 0,
                     p: 0.5,
+                    mr: 1,
 
                     color: "#fff",
 
@@ -1146,39 +1179,63 @@ export default function QuizQuestion({
                   }}
                 />
 
-                {/* Hình option nếu có */}
+                {/* ================= HÌNH OPTION ================= */}
                 {optionImage && (
                   <Box
                     component="img"
                     src={optionImage}
                     alt={`option-${optIdx}`}
                     sx={{
-                      maxWidth: { xs: 90, sm: 120 },
-                      maxHeight: { xs: 70, sm: 95 },
+                      flexShrink: 0,
+
+                      maxWidth: {
+                        xs: 90,
+                        sm: 120,
+                      },
+
+                      maxHeight: {
+                        xs: 70,
+                        sm: 95,
+                      },
+
                       objectFit: "contain",
                       borderRadius: 1,
                       bgcolor: "#fff",
                       p: 0.5,
+
                       mr: optionText ? 1 : 0,
                     }}
                   />
                 )}
 
-                {/* Text option */}
+                {/* ================= TEXT OPTION ================= */}
                 {optionText && (
                   <Typography
                     component="div"
                     sx={{
-                      fontSize: { xs: "1rem", sm: "1.25rem" },
-                      fontWeight: 700,
+                      fontSize: {
+                        xs: "1rem",
+                        sm: "1.25rem",
+                      },
+
+                      fontWeight: 400,
                       lineHeight: 1.3,
-                      textAlign: "center",
+
+                      textAlign: "left",
+
                       userSelect: "none",
+
                       maxWidth: "90%",
+
                       whiteSpace: "pre-wrap",
-                      "& p": { margin: 0 },
+
+                      "& p": {
+                        margin: 0,
+                      },
                     }}
-                    dangerouslySetInnerHTML={{ __html: optionText }}
+                    dangerouslySetInnerHTML={{
+                      __html: optionText,
+                    }}
                   />
                 )}
               </Box>
@@ -1280,7 +1337,7 @@ export default function QuizQuestion({
 
                   minHeight: {
                     xs: 90,
-                    sm: 110,
+                    sm: 100,
                   },
 
                   p: {
@@ -1365,7 +1422,7 @@ export default function QuizQuestion({
                       sm: "1.1rem",
                     },
 
-                    fontWeight: 700,
+                    fontWeight: 400,
 
                     lineHeight: 1.4,
 
@@ -1446,7 +1503,7 @@ export default function QuizQuestion({
                         sm: "0.95rem",
                       },
 
-                      fontWeight: 700,
+                      fontWeight: 400,
 
                       "& .MuiSelect-select": {
                         py: 0.5,
@@ -1858,7 +1915,7 @@ export default function QuizQuestion({
 
                                 color: "#fff",
 
-                                fontWeight: 700,
+                                fontWeight: 400,
 
                                 fontSize: {
                                   xs: "0.9rem",
@@ -1904,7 +1961,7 @@ export default function QuizQuestion({
                                         alignItems: "center",
                                         justifyContent: "center",
 
-                                        fontWeight: 700,
+                                        fontWeight: 400,
 
                                         fontSize: {
                                           xs: "0.9rem",
@@ -1937,7 +1994,7 @@ export default function QuizQuestion({
               <Typography
                 sx={{
                   mb: 1,
-                  fontWeight: 700,
+                  fontWeight: 400,
                   fontSize: {
                     xs: "1rem",
                     sm: "1.05rem",
@@ -2028,7 +2085,7 @@ export default function QuizQuestion({
                                     sm: "1rem",
                                   },
 
-                                  fontWeight: 700,
+                                  fontWeight: 400,
 
                                   lineHeight: 1.2,
 
