@@ -16,6 +16,8 @@ import {
   IconButton,
   Stack,
   Chip,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
@@ -721,6 +723,32 @@ const statusColors = {
             </Select>
           </FormControl>
         )}
+
+        <FormControlLabel
+          sx={{
+            ml: 0,
+            mr: 0,
+            whiteSpace: "nowrap",
+          }}
+          control={
+            <Switch
+              checked={showRanking}
+              onChange={(e) => setShowRanking(e.target.checked)}
+              color="primary"
+            />
+          }
+          label={
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#2563eb",
+              }}
+            >
+              {showRanking ? "Xếp hạng" : "Toàn bộ lớp"}
+            </Typography>
+          }
+        />
       </Box>
 
       {/* ================= TOÀN BỘ DANH SÁCH HỌC SINH ================= */}
@@ -905,44 +933,6 @@ const statusColors = {
               );
             })}
           </Grid>
-
-          {/* ================= NÚT XẾP HẠNG ================= */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "flex-start",
-              mt: 3,
-            }}
-          >
-            <Box
-              onClick={() => setShowRanking(true)}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                px: 3,
-                py: 1.6,
-                borderRadius: "18px",
-                cursor: "pointer",
-                background:
-                  "linear-gradient(135deg,#eff6ff,#f8fbff)",
-                border: "1px solid #dbeafe",
-                boxShadow:
-                  "0 8px 22px rgba(37,99,235,.12)",
-              }}
-            >
-              <HistoryIcon sx={{ color: "#2563eb" }} />
-
-              <Typography
-                sx={{
-                  fontWeight: 700,
-                  color: "#2563eb",
-                }}
-              >
-                Chế độ xem: Xếp hạng
-              </Typography>
-            </Box>
-          </Box>
         </>
       )}
 
@@ -1408,45 +1398,6 @@ const statusColors = {
                   })}
                 </Stack>
               )}
-            </Box>
-
-            {/* ================= NÚT TOÀN BỘ LỚP ================= */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "flex-start",
-                mt: 3,
-                mb: 2,
-              }}
-            >
-              <Box
-                onClick={() => setShowRanking(false)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  px: 3,
-                  py: 1.6,
-                  borderRadius: "18px",
-                  cursor: "pointer",
-                  background:
-                    "linear-gradient(135deg,#eff6ff,#f8fbff)",
-                  border: "1px solid #dbeafe",
-                  boxShadow:
-                    "0 8px 22px rgba(37,99,235,.12)",
-                }}
-              >
-                <HistoryIcon sx={{ color: "#2563eb" }} />
-
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    color: "#2563eb",
-                  }}
-                >
-                  Chế độ xem: Toàn bộ lớp
-                </Typography>
-              </Box>
             </Box>
           </Box>
 
