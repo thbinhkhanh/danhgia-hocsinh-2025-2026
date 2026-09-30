@@ -685,26 +685,31 @@ const statusColors = {
       <Box
   sx={{
     display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: {
-      xs: 0.5,
-      sm: 2,
+    justifyContent: {
+      xs: "flex-start",
+      sm: "center",
     },
+    alignItems: "center",
+    gap: 1.5,
     mb: 4,
     width: "100%",
-    maxWidth: "100%",
-    overflow: "hidden",
+    overflowX: "auto",
+    overflowY: "hidden",
+    px: 1,
+    pt: 1,
+    pb: 0.5,
+    boxSizing: "border-box",
+    "&::-webkit-scrollbar": {
+      display: "none",
+    },
+    scrollbarWidth: "none",
   }}
 >
   <FormControl
     size="small"
     sx={{
-      minWidth: {
-        xs: 55,
-        sm: 80,
-      },
-      flexShrink: 1,
+      minWidth: 80,
+      flexShrink: 0,
     }}
   >
     <InputLabel>Lớp</InputLabel>
@@ -724,22 +729,15 @@ const statusColors = {
   <FormControl
     size="small"
     sx={{
-      minWidth: {
-        xs: 90,
-        sm: 120,
-      },
-      flexShrink: 1,
+      minWidth: 120,
       bgcolor: "white",
+      flexShrink: 0,
     }}
   >
     <InputLabel id="mon-label">Môn</InputLabel>
     <Select
       labelId="mon-label"
-      value={
-        config.mon === "Công nghệ"
-          ? "congnghe"
-          : "tinhoc"
-      }
+      value={config.mon === "Công nghệ" ? "congnghe" : "tinhoc"}
       onChange={handleMonChange}
       label="Môn"
     >
@@ -752,11 +750,8 @@ const statusColors = {
     <FormControl
       size="small"
       sx={{
-        minWidth: {
-          xs: 75,
-          sm: 120,
-        },
-        flexShrink: 1,
+        minWidth: 120,
+        flexShrink: 0,
       }}
     >
       <InputLabel>Tuần</InputLabel>
@@ -776,18 +771,29 @@ const statusColors = {
 
   <FormControlLabel
     sx={{
-      m: 0,
+      ml: 0,
+      mr: 0,
       flexShrink: 0,
+      whiteSpace: "nowrap",
     }}
     control={
       <Switch
-        size="small"
         checked={showRanking}
         onChange={(e) => setShowRanking(e.target.checked)}
         color="primary"
       />
     }
-    label=""
+    label={
+      <Typography
+        sx={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#2563eb",
+        }}
+      >
+        {showRanking ? "Xếp hạng" : "Toàn bộ lớp"}
+      </Typography>
+    }
   />
 </Box>
 
