@@ -489,143 +489,147 @@ export default function DanhSachHS() {
   // THÊM HỌC SINH
   // =========================================================
   const handleAddStudent = async () => {
-    if (
-      !newMaDinhDanh.trim() ||
-      !newName.trim()
-    ) {
+    // =====================================================
+    // CHỐNG GỌI HÀM NGOÀI LUỒNG THÊM
+    // =====================================================
+    if (!isAdding) {
+      console.warn(
+        "⚠️ handleAddStudent bị gọi khi không ở chế độ Thêm. Đã chặn."
+      );
       return;
     }
 
-    const ma =
-      newMaDinhDanh.trim();
+    // =====================================================
+    // KIỂM TRA DỮ LIỆU
+    // =====================================================
+    const ma = newMaDinhDanh?.trim();
+    const ten = newName?.trim().toUpperCase();
 
-    const ten =
-      newName.trim().toUpperCase();
-
-    const classKey =
-      selectedClass.replace(
-        ".",
-        "_"
-      );
-
-    const sttMoi =
-      students.length + 1;
-
-    const lop =
-      selectedClass;
-
-    setIsAdding(false);
-
-    setEditingStudent(null);
+    if (!ma || !ten || !selectedClass) {
+      return;
+    }
 
     // =====================================================
-    // OPTIMISTIC UI
+    // CLASS KEY
     // =====================================================
-    const newStudent = {
-      maDinhDanh: ma,
-      hoVaTen: ten,
-      lop,
-      stt: sttMoi,
-      TinHoc: {},
-      CongNghe: {},
-    };
+    const classKey = String(selectedClass).replace(/\./g, "_");
+    const lop = selectedClass;
 
-    const updatedStudents = [
-      ...students,
-      newStudent,
-    ];
-
-    setStudents(
-      updatedStudents
-    );
-
-    setStudentData(
-      (prev) => ({
-        ...prev,
-        [selectedClass]:
-          updatedStudents,
-      })
+    // =====================================================
+    // KHÔNG TỰ GHI ĐÈ HỌC SINH ĐÃ CÓ TRONG LỚP
+    // =====================================================
+    const studentRef = doc(
+      db,
+      `DATA_${namHocKey}`,
+      classKey,
+      "HOCSINH",
+      ma
     );
 
     try {
+      const existingSnap = await getDoc(studentRef);
+
+      if (existingSnap.exists()) {
+        console.warn(
+          `⚠️ Mã ${ma} đã tồn tại trong lớp ${lop}. Không ghi đè dữ liệu.`
+        );
+        alert(`Mã định danh ${ma} đã tồn tại trong lớp ${lop}.`);
+        return;
+      }
+
       // ===================================================
-      // FIRESTORE
+      // STT
       // ===================================================
-      await setDoc(
-        doc(
-          db,
-          `DATA_${namHocKey}`,
-          classKey,
-          "HOCSINH",
-          ma
-        ),
-        {
-          hoVaTen: ten,
-          lop,
-          stt: sttMoi,
+      const sttMoi = students.length + 1;
 
-          TinHoc: {
-            dgtx: {},
+      // ===================================================
+      // DỮ LIỆU MỚI
+      // ===================================================
+      const studentDataNew = {
+        hoVaTen: ten,
+        lop,
+        stt: sttMoi,
 
-            ktdk: {
-              CN: {},
-              CKI: {},
-              GKI: {},
-              GKII: {},
-            },
-
-            ontap: {
-              CN: {},
-              CKI: {},
-              GKI: {},
-              GKII: {},
-            },
+        TinHoc: {
+          dgtx: {},
+          ktdk: {
+            CN: {},
+            CKI: {},
+            GKI: {},
+            GKII: {},
           },
-
-          CongNghe: {
-            dgtx: {},
-
-            ktdk: {
-              CN: {},
-              CKI: {},
-              GKI: {},
-              GKII: {},
-            },
-
-            ontap: {
-              CN: {},
-              CKI: {},
-              GKI: {},
-              GKII: {},
-            },
+          ontap: {
+            CN: {},
+            CKI: {},
+            GKI: {},
+            GKII: {},
           },
         },
-        {
-          merge: true,
-        }
+
+        CongNghe: {
+          dgtx: {},
+          ktdk: {
+            CN: {},
+            CKI: {},
+            GKI: {},
+            GKII: {},
+          },
+          ontap: {
+            CN: {},
+            CKI: {},
+            GKI: {},
+            GKII: {},
+          },
+        },
+      };
+
+      // ===================================================
+      // FIRESTORE
+      // Dùng setDoc KHÔNG merge
+      // ===================================================
+      await setDoc(
+        studentRef,
+        studentDataNew
       );
+
+      // ===================================================
+      // CHỈ CẬP NHẬT UI SAU KHI FIRESTORE THÀNH CÔNG
+      // ===================================================
+      const newStudent = {
+        maDinhDanh: ma,
+        hoVaTen: ten,
+        lop,
+        stt: sttMoi,
+        TinHoc: studentDataNew.TinHoc,
+        CongNghe: studentDataNew.CongNghe,
+      };
+
+      const updatedStudents = [
+        ...students,
+        newStudent,
+      ];
+
+      setStudents(updatedStudents);
+
+      setStudentData((prev) => ({
+        ...prev,
+        [selectedClass]: updatedStudents,
+      }));
+
+      // ===================================================
+      // ĐÓNG TRẠNG THÁI THÊM
+      // ===================================================
+      setIsAdding(false);
+      setEditingStudent(null);
+      setNewMaDinhDanh("");
+      setNewName("");
+
     } catch (err) {
       console.error(
         "❌ Lỗi khi thêm học sinh:",
         err
       );
-
-      // ===================================================
-      // ROLLBACK
-      // ===================================================
-      setStudents(students);
-
-      setStudentData(
-        (prev) => ({
-          ...prev,
-          [selectedClass]:
-            students,
-        })
-      );
     }
-
-    setNewMaDinhDanh("");
-    setNewName("");
   };
 
   // =========================================================
