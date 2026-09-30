@@ -745,7 +745,7 @@ const statusColors = {
                 color: "#2563eb",
               }}
             >
-              {showRanking ? "Xếp hạng" : "Toàn bộ lớp"}
+              {/*{showRanking ? "Xếp hạng" : "Toàn bộ lớp"}*/}
             </Typography>
           }
         />
