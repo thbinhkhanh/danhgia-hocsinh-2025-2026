@@ -682,74 +682,114 @@ const statusColors = {
       </Box>
 
       {/* Bộ chọn Lớp / Môn / Tuần */}
-      <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 4 }}>
-        <FormControl size="small" sx={{ minWidth: 80 }}>
-          <InputLabel>Lớp</InputLabel>
-          <Select value={config.lop || ""} onChange={handleClassChange} label="Lớp">
-            {classes.map(cls => (
-              <MenuItem key={cls} value={cls}>
-                {cls}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      <Box
+  sx={{
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: {
+      xs: 0.5,
+      sm: 2,
+    },
+    mb: 4,
+    width: "100%",
+    maxWidth: "100%",
+    overflow: "hidden",
+  }}
+>
+  <FormControl
+    size="small"
+    sx={{
+      minWidth: {
+        xs: 55,
+        sm: 80,
+      },
+      flexShrink: 1,
+    }}
+  >
+    <InputLabel>Lớp</InputLabel>
+    <Select
+      value={config.lop || ""}
+      onChange={handleClassChange}
+      label="Lớp"
+    >
+      {classes.map((cls) => (
+        <MenuItem key={cls} value={cls}>
+          {cls}
+        </MenuItem>
+      ))}
+    </Select>
+  </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 120, bgcolor: "white" }}>
-          <InputLabel id="mon-label">Môn</InputLabel>
-          <Select
-            labelId="mon-label"
-            value={config.mon === "Công nghệ" ? "congnghe" : "tinhoc"}
-            onChange={handleMonChange}
-            label="Môn"
-          >
-            <MenuItem value="tinhoc">Tin học</MenuItem>
-            <MenuItem value="congnghe">Công nghệ</MenuItem>
-          </Select>
-        </FormControl>
+  <FormControl
+    size="small"
+    sx={{
+      minWidth: {
+        xs: 90,
+        sm: 120,
+      },
+      flexShrink: 1,
+      bgcolor: "white",
+    }}
+  >
+    <InputLabel id="mon-label">Môn</InputLabel>
+    <Select
+      labelId="mon-label"
+      value={
+        config.mon === "Công nghệ"
+          ? "congnghe"
+          : "tinhoc"
+      }
+      onChange={handleMonChange}
+      label="Môn"
+    >
+      <MenuItem value="tinhoc">Tin học</MenuItem>
+      <MenuItem value="congnghe">Công nghệ</MenuItem>
+    </Select>
+  </FormControl>
 
-        {mode !== "ktdk" && mode !== "ontap" && (
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Tuần</InputLabel>
-            <Select
-              value={config.tuan || 1}
-              onChange={handleWeekChange}
-              label="Tuần"
-            >
-              {[...Array(35)].map((_, i) => (
-                <MenuItem key={i + 1} value={i + 1}>
-                  Tuần {i + 1}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
+  {mode !== "ktdk" && mode !== "ontap" && (
+    <FormControl
+      size="small"
+      sx={{
+        minWidth: {
+          xs: 75,
+          sm: 120,
+        },
+        flexShrink: 1,
+      }}
+    >
+      <InputLabel>Tuần</InputLabel>
+      <Select
+        value={config.tuan || 1}
+        onChange={handleWeekChange}
+        label="Tuần"
+      >
+        {[...Array(35)].map((_, i) => (
+          <MenuItem key={i + 1} value={i + 1}>
+            Tuần {i + 1}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  )}
 
-        <FormControlLabel
-          sx={{
-            ml: 0,
-            mr: 0,
-            whiteSpace: "nowrap",
-          }}
-          control={
-            <Switch
-              checked={showRanking}
-              onChange={(e) => setShowRanking(e.target.checked)}
-              color="primary"
-            />
-          }
-          label={
-            <Typography
-              sx={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: "#2563eb",
-              }}
-            >
-              {/*{showRanking ? "Xếp hạng" : "Toàn bộ lớp"}*/}
-            </Typography>
-          }
-        />
-      </Box>
+  <FormControlLabel
+    sx={{
+      m: 0,
+      flexShrink: 0,
+    }}
+    control={
+      <Switch
+        size="small"
+        checked={showRanking}
+        onChange={(e) => setShowRanking(e.target.checked)}
+        color="primary"
+      />
+    }
+    label=""
+  />
+</Box>
 
       {/* ================= TOÀN BỘ DANH SÁCH HỌC SINH ================= */}
       {!showRanking && (
