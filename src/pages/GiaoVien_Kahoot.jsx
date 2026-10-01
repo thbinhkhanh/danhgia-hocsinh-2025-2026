@@ -156,6 +156,7 @@ export default function GiaoVien_Kahoot() {
             return {
               maDinhDanh: docSnap.id,
               hoVaTen: data.hoVaTen || "",
+              ghiChu: data.ghiChu || "",
             };
           })
           .sort((a, b) =>
