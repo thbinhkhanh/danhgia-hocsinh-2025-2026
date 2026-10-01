@@ -819,6 +819,13 @@ const statusColors = {
                     }}
                   >
                     {col.map((student) => {
+                      const isGhiChuDacBiet = [
+                        "khuyết tật",
+                        "chuyển trường",
+                        "bỏ học",
+                      ].includes(
+                        String(student.ghiChu || "").trim().toLowerCase()
+                      );
                       return (
                         <Paper
                           key={student.maDinhDanh}
@@ -850,14 +857,14 @@ const statusColors = {
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "space-between",
-                            bgcolor: "#ffffff",
+                            bgcolor: isGhiChuDacBiet ? "#f3f3f3" : "#ffffff",
                             transition: "0.2s",
                             boxShadow: 1,
 
                             "&:hover": {
                               transform: "scale(1.03)",
                               boxShadow: 4,
-                              bgcolor: "#f5f5f5",
+                              bgcolor: isGhiChuDacBiet ? "#d6d6d6" : "#f5f5f5",
                             },
                           }}
                         >
@@ -866,6 +873,9 @@ const statusColors = {
                             variant="subtitle2"
                             fontWeight="medium"
                             noWrap
+                            sx={{
+                              color: isGhiChuDacBiet ? "red" : "inherit",
+                            }}
                           >
                             {student.stt}. {student.hoVaTen}
                           </Typography>
