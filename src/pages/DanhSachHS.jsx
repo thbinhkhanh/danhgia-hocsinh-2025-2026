@@ -132,6 +132,8 @@ export default function DanhSachHS() {
 
   const [newClass, setNewClass] = useState("");
 
+  const [newGhiChu, setNewGhiChu] = useState("");
+
   const [deleteClassDialogOpen, setDeleteClassDialogOpen] =
     useState(false);
 
@@ -280,7 +282,7 @@ export default function DanhSachHS() {
 
                 stt: idx + 1,
 
-                ghiChu: "",
+                ghiChu: data.ghiChu || "",
               };
             }
           );
@@ -470,6 +472,10 @@ export default function DanhSachHS() {
     setNewName(
       student.hoVaTen || ""
     );
+
+    setNewGhiChu(
+      student.ghiChu || ""
+    );
   };
 
   // =========================================================
@@ -479,10 +485,9 @@ export default function DanhSachHS() {
     setIsAdding(true);
 
     setEditingStudent(null);
-
     setNewMaDinhDanh("");
-
     setNewName("");
+    setNewGhiChu("");
   };
 
   // =========================================================
@@ -547,6 +552,7 @@ export default function DanhSachHS() {
       // ===================================================
       const studentDataNew = {
         hoVaTen: ten,
+        ghiChu: newGhiChu.trim(),
         lop,
         stt: sttMoi,
 
@@ -598,6 +604,7 @@ export default function DanhSachHS() {
       const newStudent = {
         maDinhDanh: ma,
         hoVaTen: ten,
+        ghiChu: newGhiChu.trim(),
         lop,
         stt: sttMoi,
         TinHoc: studentDataNew.TinHoc,
@@ -623,6 +630,7 @@ export default function DanhSachHS() {
       setEditingStudent(null);
       setNewMaDinhDanh("");
       setNewName("");
+      setNewGhiChu("");
 
     } catch (err) {
       console.error(
@@ -671,10 +679,9 @@ export default function DanhSachHS() {
         s.maDinhDanh === maCu
           ? {
               ...s,
-              maDinhDanh:
-                maMoi,
-              hoVaTen:
-                ten,
+              maDinhDanh: maMoi,
+              hoVaTen: ten,
+              ghiChu: newGhiChu.trim(),
             }
           : s
       );
@@ -709,6 +716,7 @@ export default function DanhSachHS() {
           ),
           {
             hoVaTen: ten,
+            ghiChu: newGhiChu.trim(),
           }
         );
 
@@ -784,6 +792,7 @@ export default function DanhSachHS() {
           ...oldData,
           maDinhDanh: maMoi,
           hoVaTen: ten,
+          ghiChu: newGhiChu.trim(),
         }
       );
 
@@ -1760,23 +1769,40 @@ export default function DanhSachHS() {
               {students.map(
                 (s) => (
                   <TableRow
-                    key={
-                      s.maDinhDanh
-                    }
-                    onMouseEnter={() =>
-                      setHoveredHS(
-                        s.maDinhDanh
-                      )
-                    }
-                    onMouseLeave={() =>
-                      setHoveredHS(
-                        null
-                      )
-                    }
+                    key={s.maDinhDanh}
+                    onMouseEnter={() => setHoveredHS(s.maDinhDanh)}
+                    onMouseLeave={() => setHoveredHS(null)}
                     sx={{
+                      backgroundColor:
+                        ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                          String(s.ghiChu || "").trim().toLowerCase()
+                        )
+                          ? "#f3f3f3"
+                          : "inherit",
+
+                      color:
+                        ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                          String(s.ghiChu || "").trim().toLowerCase()
+                        )
+                          ? "red"
+                          : "inherit",
+
+                      "& td": {
+                        color:
+                          ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                            String(s.ghiChu || "").trim().toLowerCase()
+                          )
+                            ? "red"
+                            : "inherit",
+                      },
+
                       "&:hover": {
                         backgroundColor:
-                          "rgba(25,118,210,0.05)",
+                          ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                            String(s.ghiChu || "").trim().toLowerCase()
+                          )
+                            ? "#d6d6d6"
+                            : "rgba(25,118,210,0.05)",
                       },
                     }}
                   >
@@ -1863,21 +1889,11 @@ export default function DanhSachHS() {
                           size="small"
                           color="success"
                           onClick={() => {
-                            setIsAdding(
-                              true
-                            );
-
-                            setEditingStudent(
-                              null
-                            );
-
-                            setNewName(
-                              ""
-                            );
-
-                            setNewMaDinhDanh(
-                              ""
-                            );
+                            setIsAdding(true);
+                            setEditingStudent(null);
+                            setNewName("");
+                            setNewMaDinhDanh("");
+                            setNewGhiChu("");
                           }}
                         >
                           <PersonAddIcon fontSize="small" />
@@ -1982,6 +1998,8 @@ export default function DanhSachHS() {
         setNewMaDinhDanh={
           setNewMaDinhDanh
         }
+        newGhiChu={newGhiChu}
+        setNewGhiChu={setNewGhiChu}
         isAdding={isAdding}
         onSave={
           isAdding

@@ -447,6 +447,7 @@ const fetchStudentsAndStatus = async (cls) => {
       studentList.push({
         maDinhDanh: maHS,
         hoVaTen: data.hoVaTen || "",
+        ghiChu: data.ghiChu || "",
         stt: data.stt || null,
         dgtx_mucdat,
         mucDat,
@@ -1439,7 +1440,39 @@ const fetchStudentsAndStatus = async (cls) => {
 
             <TableBody>
               {students.map((student, idx) => (
-                <TableRow key={student.maDinhDanh} hover>
+                <TableRow
+                  key={student.maDinhDanh}
+                  hover
+                  sx={{
+                    backgroundColor:
+                      String(student.ghiChu || "").trim().toLowerCase() ===
+                      "khuyết tật"
+                        ? "#f5f5f5"
+                        : "inherit",
+
+                    color:
+                      String(student.ghiChu || "").trim().toLowerCase() ===
+                      "khuyết tật"
+                        ? "red"
+                        : "inherit",
+
+                    "&:hover": {
+                      backgroundColor:
+                        String(student.ghiChu || "").trim().toLowerCase() ===
+                        "khuyết tật"
+                          ? "#eeeeee"
+                          : "rgba(25,118,210,0.05)",
+                    },
+
+                    "& td": {
+                      color:
+                        String(student.ghiChu || "").trim().toLowerCase() ===
+                        "khuyết tật"
+                          ? "red"
+                          : "inherit",
+                    },
+                  }}
+                >
                   <TableCell align="center" sx={{ px: 1 }}>{student.stt}</TableCell>
                   <TableCell align="left" sx={{ px: 1 }}>{student.hoVaTen}</TableCell>
 

@@ -424,6 +424,7 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
       studentList.push({
         maDinhDanh: docSnap.id,
         hoVaTen,
+        ghiChu: data.ghiChu || "",
         statusByWeek,
 
         // ✅ CỘT CHUẨN
@@ -900,7 +901,44 @@ return (
               }).every(status => !status);
 
               return (
-                <TableRow key={student.maDinhDanh} hover>
+                <TableRow
+                  key={student.maDinhDanh}
+                  hover
+                  sx={{
+                    backgroundColor:
+                      ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                        String(student.ghiChu || "").trim().toLowerCase()
+                      )
+                        ? "#f3f3f3"
+                        : "inherit",
+
+                    // Chữ đỏ
+                    color:
+                      ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                        String(student.ghiChu || "").trim().toLowerCase()
+                      )
+                        ? "red"
+                        : "inherit",
+
+                    "& td": {
+                      color:
+                        ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                          String(student.ghiChu || "").trim().toLowerCase()
+                        )
+                          ? "red"
+                          : "inherit",
+                    },
+
+                    "&:hover": {
+                      backgroundColor:
+                        ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                          String(student.ghiChu || "").trim().toLowerCase()
+                        )
+                          ? "#d6d6d6"
+                          : "rgba(25,118,210,0.05)",
+                    },
+                  }}
+                >
                   <TableCell align="center">{student.stt}</TableCell>
                   <TableCell
                     align="left"
@@ -1175,7 +1213,7 @@ return (
       </TableContainer>
 
       {/* --- Bảng thống kê xuống cuối Card --- */}
-      <Box
+      {/*<Box
         sx={{
           mt: 3,
           backgroundColor: "#f1f8e9",
@@ -1227,7 +1265,7 @@ return (
           <Typography variant="body2">Chưa đánh giá:</Typography>
           <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
         </Stack>
-      </Box>
+      </Box>*/}
     </Card>
 
     {/* Snackbar */}

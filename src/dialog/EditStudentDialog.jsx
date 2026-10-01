@@ -24,6 +24,8 @@ export default function EditStudentDialog({
   setNewName,
   newMaDinhDanh,
   setNewMaDinhDanh,
+  newGhiChu,
+  setNewGhiChu,
   isAdding,
   onSave,
   isConfirm = false,
@@ -154,6 +156,20 @@ export default function EditStudentDialog({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               autoFocus
+              size="small"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "12px",
+                  background: "#fff",
+                },
+              }}
+            />
+            
+            {/* Ghi chú */}
+            <TextField
+              label="Ghi chú"
+              value={newGhiChu || ""}
+              onChange={(e) => setNewGhiChu?.(e.target.value)}
               size="small"
               sx={{
                 "& .MuiOutlinedInput-root": {
