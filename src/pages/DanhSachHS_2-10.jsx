@@ -23,7 +23,6 @@ import {
   Checkbox,
   FormControlLabel,
   Divider,
-  Popover,
 } from "@mui/material";
 
 import { db } from "../firebase";
@@ -31,7 +30,6 @@ import { db } from "../firebase";
 import { StudentContext } from "../context/StudentContext";
 import { ConfigContext } from "../context/ConfigContext";
 import { useSelectedClass } from "../context/SelectedClassContext";
-import { exportAbsentExcel } from "../utils/exportAbsentExcel";
 
 import {
   doc,
@@ -57,18 +55,9 @@ import StorageIcon from "@mui/icons-material/Storage";
 import CloseIcon from "@mui/icons-material/Close";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import AddIcon from "@mui/icons-material/Add";
-import FileDownloadIcon from "@mui/icons-material/FileDownload";
 
 import { useNavigate } from "react-router-dom";
 import { LinearProgress } from "@mui/material";
-
-import dayjs from "dayjs";
-
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 
 export default function DanhSachHS() {
   const navigate = useNavigate();
@@ -110,24 +99,6 @@ export default function DanhSachHS() {
   } = useSelectedClass();
 
   const [students, setStudents] = useState([]);
-  const [attendance, setAttendance] = useState({});
-  const [showMonth, setShowMonth] = useState(false);
-  const [monthlyAttendance, setMonthlyAttendance] = useState({});
-
-  // Ngày điểm danh đang chọn: YYYY-MM-DD
-  const [attendanceDate, setAttendanceDate] = useState(
-    new Date().toLocaleDateString("en-CA")
-  );
-
-  const monthStart = dayjs(attendanceDate).startOf("month");
-
-  const monthDays = Array.from(
-    { length: monthStart.daysInMonth() },
-    (_, index) =>
-      monthStart
-        .add(index, "day")
-        .format("YYYY-MM-DD")
-  );
 
   const fileInputRef = React.useRef(null);
   const folderInputRef = React.useRef(null);
@@ -354,47 +325,6 @@ export default function DanhSachHS() {
   ]);
 
   // =========================================================
-  // LẤY TRẠNG THÁI ĐIỂM DANH CỦA NGÀY HIỆN TẠI
-  // =========================================================
-  useEffect(() => {
-    if (!selectedClass || students.length === 0) return;
-
-    const loadAttendance = async () => {
-      try {
-        const result = {};
-
-        await Promise.all(
-          students.map(async (student) => {
-            const attendanceRef = doc(
-              db,
-              `DIEMDANH_${namHocKey}`,
-              selectedClass,
-              student.maDinhDanh,
-              attendanceDate
-            );
-
-            const snap = await getDoc(attendanceRef);
-
-            result[student.maDinhDanh] =
-              snap.exists() && snap.data()?.vắng === true;
-          })
-        );
-
-        setAttendance(result);
-      } catch (err) {
-        console.error("❌ Lỗi lấy dữ liệu điểm danh:", err);
-      }
-    };
-
-    loadAttendance();
-  }, [
-    selectedClass,
-    namHocKey,
-    students,
-    attendanceDate,
-  ]);
-
-  // =========================================================
   // ĐỔI LỚP
   // =========================================================
   const handleClassChange = (e) => {
@@ -402,10 +332,6 @@ export default function DanhSachHS() {
       e.target.value;
 
     setSelectedClass(newClass);
-  };
-
-  const handleAttendanceDateChange = (e) => {
-    setAttendanceDate(e.target.value);
   };
 
   // =========================================================
@@ -1323,228 +1249,8 @@ export default function DanhSachHS() {
   };
 
   // =========================================================
-  // CHECK / UNCHECK ĐIỂM DANH
-  // UI cập nhật NGAY → Firestore chạy phía sau
-  // Chỉ lưu học sinh VẮNG
-  // Có mặt = xóa document
+  // RENDER
   // =========================================================
-  const handleAttendanceChange = async (
-    maDinhDanh,
-    checked
-  ) => {
-    const attendanceRef = doc(
-      db,
-      `DIEMDANH_${namHocKey}`,
-      selectedClass,
-      maDinhDanh,
-      attendanceDate
-    );
-
-    // =======================================================
-    // LƯU TRẠNG THÁI CŨ ĐỂ ROLLBACK NẾU FIRESTORE LỖI
-    // =======================================================
-    const oldValue =
-      !!attendance[maDinhDanh];
-
-    // =======================================================
-    // 1. CẬP NHẬT UI NGAY LẬP TỨC
-    // =======================================================
-    setAttendance((prev) => {
-      const next = { ...prev };
-
-      if (checked) {
-        next[maDinhDanh] = true;
-      } else {
-        delete next[maDinhDanh];
-      }
-
-      return next;
-    });
-
-    // =======================================================
-    // 2. LƯU FIRESTORE
-    // =======================================================
-    try {
-      if (checked) {
-        // VẮNG → TẠO DOCUMENT
-        await setDoc(
-          attendanceRef,
-          {
-            vắng: true,
-          },
-          {
-            merge: true,
-          }
-        );
-      } else {
-        // CÓ MẶT → XÓA DOCUMENT
-        await deleteDoc(attendanceRef);
-      }
-    } catch (err) {
-      console.error(
-        "❌ Lỗi lưu điểm danh:",
-        err
-      );
-
-      // =====================================================
-      // 3. FIRESTORE LỖI → KHÔI PHỤC TRẠNG THÁI CŨ
-      // =====================================================
-      setAttendance((prev) => {
-        const next = { ...prev };
-
-        if (oldValue) {
-          next[maDinhDanh] = true;
-        } else {
-          delete next[maDinhDanh];
-        }
-
-        return next;
-      });
-    }
-  };
-
-  // =========================================================
-  // LẤY ĐIỂM DANH CẢ THÁNG
-  // =========================================================
-  useEffect(() => {
-    if (
-      !showMonth ||
-      !selectedClass ||
-      students.length === 0
-    ) {
-      return;
-    }
-
-    const loadMonthlyAttendance = async () => {
-      try {
-        const result = {};
-
-        await Promise.all(
-          students.map(async (student) => {
-            const studentRef = collection(
-              db,
-              `DIEMDANH_${namHocKey}`,
-              selectedClass,
-              student.maDinhDanh
-            );
-
-            const snapshot =
-              await getDocs(studentRef);
-
-            result[student.maDinhDanh] = {};
-
-            snapshot.forEach((docSnap) => {
-              const date = docSnap.id;
-
-              if (
-                monthDays.includes(date) &&
-                docSnap.data()?.vắng === true
-              ) {
-                result[student.maDinhDanh][date] = true;
-              }
-            });
-          })
-        );
-
-        setMonthlyAttendance(result);
-      } catch (err) {
-        console.error(
-          "❌ Lỗi lấy điểm danh tháng:",
-          err
-        );
-      }
-    };
-
-    loadMonthlyAttendance();
-  }, [
-    showMonth,
-    selectedClass,
-    namHocKey,
-    students,
-    attendanceDate,
-  ]);
-
-  const handleMonthlyAttendanceChange = async (
-    maDinhDanh,
-    date,
-    checked
-  ) => {
-    const attendanceRef = doc(
-      db,
-      `DIEMDANH_${namHocKey}`,
-      selectedClass,
-      maDinhDanh,
-      date
-    );
-
-    try {
-      if (checked) {
-        await setDoc(
-          attendanceRef,
-          {
-            vắng: true,
-          },
-          {
-            merge: true,
-          }
-        );
-
-        setMonthlyAttendance((prev) => ({
-          ...prev,
-          [maDinhDanh]: {
-            ...(prev[maDinhDanh] || {}),
-            [date]: true,
-          },
-        }));
-
-        // Nếu ngày đang chọn chính là ngày vừa chấm
-        if (date === attendanceDate) {
-          setAttendance((prev) => ({
-            ...prev,
-            [maDinhDanh]: true,
-          }));
-        }
-      } else {
-        await deleteDoc(attendanceRef);
-
-        setMonthlyAttendance((prev) => {
-          const next = {
-            ...prev,
-            [maDinhDanh]: {
-              ...(prev[maDinhDanh] || {}),
-            },
-          };
-
-          delete next[maDinhDanh][date];
-
-          return next;
-        });
-
-        if (date === attendanceDate) {
-          setAttendance((prev) => {
-            const next = { ...prev };
-            delete next[maDinhDanh];
-            return next;
-          });
-        }
-      }
-    } catch (err) {
-      console.error(
-        "❌ Lỗi lưu điểm danh tháng:",
-        err
-      );
-    }
-  };
-
-  const handleExportAbsentExcel = async () => {
-    await exportAbsentExcel({
-      selectedClass,
-      students,
-      monthDays,
-      monthlyAttendance,
-      attendanceDate,
-    });
-  };
 
   return (
     <Box
@@ -1559,18 +1265,17 @@ export default function DanhSachHS() {
         px: 3,
       }}
     >
-    <Paper
-      elevation={6}
-      sx={{
-        p: 4,
-        borderRadius: 3,
-        width: "100%",
-        maxWidth: showMonth ? "100%" : 750,
-        bgcolor: "white",
-        position: "relative",
-        transition: "max-width 0.2s ease",
-      }}
-    >
+      <Paper
+        elevation={6}
+        sx={{
+          p: 4,
+          borderRadius: 3,
+          width: "100%",
+          maxWidth: 700,
+          bgcolor: "white",
+          position: "relative",
+        }}
+      >
         {/* =================================================
             NÚT ĐÓNG
         ================================================= */}
@@ -1782,235 +1487,6 @@ export default function DanhSachHS() {
                 )}
               </Select>
 
-              {/* ===============================
-                  LỊCH ĐIỂM DANH
-              =============================== */}
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Ngày"
-                  value={dayjs(attendanceDate)}
-                  onChange={(newValue) => {
-                    if (!newValue) return;
-
-                    setAttendanceDate(
-                      newValue.format("YYYY-MM-DD")
-                    );
-                  }}
-                  format="DD/MM/YYYY"
-                  slotProps={{
-                    textField: {
-                      size: "small",
-                      sx: {
-                        width: 150,
-
-                        "& .MuiInputBase-root": {
-                          height: 42,
-                          backgroundColor: "#fff",
-                          borderRadius: 1.5,
-                        },
-
-                        "& .MuiInputBase-input": {
-                          fontSize: 14,
-                          fontWeight: 500,
-                        },
-                      },
-                    },
-
-                    popper: {
-                      sx: {
-                        // ===============================
-                        // KHUNG LỊCH
-                        // ===============================
-                        "& .MuiPaper-root": {
-                          width: 350,
-                          borderRadius: 2,
-                          boxShadow:
-                            "0 8px 30px rgba(0,0,0,0.15)",
-                          border:
-                            "1px solid #e5e7eb",
-                        },
-
-                        // ===============================
-                        // HEADER
-                        // THÁNG/NĂM TRÁI - <> PHẢI
-                        // ===============================
-                        "& .MuiPickersCalendarHeader-root": {
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
-                          alignItems: "center",
-                          width: "100%",
-                          boxSizing: "border-box",
-                          padding: "12px 10px 8px 18px",
-                          margin: 0,
-                        },
-
-                        // THÁNG / NĂM
-                        "& .MuiPickersCalendarHeader-labelContainer": {
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-start",
-                          minWidth: 0,
-                          margin: 0,
-                          padding: 0,
-                        },
-
-                        "& .MuiPickersCalendarHeader-label": {
-                          fontSize: 17,
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
-                        },
-
-                        // ===============================
-                        // NÚT < >
-                        // ===============================
-                        "& .MuiPickersArrowSwitcher-root": {
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-end",
-                          margin: 0,
-                          padding: 0,
-                        },
-
-                        "& .MuiPickersArrowSwitcher-button": {
-                          width: 38,
-                          height: 38,
-                          padding: 0,
-                          margin: 0,
-                          borderRadius: 1,
-
-                          "& .MuiSvgIcon-root": {
-                            fontSize: 24,
-                          },
-
-                          "&:hover": {
-                            backgroundColor: "#f1f5f9",
-                          },
-                        },
-
-                        // ===============================
-                        // HÀNG THỨ
-                        // S M T W T F S
-                        // ===============================
-                        "& .MuiDayCalendar-header": {
-                          marginTop: 3,
-                          marginBottom: 2,
-                        },
-
-                        "& .MuiDayCalendar-weekDayLabel": {
-                          fontSize: 14,
-                          fontWeight: 600,
-
-                          "&:nth-of-type(1)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Su"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(2)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Mo"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(3)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Tu"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(4)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"We"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(5)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Th"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(6)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Fr"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(7)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Sa"',
-                              fontSize: 14,
-                            },
-                          },
-                        },
-
-                        // ===============================
-                        // NGÀY 1 → 31
-                        // ===============================
-                        "& .MuiPickersDay-root": {
-                          width: 42,
-                          height: 42,
-                          margin: "2px",
-                          fontSize: 24,
-                          fontWeight: 500,
-                        },
-
-                        // ===============================
-                        // NGÀY ĐƯỢC CHỌN
-                        // ===============================
-                        "& .MuiPickersDay-root.Mui-selected": {
-                          fontSize: 24,
-                          fontWeight: 600,
-                        },
-                      },
-                    },
-                  }}
-                />
-              </LocalizationProvider>
-
-              <Tooltip
-                title={
-                  showMonth
-                    ? "Thu gọn"
-                    : "Xem điểm danh tháng"
-                }
-              >
-                <IconButton
-                  onClick={() =>
-                    setShowMonth((prev) => !prev)
-                  }
-                  sx={{
-                    color: "#1976d2",
-                    bgcolor: "rgba(25,118,210,0.1)",
-                    width: 42,
-                    height: 42,
-
-                    "&:hover": {
-                      bgcolor: "rgba(25,118,210,0.2)",
-                    },
-                  }}
-                >
-                  {showMonth ? (
-                    <CloseFullscreenIcon />
-                  ) : (
-                    <CalendarMonthIcon />
-                  )}
-                </IconButton>
-              </Tooltip>
-
               {/* THÊM LỚP */}
 
               <Tooltip title="Thêm lớp">
@@ -2055,27 +1531,6 @@ export default function DanhSachHS() {
                   <DeleteIcon />
                 </IconButton>
               </Tooltip>
-
-              {showMonth && (
-                <Tooltip title="Xuất Excel danh sách học sinh vắng">
-                  <IconButton
-                    onClick={handleExportAbsentExcel}
-                    disabled={students.length === 0}
-                    sx={{
-                      color: "#1976d2",
-                      bgcolor: "rgba(25,118,210,0.1)",
-                      width: 42,
-                      height: 42,
-
-                      "&:hover": {
-                        bgcolor: "rgba(25,118,210,0.2)",
-                      },
-                    }}
-                  >
-                    <FileDownloadIcon />
-                  </IconButton>
-                </Tooltip>
-              )}
             </Box>
 
             {/* HÀNG THÊM LỚP */}
@@ -2216,192 +1671,93 @@ export default function DanhSachHS() {
         {/* =================================================
             DANH SÁCH HỌC SINH
         ================================================= */}
+
         <TableContainer
           component={Paper}
           sx={{
             boxShadow: "none",
-            border: "1px solid rgba(0,0,0,0.12)",
-
+            border:
+              "1px solid rgba(0,0,0,0.12)",
             overflowX: "auto",
-
-            // Chỉ cuộn dọc khi xem tháng
-            overflowY: showMonth ? "auto" : "visible",
-
-            // Chỉ giới hạn chiều cao khi xem tháng
-            maxHeight: showMonth ? "70vh" : "none",
-
-            position: "relative",
           }}
         >
           <Table
             size="small"
             sx={{
-              tableLayout: "fixed",
-              minWidth: showMonth
-                ? 40 +
-                  120 +
-                  220 +
-                  monthDays.length * 36 +
-                  100
-                : 600,
-
-              // Tránh khoảng trắng / lỗi khi sticky
-              borderCollapse: "separate",
-              borderSpacing: 0,
+              tableLayout:
+                "fixed",
+              minWidth: 600,
             }}
           >
             <TableHead>
               <TableRow>
                 {/* STT */}
+
                 <TableCell
                   align="center"
                   sx={{
                     width: 40,
-                    minWidth: 40,
-                    maxWidth: 40,
-
-                    bgcolor: "#1976d2",
+                    bgcolor:
+                      "#1976d2",
                     color: "#fff",
-
                     border:
                       "1px solid rgba(255,255,255,0.4)",
-
-                    whiteSpace: "nowrap",
-
-                    // CỐ ĐỊNH KHI CUỘN DỌC
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 10,
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   STT
                 </TableCell>
 
-                {/* MÃ ĐỊNH DANH */}
+                {/* MÃ */}
+
                 <TableCell
                   align="center"
                   sx={{
                     width: 120,
-                    minWidth: 120,
-                    maxWidth: 120,
-
-                    bgcolor: "#1976d2",
+                    bgcolor:
+                      "#1976d2",
                     color: "#fff",
-
                     border:
                       "1px solid rgba(255,255,255,0.4)",
-
-                    whiteSpace: "nowrap",
-
-                    // CỐ ĐỊNH KHI CUỘN DỌC
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 10,
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   MÃ ĐỊNH DANH
                 </TableCell>
 
-                {/* HỌ VÀ TÊN */}
+                {/* HỌ TÊN */}
+
                 <TableCell
                   align="center"
                   sx={{
                     width: 220,
-                    minWidth: 220,
-                    maxWidth: 220,
-
-                    bgcolor: "#1976d2",
+                    bgcolor:
+                      "#1976d2",
                     color: "#fff",
-
                     border:
                       "1px solid rgba(255,255,255,0.4)",
-
-                    whiteSpace: "nowrap",
-
-                    // CỐ ĐỊNH KHI CUỘN DỌC
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 10,
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   HỌ VÀ TÊN
                 </TableCell>
 
-                {/* NGÀY 01 → 31 */}
-                {showMonth ? (
-                  monthDays.map((date) => (
-                    <TableCell
-                      key={date}
-                      align="center"
-                      sx={{
-                        width: 36,
-                        minWidth: 36,
-                        maxWidth: 36,
-
-                        bgcolor: "#1976d2",
-                        color: "#fff",
-
-                        border:
-                          "1px solid rgba(255,255,255,0.4)",
-
-                        whiteSpace: "nowrap",
-                        p: 0.5,
-
-                        // CỐ ĐỊNH TOÀN BỘ HEADER
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 10,
-                      }}
-                    >
-                      {dayjs(date).format("DD")}
-                    </TableCell>
-                  ))
-                ) : (
-                  <TableCell
-                    align="center"
-                    sx={{
-                      width: 80,
-                      minWidth: 80,
-                      maxWidth: 80,
-
-                      bgcolor: "#1976d2",
-                      color: "#fff",
-
-                      border:
-                        "1px solid rgba(255,255,255,0.4)",
-
-                      whiteSpace: "nowrap",
-
-                      // CỐ ĐỊNH HEADER
-                      position: "sticky",
-                      top: 0,
-                      zIndex: 10,
-                    }}
-                  >
-                    VẮNG
-                  </TableCell>
-                )}
-
                 {/* ĐIỀU CHỈNH */}
+
                 <TableCell
                   align="center"
                   sx={{
-                    width: 100,
-                    minWidth: 100,
-                    maxWidth: 100,
-
-                    bgcolor: "#1976d2",
+                    bgcolor:
+                      "#1976d2",
                     color: "#fff",
-
                     border:
                       "1px solid rgba(255,255,255,0.4)",
-
-                    whiteSpace: "nowrap",
-
-                    // CỐ ĐỊNH HEADER
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 10,
+                    whiteSpace:
+                      "nowrap",
+                    width: 100,
                   }}
                 >
                   ĐIỀU CHỈNH
@@ -2410,168 +1766,103 @@ export default function DanhSachHS() {
             </TableHead>
 
             <TableBody>
-              {students.map((s) => {
-                const isSpecialStudent = [
-                  "khuyết tật",
-                  "chuyển trường",
-                  "bỏ học",
-                ].includes(
-                  String(s.ghiChu || "")
-                    .trim()
-                    .toLowerCase()
-                );
-
-                return (
+              {students.map(
+                (s) => (
                   <TableRow
                     key={s.maDinhDanh}
-                    onMouseEnter={() =>
-                      setHoveredHS(s.maDinhDanh)
-                    }
-                    onMouseLeave={() =>
-                      setHoveredHS(null)
-                    }
+                    onMouseEnter={() => setHoveredHS(s.maDinhDanh)}
+                    onMouseLeave={() => setHoveredHS(null)}
                     sx={{
                       backgroundColor:
-                        isSpecialStudent
+                        ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                          String(s.ghiChu || "").trim().toLowerCase()
+                        )
                           ? "#f3f3f3"
                           : "inherit",
 
                       color:
-                        isSpecialStudent
+                        ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                          String(s.ghiChu || "").trim().toLowerCase()
+                        )
                           ? "red"
                           : "inherit",
 
                       "& td": {
                         color:
-                          isSpecialStudent
+                          ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                            String(s.ghiChu || "").trim().toLowerCase()
+                          )
                             ? "red"
                             : "inherit",
                       },
 
                       "&:hover": {
                         backgroundColor:
-                          isSpecialStudent
+                          ["khuyết tật", "chuyển trường", "bỏ học"].includes(
+                            String(s.ghiChu || "").trim().toLowerCase()
+                          )
                             ? "#d6d6d6"
                             : "rgba(25,118,210,0.05)",
                       },
                     }}
                   >
                     {/* STT */}
+
                     <TableCell
                       align="center"
                       sx={{
                         width: 40,
                         border:
                           "1px solid rgba(0,0,0,0.12)",
-                        whiteSpace: "nowrap",
+                        whiteSpace:
+                          "nowrap",
                       }}
                     >
                       {s.stt}
                     </TableCell>
 
                     {/* MÃ */}
+
                     <TableCell
                       align="center"
                       sx={{
                         width: 120,
                         border:
                           "1px solid rgba(0,0,0,0.12)",
-                        whiteSpace: "nowrap",
+                        whiteSpace:
+                          "nowrap",
                       }}
                     >
-                      {s.maDinhDanh}
+                      {
+                        s.maDinhDanh
+                      }
                     </TableCell>
 
                     {/* HỌ TÊN */}
+
                     <TableCell
                       sx={{
                         width: 220,
                         border:
                           "1px solid rgba(0,0,0,0.12)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
+                        whiteSpace:
+                          "nowrap",
+                        overflow:
+                          "hidden",
+                        textOverflow:
+                          "ellipsis",
                       }}
                     >
-                      {s.hoVaTen}
+                      {
+                        s.hoVaTen
+                      }
                     </TableCell>
 
-                    {/* ĐIỂM DANH THÁNG */}
-                    {showMonth ? (
-                      monthDays.map((date) => {
-                        const isAbsent =
-                          !!monthlyAttendance[
-                            s.maDinhDanh
-                          ]?.[date];
-
-                        return (
-                          <TableCell
-                            key={date}
-                            align="center"
-                            sx={{
-                              width: 36,
-                              minWidth: 36,
-                              maxWidth: 36,
-                              border:
-                                "1px solid rgba(0,0,0,0.12)",
-                              height: 30,
-                              p: 0,
-                              cursor: "default",
-                              userSelect: "none",
-
-                              "&:hover": {
-                                backgroundColor: "transparent",
-                              },
-                            }}
-                          >
-                            {isAbsent ? (
-                              <Typography
-                                sx={{
-                                  fontWeight: 400,
-                                  fontSize: 14,
-                                  lineHeight: 1,
-                                  color: "#d32f2f",
-                                }}
-                              >
-                                X
-                              </Typography>
-                            ) : null}
-                          </TableCell>
-                        );
-                      })
-                    ) : (
-                      <TableCell
-                        align="center"
-                        sx={{
-                          width: 80,
-                          border:
-                            "1px solid rgba(0,0,0,0.12)",
-                          height: 30,
-                          p: 0,
-                        }}
-                      >
-                        <Checkbox
-                          size="small"
-                          checked={
-                            !!attendance[
-                              s.maDinhDanh
-                            ]
-                          }
-                          onChange={(e) =>
-                            handleAttendanceChange(
-                              s.maDinhDanh,
-                              e.target.checked
-                            )
-                          }
-                        />
-                      </TableCell>
-                    )}
-
                     {/* ĐIỀU CHỈNH */}
+
                     <TableCell
                       align="center"
                       sx={{
-                        width: 100,
                         border:
                           "1px solid rgba(0,0,0,0.12)",
                         height: 30,
@@ -2579,8 +1870,10 @@ export default function DanhSachHS() {
                     >
                       <Box
                         sx={{
-                          display: "flex",
-                          justifyContent: "center",
+                          display:
+                            "flex",
+                          justifyContent:
+                            "center",
                           gap: 0.5,
 
                           visibility:
@@ -2591,6 +1884,7 @@ export default function DanhSachHS() {
                         }}
                       >
                         {/* THÊM */}
+
                         <IconButton
                           size="small"
                           color="success"
@@ -2606,23 +1900,32 @@ export default function DanhSachHS() {
                         </IconButton>
 
                         {/* SỬA */}
+
                         <IconButton
                           size="small"
                           color="primary"
                           onClick={() =>
-                            handleEditStudent(s)
+                            handleEditStudent(
+                              s
+                            )
                           }
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
 
                         {/* XÓA */}
+
                         <IconButton
                           size="small"
                           color="error"
                           onClick={() => {
-                            setStudentToDelete(s);
-                            setDeleteDialogOpen(true);
+                            setStudentToDelete(
+                              s
+                            );
+
+                            setDeleteDialogOpen(
+                              true
+                            );
                           }}
                         >
                           <DeleteIcon fontSize="small" />
@@ -2630,12 +1933,11 @@ export default function DanhSachHS() {
                       </Box>
                     </TableCell>
                   </TableRow>
-                );
-              })}
+                )
+              )}
             </TableBody>
           </Table>
         </TableContainer>
-
       </Paper>
 
       {/* ===================================================
