@@ -2550,6 +2550,9 @@ const presentCount =
                         .toLowerCase()
                     );
 
+                    const isAbsent =
+                      !!attendance[s.maDinhDanh];
+
                     return (
                       <TableRow
                         key={s.maDinhDanh}
@@ -2625,7 +2628,6 @@ const presentCount =
                             overflow: "hidden",
                             textOverflow: "ellipsis",
 
-                            // 📱 Cho biết tên có thể chạm
                             cursor: {
                               xs: "pointer",
                               sm: "default",
@@ -2639,10 +2641,63 @@ const presentCount =
                           {s.hoVaTen}
                         </TableCell>
 
-                        {/* ĐIỀU CHỈNH */}
+                        {/* =================================================
+                            ĐIỂM DANH
+                        ================================================= */}
                         <TableCell
                           align="center"
                           sx={{
+                            width: 110,
+                            minWidth: 110,
+                            border:
+                              "1px solid rgba(0,0,0,0.12)",
+                            height: 30,
+                          }}
+                        >
+                          <Button
+                            variant={
+                              isAbsent
+                                ? "contained"
+                                : "outlined"
+                            }
+                            color={
+                              isAbsent
+                                ? "error"
+                                : "success"
+                            }
+                            onClick={() =>
+                              handleAttendanceChange(
+                                s.maDinhDanh,
+                                !isAbsent
+                              )
+                            }
+                            sx={{
+                              minWidth: {
+                                xs: 75,
+                                sm: 90,
+                              },
+                              height: 32,
+                              px: 1,
+                              borderRadius: 1.5,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              textTransform: "none",
+                            }}
+                          >
+                            {isAbsent
+                              ? "VẮNG"
+                              : "CÓ MẶT"}
+                          </Button>
+                        </TableCell>
+
+                        {/* =================================================
+                            ĐIỀU CHỈNH
+                        ================================================= */}
+                        <TableCell
+                          align="center"
+                          sx={{
+                            width: 130,
+                            minWidth: 130,
                             border:
                               "1px solid rgba(0,0,0,0.12)",
                             height: 30,
