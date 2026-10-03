@@ -111,17 +111,9 @@ export default function DanhSachHS() {
 
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
-
-  // Điểm danh cả tháng
+  const [showMonth, setShowMonth] = useState(false);
   const [monthlyAttendance, setMonthlyAttendance] = useState({});
 
-
-  // false = điểm danh ngày
-  // true  = lịch tháng
-  const [showMonth, setShowMonth] = useState(false);
-
-  // Học sinh đang xem lịch điểm danh cá nhân
-  const [selectedStudentCalendar, setSelectedStudentCalendar] = useState(null);
   // Ngày điểm danh đang chọn: YYYY-MM-DD
   const [attendanceDate, setAttendanceDate] = useState(
     new Date().toLocaleDateString("en-CA")
@@ -1413,7 +1405,6 @@ export default function DanhSachHS() {
 
   // =========================================================
   // LẤY ĐIỂM DANH CẢ THÁNG
-  // Chỉ dùng để XEM - không chỉnh sửa trực tiếp
   // =========================================================
   useEffect(() => {
     if (
@@ -1437,9 +1428,10 @@ export default function DanhSachHS() {
               student.maDinhDanh
             );
 
-            const snapshot = await getDocs(studentRef);
+            const snapshot =
+              await getDocs(studentRef);
 
-            const studentAttendance = {};
+            result[student.maDinhDanh] = {};
 
             snapshot.forEach((docSnap) => {
               const date = docSnap.id;
@@ -1448,12 +1440,9 @@ export default function DanhSachHS() {
                 monthDays.includes(date) &&
                 docSnap.data()?.vắng === true
               ) {
-                studentAttendance[date] = true;
+                result[student.maDinhDanh][date] = true;
               }
             });
-
-            result[student.maDinhDanh] =
-              studentAttendance;
           })
         );
 
@@ -1475,76 +1464,76 @@ export default function DanhSachHS() {
     attendanceDate,
   ]);
 
-  // =========================================================
-  // CHỌN NGÀY TỪ LỊCH THÁNG
-  // Lịch tháng chỉ xem.
-  // Bấm ngày -> quay về điểm danh ngày đó.
-  // =========================================================
-  const handleSelectMonthDate = (date) => {
-    setAttendanceDate(date);
-    setShowMonth(false);
-  };
-
-  // =========================================================
-  // MỞ LỊCH ĐIỂM DANH CÁ NHÂN
-  // =========================================================
-  const handleOpenStudentCalendar = (student) => {
-    setSelectedStudentCalendar(student);
-  };
-
-  
-
-  // =========================================================
-// THỐNG KÊ ĐIỂM DANH NGÀY
-// =========================================================
-const totalStudents = students.length;
-
-const absentCount = students.filter(
-  (student) =>
-    !!attendance[student.maDinhDanh]
-).length;
-
-const presentCount =
-  Math.max(
-    0,
-    totalStudents - absentCount
-  );
-
-  // =========================================================
-  // THỐNG KÊ ĐIỂM DANH THÁNG THEO NGÀY
-  // =========================================================
-  const monthlyDaySummary = monthDays.reduce(
-    (result, date) => {
-      const absentStudents = students.filter(
-        (student) =>
-          !!monthlyAttendance[
-            student.maDinhDanh
-          ]?.[date]
-      );
-
-      result[date] = {
-        absentCount:
-          absentStudents.length,
-
-        students:
-          absentStudents,
-      };
-
-      return result;
-    },
-    {}
-  );
-
-  // =========================================================
-  // SỐ NGÀY VẮNG CỦA TỪNG HỌC SINH
-  // =========================================================
-  const getStudentAbsentDates = (student) => {
-    return monthDays.filter(
-      (date) =>
-        !!monthlyAttendance[
-          student.maDinhDanh
-        ]?.[date]
+  const handleMonthlyAttendanceChange = async (
+    maDinhDanh,
+    date,
+    checked
+  ) => {
+    const attendanceRef = doc(
+      db,
+      `DIEMDANH_${namHocKey}`,
+      selectedClass,
+      maDinhDanh,
+      date
     );
+
+    try {
+      if (checked) {
+        await setDoc(
+          attendanceRef,
+          {
+            vắng: true,
+          },
+          {
+            merge: true,
+          }
+        );
+
+        setMonthlyAttendance((prev) => ({
+          ...prev,
+          [maDinhDanh]: {
+            ...(prev[maDinhDanh] || {}),
+            [date]: true,
+          },
+        }));
+
+        // Nếu ngày đang chọn chính là ngày vừa chấm
+        if (date === attendanceDate) {
+          setAttendance((prev) => ({
+            ...prev,
+            [maDinhDanh]: true,
+          }));
+        }
+      } else {
+        await deleteDoc(attendanceRef);
+
+        setMonthlyAttendance((prev) => {
+          const next = {
+            ...prev,
+            [maDinhDanh]: {
+              ...(prev[maDinhDanh] || {}),
+            },
+          };
+
+          delete next[maDinhDanh][date];
+
+          return next;
+        });
+
+        if (date === attendanceDate) {
+          setAttendance((prev) => {
+            const next = { ...prev };
+            delete next[maDinhDanh];
+            return next;
+          });
+        }
+      }
+    } catch (err) {
+      console.error(
+        "❌ Lỗi lưu điểm danh tháng:",
+        err
+      );
+    }
   };
 
   const handleExportAbsentExcel = async () => {
@@ -1576,8 +1565,7 @@ const presentCount =
         p: 4,
         borderRadius: 3,
         width: "100%",
-        //maxWidth: showMonth ? "70%" : 750,
-        maxWidth: 800,
+        maxWidth: showMonth ? "100%" : 750,
         bgcolor: "white",
         position: "relative",
         transition: "max-width 0.2s ease",
@@ -2228,201 +2216,301 @@ const presentCount =
         {/* =================================================
             DANH SÁCH HỌC SINH
         ================================================= */}
-        {/* =================================================
-          DANH SÁCH HỌC SINH
-        ================================================= */}
-        {!showMonth ? (
-          <>
-            {/* =================================================
-                THỐNG KÊ NGÀY
-            ================================================= */}
-            <Box
-              sx={{
-                mb: 2,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: {
-                  xs: 1,
-                  sm: 2,
-                },
-                flexWrap: "wrap",
-              }}
-            >
-              <Paper
-                elevation={0}
-                sx={{
-                  px: 2,
-                  py: 0.8,
-                  borderRadius: 2,
-                  border: "1px solid #e2e8f0",
-                  bgcolor: "#f8fafc",
-                }}
-              >
-                <Typography
+        <TableContainer
+          component={Paper}
+          sx={{
+            boxShadow: "none",
+            border: "1px solid rgba(0,0,0,0.12)",
+
+            overflowX: "auto",
+
+            // Chỉ cuộn dọc khi xem tháng
+            overflowY: showMonth ? "auto" : "visible",
+
+            // Chỉ giới hạn chiều cao khi xem tháng
+            maxHeight: showMonth ? "70vh" : "none",
+
+            position: "relative",
+          }}
+        >
+          <Table
+            size="small"
+            sx={{
+              tableLayout: "fixed",
+
+              minWidth: showMonth
+                ? 40 +
+                  120 +
+                  220 +
+                  monthDays.length * 36 +
+                  100
+                : 600,
+
+              // Tránh khoảng trắng / lỗi khi sticky
+              borderCollapse: "separate",
+              borderSpacing: 0,
+            }}
+          >
+            <TableHead>
+              <TableRow>
+
+                {/* =========================
+                    STT
+                ========================= */}
+                <TableCell
+                  align="center"
                   sx={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#475569",
+                    width: 40,
+                    minWidth: 40,
+                    maxWidth: 40,
+
+                    bgcolor: "#1976d2",
+                    color: "#fff",
+
+                    border:
+                      "1px solid rgba(255,255,255,0.4)",
+
+                    whiteSpace: "nowrap",
+
+                    // CỐ ĐỊNH NGANG + DỌC
+                    position: "sticky",
+                    left: 0,
+                    top: 0,
+
+                    zIndex: 12,
                   }}
                 >
-                  👥 {totalStudents} học sinh
-                </Typography>
-              </Paper>
+                  STT
+                </TableCell>
 
-              <Paper
-                elevation={0}
-                sx={{
-                  px: 2,
-                  py: 0.8,
-                  borderRadius: 2,
-                  border: "1px solid #bbf7d0",
-                  bgcolor: "#f0fdf4",
-                }}
-              >
-                <Typography
+                {/* =========================
+                    MÃ ĐỊNH DANH
+                ========================= */}
+                <TableCell
+                  align="center"
                   sx={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#15803d",
+                    width: 120,
+                    minWidth: 120,
+                    maxWidth: 120,
+
+                    bgcolor: "#1976d2",
+                    color: "#fff",
+
+                    border:
+                      "1px solid rgba(255,255,255,0.4)",
+
+                    whiteSpace: "nowrap",
+
+                    // CỐ ĐỊNH NGANG + DỌC
+                    position: "sticky",
+                    left: 40,
+                    top: 0,
+
+                    zIndex: 12,
                   }}
                 >
-                  ✓ Có mặt {presentCount}
-                </Typography>
-              </Paper>
+                  MÃ ĐỊNH DANH
+                </TableCell>
 
-              <Paper
-                elevation={0}
-                sx={{
-                  px: 2,
-                  py: 0.8,
-                  border: "1px solid #fecaca",
-                  borderRadius: 2,
-                  bgcolor: "#fef2f2",
-                }}
-              >
-                <Typography
+                {/* =========================
+                    HỌ VÀ TÊN
+                ========================= */}
+                <TableCell
+                  align="center"
                   sx={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#dc2626",
+                    width: 220,
+                    minWidth: 220,
+                    maxWidth: 220,
+
+                    bgcolor: "#1976d2",
+                    color: "#fff",
+
+                    border:
+                      "1px solid rgba(255,255,255,0.4)",
+
+                    whiteSpace: "nowrap",
+
+                    // CỐ ĐỊNH NGANG + DỌC
+                    position: "sticky",
+                    left: 160,
+                    top: 0,
+
+                    zIndex: 11,
                   }}
                 >
-                  ✕ Vắng {absentCount}
-                </Typography>
-              </Paper>
-            </Box>
+                  HỌ VÀ TÊN
+                </TableCell>
 
-            {/* =================================================
-                CẢNH BÁO CHƯA ĐIỂM DANH ĐỦ
-            ================================================= */}
-            {totalStudents > 0 &&
-              absentCount === 0 && (
-                <Typography
-                  sx={{
-                    textAlign: "center",
-                    mb: 1.5,
-                    fontSize: 13,
-                    color: "#64748b",
-                  }}
-                >
-                  {/*✓ Tất cả học sinh đang được ghi nhận có mặt*/}
-                </Typography>
-              )}
-
-            {/* =================================================
-                TẤT CẢ CÓ MẶT
-            ================================================= */}
-            {/*<Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                mb: 2,
-              }}
-            >
-              <Button
-                variant="contained"
-                color="success"
-                onClick={() => {
-                  const absentStudents =
-                    students.filter(
-                      (student) =>
-                        !!attendance[
-                          student.maDinhDanh
-                        ]
-                    );
-
-                  if (absentStudents.length === 0) return;
-
-                  absentStudents.forEach((student) => {
-                    handleAttendanceChange(
-                      student.maDinhDanh,
-                      false
-                    );
-                  });
-                }}
-                disabled={absentCount === 0}
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 700,
-                  borderRadius: 2,
-                  px: 2.5,
-                }}
-              >
-                ✓ Tất cả có mặt
-              </Button>
-            </Box>*/}
-
-            {/* =================================================
-                BẢNG ĐIỂM DANH NGÀY
-            ================================================= */}
-            <TableContainer
-              component={Paper}
-              sx={{
-                boxShadow: "none",
-                border: "1px solid rgba(0,0,0,0.12)",
-                overflowX: "auto",
-              }}
-            >
-              <Table
-                size="small"
-                sx={{
-                  tableLayout: "fixed",
-                  minWidth: 630,
-                  borderCollapse: "separate",
-                  borderSpacing: 0,
-                }}
-              >
-                <TableHead>
-                  <TableRow>
-                    {/* =================================================
-                        STT
-                    ================================================= */}
+                {/* =========================
+                    NGÀY 01 → 31
+                ========================= */}
+                {showMonth ? (
+                  monthDays.map((date) => (
                     <TableCell
+                      key={date}
                       align="center"
                       sx={{
-                        width: 50,
-                        minWidth: 50,
-                        maxWidth: 50,
+                        width: 36,
+                        minWidth: 36,
+                        maxWidth: 36,
 
                         bgcolor: "#1976d2",
                         color: "#fff",
+
                         border:
                           "1px solid rgba(255,255,255,0.4)",
-                        fontWeight: 700,
 
+                        whiteSpace: "nowrap",
+                        p: 0.5,
+
+                        // CỐ ĐỊNH HEADER KHI CUỘN DỌC
                         position: "sticky",
-                        left: 0,
                         top: 0,
-                        zIndex: 12,
+
+                        zIndex: 10,
                       }}
                     >
-                      STT
+                      {dayjs(date).format("DD")}
+                    </TableCell>
+                  ))
+                ) : (
+                  <TableCell
+                    align="center"
+                    sx={{
+                      width: 80,
+                      minWidth: 80,
+                      maxWidth: 80,
+
+                      bgcolor: "#1976d2",
+                      color: "#fff",
+
+                      border:
+                        "1px solid rgba(255,255,255,0.4)",
+
+                      whiteSpace: "nowrap",
+
+                      // CỐ ĐỊNH HEADER KHI CUỘN DỌC
+                      position: "sticky",
+                      top: 0,
+
+                      zIndex: 10,
+                    }}
+                  >
+                    VẮNG
+                  </TableCell>
+                )}
+
+                {/* =========================
+                    ĐIỀU CHỈNH
+                ========================= */}
+                <TableCell
+                  align="center"
+                  sx={{
+                    width: 100,
+                    minWidth: 100,
+                    maxWidth: 100,
+
+                    bgcolor: "#1976d2",
+                    color: "#fff",
+
+                    border:
+                      "1px solid rgba(255,255,255,0.4)",
+
+                    whiteSpace: "nowrap",
+
+                    // CỐ ĐỊNH HEADER KHI CUỘN DỌC
+                    position: "sticky",
+                    top: 0,
+
+                    zIndex: 10,
+                  }}
+                >
+                  ĐIỀU CHỈNH
+                </TableCell>
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {students.map((s) => {
+                const isSpecialStudent = [
+                  "khuyết tật",
+                  "chuyển trường",
+                  "bỏ học",
+                ].includes(
+                  String(s.ghiChu || "")
+                    .trim()
+                    .toLowerCase()
+                );
+
+                return (
+                  <TableRow
+                    key={s.maDinhDanh}
+                    onMouseEnter={() =>
+                      setHoveredHS(s.maDinhDanh)
+                    }
+                    onMouseLeave={() =>
+                      setHoveredHS(null)
+                    }
+                    sx={{
+                      backgroundColor:
+                        isSpecialStudent
+                          ? "#f3f3f3"
+                          : "inherit",
+
+                      color:
+                        isSpecialStudent
+                          ? "red"
+                          : "inherit",
+
+                      "& td": {
+                        color:
+                          isSpecialStudent
+                            ? "red"
+                            : "inherit",
+                      },
+
+                      "&:hover": {
+                        backgroundColor:
+                          isSpecialStudent
+                            ? "#d6d6d6"
+                            : "rgba(25,118,210,0.05)",
+                      },
+                    }}
+                  >
+
+                    {/* =========================
+                        STT
+                    ========================= */}
+                    <TableCell
+                      align="center"
+                      sx={{
+                        width: 40,
+                        minWidth: 40,
+                        maxWidth: 40,
+
+                        border:
+                          "1px solid rgba(0,0,0,0.12)",
+
+                        whiteSpace: "nowrap",
+
+                        // CỐ ĐỊNH NGANG
+                        position: "sticky",
+                        left: 0,
+
+                        zIndex: 3,
+
+                        // Có nền để che dữ liệu phía sau
+                        bgcolor: isSpecialStudent
+                          ? "#f3f3f3"
+                          : "background.paper",
+                      }}
+                    >
+                      {s.stt}
                     </TableCell>
 
-                    {/* =================================================
+                    {/* =========================
                         MÃ ĐỊNH DANH
-                    ================================================= */}
+                    ========================= */}
                     <TableCell
                       align="center"
                       sx={{
@@ -2430,842 +2518,217 @@ const presentCount =
                         minWidth: 120,
                         maxWidth: 120,
 
-                        bgcolor: "#1976d2",
-                        color: "#fff",
                         border:
-                          "1px solid rgba(255,255,255,0.4)",
-                        fontWeight: 700,
+                          "1px solid rgba(0,0,0,0.12)",
 
+                        whiteSpace: "nowrap",
+
+                        // CỐ ĐỊNH NGANG
                         position: "sticky",
-                        left: 50,
-                        top: 0,
-                        zIndex: 12,
+                        left: 40,
+
+                        zIndex: 3,
+
+                        // Có nền để che dữ liệu phía sau
+                        bgcolor: isSpecialStudent
+                          ? "#f3f3f3"
+                          : "background.paper",
                       }}
                     >
-                      MÃ ĐỊNH DANH
+                      {s.maDinhDanh}
                     </TableCell>
 
-                    {/* =================================================
+                    {/* =========================
                         HỌ VÀ TÊN
-                    ================================================= */}
+                    ========================= */}
                     <TableCell
                       sx={{
                         width: 220,
                         minWidth: 220,
                         maxWidth: 220,
 
-                        bgcolor: "#1976d2",
-                        color: "#fff",
                         border:
-                          "1px solid rgba(255,255,255,0.4)",
-                        fontWeight: 700,
-                        textAlign: "center",
+                          "1px solid rgba(0,0,0,0.12)",
 
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+
+                        // CỐ ĐỊNH NGANG
                         position: "sticky",
-                        left: 170,
-                        top: 0,
-                        zIndex: 11,
+                        left: 160,
+
+                        zIndex: 2,
+
+                        // Có nền để che nội dung phía sau
+                        bgcolor: isSpecialStudent
+                          ? "#f3f3f3"
+                          : "background.paper",
                       }}
                     >
-                      HỌ VÀ TÊN
+                      {s.hoVaTen}
                     </TableCell>
 
-                    {/* =================================================
-                        VẮNG
-                    ================================================= */}
-                    <TableCell
-                      align="center"
-                      sx={{
-                        width: 110,
-                        minWidth: 110,
-                        maxWidth: 110,
-
-                        bgcolor: "#1976d2",
-                        color: "#fff",
-                        border:
-                          "1px solid rgba(255,255,255,0.4)",
-                        fontWeight: 700,
-                      }}
-                    >
-                       ĐIỂM DANH
-                    </TableCell>
-
-                    {/* =================================================
-                        ĐIỀU CHỈNH
-                    ================================================= */}
-                    <TableCell
-                      align="center"
-                      sx={{
-                        width: 130,
-                        minWidth: 130,
-                        maxWidth: 130,
-
-                        bgcolor: "#1976d2",
-                        color: "#fff",
-                        border:
-                          "1px solid rgba(255,255,255,0.4)",
-                        fontWeight: 700,
-                      }}
-                    >
-                      ĐIỀU CHỈNH
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {students.map((s) => {
-                    const isAbsent =
-                      !!attendance[s.maDinhDanh];
-
-                    const isSpecialStudent = [
-                      "khuyết tật",
-                      "chuyển trường",
-                      "bỏ học",
-                    ].includes(
-                      String(s.ghiChu || "")
-                        .trim()
-                        .toLowerCase()
-                    );
-
-                    return (
-                      <TableRow
-                        key={s.maDinhDanh}
-                        onMouseEnter={() =>
-                          setHoveredHS(
+                    {/* =========================
+                        ĐIỂM DANH THÁNG
+                    ========================= */}
+                    {showMonth ? (
+                      monthDays.map((date) => {
+                        const isAbsent =
+                          !!monthlyAttendance[
                             s.maDinhDanh
-                          )
-                        }
-                        onMouseLeave={() =>
-                          setHoveredHS(null)
-                        }
-                        sx={{
-                          backgroundColor:
-                            isSpecialStudent
-                              ? "#f3f3f3"
-                              : "inherit",
+                          ]?.[date];
 
-                          "&:hover": {
-                            backgroundColor:
-                              isSpecialStudent
-                                ? "#d6d6d6"
-                                : "rgba(25,118,210,0.05)",
-                          },
-                        }}
-                      >
-                        {/* =================================================
-                            STT
-                        ================================================= */}
-                        <TableCell
-                          align="center"
-                          sx={{
-                            width: 50,
-                            minWidth: 50,
-                            maxWidth: 50,
+                        return (
+                          <TableCell
+                            key={date}
+                            align="center"
+                            sx={{
+                              width: 36,
+                              minWidth: 36,
+                              maxWidth: 36,
 
-                            border:
-                              "1px solid rgba(0,0,0,0.12)",
-                            fontWeight: 600,
-                            color:
-                              isSpecialStudent
-                                ? "red"
-                                : "inherit",
-                            
-                            bgcolor:
-                              isSpecialStudent
-                                ? "#f3f3f3"
-                                : "#fff",
-                          }}
-                        >
-                          {s.stt}
-                        </TableCell>
+                              border:
+                                "1px solid rgba(0,0,0,0.12)",
 
-                        {/* =================================================
-                            MÃ ĐỊNH DANH
-                        ================================================= */}
-                        <TableCell
-                          align="center"
-                          sx={{
-                            width: 120,
-                            minWidth: 120,
-                            maxWidth: 120,
+                              height: 30,
+                              p: 0,
 
-                            padding: "6px 4px",
+                              cursor: "default",
+                              userSelect: "none",
 
-                            border:
-                              "1px solid rgba(0,0,0,0.12)",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: "#64748b",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            bgcolor:
-                              isSpecialStudent
-                                ? "#f3f3f3"
-                                : "#fff",
-                          }}
-                        >
-                          {s.maDinhDanh}
-                        </TableCell>
-
-                        {/* =================================================
-                            HỌ VÀ TÊN
-                        ================================================= */}
-                        <TableCell
-                          onClick={() =>
-                            handleOpenStudentCalendar(s)
-                          }
-                          sx={{
-                            width: 220,
-                            minWidth: 220,
-                            maxWidth: 220,
-
-                            border:
-                              "1px solid rgba(0,0,0,0.12)",
-                            cursor: "pointer",
-                            fontWeight: 400,
-                            
-                            color:
-                              isSpecialStudent
-                                ? "red"
-                                : "#1e293b",
-
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            bgcolor:
-                              isSpecialStudent
-                                ? "#f3f3f3"
-                                : "#fff",
-
-                            "&:hover": {
-                              color: "#1976d2",
-                              textDecoration:
-                                "underline",
-                            },
-                          }}
-                        >
-                          <Tooltip title="Bấm để xem lịch điểm danh">
-                            <Box
-                              sx={{
-                                minWidth: 0,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                              "&:hover": {
+                                backgroundColor:
+                                  "transparent",
+                              },
+                            }}
+                          >
+                            {isAbsent ? (
                               <Typography
-                                component="span"
                                 sx={{
                                   fontWeight: 400,
+                                  fontSize: 14,
+                                  lineHeight: 1,
+                                  color: "#d32f2f",
                                 }}
                               >
-                                {s.hoVaTen}
+                                X
                               </Typography>
-                            </Box>
-                          </Tooltip>
-                        </TableCell>
-
-                        {/* =================================================
-                            TRẠNG THÁI
-                        ================================================= */}
-                        <TableCell
-                          align="center"
-                          sx={{
-                            width: 110,
-                            minWidth: 110,
-                            maxWidth: 110,
-
-                            border:
-                              "1px solid rgba(0,0,0,0.12)",
-                            p: 0.7,
-                          }}
-                        >
-                          <Button
-                            variant={
-                              isAbsent
-                                ? "contained"
-                                : "outlined"
-                            }
-                            color={
-                              isAbsent
-                                ? "error"
-                                : "success"
-                            }
-                            onClick={() =>
-                              handleAttendanceChange(
-                                s.maDinhDanh,
-                                !isAbsent
-                              )
-                            }
-                            sx={{
-                              minWidth: {
-                                xs: 75,
-                                sm: 90,
-                              },
-                              height: 32,
-                              px: 1,
-                              borderRadius: 1.5,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              textTransform:
-                                "none",
-                            }}
-                          >
-                            {isAbsent
-                              ? "VẮNG"
-                              : "CÓ MẶT"}
-                          </Button>
-                        </TableCell>
-
-                        {/* =================================================
-                            ĐIỀU CHỈNH
-                        ================================================= */}
-                        <TableCell
-                          align="center"
-                          sx={{
-                            width: 130,
-                            minWidth: 130,
-                            maxWidth: 130,
-
-                            border:
-                              "1px solid rgba(0,0,0,0.12)",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent:
-                                "center",
-                              gap: 0.5,
-
-                              visibility:
-                                hoveredHS ===
-                                s.maDinhDanh
-                                  ? "visible"
-                                  : {
-                                      xs: "visible",
-                                      sm: "hidden",
-                                    },
-                            }}
-                          >
-                            {/* THÊM */}
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={() => {
-                                setIsAdding(true);
-                                setEditingStudent(null);
-                                setNewName("");
-                                setNewMaDinhDanh("");
-                                setNewGhiChu("");
-                              }}
-                            >
-                              <PersonAddIcon fontSize="small" />
-                            </IconButton>
-
-                            {/* SỬA */}
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() =>
-                                handleEditStudent(s)
-                              }
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-
-                            {/* XÓA */}
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => {
-                                setStudentToDelete(s);
-                                setDeleteDialogOpen(
-                                  true
-                                );
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </>
-        ) : (
-          /* =================================================
-              LỊCH THÁNG - CHỈ XEM
-          ================================================= */
-          <Box>
-            {/* HEADER LỊCH */}
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                mb: 2,
-                gap: 1,
-                flexWrap: "wrap",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: "#1976d2",
-                }}
-              >
-                THÁNG {dayjs(attendanceDate).format("MM/YYYY")}
-              </Typography>
-            </Box>
-
-            {/* =================================================
-                LỊCH
-            ================================================= */}
-            <Paper
-              elevation={0}
-              sx={{
-                width: "100%",
-                maxWidth: 700,
-                mx: "auto",
-                border: "1px solid #e2e8f0",
-                borderRadius: 2,
-                overflow: "hidden",
-              }}
-            >
-              {/* THỨ */}
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(7, 1fr)",
-                  bgcolor: "#1976d2",
-                }}
-              >
-                {[
-                  "T2",
-                  "T3",
-                  "T4",
-                  "T5",
-                  "T6",
-                  "T7",
-                  "CN",
-                ].map((day) => (
-                  <Box
-                    key={day}
-                    sx={{
-                      py: 1,
-                      textAlign: "center",
-                      color: "#fff",
-                      fontWeight: 700,
-                      fontSize: 13,
-                    }}
-                  >
-                    {day}
-                  </Box>
-                ))}
-              </Box>
-
-              {/* NGÀY */}
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(7, 1fr)",
-                }}
-              >
-                {/* Ô TRỐNG TRƯỚC NGÀY 01 */}
-                {Array.from({
-                  length:
-                    (monthStart.day() + 6) %
-                    7,
-                }).map((_, index) => (
-                  <Box
-                    key={`empty-${index}`}
-                    sx={{
-                      minHeight: {
-                        xs: 58,
-                        sm: 72,
-                      },
-                      borderRight:
-                        "1px solid #e2e8f0",
-                      borderBottom:
-                        "1px solid #e2e8f0",
-                      bgcolor: "#f8fafc",
-                    }}
-                  />
-                ))}
-
-                {monthDays.map((date) => {
-                  const summary =
-                    monthlyDaySummary[
-                      date
-                    ] || {
-                      absentCount: 0,
-                      students: [],
-                    };
-
-                  const isSelected =
-                    date === attendanceDate;
-
-                  const dateObj =
-                    dayjs(date);
-
-                  return (
-                    <Box
-                      key={date}
-                      onClick={() =>
-                        handleSelectMonthDate(
-                          date
-                        )
-                      }
-                      sx={{
-                        minHeight: {
-                          xs: 58,
-                          sm: 72,
-                        },
-                        p: {
-                          xs: 0.7,
-                          sm: 1,
-                        },
-                        borderRight:
-                          "1px solid #e2e8f0",
-                        borderBottom:
-                          "1px solid #e2e8f0",
-
-                        cursor: "pointer",
-
-                        bgcolor: isSelected
-                          ? "rgba(25,118,210,0.08)"
-                          : "#fff",
-
-                        "&:hover": {
-                          bgcolor:
-                            "rgba(25,118,210,0.12)",
-                        },
-                      }}
-                    >
-                      {/* SỐ NGÀY */}
-                      <Typography
+                            ) : null}
+                          </TableCell>
+                        );
+                      })
+                    ) : (
+                      /* =========================
+                        ĐIỂM DANH NGÀY
+                      ========================= */
+                      <TableCell
+                        align="center"
                         sx={{
-                          fontWeight: 500,
-                          fontSize: {
-                            xs: 14,
-                            sm: 16,
-                          },
-                          color:
-                            dateObj.day() === 0
-                              ? "#d32f2f"
-                              : "#1e293b",
+                          width: 80,
+                          minWidth: 80,
+                          maxWidth: 80,
+
+                          border:
+                            "1px solid rgba(0,0,0,0.12)",
+
+                          height: 30,
+                          p: 0,
                         }}
                       >
-                        {dateObj.format("D")}
-                      </Typography>
+                        <Checkbox
+                          size="small"
+                          checked={
+                            !!attendance[
+                              s.maDinhDanh
+                            ]
+                          }
+                          onChange={(e) =>
+                            handleAttendanceChange(
+                              s.maDinhDanh,
+                              e.target.checked
+                            )
+                          }
+                        />
+                      </TableCell>
+                    )}
 
-                      {/* CÓ HỌC SINH VẮNG */}
-                      {summary.absentCount >
-                        0 && (
-                        <Box
-                          sx={{
-                            mt: 0.5,
-                            display: "flex",
-                            alignItems:
-                              "center",
-                            gap: 0.5,
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontSize: {
-                                xs: 11,
-                                sm: 12,
-                              },
-                              fontWeight: 700,
-                              color: "#d32f2f",
-                            }}
-                          >
-                            ✕{" "}
-                            {
-                              summary.absentCount
-                            }
-                          </Typography>
-                        </Box>
-                      )}
-
-                      {/* KHÔNG CÓ AI VẮNG */}
-                      {summary.absentCount ===
-                        0 && (
-                        <Typography
-                          sx={{
-                            mt: 0.5,
-                            fontSize: 11,
-                            color: "#94a3b8",
-                          }}
-                        >
-                          —
-                        </Typography>
-                      )}
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Paper>
-
-            {/* =================================================
-                CHÚ THÍCH
-            ================================================= */}
-            <Box
-              sx={{
-                mt: 1.5,
-                display: "flex",
-                justifyContent: "center",
-                gap: 3,
-                flexWrap: "wrap",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: 13,
-                  color: "#64748b",
-                }}
-              >
-                ✕ Có học sinh vắng
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: 13,
-                  color: "#64748b",
-                }}
-              >
-                Bấm ngày để điểm danh
-              </Typography>
-            </Box>
-
-            {/* =================================================
-                DANH SÁCH HỌC SINH - XEM LỊCH CÁ NHÂN
-            ================================================= */}
-            {/* =================================================
-            DANH SÁCH HỌC SINH VẮNG TRONG THÁNG
-            ================================================= */}
-            <Box sx={{ mt: 3 }}>
-            <Typography
-              sx={{
-                fontWeight: 700,
-                color: "#1976d2",
-                mb: 2,
-              }}
-            >
-              DANH SÁCH HỌC SINH VẮNG TRONG THÁNG
-            </Typography>
-
-            <TableContainer
-              component={Paper}
-              elevation={0}
-              sx={{
-                border: "1px solid #e2e8f0",
-                overflowX: "auto",
-              }}
-            >
-              <Table
-                size="small"
-                sx={{
-                  minWidth: 670,
-                  tableLayout: "fixed",
-                }}
-              >
-                <TableHead>
-                  <TableRow>
-                    {/* STT */}
+                    {/* =========================
+                        ĐIỀU CHỈNH
+                    ========================= */}
                     <TableCell
                       align="center"
                       sx={{
-                        width: 50,
-                        minWidth: 50,
-                        maxWidth: 50,
-                        bgcolor: "#f1f5f9",
-                        fontWeight: 700,
-                        borderRight: "1px solid #cbd5e1",
-                        borderBottom: "1px solid #cbd5e1",
-                      }}
-                    >
-                      STT
-                    </TableCell>
+                        width: 100,
+                        minWidth: 100,
+                        maxWidth: 100,
 
-                    {/* HỌ VÀ TÊN */}
-                    <TableCell
-                      sx={{
-                        width: 200,
-                        minWidth: 200,
-                        maxWidth: 200,
-                        bgcolor: "#f1f5f9",
-                        fontWeight: 700,
-                        textAlign: "center",
-                        borderRight: "1px solid #cbd5e1",
-                        borderBottom: "1px solid #cbd5e1",
-                      }}
-                    >
-                      HỌ VÀ TÊN
-                    </TableCell>
+                        border:
+                          "1px solid rgba(0,0,0,0.12)",
 
-                    {/* SỐ NGÀY VẮNG */}
-                    <TableCell
-                      align="center"
-                      sx={{
-                        width: 50,
-                        minWidth: 50,
-                        maxWidth: 50,
-                        bgcolor: "#f1f5f9",
-                        fontWeight: 700,
-                        borderRight: "1px solid #cbd5e1",
-                        borderBottom: "1px solid #cbd5e1",
+                        height: 30,
                       }}
                     >
-                      VẮNG
-                    </TableCell>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "center",
+                          gap: 0.5,
 
-                    {/* NGÀY VẮNG */}
-                    <TableCell
-                      sx={{
-                        width: 300,
-                        minWidth: 300,
-                        maxWidth: 300,
-                        bgcolor: "#f1f5f9",
-                        fontWeight: 700,
-                        textAlign: "center",
-                        borderBottom: "1px solid #cbd5e1",
-                      }}
-                    >
-                      NGÀY VẮNG
+                          visibility:
+                            hoveredHS ===
+                            s.maDinhDanh
+                              ? "visible"
+                              : "hidden",
+                        }}
+                      >
+
+                        {/* THÊM */}
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => {
+                            setIsAdding(true);
+                            setEditingStudent(null);
+                            setNewName("");
+                            setNewMaDinhDanh("");
+                            setNewGhiChu("");
+                          }}
+                        >
+                          <PersonAddIcon fontSize="small" />
+                        </IconButton>
+
+                        {/* SỬA */}
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() =>
+                            handleEditStudent(s)
+                          }
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+
+                        {/* XÓA */}
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => {
+                            setStudentToDelete(s);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+
+                      </Box>
                     </TableCell>
                   </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {students.map((student) => {
-                    const absentDates =
-                      getStudentAbsentDates(student);
-
-                    return (
-                      <TableRow
-                        key={student.maDinhDanh}
-                        hover
-                      >
-                        {/* STT */}
-                        <TableCell
-                          align="center"
-                          sx={{
-                            width: 50,
-                            minWidth: 50,
-                            maxWidth: 50,
-                            borderRight: "1px solid #e2e8f0",
-                            borderBottom: "1px solid #e2e8f0",
-                          }}
-                        >
-                          {student.stt}
-                        </TableCell>
-
-                        {/* HỌ VÀ TÊN */}
-                        <TableCell
-                          sx={{
-                            width: 200,
-                            minWidth: 200,
-                            maxWidth: 200,
-                            fontWeight: 400,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            borderRight: "1px solid #e2e8f0",
-                            borderBottom: "1px solid #e2e8f0",
-                          }}
-                        >
-                          {student.hoVaTen}
-                        </TableCell>
-
-                        {/* SỐ NGÀY VẮNG */}
-                        <TableCell
-                          align="center"
-                          sx={{
-                            width: 50,
-                            minWidth: 50,
-                            maxWidth: 50,
-                            borderRight: "1px solid #e2e8f0",
-                            borderBottom: "1px solid #e2e8f0",
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontWeight: 700,
-                              color:
-                                absentDates.length > 0
-                                  ? "#d32f2f"
-                                  : "#16a34a",
-                            }}
-                          >
-                            {absentDates.length}
-                          </Typography>
-                        </TableCell>
-
-                        {/* NGÀY VẮNG */}
-                        <TableCell
-                          sx={{
-                            width: 300,
-                            minWidth: 300,
-                            maxWidth: 300,
-                            borderBottom: "1px solid #e2e8f0",
-                          }}
-                        >
-                          {absentDates.length > 0 ? (
-                            <Box
-                              sx={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 0.6,
-                              }}
-                            >
-                              {absentDates.map((date) => (
-                                <Box
-                                  key={date}
-                                  sx={{
-                                    px: 0.9,
-                                    py: 0.35,
-                                    borderRadius: 1,
-                                    bgcolor: "#fef2f2",
-                                    color: "#dc2626",
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  {dayjs(date).format("DD/MM")}
-                                </Box>
-                              ))}
-                            </Box>
-                          ) : (
-                            <Typography
-                              sx={{
-                                color: "#94a3b8",
-                                fontSize: 13,
-                              }}
-                            >
-                              —
-                            </Typography>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        </Box>
-      )}
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
       </Paper>
 
