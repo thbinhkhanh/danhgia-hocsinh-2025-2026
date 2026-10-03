@@ -1818,7 +1818,7 @@ const presentCount =
                       size: "small",
                       sx: {
                         width: {
-                          xs: 145,
+                          xs: 135,
                           sm: 150,
                         },
                         maxWidth: "100%",
@@ -2272,7 +2272,7 @@ const presentCount =
                     color: "#475569",
                   }}
                 >
-                  👥 {totalStudents} học sinh
+                  👥 {totalStudents} HS
                 </Typography>
               </Paper>
 
@@ -3047,7 +3047,7 @@ const presentCount =
                 mb: 2,
               }}
             >
-              DANH SÁCH HỌC SINH VẮNG TRONG THÁNG
+              TỔNG HỢP ĐIỂM DANH
             </Typography>
 
             <TableContainer
