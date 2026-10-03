@@ -24,6 +24,8 @@ import {
   FormControlLabel,
   Divider,
   Popover,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 
 import { db } from "../firebase";
@@ -1755,45 +1757,46 @@ const presentCount =
             <Box
               sx={{
                 display: "flex",
-                alignItems:
-                  "center",
+                alignItems: "center",
                 gap: 1,
+                flexWrap: "wrap",
+                width: "100%",
+                justifyContent: {
+                  xs: "center",
+                  sm: "flex-start",
+                },
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: 16,
-                  fontWeight: 500,
-                  color:
-                    "#1e293b",
-                }}
-              >
-                Lớp:
-              </Typography>
-
-              <Select
-                value={
-                  selectedClass
-                }
-                onChange={
-                  handleClassChange
-                }
+              <FormControl
                 size="small"
                 sx={{
-                  width: 80,
+                  width: 70,
                 }}
               >
-                {classes.map(
-                  (cls) => (
+                <InputLabel>Lớp</InputLabel>
+
+                <Select
+                  value={selectedClass}
+                  onChange={handleClassChange}
+                  label="Lớp"
+                  sx={{
+                    height: 42,
+                    backgroundColor: "#fff",
+                    borderRadius: 1.5,
+                    fontSize: 14,
+                    fontWeight: 500,
+                  }}
+                >
+                  {classes.map((cls) => (
                     <MenuItem
                       key={cls}
                       value={cls}
                     >
                       {cls}
                     </MenuItem>
-                  )
-                )}
-              </Select>
+                  ))}
+                </Select>
+              </FormControl>
 
               {/* ===============================
                   LỊCH ĐIỂM DANH
@@ -1814,7 +1817,11 @@ const presentCount =
                     textField: {
                       size: "small",
                       sx: {
-                        width: 150,
+                        width: {
+                          xs: 145,
+                          sm: 150,
+                        },
+                        maxWidth: "100%",
 
                         "& .MuiInputBase-root": {
                           height: 42,
@@ -2026,48 +2033,49 @@ const presentCount =
 
               {/* THÊM LỚP */}
 
-              <Tooltip title="Thêm lớp">
-                <IconButton
-                  onClick={() =>
-                    setAddingClass(
-                      true
-                    )
-                  }
-                  sx={{
-                    color: "#fff",
-                    bgcolor:
-                      "#22c55e",
-                    width: 30,
-                    height: 30,
+              {!showMonth && (
+                <Tooltip title="Thêm lớp">
+                  <IconButton
+                    onClick={() =>
+                      setAddingClass(true)
+                    }
+                    sx={{
+                      color: "#fff",
+                      bgcolor: "#22c55e",
+                      width: 30,
+                      height: 30,
 
-                    "&:hover": {
-                      bgcolor:
-                        "#16a34a",
-                    },
-                  }}
-                >
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
+                      "&:hover": {
+                        bgcolor: "#16a34a",
+                      },
+                    }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
 
               {/* XÓA LỚP */}
 
-              <Tooltip title="Xóa lớp">
-                <IconButton
-                  onClick={handleOpenDeleteClassDialog}
-                  sx={{
-                    color: "#fff",
-                    bgcolor: "#ef4444",
-                    width: 30,
-                    height: 30,
-                    "&:hover": {
-                      bgcolor: "#dc2626",
-                    },
-                  }}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
+              {!showMonth && (
+                <Tooltip title="Xóa lớp">
+                  <IconButton
+                    onClick={handleOpenDeleteClassDialog}
+                    sx={{
+                      color: "#fff",
+                      bgcolor: "#ef4444",
+                      width: 30,
+                      height: 30,
+
+                      "&:hover": {
+                        bgcolor: "#dc2626",
+                      },
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
 
               {showMonth && (
                 <Tooltip title="Xuất Excel danh sách học sinh vắng">
