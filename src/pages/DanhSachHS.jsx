@@ -1733,370 +1733,381 @@ const presentCount =
         <Box
           sx={{
             display: "flex",
-            justifyContent:
-              "center",
-            alignItems:
-              "center",
+            justifyContent: "center",
+            alignItems: "center",
             mb: 2,
             gap: 2,
             flexWrap: "wrap",
+            width: "100%",
           }}
         >
           <Box
             sx={{
               display: "flex",
-              flexDirection:
-                "column",
-              alignItems:
-                "flex-start",
+              flexDirection: "column",
+              alignItems: "center",
               gap: 1,
+              width: "100%",
             }}
           >
             {/* HÀNG TRÊN */}
 
             <Box
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                flexWrap: "wrap",
                 width: "100%",
-                justifyContent: {
-                  xs: "center",
-                  sm: "flex-start",
+                overflowX: {
+                  xs: "auto",
+                  sm: "visible",
+                },
+                overflowY: "hidden",
+                scrollbarWidth: "none",
+                "&::-webkit-scrollbar": {
+                  display: "none",
                 },
               }}
             >
-              <FormControl
-                size="small"
+              <Box
                 sx={{
-                  width: 70,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  flexWrap: "nowrap",
+
+                  // Nội dung tự giãn theo tổng kích thước các control
+                  width: "max-content",
+
+                  // Khi đủ chỗ thì căn giữa
+                  margin: {
+                    xs: "0 auto",
+                    sm: "0 auto",
+                  },
+
+                  // Không để phần tử đầu tiên bị cắt
+                  paddingLeft: 1,
+                  paddingRight: 1,
                 }}
               >
-                <InputLabel>Lớp</InputLabel>
-
-                <Select
-                  value={selectedClass}
-                  onChange={handleClassChange}
-                  label="Lớp"
+                <FormControl
+                  size="small"
                   sx={{
-                    height: 42,
-                    backgroundColor: "#fff",
-                    borderRadius: 1.5,
-                    fontSize: 14,
-                    fontWeight: 500,
+                    width: 80,
+                    flexShrink: 0,
+                    mt: 1,
                   }}
                 >
-                  {classes.map((cls) => (
-                    <MenuItem
-                      key={cls}
-                      value={cls}
-                    >
-                      {cls}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  <InputLabel>Lớp</InputLabel>
 
-              {/* ===============================
-                  LỊCH ĐIỂM DANH
-              =============================== */}
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Ngày"
-                  value={dayjs(attendanceDate)}
-                  onChange={(newValue) => {
-                    if (!newValue) return;
+                  <Select
+                    value={selectedClass}
+                    onChange={handleClassChange}
+                    label="Lớp"
+                    sx={{
+                      height: 42,
+                      backgroundColor: "#fff",
+                      borderRadius: 1.5,
+                      fontSize: 14,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {classes.map((cls) => (
+                      <MenuItem
+                        key={cls}
+                        value={cls}
+                      >
+                        {cls}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
-                    setAttendanceDate(
-                      newValue.format("YYYY-MM-DD")
-                    );
-                  }}
-                  format="DD/MM/YYYY"
-                  slotProps={{
-                    textField: {
-                      size: "small",
-                      sx: {
-                        width: {
-                          xs: 135,
-                          sm: 150,
-                        },
-                        maxWidth: "100%",
+                {/* ===============================
+                    LỊCH ĐIỂM DANH
+                =============================== */}
 
-                        "& .MuiInputBase-root": {
-                          height: 42,
-                          backgroundColor: "#fff",
-                          borderRadius: 1.5,
-                        },
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DatePicker
+                    label="Ngày"
+                    value={dayjs(attendanceDate)}
+                    onChange={(newValue) => {
+                      if (!newValue) return;
 
-                        "& .MuiInputBase-input": {
-                          fontSize: 14,
-                          fontWeight: 500,
+                      setAttendanceDate(
+                        newValue.format("YYYY-MM-DD")
+                      );
+                    }}
+                    format="DD/MM/YYYY"
+                    slotProps={{
+                      textField: {
+                        size: "small",
+                        sx: {
+                          width: {
+                            xs: 150,
+                            sm: 150,
+                          },
+                          flexShrink: 0,
+                          maxWidth: "none",
+                          mt: 1,
+
+                          "& .MuiInputBase-root": {
+                            height: 42,
+                            backgroundColor: "#fff",
+                            borderRadius: 1.5,
+                          },
+
+                          "& .MuiInputBase-input": {
+                            fontSize: 14,
+                            fontWeight: 500,
+                          },
                         },
                       },
-                    },
 
-                    popper: {
-                      sx: {
-                        // ===============================
-                        // KHUNG LỊCH
-                        // ===============================
-                        "& .MuiPaper-root": {
-                          width: 350,
-                          borderRadius: 2,
-                          boxShadow:
-                            "0 8px 30px rgba(0,0,0,0.15)",
-                          border:
-                            "1px solid #e5e7eb",
-                        },
+                      popper: {
+                        sx: {
+                          "& .MuiPaper-root": {
+                            width: 350,
+                            borderRadius: 2,
+                            boxShadow:
+                              "0 8px 30px rgba(0,0,0,0.15)",
+                            border:
+                              "1px solid #e5e7eb",
+                          },
 
-                        // ===============================
-                        // HEADER
-                        // THÁNG/NĂM TRÁI - <> PHẢI
-                        // ===============================
-                        "& .MuiPickersCalendarHeader-root": {
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
-                          alignItems: "center",
-                          width: "100%",
-                          boxSizing: "border-box",
-                          padding: "12px 10px 8px 18px",
-                          margin: 0,
-                        },
+                          "& .MuiPickersCalendarHeader-root": {
+                            display: "grid",
+                            gridTemplateColumns: "1fr auto",
+                            alignItems: "center",
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "12px 10px 8px 18px",
+                            margin: 0,
+                          },
 
-                        // THÁNG / NĂM
-                        "& .MuiPickersCalendarHeader-labelContainer": {
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-start",
-                          minWidth: 0,
-                          margin: 0,
-                          padding: 0,
-                        },
+                          "& .MuiPickersCalendarHeader-labelContainer": {
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-start",
+                            minWidth: 0,
+                            margin: 0,
+                            padding: 0,
+                          },
 
-                        "& .MuiPickersCalendarHeader-label": {
-                          fontSize: 17,
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
-                        },
+                          "& .MuiPickersCalendarHeader-label": {
+                            fontSize: 17,
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          },
 
-                        // ===============================
-                        // NÚT < >
-                        // ===============================
-                        "& .MuiPickersArrowSwitcher-root": {
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-end",
-                          margin: 0,
-                          padding: 0,
-                        },
+                          "& .MuiPickersArrowSwitcher-root": {
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-end",
+                            margin: 0,
+                            padding: 0,
+                          },
 
-                        "& .MuiPickersArrowSwitcher-button": {
-                          width: 38,
-                          height: 38,
-                          padding: 0,
-                          margin: 0,
-                          borderRadius: 1,
+                          "& .MuiPickersArrowSwitcher-button": {
+                            width: 38,
+                            height: 38,
+                            padding: 0,
+                            margin: 0,
+                            borderRadius: 1,
 
-                          "& .MuiSvgIcon-root": {
+                            "& .MuiSvgIcon-root": {
+                              fontSize: 24,
+                            },
+
+                            "&:hover": {
+                              backgroundColor: "#f1f5f9",
+                            },
+                          },
+
+                          "& .MuiDayCalendar-header": {
+                            marginTop: 3,
+                            marginBottom: 2,
+                          },
+
+                          "& .MuiDayCalendar-weekDayLabel": {
+                            fontSize: 14,
+                            fontWeight: 600,
+
+                            "&:nth-of-type(1)": {
+                              fontSize: 0,
+                              "&::after": {
+                                content: '"Su"',
+                                fontSize: 14,
+                              },
+                            },
+
+                            "&:nth-of-type(2)": {
+                              fontSize: 0,
+                              "&::after": {
+                                content: '"Mo"',
+                                fontSize: 14,
+                              },
+                            },
+
+                            "&:nth-of-type(3)": {
+                              fontSize: 0,
+                              "&::after": {
+                                content: '"Tu"',
+                                fontSize: 14,
+                              },
+                            },
+
+                            "&:nth-of-type(4)": {
+                              fontSize: 0,
+                              "&::after": {
+                                content: '"We"',
+                                fontSize: 14,
+                              },
+                            },
+
+                            "&:nth-of-type(5)": {
+                              fontSize: 0,
+                              "&::after": {
+                                content: '"Th"',
+                                fontSize: 14,
+                              },
+                            },
+
+                            "&:nth-of-type(6)": {
+                              fontSize: 0,
+                              "&::after": {
+                                content: '"Fr"',
+                                fontSize: 14,
+                              },
+                            },
+
+                            "&:nth-of-type(7)": {
+                              fontSize: 0,
+                              "&::after": {
+                                content: '"Sa"',
+                                fontSize: 14,
+                              },
+                            },
+                          },
+
+                          "& .MuiPickersDay-root": {
+                            width: 42,
+                            height: 42,
+                            margin: "2px",
                             fontSize: 24,
+                            fontWeight: 500,
                           },
 
-                          "&:hover": {
-                            backgroundColor: "#f1f5f9",
+                          "& .MuiPickersDay-root.Mui-selected": {
+                            fontSize: 24,
+                            fontWeight: 600,
                           },
-                        },
-
-                        // ===============================
-                        // HÀNG THỨ
-                        // S M T W T F S
-                        // ===============================
-                        "& .MuiDayCalendar-header": {
-                          marginTop: 3,
-                          marginBottom: 2,
-                        },
-
-                        "& .MuiDayCalendar-weekDayLabel": {
-                          fontSize: 14,
-                          fontWeight: 600,
-
-                          "&:nth-of-type(1)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Su"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(2)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Mo"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(3)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Tu"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(4)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"We"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(5)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Th"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(6)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Fr"',
-                              fontSize: 14,
-                            },
-                          },
-
-                          "&:nth-of-type(7)": {
-                            fontSize: 0,
-                            "&::after": {
-                              content: '"Sa"',
-                              fontSize: 14,
-                            },
-                          },
-                        },
-
-                        // ===============================
-                        // NGÀY 1 → 31
-                        // ===============================
-                        "& .MuiPickersDay-root": {
-                          width: 42,
-                          height: 42,
-                          margin: "2px",
-                          fontSize: 24,
-                          fontWeight: 500,
-                        },
-
-                        // ===============================
-                        // NGÀY ĐƯỢC CHỌN
-                        // ===============================
-                        "& .MuiPickersDay-root.Mui-selected": {
-                          fontSize: 24,
-                          fontWeight: 600,
                         },
                       },
-                    },
-                  }}
-                />
-              </LocalizationProvider>
+                    }}
+                  />
+                </LocalizationProvider>
 
-              <Tooltip
-                title={
-                  showMonth
-                    ? "Thu gọn"
-                    : "Xem điểm danh tháng"
-                }
-              >
-                <IconButton
-                  onClick={() =>
-                    setShowMonth((prev) => !prev)
+                <Tooltip
+                  title={
+                    showMonth
+                      ? "Thu gọn"
+                      : "Xem điểm danh tháng"
                   }
-                  sx={{
-                    color: "#1976d2",
-                    bgcolor: "rgba(25,118,210,0.1)",
-                    width: 42,
-                    height: 42,
-
-                    "&:hover": {
-                      bgcolor: "rgba(25,118,210,0.2)",
-                    },
-                  }}
                 >
-                  {showMonth ? (
-                    <CloseFullscreenIcon />
-                  ) : (
-                    <CalendarMonthIcon />
-                  )}
-                </IconButton>
-              </Tooltip>
-
-              {/* THÊM LỚP */}
-
-              {!showMonth && (
-                <Tooltip title="Thêm lớp">
                   <IconButton
                     onClick={() =>
-                      setAddingClass(true)
+                      setShowMonth((prev) => !prev)
                     }
-                    sx={{
-                      color: "#fff",
-                      bgcolor: "#22c55e",
-                      width: 30,
-                      height: 30,
-
-                      "&:hover": {
-                        bgcolor: "#16a34a",
-                      },
-                    }}
-                  >
-                    <AddIcon />
-                  </IconButton>
-                </Tooltip>
-              )}
-
-              {/* XÓA LỚP */}
-
-              {!showMonth && (
-                <Tooltip title="Xóa lớp">
-                  <IconButton
-                    onClick={handleOpenDeleteClassDialog}
-                    sx={{
-                      color: "#fff",
-                      bgcolor: "#ef4444",
-                      width: 30,
-                      height: 30,
-
-                      "&:hover": {
-                        bgcolor: "#dc2626",
-                      },
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              )}
-
-              {showMonth && (
-                <Tooltip title="Xuất Excel danh sách học sinh vắng">
-                  <IconButton
-                    onClick={handleExportAbsentExcel}
-                    disabled={students.length === 0}
                     sx={{
                       color: "#1976d2",
                       bgcolor: "rgba(25,118,210,0.1)",
                       width: 42,
                       height: 42,
+                      flexShrink: 0,
 
                       "&:hover": {
                         bgcolor: "rgba(25,118,210,0.2)",
                       },
                     }}
                   >
-                    <FileDownloadIcon />
+                    {showMonth ? (
+                      <CloseFullscreenIcon />
+                    ) : (
+                      <CalendarMonthIcon />
+                    )}
                   </IconButton>
                 </Tooltip>
-              )}
+
+                {/* THÊM LỚP */}
+
+                {!showMonth && (
+                  <Tooltip title="Thêm lớp">
+                    <IconButton
+                      onClick={() =>
+                        setAddingClass(true)
+                      }
+                      sx={{
+                        color: "#fff",
+                        bgcolor: "#22c55e",
+                        width: 30,
+                        height: 30,
+                        flexShrink: 0,
+
+                        "&:hover": {
+                          bgcolor: "#16a34a",
+                        },
+                      }}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
+                {/* XÓA LỚP */}
+
+                {!showMonth && (
+                  <Tooltip title="Xóa lớp">
+                    <IconButton
+                      onClick={handleOpenDeleteClassDialog}
+                      sx={{
+                        color: "#fff",
+                        bgcolor: "#ef4444",
+                        width: 30,
+                        height: 30,
+                        flexShrink: 0,
+
+                        "&:hover": {
+                          bgcolor: "#dc2626",
+                        },
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
+                {/* XUẤT EXCEL */}
+
+                {showMonth && (
+                  <Tooltip title="Xuất Excel danh sách học sinh vắng">
+                    <IconButton
+                      onClick={handleExportAbsentExcel}
+                      disabled={students.length === 0}
+                      sx={{
+                        color: "#1976d2",
+                        bgcolor: "rgba(25,118,210,0.1)",
+                        width: 42,
+                        height: 42,
+                        flexShrink: 0,
+
+                        "&:hover": {
+                          bgcolor: "rgba(25,118,210,0.2)",
+                        },
+                      }}
+                    >
+                      <FileDownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
             </Box>
 
             {/* HÀNG THÊM LỚP */}
@@ -2105,34 +2116,25 @@ const presentCount =
               <Box
                 sx={{
                   display: "flex",
-                  alignItems:
-                    "center",
+                  alignItems: "center",
                   gap: 1,
                   ml: 5,
-                  flexWrap:
-                    "wrap",
+                  flexWrap: "wrap",
                 }}
               >
                 <TextField
                   size="small"
                   label="Tên lớp"
                   placeholder="VD: 4.1->4.6"
-                  value={
-                    newClass
-                  }
+                  value={newClass}
                   onChange={(e) =>
-                    setNewClass(
-                      e.target.value
-                    )
+                    setNewClass(e.target.value)
                   }
                   sx={{
                     width: 240,
                   }}
                   onKeyDown={(e) => {
-                    if (
-                      e.key ===
-                      "Enter"
-                    ) {
+                    if (e.key === "Enter") {
                       handleAddClass();
                     }
                   }}
@@ -2141,15 +2143,11 @@ const presentCount =
                 <Button
                   variant="contained"
                   color="success"
-                  onClick={
-                    handleAddClass
-                  }
+                  onClick={handleAddClass}
                   sx={{
-                    textTransform:
-                      "none",
+                    textTransform: "none",
                     fontWeight: 700,
-                    borderRadius:
-                      "8px",
+                    borderRadius: "8px",
                     px: 2,
                   }}
                 >
@@ -2159,16 +2157,12 @@ const presentCount =
                 <Button
                   variant="outlined"
                   onClick={() => {
-                    setAddingClass(
-                      false
-                    );
+                    setAddingClass(false);
                     setNewClass("");
                   }}
                   sx={{
-                    textTransform:
-                      "none",
-                    borderRadius:
-                      "8px",
+                    textTransform: "none",
+                    borderRadius: "8px",
                     px: 2,
                   }}
                 >
@@ -2272,7 +2266,7 @@ const presentCount =
                     color: "#475569",
                   }}
                 >
-                  👥 {totalStudents} HS
+                  👥 SS: {totalStudents}
                 </Typography>
               </Paper>
 
@@ -2293,7 +2287,7 @@ const presentCount =
                     color: "#15803d",
                   }}
                 >
-                  ✓ Có mặt {presentCount}
+                  ✓ HD: {presentCount}
                 </Typography>
               </Paper>
 
@@ -2314,7 +2308,7 @@ const presentCount =
                     color: "#dc2626",
                   }}
                 >
-                  ✕ Vắng {absentCount}
+                  ✕ V: {absentCount}
                 </Typography>
               </Paper>
             </Box>
