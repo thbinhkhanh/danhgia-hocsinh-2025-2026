@@ -144,6 +144,7 @@ export default function DanhSachHS() {
   const [uploading, setUploading] = useState(false);
 
   const [hoveredHS, setHoveredHS] = useState(null);
+  const [selectedHS, setSelectedHS] = useState(null);
 
   const [editingStudent, setEditingStudent] =
     useState(null);
@@ -2226,9 +2227,6 @@ const presentCount =
         )}
 
         {/* =================================================
-            DANH SÁCH HỌC SINH
-        ================================================= */}
-        {/* =================================================
           DANH SÁCH HỌC SINH
         ================================================= */}
         {!showMonth ? (
@@ -2409,12 +2407,22 @@ const presentCount =
                         color: "#fff",
                         border:
                           "1px solid rgba(255,255,255,0.4)",
-                        fontWeight: 700,
 
-                        position: "sticky",
+                        fontWeight: 400,
+
+                        position: {
+                          xs: "static",
+                          sm: "sticky",
+                        },
                         left: 0,
-                        top: 0,
-                        zIndex: 12,
+                        top: {
+                          xs: "auto",
+                          sm: 0,
+                        },
+                        zIndex: {
+                          xs: "auto",
+                          sm: 12,
+                        },
                       }}
                     >
                       STT
@@ -2436,10 +2444,19 @@ const presentCount =
                           "1px solid rgba(255,255,255,0.4)",
                         fontWeight: 700,
 
-                        position: "sticky",
+                        position: {
+                          xs: "static",
+                          sm: "sticky",
+                        },
                         left: 50,
-                        top: 0,
-                        zIndex: 12,
+                        top: {
+                          xs: "auto",
+                          sm: 0,
+                        },
+                        zIndex: {
+                          xs: "auto",
+                          sm: 12,
+                        },
                       }}
                     >
                       MÃ ĐỊNH DANH
@@ -2461,17 +2478,26 @@ const presentCount =
                         fontWeight: 700,
                         textAlign: "center",
 
-                        position: "sticky",
+                        position: {
+                          xs: "static",
+                          sm: "sticky",
+                        },
                         left: 170,
-                        top: 0,
-                        zIndex: 11,
+                        top: {
+                          xs: "auto",
+                          sm: 0,
+                        },
+                        zIndex: {
+                          xs: "auto",
+                          sm: 11,
+                        },
                       }}
                     >
                       HỌ VÀ TÊN
                     </TableCell>
 
                     {/* =================================================
-                        VẮNG
+                        ĐIỂM DANH
                     ================================================= */}
                     <TableCell
                       align="center"
@@ -2487,7 +2513,7 @@ const presentCount =
                         fontWeight: 700,
                       }}
                     >
-                       ĐIỂM DANH
+                      ĐIỂM DANH
                     </TableCell>
 
                     {/* =================================================
@@ -2514,9 +2540,6 @@ const presentCount =
 
                 <TableBody>
                   {students.map((s) => {
-                    const isAbsent =
-                      !!attendance[s.maDinhDanh];
-
                     const isSpecialStudent = [
                       "khuyết tật",
                       "chuyển trường",
@@ -2531,222 +2554,124 @@ const presentCount =
                       <TableRow
                         key={s.maDinhDanh}
                         onMouseEnter={() =>
-                          setHoveredHS(
-                            s.maDinhDanh
-                          )
+                          setHoveredHS(s.maDinhDanh)
                         }
                         onMouseLeave={() =>
                           setHoveredHS(null)
                         }
                         sx={{
-                          backgroundColor:
-                            isSpecialStudent
-                              ? "#f3f3f3"
+                          backgroundColor: isSpecialStudent
+                            ? "#f3f3f3"
+                            : "inherit",
+
+                          color: isSpecialStudent
+                            ? "red"
+                            : "inherit",
+
+                          "& td": {
+                            color: isSpecialStudent
+                              ? "red"
                               : "inherit",
+                          },
 
                           "&:hover": {
-                            backgroundColor:
-                              isSpecialStudent
-                                ? "#d6d6d6"
-                                : "rgba(25,118,210,0.05)",
+                            backgroundColor: isSpecialStudent
+                              ? "#d6d6d6"
+                              : "rgba(25,118,210,0.05)",
                           },
                         }}
                       >
-                        {/* =================================================
-                            STT
-                        ================================================= */}
+                        {/* STT */}
                         <TableCell
                           align="center"
                           sx={{
-                            width: 50,
-                            minWidth: 50,
-                            maxWidth: 50,
-
+                            width: 40,
                             border:
                               "1px solid rgba(0,0,0,0.12)",
-                            fontWeight: 600,
-                            color:
-                              isSpecialStudent
-                                ? "red"
-                                : "inherit",
-                            
-                            bgcolor:
-                              isSpecialStudent
-                                ? "#f3f3f3"
-                                : "#fff",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {s.stt}
                         </TableCell>
 
-                        {/* =================================================
-                            MÃ ĐỊNH DANH
-                        ================================================= */}
+                        {/* MÃ */}
                         <TableCell
                           align="center"
                           sx={{
                             width: 120,
-                            minWidth: 120,
-                            maxWidth: 120,
-
-                            padding: "6px 4px",
-
                             border:
                               "1px solid rgba(0,0,0,0.12)",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: "#64748b",
                             whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            bgcolor:
-                              isSpecialStudent
-                                ? "#f3f3f3"
-                                : "#fff",
                           }}
                         >
                           {s.maDinhDanh}
                         </TableCell>
 
-                        {/* =================================================
-                            HỌ VÀ TÊN
-                        ================================================= */}
+                        {/* HỌ TÊN */}
                         <TableCell
-                          onClick={() =>
-                            handleOpenStudentCalendar(s)
-                          }
+                          onClick={() => {
+                            // 📱 Chọn học sinh trên điện thoại
+                            setSelectedHS((prev) =>
+                              prev === s.maDinhDanh
+                                ? null
+                                : s.maDinhDanh
+                            );
+                          }}
                           sx={{
                             width: 220,
-                            minWidth: 220,
-                            maxWidth: 220,
-
                             border:
                               "1px solid rgba(0,0,0,0.12)",
-                            cursor: "pointer",
-                            fontWeight: 400,
-                            
-                            color:
-                              isSpecialStudent
-                                ? "red"
-                                : "#1e293b",
-
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
-                            bgcolor:
-                              isSpecialStudent
-                                ? "#f3f3f3"
-                                : "#fff",
 
-                            "&:hover": {
-                              color: "#1976d2",
-                              textDecoration:
-                                "underline",
+                            // 📱 Cho biết tên có thể chạm
+                            cursor: {
+                              xs: "pointer",
+                              sm: "default",
                             },
+
+                            userSelect: "none",
+                            WebkitTapHighlightColor:
+                              "transparent",
                           }}
                         >
-                          <Tooltip title="Bấm để xem lịch điểm danh">
-                            <Box
-                              sx={{
-                                minWidth: 0,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              <Typography
-                                component="span"
-                                sx={{
-                                  fontWeight: 400,
-                                }}
-                              >
-                                {s.hoVaTen}
-                              </Typography>
-                            </Box>
-                          </Tooltip>
+                          {s.hoVaTen}
                         </TableCell>
 
-                        {/* =================================================
-                            TRẠNG THÁI
-                        ================================================= */}
+                        {/* ĐIỀU CHỈNH */}
                         <TableCell
                           align="center"
                           sx={{
-                            width: 110,
-                            minWidth: 110,
-                            maxWidth: 110,
-
                             border:
                               "1px solid rgba(0,0,0,0.12)",
-                            p: 0.7,
-                          }}
-                        >
-                          <Button
-                            variant={
-                              isAbsent
-                                ? "contained"
-                                : "outlined"
-                            }
-                            color={
-                              isAbsent
-                                ? "error"
-                                : "success"
-                            }
-                            onClick={() =>
-                              handleAttendanceChange(
-                                s.maDinhDanh,
-                                !isAbsent
-                              )
-                            }
-                            sx={{
-                              minWidth: {
-                                xs: 75,
-                                sm: 90,
-                              },
-                              height: 32,
-                              px: 1,
-                              borderRadius: 1.5,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              textTransform:
-                                "none",
-                            }}
-                          >
-                            {isAbsent
-                              ? "VẮNG"
-                              : "CÓ MẶT"}
-                          </Button>
-                        </TableCell>
-
-                        {/* =================================================
-                            ĐIỀU CHỈNH
-                        ================================================= */}
-                        <TableCell
-                          align="center"
-                          sx={{
-                            width: 130,
-                            minWidth: 130,
-                            maxWidth: 130,
-
-                            border:
-                              "1px solid rgba(0,0,0,0.12)",
+                            height: 30,
                           }}
                         >
                           <Box
                             sx={{
                               display: "flex",
-                              justifyContent:
-                                "center",
+                              justifyContent: "center",
                               gap: 0.5,
 
-                              visibility:
-                                hoveredHS ===
-                                s.maDinhDanh
-                                  ? "visible"
-                                  : {
-                                      xs: "visible",
-                                      sm: "hidden",
-                                    },
+                              // 📱 MOBILE:
+                              // hiện khi chọn tên học sinh
+                              //
+                              // 💻 DESKTOP:
+                              // hiện khi rê chuột
+                              visibility: {
+                                xs:
+                                  selectedHS ===
+                                  s.maDinhDanh
+                                    ? "visible"
+                                    : "hidden",
+
+                                sm:
+                                  hoveredHS ===
+                                  s.maDinhDanh
+                                    ? "visible"
+                                    : "hidden",
+                              },
                             }}
                           >
                             {/* THÊM */}
@@ -2781,9 +2706,7 @@ const presentCount =
                               color="error"
                               onClick={() => {
                                 setStudentToDelete(s);
-                                setDeleteDialogOpen(
-                                  true
-                                );
+                                setDeleteDialogOpen(true);
                               }}
                             >
                               <DeleteIcon fontSize="small" />
