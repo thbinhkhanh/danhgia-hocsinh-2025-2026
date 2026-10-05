@@ -684,119 +684,123 @@ const statusColors = {
 
       {/* Bộ chọn Lớp / Môn / Tuần */}
       <Box
-  sx={{
-    display: "flex",
-    justifyContent: {
-      xs: "flex-start",
-      sm: "center",
-    },
-    alignItems: "center",
-    gap: 1.5,
-    mb: 4,
-    width: "100%",
-    overflowX: "auto",
-    overflowY: "hidden",
-    px: 1,
-    pt: 1,
-    pb: 0.5,
-    boxSizing: "border-box",
-    "&::-webkit-scrollbar": {
-      display: "none",
-    },
-    scrollbarWidth: "none",
-  }}
->
-  <FormControl
-    size="small"
-    sx={{
-      minWidth: 80,
-      flexShrink: 0,
-    }}
-  >
-    <InputLabel>Lớp</InputLabel>
-    <Select
-      value={config.lop || ""}
-      onChange={handleClassChange}
-      label="Lớp"
-    >
-      {classes.map((cls) => (
-        <MenuItem key={cls} value={cls}>
-          {cls}
-        </MenuItem>
-      ))}
-    </Select>
-  </FormControl>
-
-  <FormControl
-    size="small"
-    sx={{
-      minWidth: 120,
-      bgcolor: "white",
-      flexShrink: 0,
-    }}
-  >
-    <InputLabel id="mon-label">Môn</InputLabel>
-    <Select
-      labelId="mon-label"
-      value={config.mon === "Công nghệ" ? "congnghe" : "tinhoc"}
-      onChange={handleMonChange}
-      label="Môn"
-    >
-      <MenuItem value="tinhoc">Tin học</MenuItem>
-      <MenuItem value="congnghe">Công nghệ</MenuItem>
-    </Select>
-  </FormControl>
-
-  {mode !== "ktdk" && mode !== "ontap" && (
-    <FormControl
-      size="small"
-      sx={{
-        minWidth: 120,
-        flexShrink: 0,
-      }}
-    >
-      <InputLabel>Tuần</InputLabel>
-      <Select
-        value={config.tuan || 1}
-        onChange={handleWeekChange}
-        label="Tuần"
-      >
-        {[...Array(35)].map((_, i) => (
-          <MenuItem key={i + 1} value={i + 1}>
-            Tuần {i + 1}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-  )}
-
-  <FormControlLabel
-    sx={{
-      ml: 0,
-      mr: 0,
-      flexShrink: 0,
-      whiteSpace: "nowrap",
-    }}
-    control={
-      <Switch
-        checked={showRanking}
-        onChange={(e) => setShowRanking(e.target.checked)}
-        color="primary"
-      />
-    }
-    label={
-      <Typography
         sx={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: "#2563eb",
+          display: "flex",
+          justifyContent: {
+            xs: "flex-start",
+            sm: "center",
+          },
+          alignItems: "center",
+          gap: 1.5,
+          mb: 4,
+          width: "100%",
+          overflowX: "auto",
+          overflowY: "hidden",
+          px: 1,
+          pt: 1,
+          pb: 0.5,
+          boxSizing: "border-box",
+          "&::-webkit-scrollbar": {
+            display: "none",
+          },
+          scrollbarWidth: "none",
         }}
       >
-        {showRanking ? "Xếp hạng" : "Toàn bộ lớp"}
-      </Typography>
-    }
-  />
-</Box>
+        <FormControl
+          size="small"
+          sx={{
+            minWidth: 80,
+            flexShrink: 0,
+          }}
+        >
+          <InputLabel>Lớp</InputLabel>
+          <Select
+            value={config.lop || ""}
+            onChange={handleClassChange}
+            label="Lớp"
+          >
+            {classes.map((cls) => (
+              <MenuItem key={cls} value={cls}>
+                {cls}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl
+          size="small"
+          sx={{
+            minWidth: 120,
+            bgcolor: "white",
+            flexShrink: 0,
+          }}
+        >
+          <InputLabel id="mon-label">Môn</InputLabel>
+          <Select
+            labelId="mon-label"
+            value={config.mon === "Công nghệ" ? "congnghe" : "tinhoc"}
+            onChange={handleMonChange}
+            label="Môn"
+          >
+            <MenuItem value="tinhoc">Tin học</MenuItem>
+            <MenuItem value="congnghe">Công nghệ</MenuItem>
+          </Select>
+        </FormControl>
+
+        {mode !== "ktdk" && mode !== "ontap" && (
+          <FormControl
+            size="small"
+            sx={{
+              minWidth: 120,
+              flexShrink: 0,
+            }}
+          >
+            <InputLabel>Tuần</InputLabel>
+            <Select
+              value={config.tuan || 1}
+              onChange={handleWeekChange}
+              label="Tuần"
+            >
+              {[...Array(35)].map((_, i) => (
+                <MenuItem key={i + 1} value={i + 1}>
+                  Tuần {i + 1}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        <FormControlLabel
+          sx={{
+            ml: 0,
+            mr: 0,
+            flexShrink: 0,
+            whiteSpace: "nowrap",
+          }}
+          control={
+            <Switch
+              checked={showRanking}
+              onChange={(e) => setShowRanking(e.target.checked)}
+              color="primary"
+            />
+          }
+          label={
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#2563eb",
+              }}
+            >
+              {showRanking
+                ? config?.loaiKiemTra === "danhgia"
+                  ? "Thống kê"
+                  : "Xếp hạng"
+                : "Danh sách"}
+            </Typography>
+          }
+        />
+      </Box>
 
       {/* ================= TOÀN BỘ DANH SÁCH HỌC SINH ================= */}
       {!showRanking && (
