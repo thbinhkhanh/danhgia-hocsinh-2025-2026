@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   Box,
   Button,
@@ -21,8 +21,11 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import { ConfigContext } from "../context/ConfigContext";
 
-export default function BackupPage({ onClose, config }) {
+export default function BackupPage({ onClose }) {
+  const { config } = useContext(ConfigContext);
+
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   const BACKUP_KEYS = [
@@ -155,8 +158,15 @@ export default function BackupPage({ onClose, config }) {
       if (hasDATA) {
         backupData[DATA_KEY] = {};
 
-        const classListSnap = await getDocs(collection(db, "DANHSACH"));
-        const classList = classListSnap.docs.map((d) => d.id);
+        const classListSnap = await getDocs(
+          collection(db, "DANHSACH_LOP")
+        );
+
+        const classDoc = classListSnap.docs.find(
+          (d) => d.id === namHocKey
+        );
+
+        const classList = classDoc?.data()?.list || [];
 
         const perClassStep = DATA_WEIGHT / (classList.length || 1);
 

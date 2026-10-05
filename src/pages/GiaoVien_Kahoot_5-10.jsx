@@ -1089,9 +1089,7 @@ const statusColors = {
                     letterSpacing: 0.3,
                   }}
                 >
-                  {config?.loaiKiemTra === "danhgia"
-                    ? "KẾT QUẢ ĐÁNH GIÁ"
-                    : "🏆 BẢNG XẾP HẠNG"}
+                  🏆 BẢNG XẾP HẠNG
                 </Typography>
 
                 <Typography
@@ -1106,60 +1104,7 @@ const statusColors = {
                 </Typography>
               </Box>
 
-              {config?.loaiKiemTra === "danhgia" ? (
-                <Stack spacing={1.4}>
-                  {students
-                    .filter((student) =>
-                      studentStatus[student.maDinhDanh]
-                    )
-                    .map((student) => (
-                      <Paper
-                        key={student.maDinhDanh}
-                        elevation={0}
-                        onClick={() => {
-                          saveRecentStudent(student);
-                          setStudentForDanhGia(student);
-                        }}
-                        sx={{
-                          p: 2,
-                          borderRadius: 2,
-                          border: "1px solid #e2e8f0",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 1,
-                          "&:hover": {
-                            bgcolor: "#f1f5f9",
-                          },
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontWeight: 700,
-                            overflowWrap: "anywhere",
-                          }}
-                        >
-                          {student.stt}. {student.hoVaTen}
-                        </Typography>
-
-                        <Chip
-                          label={studentStatus[student.maDinhDanh]}
-                          size="small"
-                          color={
-                            studentStatus[student.maDinhDanh] ===
-                            "Hoàn thành tốt"
-                              ? "success"
-                              : studentStatus[student.maDinhDanh] ===
-                                "Hoàn thành"
-                              ? "primary"
-                              : "warning"
-                          }
-                        />
-                      </Paper>
-                    ))}
-                </Stack>
-              ) : rankedStudents.length === 0 ? (
+              {rankedStudents.length === 0 ? (
                 <Paper
                   elevation={0}
                   sx={{
@@ -1524,47 +1469,36 @@ const statusColors = {
           >
             {/* ================= THỐNG KÊ KẾT QUẢ ================= */}
             {(() => {
-              const isDanhGiaTuan = config?.loaiKiemTra === "danhgia";
-
               const studentsWithScore = students
                 .map((student) => ({
                   ...student,
-                  score: isDanhGiaTuan
-                    ? String(
-                        studentStatus[student.maDinhDanh] || ""
-                      ).trim()
-                    : studentScores[student.maDinhDanh]?.TN_diem ?? null,
+                  score:
+                    studentScores[student.maDinhDanh]?.TN_diem ??
+                    null,
                 }))
-                .filter((student) =>
-                  isDanhGiaTuan
-                    ? [
-                        "Hoàn thành tốt",
-                        "Hoàn thành",
-                        "Chưa hoàn thành",
-                      ].includes(student.score)
-                    : student.score !== null &&
-                      student.score !== undefined &&
-                      !Number.isNaN(Number(student.score))
+                .filter(
+                  (student) =>
+                    student.score !== null &&
+                    student.score !== undefined &&
+                    !Number.isNaN(Number(student.score))
                 );
 
               const total = studentsWithScore.length;
 
-              const totCount = studentsWithScore.filter((s) =>
-                isDanhGiaTuan
-                  ? s.score === "Hoàn thành tốt"
-                  : Number(s.score) >= 80 && Number(s.score) <= 100
+              const totCount = studentsWithScore.filter(
+                (s) =>
+                  Number(s.score) >= 80 &&
+                  Number(s.score) <= 100
               ).length;
 
-              const datCount = studentsWithScore.filter((s) =>
-                isDanhGiaTuan
-                  ? s.score === "Hoàn thành"
-                  : Number(s.score) >= 50 && Number(s.score) < 80
+              const datCount = studentsWithScore.filter(
+                (s) =>
+                  Number(s.score) >= 50 &&
+                  Number(s.score) < 80
               ).length;
 
-              const chuaDatCount = studentsWithScore.filter((s) =>
-                isDanhGiaTuan
-                  ? s.score === "Chưa hoàn thành"
-                  : Number(s.score) < 50
+              const chuaDatCount = studentsWithScore.filter(
+                (s) => Number(s.score) < 50
               ).length;
 
               const getPercent = (count) =>
@@ -1574,34 +1508,36 @@ const statusColors = {
 
               const statistics = [
                 {
-                  label: isDanhGiaTuan ? "Hoàn thành tốt" : "Tốt",
-                  range: isDanhGiaTuan ? "" : "8 – 10",
+                  label: "Tốt",
+                  range: "8 – 10",
                   count: totCount,
                   percent: getPercent(totCount),
-                  background: "linear-gradient(90deg,#16a34a,#4ade80)",
+                  background:
+                    "linear-gradient(90deg,#16a34a,#4ade80)",
                   light: "#f0fdf4",
                   text: "#15803d",
                 },
                 {
-                  label: isDanhGiaTuan ? "Hoàn thành" : "Đạt",
-                  range: isDanhGiaTuan ? "" : "5 – <8",
+                  label: "Đạt",
+                  range: "5 – <8",
                   count: datCount,
                   percent: getPercent(datCount),
-                  background: "linear-gradient(90deg,#2563eb,#60a5fa)",
+                  background:
+                    "linear-gradient(90deg,#2563eb,#60a5fa)",
                   light: "#eff6ff",
                   text: "#1d4ed8",
                 },
                 {
-                  label: isDanhGiaTuan ? "Chưa hoàn thành" : "Chưa đạt",
-                  range: isDanhGiaTuan ? "" : "<5",
+                  label: "Chưa đạt",
+                  range: "<5",
                   count: chuaDatCount,
                   percent: getPercent(chuaDatCount),
-                  background: "linear-gradient(90deg,#dc2626,#f87171)",
+                  background:
+                    "linear-gradient(90deg,#dc2626,#f87171)",
                   light: "#fef2f2",
                   text: "#b91c1c",
                 },
               ];
-
 
               if (total === 0) return null;
 
@@ -1633,7 +1569,7 @@ const statusColors = {
                         color: "#0f172a",
                       }}
                     >
-                      📊 THỐNG KÊ
+                      📊 THỐNG KÊ KẾT QUẢ
                     </Typography>
 
                     <Typography
@@ -1876,13 +1812,7 @@ const statusColors = {
                               color: item.text,
                             }}
                           >
-                            {config?.loaiKiemTra === "danhgia"
-                              ? item.label === "Hoàn thành tốt"
-                                ? "HTT"
-                                : item.label === "Hoàn thành"
-                                  ? "HT"
-                                  : "CHT"
-                              : item.label}
+                            {item.label}
                           </Typography>
                         </Box>
                       ))}
