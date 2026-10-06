@@ -1112,11 +1112,28 @@ const statusColors = {
 
               {config?.loaiKiemTra === "danhgia" ? (
                 <Stack spacing={1.4}>
-                  {students
+                  {[...students]
                     .filter((student) =>
                       studentStatus[student.maDinhDanh]
                     )
-                    .map((student) => (
+                    .sort((a, b) => {
+                      const order = {
+                        "Hoàn thành tốt": 1,
+                        "Hoàn thành": 2,
+                        "Chưa hoàn thành": 3,
+                      };
+
+                      const statusA =
+                        studentStatus[a.maDinhDanh] || "";
+                      const statusB =
+                        studentStatus[b.maDinhDanh] || "";
+
+                      return (
+                        (order[statusA] || 99) -
+                        (order[statusB] || 99)
+                      );
+                    })
+                    .map((student, index) => (
                       <Paper
                         key={student.maDinhDanh}
                         elevation={0}
@@ -1144,7 +1161,7 @@ const statusColors = {
                             overflowWrap: "anywhere",
                           }}
                         >
-                          {student.stt}. {student.hoVaTen}
+                          {index + 1}. {student.hoVaTen}
                         </Typography>
 
                         <Chip
@@ -1163,7 +1180,7 @@ const statusColors = {
                       </Paper>
                     ))}
                 </Stack>
-              ) : rankedStudents.length === 0 ? (
+              )  : rankedStudents.length === 0 ? (
                 <Paper
                   elevation={0}
                   sx={{
