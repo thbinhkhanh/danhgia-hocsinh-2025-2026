@@ -110,41 +110,48 @@ export default function TongHopDanhGia() {
   // -> Trả thêm tỉ lệ số T (để xét ưu tiên xếp loại tốt)
   function tinhDiemTrungBinhTheoKhoang(statusByWeek, from, to) {
     const diemMap = { T: 3, H: 2, C: 1 };
+
     let tong = 0;
     let dem = 0;
 
     const toShort = (statusStr) =>
       statusStr === "Hoàn thành tốt" ? "T" :
       statusStr === "Hoàn thành" ? "H" :
-      statusStr === "Chưa hoàn thành" ? "C" : "";
+      statusStr === "Chưa hoàn thành" ? "C" :
+      ["T", "H", "C"].includes(statusStr) ? statusStr :
+      "";
 
     for (let i = from; i <= to; i++) {
       const weekId = `tuan_${i}`;
       const raw = statusByWeek?.[weekId];
 
-      if (!raw) continue;
+      if (!raw || typeof raw !== "object") continue;
 
-      let hs = "";
-      let gv = "";
+      const hsShort = toShort(raw.hs || "");
+      const btShort = toShort(raw.gv || "");
 
-      if (typeof raw === "object") {
-        hs = raw.hs || "";
-        gv = raw.gv || "";
-      } else {
-        hs = raw;
-      }
+      const diemNX = hsShort ? diemMap[hsShort] : null;
+      const diemBT = btShort ? diemMap[btShort] : null;
 
-      const hsShort = toShort(hs);
-      const gvShort = toShort(gv);
+      // =====================================================
+      // Mỗi tuần chỉ tính 1 kết quả
+      // =====================================================
 
-      // ✅ Lấy từng cột riêng biệt
-      if (hsShort) {
-        tong += diemMap[hsShort];
+      // Có cả NX và BT → lấy trung bình trong tuần
+      if (diemNX !== null && diemBT !== null) {
+        tong += (diemNX + diemBT) / 2;
         dem++;
       }
 
-      if (gvShort) {
-        tong += diemMap[gvShort];
+      // Chỉ có NX
+      else if (diemNX !== null) {
+        tong += diemNX;
+        dem++;
+      }
+
+      // Chỉ có BT
+      else if (diemBT !== null) {
+        tong += diemBT;
         dem++;
       }
     }
@@ -162,14 +169,19 @@ export default function TongHopDanhGia() {
       to
     );
 
-    if (diemTB === null) return { xepLoai: "", nhanXet: "" };
+    if (diemTB === null) {
+      return { xepLoai: "", nhanXet: "" };
+    }
 
     let xepLoai;
 
-    if (diemTB >= 2.8) xepLoai = "T";
-    else if (diemTB >= 2.0) xepLoai = "H";
-    else if (diemTB >= 1.5) xepLoai = "H";
-    else xepLoai = "C";
+    if (diemTB >= 2.5) {
+      xepLoai = "T";
+    } else if (diemTB >= 1.5) {
+      xepLoai = "H";
+    } else {
+      xepLoai = "C";
+    }
 
     return { xepLoai };
   }
