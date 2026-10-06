@@ -328,23 +328,21 @@ export default function HocSinh() {
 
 
   const handleStatusChange = (maDinhDanh, hoVaTen, status) => {
-    setStudentStatus(prev => {
-      const currentStatus = prev[maDinhDanh] || "";
-      const newStatus = currentStatus === status ? "" : status;
+    const currentStatus = studentStatus[maDinhDanh] || "";
+    const newStatus = currentStatus === status ? "" : status;
 
-      if (currentStatus === newStatus) return prev;
+    setStudentStatus(prev => ({
+      ...prev,
+      [maDinhDanh]: newStatus,
+    }));
 
-      const updated = { ...prev, [maDinhDanh]: newStatus };
+    saveStudentStatus(maDinhDanh, hoVaTen, newStatus);
 
-      // 🔹 Ghi Firestore bất đồng bộ
-      saveStudentStatus(maDinhDanh, hoVaTen, newStatus);
-
-      return updated;
-    });
-
-    // 🔹 Đồng bộ lại dialog nếu đang mở đúng học sinh
+    // Đồng bộ ngay trạng thái trong dialog
     setExpandedStudent(prev =>
-      prev?.maDinhDanh === maDinhDanh ? { ...prev, status } : prev
+      prev?.maDinhDanh === maDinhDanh
+        ? { ...prev, status: newStatus }
+        : prev
     );
   };
 
