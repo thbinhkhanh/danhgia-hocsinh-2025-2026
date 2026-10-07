@@ -1036,7 +1036,10 @@ const statusColors = {
 
             gridTemplateColumns: {
               xs: "1fr",
-              md: "minmax(0, 1fr) 700px minmax(260px, 360px)",
+              md:
+                config?.loaiKiemTra === "danhgia"
+                  ? "1fr 1.3fr 1fr"
+                  : "minmax(0, 1fr) 700px minmax(260px, 360px)",
             },
 
             columnGap: {
@@ -1460,7 +1463,14 @@ const statusColors = {
                                 color: "#1976d2",
                               }}
                             >
-                              {student.score}
+                              {(() => {
+                                const raw = Number(student.score) / 10;
+                                const decimal = raw % 1;
+
+                                if (decimal < 0.25) return Math.floor(raw);
+                                if (decimal < 0.75) return Math.floor(raw) + 0.5;
+                                return Math.ceil(raw);
+                              })()}
                             </Typography>
 
                             <Typography
@@ -1541,6 +1551,7 @@ const statusColors = {
               maxWidth: 360,
               mx: "auto",
               pr: 0,
+              mt: 8.5,
             }}
           >
             {/* ================= THỐNG KÊ KẾT QUẢ ================= */}
@@ -1599,8 +1610,8 @@ const statusColors = {
                   range: isDanhGiaTuan ? "" : "8 – 10",
                   count: totCount,
                   percent: getPercent(totCount),
-                  background: "linear-gradient(90deg,#16a34a,#4ade80)",
-                  light: "#f0fdf4",
+                  background:
+                    "linear-gradient(90deg,#16a34a,#4ade80)",
                   text: "#15803d",
                 },
                 {
@@ -1608,8 +1619,8 @@ const statusColors = {
                   range: isDanhGiaTuan ? "" : "5 – <8",
                   count: datCount,
                   percent: getPercent(datCount),
-                  background: "linear-gradient(90deg,#2563eb,#60a5fa)",
-                  light: "#eff6ff",
+                  background:
+                    "linear-gradient(90deg,#2563eb,#60a5fa)",
                   text: "#1d4ed8",
                 },
                 {
@@ -1617,12 +1628,11 @@ const statusColors = {
                   range: isDanhGiaTuan ? "" : "<5",
                   count: chuaDatCount,
                   percent: getPercent(chuaDatCount),
-                  background: "linear-gradient(90deg,#dc2626,#f87171)",
-                  light: "#fef2f2",
+                  background:
+                    "linear-gradient(90deg,#dc2626,#f87171)",
                   text: "#b91c1c",
                 },
               ];
-
 
               if (total === 0) return null;
 
@@ -1630,162 +1640,11 @@ const statusColors = {
                 <Box
                   sx={{
                     width: "100%",
-                    maxWidth: 1000,
                     mx: "auto",
-                    mt: 0,
                     mb: 2,
                   }}
                 >
-                  {/* TIÊU ĐỀ */}
-                  <Box
-                    sx={{
-                      textAlign: "center",
-                      mb: 3,
-                      mt:8,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontSize: {
-                          xs: "1.35rem",
-                          sm: "1.4rem",
-                        },
-                        fontWeight: 900,
-                        color: "#0f172a",
-                      }}
-                    >
-                      📊 THỐNG KÊ
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        mt: 0.5,
-                        fontSize: 13,
-                        color: "#64748b",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {/*Tổng số học sinh có điểm: {total}*/}
-                    </Typography>
-                  </Box>
-
-                  {/* CÁC Ô THỐNG KÊ */}
-                  <Grid
-                    container
-                    spacing={2}
-                    justifyContent="center"
-                    sx={{ mb: 3 }}
-                  >
-                    {statistics.map((item) => (
-                      <Grid
-                        item
-                        xs={12}
-                        sm={4}
-                        key={item.label}
-                        sx={{
-                          width: 100,
-                          flex: "0 0 100px",
-                        }}
-                      >
-                        <Paper
-                          elevation={0}
-                          sx={{
-                            p: 2,
-                            borderRadius: 2,
-                            background: item.light,
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              mb: 1,
-                            }}
-                          >
-                            <Box>
-                              <Typography
-                                sx={{
-                                  fontSize: 17,
-                                  fontWeight: 900,
-                                  color: item.text,
-                                }}
-                              >
-                                {item.label}
-                              </Typography>
-
-                              <Typography
-                                sx={{
-                                  fontSize: 12,
-                                  color: "#64748b",
-                                  fontWeight: 600,
-                                }}
-                              />
-                            </Box>
-
-                            <Box sx={{ textAlign: "right" }}>
-                              <Typography
-                                sx={{
-                                  fontSize: 24,
-                                  lineHeight: 1,
-                                  fontWeight: 900,
-                                  color: item.text,
-                                }}
-                              >
-                                {item.count}
-                              </Typography>
-
-                              <Typography
-                                sx={{
-                                  fontSize: 11,
-                                  color: "#64748b",
-                                  fontWeight: 700,
-                                }}
-                              >
-                                học sinh
-                              </Typography>
-                            </Box>
-                          </Box>
-
-                          {/* PHẦN TRĂM */}
-                          <Typography
-                            sx={{
-                              fontSize: 13,
-                              fontWeight: 800,
-                              color: item.text,
-                              mb: 0.7,
-                            }}
-                          >
-                            {item.percent}%
-                          </Typography>
-
-                          {/* THANH PHẦN TRĂM */}
-                          <Box
-                            sx={{
-                              width: "100%",
-                              height: 10,
-                              borderRadius: 10,
-                              background: "#e2e8f0",
-                              overflow: "hidden",
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                width: `${item.percent}%`,
-                                height: "100%",
-                                borderRadius: 10,
-                                background: item.background,
-                                transition: "width .5s ease",
-                              }}
-                            />
-                          </Box>
-                        </Paper>
-                      </Grid>
-                    ))}
-                  </Grid>
-
-                  {/* BIỂU ĐỒ */}
+                  {/* ================= BIỂU ĐỒ THỐNG KÊ CHUNG ================= */}
                   <Paper
                     elevation={0}
                     sx={{
@@ -1794,7 +1653,7 @@ const statusColors = {
                         sm: 3,
                       },
                       width: "100%",
-                      maxWidth: 290,
+                      maxWidth: 300,
                       mx: "auto",
                       borderRadius: 3,
                       border: "1px solid #e2e8f0",
@@ -1802,30 +1661,54 @@ const statusColors = {
                         "linear-gradient(135deg,#f8fafc,#ffffff)",
                     }}
                   >
+                    {/* TIÊU ĐỀ */}
                     <Typography
                       sx={{
                         textAlign: "center",
-                        fontSize: 15,
-                        fontWeight: 800,
-                        color: "#334155",
+                        fontSize: {
+                          xs: 16,
+                          sm: 18,
+                        },
+                        fontWeight: 900,
+                        color: "#1976d2",
+                        mb: 1,
+                      }}
+                    >
+                      THỐNG KÊ
+                    </Typography>
+
+                    {/* TỔNG SỐ */}
+                    <Typography
+                      sx={{
+                        textAlign: "center",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#64748b",
                         mb: 0,
                       }}
                     >
-                      BIỂU ĐỒ
+                      Tổng số học sinh: {total}
                     </Typography>
 
+                    {/* BIỂU ĐỒ */}
                     <Box
                       sx={{
-                        height: 180,
+                        height: {
+                          xs: 190,
+                          sm: 220,
+                        },
                         display: "flex",
                         alignItems: "flex-end",
                         justifyContent: "center",
                         gap: {
                           xs: 2,
-                          sm: 3,
+                          sm: 5,
                         },
                         borderBottom: "2px solid #cbd5e1",
-                        px: 2,
+                        px: {
+                          xs: 1,
+                          sm: 3,
+                        },
                       }}
                     >
                       {statistics.map((item) => (
@@ -1839,49 +1722,66 @@ const statusColors = {
                             alignItems: "center",
                             minWidth: {
                               xs: 65,
-                              sm: 100,
+                              sm: 85,
                             },
                           }}
                         >
-                          {/* SỐ LƯỢNG */}
-                          <Typography
+                          {/* SỐ LƯỢNG + TỶ LỆ */}
+                          <Box
                             sx={{
-                              fontSize: 16,
-                              fontWeight: 900,
-                              color: item.text,
+                              textAlign: "center",
                               mb: 0.8,
                             }}
                           >
-                            {item.count}
-                          </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: {
+                                  xs: 18,
+                                  sm: 21,
+                                },
+                                lineHeight: 1,
+                                fontWeight: 900,
+                                color: item.text,
+                              }}
+                            >
+                              {item.count}
+                            </Typography>
+
+                            <Typography
+                              sx={{
+                                mt: 0.4,
+                                fontSize: {
+                                  xs: 12,
+                                  sm: 13,
+                                },
+                                lineHeight: 1,
+                                fontWeight: 800,
+                                color: item.text,
+                              }}
+                            >
+                              {item.percent}%
+                            </Typography>
+                          </Box>
 
                           {/* CỘT */}
                           <Box
                             sx={{
                               width: {
-                                xs: 30,
-                                sm: 40,
+                                xs: 32,
+                                sm: 45,
                               },
-
                               height: `${Math.max(
                                 item.percent * 1.7,
-                                item.count > 0 ? 12 : 0
+                                item.count > 0 ? 15 : 0
                               )}px`,
-
-                              maxHeight: 170,
-
+                              maxHeight: 200,
                               minHeight:
-                                item.count > 0 ? 12 : 0,
-
+                                item.count > 0 ? 15 : 0,
                               borderRadius:
                                 "10px 10px 0 0",
-
-                              background:
-                                item.background,
-
+                              background: item.background,
                               transition:
                                 "height .5s ease",
-
                               boxShadow:
                                 "0 5px 15px rgba(15,23,42,.12)",
                             }}
@@ -1892,17 +1792,76 @@ const statusColors = {
                             sx={{
                               mt: 1,
                               mb: 1,
-                              fontSize: 13,
-                              fontWeight: 800,
+                              fontSize: {
+                                xs: 13,
+                                sm: 15,
+                              },
+                              fontWeight: 900,
                               color: item.text,
+                            }}
+                          >
+                            {/*{config?.loaiKiemTra === "danhgia"
+                              ? item.label === "Hoàn thành tốt"
+                                ? "HTT"
+                                : item.label === "Hoàn thành"
+                                ? "HT"
+                                : "CHT"
+                              : item.label}*/}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                    
+                    {/* CHÚ GIẢI */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 1,
+                        mt: 2,
+                        flexWrap: "nowrap",
+                        width: "100%",
+                      }}
+                    >
+                      {statistics.map((item) => (
+                        <Box
+                          key={`legend-${item.label}`}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            minWidth: 0,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 10,
+                              height: 10,
+                              flexShrink: 0,
+                              borderRadius: "50%",
+                              background: item.text,
+                            }}
+                          />
+
+                          <Typography
+                            sx={{
+                              fontSize: {
+                                xs: 9,
+                                sm: 10,
+                              },
+                              fontWeight: 700,
+                              color: "#475569",
+                              whiteSpace: "nowrap",
                             }}
                           >
                             {config?.loaiKiemTra === "danhgia"
                               ? item.label === "Hoàn thành tốt"
-                                ? "HTT"
+                                ? "Hoàn thành tốt"
                                 : item.label === "Hoàn thành"
-                                  ? "HT"
-                                  : "CHT"
+                                ? "Hoàn thành"
+                                : "Chưa hoàn thành"
                               : item.label}
                           </Typography>
                         </Box>
@@ -1926,7 +1885,6 @@ const statusColors = {
       handleStatusChange={handleStatusChange}
       PaperComponent={PaperComponent}
     />
-
     {/* Dialog điểm trắc nghiệm */}
     <StatusResultDialogGV
       studentForTracNghiem={studentForTracNghiem}
