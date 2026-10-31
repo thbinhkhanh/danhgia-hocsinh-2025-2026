@@ -5,7 +5,6 @@ import {
   Box,
   Card,
   Typography,
-  Divider,
   Stack,
   FormControl,
   InputLabel,
@@ -13,18 +12,8 @@ import {
   MenuItem,
   Checkbox,
   FormControlLabel,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   IconButton,
   Tooltip,
-  LinearProgress,
-  useMediaQuery,
-  TextField,
   Snackbar,
   Alert,
 } from "@mui/material";
@@ -35,9 +24,7 @@ import {
   doc,
   getDoc,
   getDocs,
-  setDoc,
   collection,
-  writeBatch
 } from "firebase/firestore";
 
 // ================= CONTEXT =================
@@ -50,22 +37,16 @@ import { useSelectedClass } from "../context/SelectedClassContext";
 import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import AssessmentIcon from "@mui/icons-material/Assessment";
 
 // ================= UTILS =================
-import {
-  exportEvaluationToExcelFromTable
-} from "../utils/exportExcelFromTable";
+import { exportEvaluationToExcelFromTable } from "../utils/exportExcelFromTable";
+import { handleSaveAll as handleSaveAllUtil } from "../utils/saveEvaluationData";
 
-import {
-  nhanXetTinHocGiuaKy,
-  nhanXetCongNgheGiuaKy
-} from "../utils/nhanXet.js";
+import BangTongHopDGTX from "../components/BangTongHopDGTX";
 
 export default function TongHopDanhGia() {
   // ================= CONTEXT =================
   const { studentData, setStudentData } = useContext(StudentDataContext);
-
   const { config, setConfig } = useContext(ConfigContext);
 
   // 🔹 Context lưu Mức đạt ĐGTX để tái sử dụng ở NhapdiemKTDK
@@ -84,30 +65,23 @@ export default function TongHopDanhGia() {
   // ================= CLASS / DATA =================
   const [students, setStudents] = useState([]);
 
-  // ================= WEEK RANGE =================
-  const [weekFrom, setWeekFrom] = useState(1);
-  const [weekTo, setWeekTo] = useState(9);
-
   // ================= SUBJECT =================
   const [selectedSubject, setSelectedSubject] = useState("");
 
   // ================= FLAGS =================
-  const [isTeacherChecked, setIsTeacherChecked] = useState(false);
   const [showWeeks, setShowWeeks] = useState(true);
-  const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // ================= LOADING =================
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState("");
-  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+  // ================= LOADING & SNACKBAR =================
+  const [, setLoadingMessage] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success", // success | error | warning | info
+  });
 
-  // Chọn ngẫu nhiên một phần tử trong mảng
-  /*function randomItem(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }*/
+  const [selectedWeek, setSelectedWeek] = useState(null); // ban đầu null
 
   // Tính điểm trung bình từ tuần đến tuần, bỏ qua ô trống
-  // -> Trả thêm tỉ lệ số T (để xét ưu tiên xếp loại tốt)
   function tinhDiemTrungBinhTheoKhoang(statusByWeek, from, to) {
     const diemMap = { T: 3, H: 2, C: 1 };
 
@@ -133,35 +107,23 @@ export default function TongHopDanhGia() {
       const diemNX = hsShort ? diemMap[hsShort] : null;
       const diemBT = btShort ? diemMap[btShort] : null;
 
-      // =====================================================
-      // Mỗi tuần chỉ tính 1 kết quả
-      // =====================================================
-
-      // Có cả NX và BT → lấy trung bình trong tuần
       if (diemNX !== null && diemBT !== null) {
         tong += (diemNX + diemBT) / 2;
         dem++;
-      }
-
-      // Chỉ có NX
-      else if (diemNX !== null) {
+      } else if (diemNX !== null) {
         tong += diemNX;
         dem++;
-      }
-
-      // Chỉ có BT
-      else if (diemBT !== null) {
+      } else if (diemBT !== null) {
         tong += diemBT;
         dem++;
       }
     }
 
     const diemTB = dem > 0 ? tong / dem : null;
-
     return { diemTB };
   }
 
-  // Đánh giá học sinh & sinh nhận xét
+  // Đánh giá học sinh
   function danhGiaHocSinh(student, from, to) {
     const { diemTB } = tinhDiemTrungBinhTheoKhoang(
       student.statusByWeek,
@@ -170,11 +132,10 @@ export default function TongHopDanhGia() {
     );
 
     if (diemTB === null) {
-      return { xepLoai: "", nhanXet: "" };
+      return { xepLoai: "" };
     }
 
     let xepLoai;
-
     if (diemTB >= 2.5) {
       xepLoai = "T";
     } else if (diemTB >= 1.5) {
@@ -186,198 +147,188 @@ export default function TongHopDanhGia() {
     return { xepLoai };
   }
 
-  /*function getNhanXetMuc(subject) {
-    // 🔒 KHÓA CỨNG: luôn lấy nhận xét GIỮA KỲ
-    if (subject === "Công nghệ") return nhanXetCongNgheGiuaKy;
-    return nhanXetTinHocGiuaKy; // mặc định Tin học
-  }*/
-
-
-  // 🔹 Sinh nhận xét tự động dựa vào xếp loại rút gọn
-  /*function getNhanXetTuDong(xepLoai) {
-    if (!xepLoai) return "";
-
-    const nhanXetMuc = getNhanXetMuc(selectedSubject);
-    if (!nhanXetMuc) return "";
-
-    if (xepLoai === "T") return randomItem(nhanXetMuc.tot);
-    if (xepLoai === "H") return randomItem(nhanXetMuc.kha);
-    if (xepLoai === "C") return randomItem(nhanXetMuc.yeu);
-
-    return "";
-  }*/
-
-const [snackbar, setSnackbar] = useState({
-  open: false,
-  message: "",
-  severity: "success", // success | error | warning | info
-});
-
-const handleSaveAll = async () => {
-  if (!students || students.length === 0) return;
-
-  const selectedSemester = config.hocKy || "Giữa kỳ I";
-  const selectedMon = selectedSubject || config.mon || "Công nghệ";
-  const isCongNghe = selectedMon === "Công nghệ";
-
-  // 🔹 MAP HỌC KỲ
-  const mapTerm = {
-    "Giữa kỳ I": "GKI",
-    "Cuối kỳ I": "CKI",
-    "Giữa kỳ II": "GKII",
-    "Cuối năm": "CN",
+  const handleSaveAll = async () => {
+    await handleSaveAllUtil({
+      students,
+      config,
+      selectedClass,
+      selectedSubject,
+      namHocKey,
+      setStudentData,
+      setSnackbar,
+    });
   };
 
-  const termDoc = mapTerm[selectedSemester] || "CN";
-
-  // 🔹 KEY LỚP (chuẩn DATA)
-  const classKey = (selectedClass || "").replace(".", "_");
-
-  const batch = writeBatch(db);
-
-  students.forEach((s) => {
-    const hsRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", s.maDinhDanh);
-
-    const termUpdate = {};
-
-    // ✅ Giáo viên
-    if (s.dgtx_gv !== undefined) {
-      termUpdate.dgtx_gv = s.dgtx_gv;
-    }
-
-    // ✅ Mức đạt (lấy từ dgtx hoặc dgtx_mucdat)
-    if (s.dgtx !== undefined) {
-      termUpdate.dgtx_mucdat = s.dgtx;
-    }
-
-    // ✅ Nhận xét (ĐÚNG FIELD)
-    /*if (s.nhanXet !== undefined) {
-      termUpdate.dgtx_nx = s.nhanXet;
-    }*/
-
-    // ⛔ Không có gì thì không ghi
-    if (Object.keys(termUpdate).length === 0) return;
-
-    batch.set(
-      hsRef,
-      {
-        [isCongNghe ? "CongNghe" : "TinHoc"]: {
-          ktdk: {
-            [termDoc]: termUpdate,
-          },
-        },
-      },
-      { merge: true }
-    );
-  });
-
-  try {
-    await batch.commit();
-
-    setSnackbar({
-      open: true,
-      message: "✅ Lưu thành công!",
-      severity: "success",
-    });
-  } catch (err) {
-    console.error("❌ Lỗi lưu DATA:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Lỗi khi lưu dữ liệu!",
-      severity: "error",
-    });
-  }
-};
-
-const [selectedWeek, setSelectedWeek] = useState(null); // ban đầu null
-
   // --- Khi load config ---
-useEffect(() => {
-  const fetchConfig = async () => {
-    try {
-      const docRef = doc(db, "CONFIG", "config");
-      const docSnap = await getDoc(docRef);
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const docRef = doc(db, "CONFIG", "config");
+        const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-
-        // Cập nhật context
-        setConfig(data);
-
-        // Cập nhật state tuần
-        setWeekFrom(Number(data.th_tuan_from) || 1);
-        setWeekTo(Number(data.th_tuan_to) || 9);
-        setSelectedWeek(data.tuan || 1);
-
-        // Cập nhật lớp/môn
-        setSelectedSubject(prev => prev || data.mon || "Tin học"); // 🔹 đồng bộ môn
-      } else {
-        setWeekFrom(1);
-        setWeekTo(9);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setConfig(data);
+          setSelectedWeek(data.tuan || 1);
+          setSelectedSubject(prev => prev || data.mon || "Tin học");
+        } else {
+          setSelectedWeek(1);
+          setSelectedClass("");
+          setSelectedSubject("Tin học");
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi tải cấu hình:", err);
         setSelectedWeek(1);
         setSelectedClass("");
         setSelectedSubject("Tin học");
       }
-    } catch (err) {
-      console.error("❌ Lỗi khi tải cấu hình:", err);
-      setWeekFrom(1);
-      setWeekTo(9);
-      setSelectedWeek(1);
-      setSelectedClass("");
-      setSelectedSubject("Tin học");
-    } finally {
-      setIsConfigLoaded(true);
-    }
-  };
-
-  fetchConfig();
-}, [setConfig]);
-
-
-const hocKyMap = {
-  "Giữa kỳ I": { from: 1, to: 9 },
-  "Cuối kỳ I": { from: 10, to: 18 },
-  "Giữa kỳ II": { from: 19, to: 27 },
-  "Cuối năm": { from: 28, to: 35 },
-};
-
-const fetchStudents = async ({ forceReload = false } = {}) => {
-  if (!selectedClass || !selectedSubject) return;
-
-  try {
-    setLoadingProgress(0);
-    setLoadingMessage(forceReload ? "Đang làm mới dữ liệu..." : "Đang tải dữ liệu học sinh...");
-
-    // 🔹 MAP HỌC KỲ (ĐÚNG DẤU)
-    const mapTerm = {
-      "Giữa kỳ I": "GKI",
-      "Cuối kỳ I": "CKI",
-      "Giữa kỳ II": "GKII",
-      "Cuối năm": "CN",
     };
 
-    const semester = selectedSemester || config.hocKy;
-    if (!semester || !mapTerm[semester]) return;
+    fetchConfig();
+  }, [setConfig, setSelectedClass]);
 
-    const termDoc = mapTerm[semester];
-    const classKey = selectedClass.replace(".", "_");
-    const subjectKey = selectedSubject === "Công nghệ" ? "CongNghe" : "TinHoc";
-    const cacheKey = `${classKey}_${selectedSubject}_${termDoc}`;
+  const hocKyMap = {
+    "Giữa kỳ I": { from: 1, to: 9 },
+    "Cuối kỳ I": { from: 10, to: 18 },
+    "Giữa kỳ II": { from: 19, to: 27 },
+    "Cuối năm": { from: 28, to: 35 },
+  };
 
-    // 🔹 CACHE
-    if (!forceReload && studentData[cacheKey]?.length) {
-      const cachedStudents = studentData[cacheKey];
+  const fetchStudents = async ({ forceReload = false } = {}) => {
+    if (!selectedClass || !selectedSubject) return;
 
-      setStudents(cachedStudents);
+    try {
+      setLoadingMessage(forceReload ? "Đang làm mới dữ liệu..." : "Đang tải dữ liệu học sinh...");
 
-      // ============================================================
-      // 🔹 LƯU MỨC ĐẠT ĐGTX TỪ CACHE VÀO StudentKTDKContext
-      // ============================================================
+      const mapTerm = {
+        "Giữa kỳ I": "GKI",
+        "Cuối kỳ I": "CKI",
+        "Giữa kỳ II": "GKII",
+        "Cuối năm": "CN",
+      };
+
+      const semester = selectedSemester || config.hocKy;
+      if (!semester || !mapTerm[semester]) return;
+
+      const termDoc = mapTerm[semester];
+      const classKey = selectedClass.replace(".", "_");
+      const subjectKey = selectedSubject === "Công nghệ" ? "CongNghe" : "TinHoc";
+      const cacheKey = `${classKey}_${selectedSubject}_${termDoc}`;
+
+      if (!forceReload && studentData[cacheKey]?.length) {
+        const cachedStudents = studentData[cacheKey];
+        setStudents(cachedStudents);
+
+        const dgtxMucDatData = {};
+        cachedStudents.forEach((s) => {
+          if (!s.maDinhDanh) return;
+          dgtxMucDatData[s.maDinhDanh] = s.dgtx || "";
+        });
+
+        setDgtxMucDatForClass(
+          namHocKey,
+          classKey,
+          subjectKey,
+          termDoc,
+          dgtxMucDatData
+        );
+
+        setLoadingMessage("✅ Đã tải dữ liệu từ cache");
+        setTimeout(() => setLoadingMessage(""), 1000);
+        return;
+      }
+
+      const hsSnap = await getDocs(collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH"));
+      if (hsSnap.empty) {
+        setStudents([]);
+        return;
+      }
+
+      const { from: weekFrom, to: weekTo } =
+        hocKyMap[semester] || { from: 1, to: 35 };
+
+      const studentList = [];
+
+      hsSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        const monData = data?.[subjectKey] || {};
+        const hoVaTen = monData.hoVaTen || data.hoVaTen || "";
+
+        const statusByWeek = {};
+        const dgtxWeek = monData.dgtx || {};
+
+        Object.entries(dgtxWeek).forEach(([key, value]) => {
+          if (!key.startsWith("tuan_")) return;
+
+          const weekNum = Number(key.replace(/\D/g, ""));
+          if (weekNum >= weekFrom && weekNum <= weekTo) {
+            statusByWeek[key] = {
+              hs: value?.status || "",
+              gv: value?.TN_status || "",
+              TN_diem: value?.TN_diem ?? null,
+            };
+          }
+        });
+
+        const termData = monData?.ktdk?.[termDoc] || {};
+
+        studentList.push({
+          maDinhDanh: docSnap.id,
+          hoVaTen,
+          ghiChu: data.ghiChu || "",
+          statusByWeek,
+          dgtx_gv: termData.dgtx_gv || "",
+          dgtx_mucdat: termData.dgtx_mucdat || "",
+        });
+      });
+
+      const sortedWeekIds = Array.from(
+        new Set(studentList.flatMap(s => Object.keys(s.statusByWeek)))
+      ).sort((a, b) =>
+        Number(a.replace(/\D/g, "")) - Number(b.replace(/\D/g, ""))
+      );
+
+      const evaluatedList = studentList.map(s => {
+        const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
+
+        const weekCols = sortedWeekIds.reduce((acc, weekId) => {
+          const weekNum = Number(weekId.replace(/\D/g, ""));
+          const raw = s.statusByWeek[weekId] || {};
+          acc[`Tuan_${weekNum}_HS`] = raw.hs || "-";
+          acc[`Tuan_${weekNum}_GV`] = raw.gv || "-";
+          acc[`Tuan_${weekNum}_TN`] = raw.TN_diem ?? "-";
+          return acc;
+        }, {});
+
+        const mucDat = s.dgtx_gv?.trim()
+          ? s.dgtx_gv.trim()
+          : xepLoai || "";
+
+        return {
+          ...s,
+          ...weekCols,
+          dgtx: mucDat,
+          xepLoai,
+        };
+      });
+
+      evaluatedList.sort((a, b) => {
+        const lastA = a.hoVaTen.trim().split(" ").slice(-1)[0];
+        const lastB = b.hoVaTen.trim().split(" ").slice(-1)[0];
+
+        return lastA.localeCompare(lastB, "vi", {
+          sensitivity: "base",
+        });
+      });
+
+      const finalList = evaluatedList.map((s, i) => ({
+        ...s,
+        stt: i + 1,
+      }));
+
       const dgtxMucDatData = {};
-
-      cachedStudents.forEach((s) => {
+      finalList.forEach((s) => {
         if (!s.maDinhDanh) return;
-
         dgtxMucDatData[s.maDinhDanh] = s.dgtx || "";
       });
 
@@ -389,913 +340,194 @@ const fetchStudents = async ({ forceReload = false } = {}) => {
         dgtxMucDatData
       );
 
-      setLoadingMessage("✅ Đã tải dữ liệu từ cache");
-      setTimeout(() => setLoadingMessage(""), 1000);
-      return;
-    }
+      setStudentData(prev => ({ ...prev, [cacheKey]: finalList }));
+      setStudents(finalList);
+      setTimeout(() => setLoadingMessage(""), 1200);
 
-    // 🔹 LẤY DANH SÁCH HS
-    const hsSnap = await getDocs(collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH"));
-    if (hsSnap.empty) {
+    } catch (err) {
+      console.error("❌ Lỗi khi tải dữ liệu:", err);
       setStudents([]);
-      return;
+      setLoadingMessage("❌ Không thể tải dữ liệu");
     }
+  };
 
-    const { from: weekFrom, to: weekTo } =
-      hocKyMap[semester] || { from: 1, to: 35 };
+  const recalcMucDat = () => {
+    setStudents(prev =>
+      prev.map(s => {
+        const gv = s.dgtx_gv?.trim();
+        const hs = s.xepLoai?.trim();
+        const mucDat = gv ? gv : hs;
 
-    const studentList = [];
-
-    hsSnap.forEach(docSnap => {
-      const data = docSnap.data();
-      const monData = data?.[subjectKey] || {};
-
-      // ❗ TÊN HS LẤY TỪ MON DATA
-      const hoVaTen = monData.hoVaTen || data.hoVaTen || "";
-
-      // 🔹 TUẦN (dgtx)
-      const statusByWeek = {};
-      const dgtxWeek = monData.dgtx || {};
-
-      Object.entries(dgtxWeek).forEach(([key, value]) => {
-        if (!key.startsWith("tuan_")) return;
-
-        const weekNum = Number(key.replace(/\D/g, ""));
-        if (weekNum >= weekFrom && weekNum <= weekTo) {
-          statusByWeek[key] = {
-            hs: value?.status || "",
-            gv: value?.TN_status || "",
-            TN_diem: value?.TN_diem ?? null,
-          };
-        }
-      });
-
-      // 🔹 KTDK THEO HỌC KỲ
-      const termData = monData?.ktdk?.[termDoc] || {};
-
-      studentList.push({
-        maDinhDanh: docSnap.id,
-        hoVaTen,
-        ghiChu: data.ghiChu || "",
-        statusByWeek,
-
-        // ✅ CỘT CHUẨN
-        dgtx_gv: termData.dgtx_gv || "",
-        dgtx_mucdat: termData.dgtx_mucdat || "",
-        //nhanXet: termData.dgtx_nx?.trim() || "",
-      });
-    });
-
-    // 🔹 SẮP XẾP TUẦN
-    const sortedWeekIds = Array.from(
-      new Set(studentList.flatMap(s => Object.keys(s.statusByWeek)))
-    ).sort((a, b) =>
-      Number(a.replace(/\D/g, "")) - Number(b.replace(/\D/g, ""))
+        return {
+          ...s,
+          dgtx: mucDat || "",
+        };
+      })
     );
+  };
 
-    // 🔹 ĐÁNH GIÁ + MAP CỘT TUẦN
-    const evaluatedList = studentList.map(s => {
-      const { xepLoai } = danhGiaHocSinh(s, weekFrom, weekTo);
+  useEffect(() => {
+    if (!selectedClass || !selectedSubject) return;
+    fetchStudents();
+  }, [selectedClass, selectedSubject, selectedSemester]);
 
-      const weekCols = sortedWeekIds.reduce((acc, weekId) => {
-        const weekNum = Number(weekId.replace(/\D/g, ""));
-        const raw = s.statusByWeek[weekId] || {};
-        acc[`Tuan_${weekNum}_HS`] = raw.hs || "-";
-        acc[`Tuan_${weekNum}_GV`] = raw.gv || "-";
-        acc[`Tuan_${weekNum}_TN`] = raw.TN_diem ?? "-";
-        return acc;
-      }, {});
+  const handleDownload = async () => {
+    try {
+      const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
+      exportEvaluationToExcelFromTable(students, selectedClass, weekFrom, weekTo);
+    } catch (error) {
+      console.error("❌ Lỗi khi xuất Excel:", error);
+    }
+  };
 
-      // ✅ MỨC ĐẠT CUỐI
-      const mucDat = s.dgtx_gv?.trim()
-        ? s.dgtx_gv.trim()
-        : xepLoai || "";
-
-      // ✅ CHỈ SINH NHẬN XÉT NẾU CHƯA CÓ (GKI chưa có dữ liệu)
-      /*const nhanXetAuto =
-        !s.nhanXet && mucDat
-          ? getNhanXetTuDong(mucDat)
-          : s.nhanXet;
-      */
-      return {
-        ...s,
-        ...weekCols,
-        dgtx: mucDat,
-        //xepLoai: mucDat,
-        xepLoai,          // ✅ giữ đúng kết quả tính
-        //nhanXet: nhanXetAuto,
-      };
-    });
-
-
-    // 🔹 SẮP XẾP THEO TÊN
-    evaluatedList.sort((a, b) => {
-      const lastA = a.hoVaTen.trim().split(" ").slice(-1)[0];
-      const lastB = b.hoVaTen.trim().split(" ").slice(-1)[0];
-
-      return lastA.localeCompare(lastB, "vi", {
-        sensitivity: "base",
-      });
-    });
-
-    const finalList = evaluatedList.map((s, i) => ({
-      ...s,
-      stt: i + 1,
-    }));
-
-    // ============================================================
-    // 🔹 LƯU MỨC ĐẠT ĐGTX VÀO StudentKTDKContext
-    // ============================================================
-    const dgtxMucDatData = {};
-
-    finalList.forEach((s) => {
-      if (!s.maDinhDanh) return;
-
-      dgtxMucDatData[s.maDinhDanh] = s.dgtx || "";
-    });
-
-    setDgtxMucDatForClass(
-      namHocKey,
-      classKey,
-      subjectKey,
-      termDoc,
-      dgtxMucDatData
-    );
-
-    // 🔹 LƯU STATE + CACHE
-    setStudentData(prev => ({ ...prev, [cacheKey]: finalList }));
-    setStudents(finalList);
-
-    setLoadingProgress(100);
-    setTimeout(() => setLoadingMessage(""), 1200);
-
-  } catch (err) {
-    console.error("❌ Lỗi khi tải dữ liệu:", err);
-    setStudents([]);
-    setLoadingMessage("❌ Không thể tải dữ liệu");
-  }
-};
-
-const recalcMucDat = () => {
-  setStudents(prev =>
-    prev.map(s => {
-      const gv = s.dgtx_gv?.trim();
-      const hs = s.xepLoai?.trim();
-
-      const mucDat = gv ? gv : hs;
-
-      return {
-        ...s,
-        dgtx: mucDat || "",
-      };
-    })
-  );
-};
-
-
-useEffect(() => {
-  if (!selectedClass || !selectedSubject) return;
-  fetchStudents();
-}, [selectedClass, selectedSubject, selectedSemester]);
-
-
-const handleDownload = async () => {
-  try {
-    const { from: weekFrom, to: weekTo } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
-    exportEvaluationToExcelFromTable(students, selectedClass, weekFrom, weekTo);
-  } catch (error) {
-    console.error("❌ Lỗi khi xuất Excel:", error);
-  }
-};
-
-// --- Hàm thống kê tổng hợp ---
-const getStatistics = () => {
-  let totalT = 0;
-  let totalH = 0;
-  let totalC = 0;
-
-  const weekId = `tuan_${selectedWeek}`;
-
-  students.forEach((student) => {
-    const raw = student.statusByWeek?.[weekId];
-    const status = raw && typeof raw === "object" ? (raw.hs || "") : (raw || "");
-    const short =
-      status === "Hoàn thành tốt"
-        ? "T"
-        : status === "Hoàn thành"
-        ? "H"
-        : status === "Chưa hoàn thành"
-        ? "C"
-        : "";
-
-    if (short === "T") totalT++;
-    else if (short === "H") totalH++;
-    else if (short === "C") totalC++;
-  });
-
-  const totalCells = students.length; // mỗi học sinh có 1 ô cho tuần này
-  const totalBlank = Math.max(0, totalCells - (totalT + totalH + totalC));
-
-  return { totalT, totalH, totalC, totalBlank };
-};
-
-const { totalT, totalH, totalC, totalBlank } = getStatistics();
-
-const borderStyle = "1px solid #e0e0e0"; // màu nhạt như đường mặc định
-
-const handleCellChange = (maDinhDanh, field, value) => {
-  setStudents((prev) =>
-    prev.map((s) =>
-      s.maDinhDanh === maDinhDanh ? { ...s, [field]: value } : s
-    )
-  );
-};
-
-// Lấy tuần bắt đầu và kết thúc dựa trên học kỳ đã chọn
-const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
-
-return (
-  <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
-    <Card
-      elevation={6}
-      sx={{
-        p: 4,
-        borderRadius: 3,
-        width: showWeeks ? "100%" : 600, // 👈 quan trọng
-        maxWidth: 1500,
-        mx: "auto",
-        position: "relative",
-        transition: "all 0.3s ease",
-      }}
-    >
-      {/* 🔹 Nút tải Excel */}
-      <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
-        <Tooltip title="Lưu Xếp loại" arrow>
-          <IconButton
-            onClick={handleSaveAll}
-            sx={{
-              color: "primary.main",
-              bgcolor: "white",
-              boxShadow: 2,
-              "&:hover": { bgcolor: "primary.light", color: "white" },
-            }}
-          >
-            <SaveIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title="Tải xuống Excel" arrow>
-          <IconButton
-            onClick={handleDownload}
-            sx={{
-              color: "primary.main",
-              bgcolor: "white",
-              boxShadow: 2,
-              "&:hover": { bgcolor: "primary.light", color: "white" },
-            }}
-          >
-            <DownloadIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title="Làm mới dữ liệu" arrow>
-          <IconButton
-            onClick={() => {
-              fetchStudents({ forceReload: true });
-              recalcMucDat();
-            }}
-            sx={{
-              color: "primary.main",
-              bgcolor: "white",
-              boxShadow: 2,
-              "&:hover": { bgcolor: "primary.light", color: "white" },
-            }}
-          >
-            <RefreshIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      {/* ===== Header ===== */}
-      <Typography
-        variant="h5"
-        fontWeight="bold"
-        color="primary"
-        gutterBottom
-        sx={{ textAlign: "center", width: "100%", display: "block", mt: 3, mb: 2, textTransform: "uppercase" }}
-      >
-        ĐÁNH GIÁ {selectedSemester ? `${selectedSemester}` : ""}
-      </Typography>
-
-      {/* 🔹 Hàng chọn lớp và bộ lọc */}
-      <Stack direction="row" spacing={2} justifyContent="center" alignItems="center" mb={3}>
-        {/* Lớp */}
-        <FormControl size="small" sx={{ minWidth: 60 }}>
-          <InputLabel id="lop-label">Lớp</InputLabel>
-          <Select
-            labelId="lop-label"
-            value={selectedClass}
-            label="Lớp"
-            onChange={(e) => {
-              const newClass = e.target.value;
-              setSelectedClass(e.target.value);
-              setLoadingMessage("Đang tải dữ liệu lớp mới...");
-            }}
-
-          >
-            {classes.map((cls) => (
-              <MenuItem key={cls} value={cls}>
-                {cls}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        {/* Dropdown chọn môn học */}
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel id="monhoc-label">Môn</InputLabel>
-          <Select
-            labelId="monhoc-label"
-            label="Môn"
-            value={selectedSubject}
-            onChange={(e) => {
-              const value = e.target.value;
-              setSelectedSubject(value);
-              fetchStudentsAndStatus();
-            }}
-          >
-            <MenuItem value="Tin học">Tin học</MenuItem>
-            <MenuItem value="Công nghệ">Công nghệ</MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControlLabel
-          control={<Checkbox checked={showWeeks} onChange={(e) => setShowWeeks(e.target.checked)} />}
-          label={showWeeks ? "Ẩn tuần" : "Hiện tuần"}
-        />
-      </Stack>
-
-      {/* --- Bảng dữ liệu --- */}
-      <TableContainer
-        component={Paper}
+  return (
+    <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
+      <Card
+        elevation={6}
         sx={{
-          maxHeight: "none",
-          overflowY: "visible",
-          overflowX: "auto",
-        }}
-      >
-        <Table
-          stickyHeader
-          size="small"
-          sx={{
-            tableLayout: "auto",
-            minWidth: 600,
-            borderCollapse: "collapse",
-            "& td, & th": { borderRight: "1px solid #e0e0e0", borderBottom: "1px solid #e0e0e0" },
-            "& th:last-child, & td:last-child": { borderRight: "none" },
-          }}
-        >
-          <TableHead>
-            {/* HÀNG HEADER 1 — merge tuần */}
-            <TableRow>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>STT</TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220 }}>Họ và tên</TableCell>
-
-              {showWeeks &&
-                (() => {
-                  const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
-                  return Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
-                    const weekNum = startWeek + i;
-                    return (
-                      <TableCell
-                        key={weekNum}
-                        align="center"
-                        colSpan={2}
-                        sx={{ backgroundColor: "#1976d2", color: "white", width: 60 }}
-                      >
-                        Tuần {weekNum}
-                      </TableCell>
-                    );
-                  });
-                })()}
-
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Học sinh</TableCell>
-              
-              <TableCell
-                rowSpan={2}
-                align="center"
-                sx={{
-                  backgroundColor: "#1976d2",
-                  color: "white",
-                  width: 50,
-                  px: 0.5
-                }}
-              >
-                <Box display="flex" alignItems="center" justifyContent="center" gap={0.3}>
-                  
-                  {/* ✅ TIÊU ĐỀ CHUẨN MUI (không bị nhỏ) */}
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "white", fontSize: 14 }}
-                  >
-                    Giáo viên
-                  </Typography>
-
-                  {/* ✅ DROPDOWN SIÊU GỌN */}
-                  <FormControl
-                    variant="standard"
-                    sx={{
-                      m: 0,
-                      minWidth: 16
-                    }}
-                  >
-                    <Select
-                      defaultValue=""
-                      displayEmpty
-                      disableUnderline
-
-                      onChange={(e) => {
-                        const val = e.target.value;
-
-                        setStudents((prev) =>
-                          prev.map((s) => {
-                            const hs = s.xepLoai?.trim();
-                            const gv = val?.trim();
-
-                            let chung = "";
-
-                            // ✅ LOGIC CỦA BẠN (giữ nguyên)
-                            if (!hs && gv) chung = gv;
-                            else if (!gv) chung = hs;
-                            else {
-                              if (hs === "T" && gv === "T") chung = "T";
-                              else if (hs === "H" && gv === "T") chung = "T";
-                              else if (hs === "C" && gv === "T") chung = "H";
-                              else if (hs === "T" && gv === "H") chung = "H";
-                              else if (hs === "H" && gv === "H") chung = "H";
-                              else if (hs === "C" && gv === "H") chung = "H";
-                              else if (hs === "T" && gv === "C") chung = "H";
-                              else if (hs === "H" && gv === "C") chung = "C";
-                              else if (hs === "C" && gv === "C") chung = "C";
-                              else chung = hs;
-                            }
-
-                            return {
-                              ...s,
-                              dgtx_gv: val,                  // ✅ fill GV
-                              dgtx: chung,                  // ✅ cập nhật Mức đạt
-                              /*nhanXet: chung
-                                ? getNhanXetTuDong(chung)   // ✅ cập nhật nhận xét
-                                : "",
-                              */
-                            };
-                          })
-                        );
-                      }}
-
-                      renderValue={() => (
-                        <span style={{ fontSize: 18, lineHeight: 1 }}>▾</span>
-                      )}
-                      sx={{
-                        width: 16,
-                        minWidth: 16,
-                        color: "white",
-                        fontSize: 10,
-
-                        "& .MuiSelect-select": {
-                          padding: "0 !important",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        },
-
-                        "& .MuiSelect-icon": {
-                          display: "none",
-                        },
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>-</em>
-                      </MenuItem>
-                      <MenuItem value="T">T</MenuItem>
-                      <MenuItem value="H">H</MenuItem>
-                      <MenuItem value="C">C</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-              </TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 30 }}>Mức đạt</TableCell>
-              {/*<TableCell rowSpan={2} align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 300 }}>Nhận xét</TableCell>*/}
-            </TableRow>
-
-            {/* HÀNG HEADER 2 — HS, GV */}
-            <TableRow>
-              {showWeeks &&
-                (() => {
-                  const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
-                  return Array.from({ length: endWeek - startWeek + 1 }, (_, i) => (
-                    <React.Fragment key={`sub-${i}`}>
-                      <TableCell align="center" sx={{ backgroundColor: "#42a5f5", color: "white", width: 30 }}>NX</TableCell>
-                      <TableCell align="center" sx={{ backgroundColor: "#42a5f5", color: "white", width: 30 }}>BT</TableCell>
-                    </React.Fragment>
-                  ));
-                })()}
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {students.map((student, idx) => {
-              const { from: startWeek, to: endWeek } = hocKyMap[selectedSemester] || { from: 1, to: 9 };
-              const allWeeksEmpty = Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
-                const weekNum = startWeek + i;
-                const weekId = `tuan_${weekNum}`;
-                return student.statusByWeek?.[weekId];
-              }).every(status => !status);
-
-              return (
-                <TableRow
-                  key={student.maDinhDanh}
-                  hover
-                  sx={{
-                    backgroundColor:
-                      ["khuyết tật", "chuyển trường", "bỏ học"].includes(
-                        String(student.ghiChu || "").trim().toLowerCase()
-                      )
-                        ? "#f3f3f3"
-                        : "inherit",
-
-                    // Chữ đỏ
-                    color:
-                      ["khuyết tật", "chuyển trường", "bỏ học"].includes(
-                        String(student.ghiChu || "").trim().toLowerCase()
-                      )
-                        ? "red"
-                        : "inherit",
-
-                    "& td": {
-                      color:
-                        ["khuyết tật", "chuyển trường", "bỏ học"].includes(
-                          String(student.ghiChu || "").trim().toLowerCase()
-                        )
-                          ? "red"
-                          : "inherit",
-                    },
-
-                    "&:hover": {
-                      backgroundColor:
-                        ["khuyết tật", "chuyển trường", "bỏ học"].includes(
-                          String(student.ghiChu || "").trim().toLowerCase()
-                        )
-                          ? "#d6d6d6"
-                          : "rgba(25,118,210,0.05)",
-                    },
-                  }}
-                >
-                  <TableCell align="center">{student.stt}</TableCell>
-                  <TableCell
-                    align="left"
-                    sx={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      maxWidth: 220, // phải có để ellipsis hoạt động
-                    }}
-                  >
-                    {student.hoVaTen}
-                  </TableCell>
-
-                  {showWeeks &&
-                    Array.from({ length: endWeek - startWeek + 1 }, (_, i) => {
-                      const weekNum = startWeek + i;
-                      const weekId = `tuan_${weekNum}`;
-                      const raw = student.statusByWeek?.[weekId];
-                      const hs = raw && typeof raw === "object" ? (raw.hs || "") : (raw || "");
-                      const gv = raw && typeof raw === "object" ? (raw.gv || "") : "";
-
-                      const toShort = (statusStr) =>
-                        statusStr === "Hoàn thành tốt" ? "T" :
-                        statusStr === "Hoàn thành" ? "H" :
-                        statusStr === "Chưa hoàn thành" ? "C" : "";
-
-                      const hsShort = toShort(hs);
-                      const gvShort = toShort(gv);
-
-                      return (
-                        <React.Fragment key={weekNum}>
-                          <TableCell align="center" sx={{ width: 30 }}>{hsShort}</TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{ width: 30, color: gvShort === "C" ? "#dc2626" : "#1976d2" }}
-                          >
-                            {gvShort}
-                          </TableCell>
-                        </React.Fragment>
-                      );
-                    })}
-
-                  <TableCell
-                    align="center"
-                    sx={{
-                      px: 1,
-                      color: student.xepLoai === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main
-                    }}
-                  >
-                    <FormControl
-                      variant="standard"
-                      fullWidth
-                      sx={{
-                        "& .MuiSelect-icon": { opacity: 0, transition: "0.2s" },
-                        "&:hover .MuiSelect-icon": { opacity: 1 },
-                      }}
-                    >
-                      <Select
-                        value={student.xepLoai || ""}
-                        onChange={(e) => {
-                          const newHS = e.target.value;
-
-                          setStudents(prev =>
-                            prev.map(s => {
-                              if (s.maDinhDanh !== student.maDinhDanh) return s;
-
-                              const updated = { ...s, xepLoai: newHS };
-
-                              const hs = newHS;
-                              const gv = updated.dgtx_gv;
-
-                              const diemMap = { T: 3, H: 2, C: 1 };
-
-                              let chung = hs || gv;
-
-                              if (hs && gv) {
-                                const avg = (diemMap[hs] + diemMap[gv]) / 2;
-
-                                if (avg >= 2.5) chung = "T";
-                                else if (avg >= 1.5) chung = "H";
-                                else chung = "C";
-                              }
-
-                              updated.dgtx = chung;
-
-                              /*updated.nhanXet = chung
-                                ? getNhanXetTuDong(chung)
-                                : "";
-                              */
-                              return updated;
-                            })
-                          );
-                        }}
-                        disableUnderline
-                        sx={{
-                          textAlign: "center",
-                          "& .MuiSelect-select": {
-                            py: 0.5,
-                            fontSize: "14px",
-                            color: student.xepLoai === "C"
-                              ? "#dc2626"
-                              : (theme) => theme.palette.primary.main,
-                          },
-                        }}
-                      >
-                        <MenuItem value="">
-                          <em>-</em>
-                        </MenuItem>
-                        <MenuItem value="T">T</MenuItem>
-                        <MenuItem value="H">H</MenuItem>
-                        <MenuItem value="C">C</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </TableCell>
-
-                  <TableCell
-                    align="center"
-                    sx={{
-                      px: 1,
-                      color: student.dgtx_gv === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main
-                    }}
-                  >
-                    <FormControl
-                      variant="standard"
-                      fullWidth
-                      sx={{
-                        "& .MuiSelect-icon": { opacity: 0, transition: "opacity 0.2s ease" },
-                        "&:hover .MuiSelect-icon": { opacity: 1 },
-                      }}
-                    >
-                      <Select
-                        value={student.dgtx_gv || ""}
-                        onChange={(e) => {
-                          const newVal = e.target.value;
-
-                          setStudents((prev) =>
-                            prev.map((s) => {
-                              if (s.maDinhDanh !== student.maDinhDanh) return s;
-
-                              const updated = { ...s, dgtx_gv: newVal };
-
-                              const hs = updated.xepLoai?.trim();
-                              const gv = newVal?.trim();
-
-                              let chung = "";
-
-                              // 🔥 THÊM: nếu không có HS → lấy GV
-                              if (!hs && gv) {
-                                chung = gv;
-                              }
-                              // nếu không có GV → lấy HS
-                              else if (!gv) {
-                                chung = hs;
-                              }
-                              // nếu có cả HS và GV → dùng logic cũ
-                              else {
-                                if (hs === "T" && gv === "T") chung = "T";
-                                else if (hs === "H" && gv === "T") chung = "T";
-                                else if (hs === "C" && gv === "T") chung = "H";
-                                else if (hs === "T" && gv === "H") chung = "H";
-                                else if (hs === "H" && gv === "H") chung = "H";
-                                else if (hs === "C" && gv === "H") chung = "H";
-                                else if (hs === "T" && gv === "C") chung = "H";
-                                else if (hs === "H" && gv === "C") chung = "C";
-                                else if (hs === "C" && gv === "C") chung = "C";
-                                else chung = hs;
-                              }
-
-                              // 🔥 LUÔN dùng chung
-                              updated.dgtx = chung;
-
-                              // 🔥 CẬP NHẬT NGAY MỨC ĐẠT VÀO CONTEXT
-                              const classKey = (selectedClass || "").replace(".", "_");
-                              const subjectKey =
-                                selectedSubject === "Công nghệ" ? "CongNghe" : "TinHoc";
-
-                              const mapTerm = {
-                                "Giữa kỳ I": "GKI",
-                                "Cuối kỳ I": "CKI",
-                                "Giữa kỳ II": "GKII",
-                                "Cuối năm": "CN",
-                              };
-
-                              const termDoc = mapTerm[selectedSemester] || "CN";
-
-                              setDgtxMucDatForClass(
-                                namHocKey,
-                                classKey,
-                                subjectKey,
-                                termDoc,
-                                {
-                                  [student.maDinhDanh]: chung || "",
-                                }
-                              );
-
-                              // 🔥 cập nhật nhận xét
-                              /*updated.nhanXet = chung
-                                ? getNhanXetTuDong(chung)
-                                : "";
-                              */
-
-                              return updated;
-                            })
-                          );
-                        }}
-                        disableUnderline
-                        id={`teacher-dgtx-${idx}`}
-                        sx={{
-                          textAlign: "center",
-                          px: 1,
-                          "& .MuiSelect-select": {
-                            py: 0.5,
-                            fontSize: "14px",
-                            color: student.dgtx_gv === "C"
-                              ? "#dc2626"
-                              : (theme) => theme.palette.primary.main,
-                          },
-                        }}
-                      >
-                        <MenuItem value="">
-                          <em>-</em>
-                        </MenuItem>
-                        <MenuItem value="T">T</MenuItem>
-                        <MenuItem value="H">H</MenuItem>
-                        <MenuItem value="C">C</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </TableCell>
-
-                  <TableCell
-                    align="center"
-                    sx={{
-                      color: student.dgtx === "C"
-                        ? "#dc2626"
-                        : (theme) => theme.palette.primary.main
-                    }}
-                  >
-                    {student.dgtx || ""}
-                  </TableCell>
-
-                  {/*<TableCell align="left" sx={{ px: 1 }}>
-                    <TextField
-                      variant="standard"
-                      multiline
-                      maxRows={4}
-                      fullWidth
-                      value={student.nhanXet || ""}
-                      onChange={(e) =>
-                        handleCellChange(student.maDinhDanh, "nhanXet", e.target.value)
-                      }
-                      id={`nhanXet-${idx}`}
-                      InputProps={{
-                        sx: {
-                          paddingLeft: 1,
-                          paddingRight: 1,
-                          fontSize: "14px",
-                          lineHeight: 1.3,
-                        },
-                        disableUnderline: true,
-                      }}
-                    />
-                  </TableCell>*/}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* --- Bảng thống kê xuống cuối Card --- */}
-      {/*<Box
-        sx={{
-          mt: 3,
-          backgroundColor: "#f1f8e9",
-          borderRadius: 2,
-          border: "1px solid #e0e0e0",
-          p: 2,
-          width: 300,
-          maxWidth: "90%",
+          p: 4,
+          borderRadius: 3,
+          width: showWeeks ? "100%" : 600,
+          maxWidth: 1500,
           mx: "auto",
-          boxShadow: 2,
+          position: "relative",
+          transition: "all 0.3s ease",
         }}
       >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-          <Typography variant="subtitle1" fontWeight="bold" color="primary">
-            Thống kê:
-          </Typography>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <InputLabel>Tuần</InputLabel>
-            <Select
-              value={selectedWeek}
-              label="Tuần"
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+        {/* 🔹 Nút chức năng */}
+        <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
+          <Tooltip title="Lưu Xếp loại" arrow>
+            <IconButton
+              onClick={handleSaveAll}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
             >
-              {Array.from(
-                { length: endWeek - startWeek + 1 },
-                (_, i) => startWeek + i
-              ).map((weekNum) => (
-                <MenuItem key={weekNum} value={weekNum}>
-                  Tuần {weekNum}
+              <SaveIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Tải xuống Excel" arrow>
+            <IconButton
+              onClick={handleDownload}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <DownloadIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Làm mới dữ liệu" arrow>
+            <IconButton
+              onClick={() => {
+                fetchStudents({ forceReload: true });
+                recalcMucDat();
+              }}
+              sx={{
+                color: "primary.main",
+                bgcolor: "white",
+                boxShadow: 2,
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* ===== Header ===== */}
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          color="primary"
+          gutterBottom
+          sx={{ textAlign: "center", width: "100%", display: "block", mt: 3, mb: 2, textTransform: "uppercase" }}
+        >
+          ĐÁNH GIÁ {selectedSemester ? `${selectedSemester}` : ""}
+        </Typography>
+
+        {/* 🔹 Hàng chọn lớp và bộ lọc */}
+        <Stack direction="row" spacing={2} justifyContent="center" alignItems="center" mb={3}>
+          {/* Lớp */}
+          <FormControl size="small" sx={{ minWidth: 60 }}>
+            <InputLabel id="lop-label">Lớp</InputLabel>
+            <Select
+              labelId="lop-label"
+              value={selectedClass}
+              label="Lớp"
+              onChange={(e) => {
+                setSelectedClass(e.target.value);
+                setLoadingMessage("Đang tải dữ liệu lớp mới...");
+              }}
+            >
+              {classes.map((cls) => (
+                <MenuItem key={cls} value={cls}>
+                  {cls}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
+
+          {/* Dropdown chọn môn học */}
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel id="monhoc-label">Môn</InputLabel>
+            <Select
+              labelId="monhoc-label"
+              label="Môn"
+              value={selectedSubject}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSelectedSubject(value);
+                fetchStudents(); // ✅ Đã sửa gọi đúng tên hàm tải dữ liệu
+              }}
+            >
+              <MenuItem value="Tin học">Tin học</MenuItem>
+              <MenuItem value="Công nghệ">Công nghệ</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControlLabel
+            control={<Checkbox checked={showWeeks} onChange={(e) => setShowWeeks(e.target.checked)} />}
+            label={showWeeks ? "Ẩn tuần" : "Hiện tuần"}
+          />
         </Stack>
 
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2">Hoàn thành tốt (T):</Typography>
-          <Typography variant="body2" fontWeight="bold">{totalT}</Typography>
-        </Stack>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2">Hoàn thành (H):</Typography>
-          <Typography variant="body2" fontWeight="bold">{totalH}</Typography>
-        </Stack>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2">Chưa hoàn thành (C):</Typography>
-          <Typography variant="body2" fontWeight="bold">{totalC}</Typography>
-        </Stack>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body2">Chưa đánh giá:</Typography>
-          <Typography variant="body2" fontWeight="bold">{totalBlank}</Typography>
-        </Stack>
-      </Box>*/}
-    </Card>
+        {/* --- Bảng dữ liệu --- */}
+        <BangTongHopDGTX
+          showWeeks={showWeeks}
+          selectedSemester={selectedSemester}
+          hocKyMap={hocKyMap}
+          students={students}
+          setStudents={setStudents}
+          namHocKey={namHocKey}
+          selectedClass={selectedClass}
+          selectedSubject={selectedSubject}
+          setDgtxMucDatForClass={setDgtxMucDatForClass}
+        />
+      </Card>
 
-    {/* Snackbar */}
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={3000}
-      onClose={() => setSnackbar({ ...snackbar, open: false })}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-    >
-      <Alert
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        severity={snackbar.severity}
-        sx={{ width: "100%", boxShadow: 3, borderRadius: 2, fontSize: "0.9rem" }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        {snackbar.message}
-      </Alert>
-    </Snackbar>
-  </Box>
-);
-
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: "100%", boxShadow: 3, borderRadius: 2, fontSize: "0.9rem" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
 }

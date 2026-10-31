@@ -4,7 +4,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
-import AssessmentIcon from "@mui/icons-material/Assessment";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import { useNavigate } from "react-router-dom";
@@ -13,11 +12,8 @@ export default function ThanhCongCuDauTrang({
   handleSaveAll,
   handleDownload,
   handlePrint,
-  handleTongHopDGTX,
-  setStudents,
-  generateNhanXet,
-  selectedSubject,
   setOpenNhanXet,
+  onRefresh, // Nhận trực tiếp hàm fetchStudentsAndStatus (hoặc hàm bọc gọi lại từ đầu) từ trang cha
 }) {
   const navigate = useNavigate();
 
@@ -43,7 +39,7 @@ export default function ThanhCongCuDauTrang({
         <CloseIcon />
       </IconButton>
 
-      {/* 🟩 Nút Lưu, Tải Excel, In, Tổng hợp,... */}
+      {/* 🟩 Nút Lưu, Tải Excel, In, Làm mới,... */}
       <Box
         sx={{
           position: "absolute",
@@ -97,37 +93,10 @@ export default function ThanhCongCuDauTrang({
           </IconButton>
         </Tooltip>
 
-        <Tooltip title="Tổng hợp điểm ĐGTX và lưu vào KTĐK" arrow>
+        {/* Nút Làm mới: Gọi trực tiếp hàm tải lại từ đầu */}
+        <Tooltip title="Tải lại dữ liệu từ đầu" arrow>
           <IconButton
-            onClick={handleTongHopDGTX}
-            sx={{
-              color: "#ed6c02",
-              bgcolor: "white",
-              boxShadow: 2,
-              "&:hover": {
-                bgcolor: "#fff3e0",
-              },
-            }}
-          >
-            <AssessmentIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title="Làm mới nhận xét" arrow>
-          <IconButton
-            onClick={() => {
-              setStudents((prev) =>
-                prev.map((s) => ({
-                  ...s,
-                  nhanXet: generateNhanXet(
-                    s,
-                    selectedSubject,
-                    s.tongCong,
-                    s.mucDat
-                  ),
-                }))
-              );
-            }}
+            onClick={onRefresh}
             sx={{
               color: "primary.main",
               bgcolor: "white",

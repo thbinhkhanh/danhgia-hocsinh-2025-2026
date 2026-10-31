@@ -58,7 +58,7 @@ export default function BangNhapDiemKTDK({
         <TableHead>
           <TableRow>
             <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 50, px: 1, whiteSpace: "nowrap" }}>STT</TableCell>
-            <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220, px: 1, whiteSpace: "nowrap" }}>Họ và tên</TableCell>               
+            <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 220, px: 1, whiteSpace: "nowrap" }}>Họ và tên</TableCell>            
             <TableCell align="center" sx={{ backgroundColor: "#1976d2", color: "white", width: 60, px: 1, whiteSpace: "nowrap" }}>ĐGTX</TableCell>
             
             {/* Cột Lí thuyết & Fill All */}
@@ -96,8 +96,8 @@ export default function BangNhapDiemKTDK({
                               ...s,
                               lyThuyet: "",
                               tongCong: null,
-                              mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
-                              nhanXet: s.nhanXet_goc || "",
+                              mucDat: "",
+                              nhanXet: "",
                             };
                           }
 
@@ -209,8 +209,8 @@ export default function BangNhapDiemKTDK({
                               ...s,
                               thucHanh: "",
                               tongCong: null,
-                              mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
-                              nhanXet: s.nhanXet_goc || "",
+                              mucDat: "",
+                              nhanXet: "",
                             };
                           }
 
@@ -247,8 +247,7 @@ export default function BangNhapDiemKTDK({
                             if (!isNaN(lt)) {
                               updated.tongCong = Math.round(lt);
                               updated.mucDat =
-                                lt >= 9 ? "T" :
-                                lt >= 5 ? "H" : "C";
+                                lt >= 9 ? "T" : lt >= 5 ? "H" : "C";
 
                               updated.nhanXet = generateNhanXet(
                                 updated,
@@ -457,8 +456,8 @@ export default function BangNhapDiemKTDK({
                                     ...s,
                                     thucHanh: "",
                                     tongCong: null,
-                                    mucDat: s.mucDat_goc || s.dgtx_mucdat || "",
-                                    nhanXet: s.nhanXet_goc || "",
+                                    mucDat: "",
+                                    nhanXet: "",
                                   };
                                 }
 
@@ -552,7 +551,7 @@ export default function BangNhapDiemKTDK({
 
                 {config.hocKy === "Cuối kỳ I" && (
                   <TableCell align="center" sx={readOnlyCellSx}>
-                    {student.mucDat_GKI || "-"}
+                    {student.lyThuyet != null && student.thucHanh != null ? (student.mucDat_GKI || "-") : ""}
                   </TableCell>
                 )}
 
@@ -581,7 +580,7 @@ export default function BangNhapDiemKTDK({
                   </>
                 )}
 
-                {/* Cột Mức đạt */}
+                {/* Cột Mức đạt chính */}
                 <TableCell align="center" sx={{ px: 1 }}>
                   <Box
                     sx={{
@@ -606,7 +605,7 @@ export default function BangNhapDiemKTDK({
                   >
                     <FormControl variant="standard" fullWidth>
                       <Select
-                        value={student.mucDat || ""}
+                        value={selectedSubject === "Tin học" && (student.lyThuyet == null || student.thucHanh == null) ? "" : (student.mucDat || "")}
                         onChange={(e) =>
                           handleCellChange(
                             student.maDinhDanh,
@@ -648,7 +647,7 @@ export default function BangNhapDiemKTDK({
                 <TableCell align="left" sx={{ px: 1 }}>
                   <TextField
                     variant="standard"
-                    value={student.nhanXet ?? ""}
+                    value={selectedSubject === "Tin học" && (student.lyThuyet == null || student.thucHanh == null) ? "" : (student.nhanXet ?? "")}
                     onChange={(e) =>
                       handleCellChange(
                         student.maDinhDanh,

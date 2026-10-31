@@ -6,6 +6,7 @@ import {
 
 import { db } from "../firebase";
 
+// 🟢 Bổ sung 2 hàm phụ trợ ở đây để tránh lỗi "is not defined"
 const getSubjectKey = (subject) => {
   if (subject === "Công nghệ") return "CongNghe";
   if (subject === "Tin học") return "TinHoc";
@@ -19,11 +20,10 @@ const getSemesterKey = (semester) => {
     "Giữa kỳ II": "GKII",
     "Cuối năm": "CN",
   };
-
   return map[semester] || null;
 };
 
-// Tính điểm trung bình từ dữ liệu ĐGTX (loại bỏ tuần thấp nhất nếu > 2 tuần, bỏ quy tắc <40 thành 40).
+// Tính điểm trung bình từ dữ liệu ĐGTX (loại bỏ tuần thấp nhất nếu > 2 tuần)
 const tinhDiemTrungBinh = (
   dgtx,
   weekFrom,
@@ -32,7 +32,6 @@ const tinhDiemTrungBinh = (
 ) => {
   const scores = [];
 
-  // 1. Thu thập tất cả điểm số hợp lệ trong khoảng tuần
   for (let i = weekFrom; i <= weekTo; i++) {
     const rawScore = dgtx?.[`tuan_${i}`]?.TN_diem;
 
@@ -53,7 +52,6 @@ const tinhDiemTrungBinh = (
 
   if (scores.length === 0) return null;
 
-  // 2. Nếu số tuần có điểm lớn hơn 2, loại bỏ tuần có giá trị nhỏ nhất
   let scoresToAverage = [...scores];
   if (scoresToAverage.length > 2) {
     const minVal = Math.min(...scoresToAverage);
@@ -63,22 +61,19 @@ const tinhDiemTrungBinh = (
     }
   }
 
-  // 3. Tính tổng và điểm trung bình hệ 100 của các tuần còn lại
   const tongDiem = scoresToAverage.reduce((acc, curr) => acc + curr, 0);
   const diemTB100 = tongDiem / scoresToAverage.length;
 
-  // 4. Quy đổi sang thang điểm (Công nghệ: /10, Tin học: /20)
   const diemTB =
     selectedSubject === "Công nghệ"
       ? diemTB100 / 10
       : diemTB100 / 20;
 
-  // 5. Làm tròn đến 0.5 gần nhất
   return Math.round(diemTB * 2) / 2;
 };
 
 /**
- * Tính điểm ĐGTX và lưu vào Firestore bằng writeBatch.
+ * Tính điểm ĐGTX và lưu vào Firestore bằng writeBatch (Chỉ áp dụng cho các học kỳ giữa kỳ).
  */
 export const tinhVaLuuDiemDGTX = async ({
   namHocKey,
@@ -88,6 +83,19 @@ export const tinhVaLuuDiemDGTX = async ({
   weekFrom,
   weekTo,
 }) => {
+  // ⚡ CHỈ THỰC HIỆN ĐỐI VỚI GIỮA KỲ (Bỏ qua CKI và Cuối năm)
+  if (!selectedSemester || !selectedSemester.toLowerCase().includes("giữa")) {
+    console.log(`Học kỳ "${selectedSemester}" không phải là giữa kỳ. Bỏ qua tổng hợp ĐGTX.`);
+    return {
+      totalStudents: 0,
+      successCount: 0,
+      noScoreCount: 0,
+      errorCount: 0,
+      errors: [],
+      skipped: true,
+    };
+  }
+
   const subjectKey = getSubjectKey(selectedSubject);
   const semesterKey = getSemesterKey(selectedSemester);
 
@@ -125,7 +133,6 @@ export const tinhVaLuuDiemDGTX = async ({
     "HOCSINH"
   );
 
-  // Đọc danh sách học sinh một lần.
   const snapshot = await getDocs(studentCollection);
 
   console.log("SỐ HỌC SINH:", snapshot.size);
@@ -142,7 +149,6 @@ export const tinhVaLuuDiemDGTX = async ({
 
   const errors = [];
 
-  // Gom các thao tác cập nhật, không ghi từng học sinh.
   for (const studentDoc of snapshot.docs) {
     const studentData = studentDoc.data();
     const dgtx = studentData?.[subjectKey]?.dgtx;
@@ -152,7 +158,6 @@ export const tinhVaLuuDiemDGTX = async ({
       continue;
     }
 
-    // Truyền môn học để xác định đúng thang điểm.
     const diemTB = tinhDiemTrungBinh(
       dgtx,
       from,
@@ -171,7 +176,6 @@ export const tinhVaLuuDiemDGTX = async ({
 
     batchCount++;
 
-    // Đủ 400 thao tác thì ghi một lần.
     if (batchCount >= BATCH_LIMIT) {
       try {
         await batch.commit();
@@ -195,7 +199,6 @@ export const tinhVaLuuDiemDGTX = async ({
     }
   }
 
-  // Ghi phần còn lại.
   if (batchCount > 0) {
     try {
       await batch.commit();

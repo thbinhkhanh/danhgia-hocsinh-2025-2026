@@ -18,11 +18,7 @@ import {
 import { db } from "../firebase";
 import {
   doc,
-  getDoc,
-  getDocs,
-  collection,
   setDoc,
-  writeBatch
 } from "firebase/firestore";
 
 import { useNavigate } from "react-router-dom";
@@ -33,16 +29,12 @@ import { ConfigContext } from "../context/ConfigContext";
 import { StudentKTDKContext } from "../context/StudentKTDKContext";
 import { useSelectedClass } from "../context/SelectedClassContext";
 
-// ================= ICONS =================
-
-
 // ================= UTILS =================
 import { exportKTDK } from "../utils/exportKTDK";
 import { printKTDK } from "../utils/printKTDK";
 
 import QuanLyNhanXet from "../dialog/QuanLyNhanXet";
 
-import { tinhVaLuuDiemDGTX } from "../utils/tinhVaLuuDiemDGTX";
 import { loadNhanXet } from "../utils/loadNhanXet";
 import { fetchStudentsAndStatus as fetchStudentsUtil } from "../utils/fetchStudentsAndStatus";
 import { handleCellChange as handleCellChangeUtil } from "../utils/handleCellChange";
@@ -57,54 +49,52 @@ import ThanhCongCuDauTrang from "../components/ThanhCongCuDauTrang";
 
 export default function NhapdiemKTDK() {
   // ================= ROUTER =================
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
-// ================= CONTEXT =================
-const { studentData, setStudentData } =
-  useContext(StudentContext);
+  // ================= CONTEXT =================
+  const { studentData, setStudentData } = useContext(StudentContext);
+  const { config, setConfig } = useContext(ConfigContext);
 
-const { config, setConfig } = useContext(ConfigContext);
+  const {
+    getStudentsForClass,
+    setStudentsForClass,
+    getDgtxMucDat,
+  } = useContext(StudentKTDKContext);
 
-const {
-  getStudentsForClass,
-  setStudentsForClass,
-  getDgtxMucDat,
-} = useContext(StudentKTDKContext);
+  // 🔹 Dùng chung danh sách lớp + lớp đang chọn
+  const {
+    classes,
+    selectedClass,
+    setSelectedClass,
+  } = useSelectedClass();
 
-// 🔹 Dùng chung danh sách lớp + lớp đang chọn
-const {
-  classes,
-  selectedClass,
-  setSelectedClass,
-} = useSelectedClass();
+  // ================= CONFIG DERIVED =================
+  const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
-// ================= CONFIG DERIVED =================
-const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
+  // ================= CLASS / DATA STATE =================
+  const [students, setStudents] = useState([]);
+  const [originalStudents, setOriginalStudents] = useState([]);
 
-// ================= CLASS / DATA STATE =================
-const [students, setStudents] = useState([]);
-const [originalStudents, setOriginalStudents] = useState([]);
+  // ================= SUBJECT =================
+  const [selectedSubject, setSelectedSubject] = useState(
+    () => config?.mon || "Tin học"
+  );
 
-// ================= SUBJECT =================
-const [selectedSubject, setSelectedSubject] = useState(
-  () => config?.mon || "Tin học"
-);
+  // ================= UI / RESPONSIVE =================
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
-// ================= UI / RESPONSIVE =================
-const isMobile = useMediaQuery("(max-width: 768px)");
+  // ================= DIALOG STATE =================
+  const [openLTDialog, setOpenLTDialog] = useState(false);
+  const [openNhanXet, setOpenNhanXet] = useState(false);
 
-// ================= DIALOG STATE =================
-const [openLTDialog, setOpenLTDialog] = useState(false);
-const [openNhanXet, setOpenNhanXet] = useState(false);
+  // ================= EDITING STATE =================
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [ltValue, setLtValue] = useState("");
+  const [fillThucHanh, setFillThucHanh] = useState("");
+  const [fillLyThuyet, setFillLyThuyet] = useState("");
 
-// ================= EDITING STATE =================
-const [editingStudent, setEditingStudent] = useState(null);
-const [ltValue, setLtValue] = useState("");
-const [fillThucHanh, setFillThucHanh] = useState("");
-const [fillLyThuyet, setFillLyThuyet] = useState("");
-
-// ================= DATA STATE =================
-const [nhanXetData, setNhanXetData] = useState(null);
+  // ================= DATA STATE =================
+  const [nhanXetData, setNhanXetData] = useState(null);
 
   useEffect(() => {
     if (config?.mon && config.mon !== selectedSubject) {
@@ -117,56 +107,90 @@ const [nhanXetData, setNhanXetData] = useState(null);
   }, [selectedSubject, config?.hocKy, namHocKey]);
 
   // ------------------------
-// 🔹 HÀM SINH NHẬN XÉT TỰ ĐỘNG
-// ------------------------
-const generateNhanXet = (student, subject, tongCong = null, mucDat = null) => {
+  // 🔹 HÀM SINH NHẬN XÉT TỰ ĐỘNG
+  // ------------------------
+  const generateNhanXet = (student, subject, tongCong = null, mucDat = null) => {
     return generateNhanXetUtil(student, subject, tongCong, mucDat, nhanXetData);
-};
+  };
 
-const fetchStudentsAndStatus = async (cls) => {
-  await fetchStudentsUtil({
-    cls,
-    selectedClass,
-    config,
-    selectedSubject,
-    namHocKey,
-    getDgtxMucDat,
-    generateNhanXet,
-    setStudents,
-    setOriginalStudents,
-    setStudentsForClass,
-  });
-};
+  // 1️⃣ Hàm fetchStudentsAndStatus hỗ trợ nhận cả chuỗi lớp lẫn object cấu hình (có forceReload)
+  const fetchStudentsAndStatus = async (arg) => {
+    let clsToFetch = selectedClass;
+    let reloadFlag = false;
 
-// Dùng trong useEffect giữ nguyên không đổi:
-useEffect(() => {
-  fetchStudentsAndStatus();
-}, [selectedClass, config.mon, config.hocKy]);
+    if (typeof arg === "object" && arg !== null) {
+      clsToFetch = arg.cls || selectedClass;
+      reloadFlag = arg.forceReload || false;
+    } else if (typeof arg === "string" && arg.trim() !== "") {
+      clsToFetch = arg;
+    }
 
- 
+    await fetchStudentsUtil({
+      cls: clsToFetch,
+      selectedClass,
+      config,
+      selectedSubject,
+      namHocKey,
+      getDgtxMucDat,
+      generateNhanXet,
+      setStudents,
+      setOriginalStudents,
+      setStudentsForClass,
+      studentData,
+      setStudentData,
+      forceReload: reloadFlag, // 👈 Đảm bảo truyền cờ làm mới xuống utility
+    });
+  };
+
+  useEffect(() => {
+    fetchStudentsAndStatus();
+  }, [selectedClass, config.mon, config.hocKy]);
+
+
+  // 2️⃣ Hàm handleRefresh gọi thẳng và bật cờ forceReload: true
+  const handleRefresh = async () => {
+    try {
+      await fetchStudentsAndStatus({
+        cls: selectedClass,
+        forceReload: true, // 👈 Ép tải mới từ Firestore, bỏ qua cache
+      });
+
+      setSnackbar({
+        open: true,
+        message: "✅ Đã làm mới dữ liệu!",
+        severity: "success",
+      });
+    } catch (error) {
+      console.error("❌ Lỗi khi làm mới:", error);
+      setSnackbar({
+        open: true,
+        message: `❌ Lỗi khi làm mới: ${error.message}`,
+        severity: "error",
+      });
+    }
+  };
+  // Dùng trong useEffect giữ nguyên không đổi:
+  useEffect(() => {
+    fetchStudentsAndStatus();
+  }, [selectedClass, config.mon, config.hocKy]);
+
   // Hàm xử lý thay đổi ô bảng
-const handleCellChange = (maDinhDanh, field, value) => {
-  handleCellChangeUtil({
-    maDinhDanh,
-    field,
-    value,
-    selectedSubject,
-    setStudents,
-    generateNhanXet,
-  });
-};
+  const handleCellChange = (maDinhDanh, field, value) => {
+    handleCellChangeUtil({
+      maDinhDanh,
+      field,
+      value,
+      selectedSubject,
+      setStudents,
+      generateNhanXet,
+    });
+  };
 
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success", // "success" | "error" | "info" | "warning"
   });
-
-  // ✅ Lưu null nếu rỗng
-  const parseOrNull = (val) => {
-    if (val === "" || val === null || val === undefined) return null;
-    return Number(val);
-  };
 
   const handleSaveAll = async () => {
     await handleSaveAllUtil({
@@ -219,7 +243,6 @@ const handleCellChange = (maDinhDanh, field, value) => {
         nextCol = columns.indexOf("lyThuyet");
         nextRow = Math.min(students.length - 1, rowIndex + 1);
       } else {
-        // các cột khác: đi theo cột bình thường
         nextCol = Math.min(columns.length - 1, nextCol + 1);
       }
     } else if (e.key === "ArrowLeft") {
@@ -242,112 +265,11 @@ const handleCellChange = (maDinhDanh, field, value) => {
         selectedClass,
         config.hocKy || "Giữa kỳ I",
         config.mon,
-        config.namHoc // 👈 thêm dòng này
+        config.namHoc
       );
     } catch (err) {
       console.error("❌ Lỗi khi in:", err);
       alert("Lỗi khi in danh sách. Vui lòng thử lại!");
-    }
-  };
-
-  const handleOpenLTDialog = (student) => {
-    setEditingStudent(student);
-    setLtValue(student.lyThuyet ?? "");
-    setOpenLTDialog(true);
-  };
-
-  const handleCloseLTDialog = () => {
-    setOpenLTDialog(false);
-  };
-
-  const handleUpdateLyThuyet = () => {
-    const num = parseFloat(ltValue);
-    if (isNaN(num) || num < 0 || num > 5) return;
-
-    setStudents(prev =>
-      prev.map(s =>
-        s.maDinhDanh === editingStudent.maDinhDanh
-          ? { ...s, lyThuyet: num }
-          : s
-      )
-    );
-
-    handleCloseLTDialog();
-  };
-
-  const getExtraColumns = () => {
-    switch (config.hocKy) {
-      case "Cuối kỳ I":
-        return ["GKI"];
-      case "Giữa kỳ II":
-        return ["GKI", "CKI"];
-      case "Cuối năm":
-        return ["GKI", "CKI", "GKII"];
-      default:
-        return [];
-    }
-  };
-
-  const extraColumns = getExtraColumns();
-
-  const readOnlyCellSx = {
-    px: 1,
-    backgroundColor: "#f5f5f5",
-    color: "text.secondary",
-    //fontStyle: "italic",
-    border: "1px dashed #e0e0e0",
-  };
-
-  const handleTongHopDGTX = async () => {
-    try {
-      // Lấy đúng học kỳ đang chọn trong ConfigContext
-      const selectedSemester = config?.hocKy || "Giữa kỳ I";
-
-      if (!selectedClass || !selectedSubject || !namHocKey) {
-        alert("Vui lòng chọn đầy đủ lớp, môn học và năm học.");
-        return;
-      }
-
-      const hocKyMap = {
-        "Giữa kỳ I": { from: 1, to: 9 },
-        "Cuối kỳ I": { from: 10, to: 18 },
-        "Giữa kỳ II": { from: 19, to: 27 },
-        "Cuối năm": { from: 28, to: 35 },
-      };
-
-      const { from, to } = hocKyMap[selectedSemester] || {};
-
-      if (from == null || to == null) {
-        alert("Không xác định được khoảng tuần của học kỳ.");
-        return;
-      }
-
-      // Gọi hàm tính điểm và lưu Firestore
-      const result = await tinhVaLuuDiemDGTX({
-        namHocKey,
-        selectedClass,
-        selectedSubject,
-        selectedSemester,
-        weekFrom: from,
-        weekTo: to,
-      });
-
-      setSnackbar({
-        open: true,
-        message: "Đã tính xong điểm ĐGTX!",
-        severity: "success",
-      });
-
-      if (result.errors?.length > 0) {
-        console.table(result.errors);
-      }
-
-      // Đọc lại dữ liệu học sinh từ Firestore
-      await fetchStudentsAndStatus(selectedClass);
-
-    } catch (error) {
-      console.error("LỖI TỔNG HỢP ĐGTX:", error);
-      alert(`Không thể tổng hợp ĐGTX: ${error.message}`);
     }
   };
 
@@ -368,11 +290,16 @@ const handleCellChange = (maDinhDanh, field, value) => {
             handleSaveAll,
             handleDownload,
             handlePrint,
-            handleTongHopDGTX,
             setStudents,
             generateNhanXet,
             selectedSubject,
             setOpenNhanXet,
+            config,
+            selectedClass,
+            namHocKey,
+            fetchStudentsAndStatus,
+            setSnackbar,
+            onRefresh: handleRefresh,
           }}
         />
 
@@ -388,7 +315,7 @@ const handleCellChange = (maDinhDanh, field, value) => {
           </Typography>
         </Box>
 
-        {/* 🟩 Hàng chọn Lớp – Môn – Học kỳ (3 ô cùng hàng khi mobile) */}
+        {/* 🟩 Hàng chọn Lớp – Môn */}
         <Box
           sx={{
             display: "flex",
@@ -445,7 +372,7 @@ const handleCellChange = (maDinhDanh, field, value) => {
           </FormControl>
         </Box>
 
-        {/* 🧾 Bảng học sinh (giữ nguyên định dạng gốc) */}
+        {/* 🧾 Bảng học sinh */}
         <BangNhapDiemKTDK
           {...{
             students,
@@ -489,9 +416,6 @@ const handleCellChange = (maDinhDanh, field, value) => {
         open={openNhanXet}
         onClose={() => setOpenNhanXet(false)}
       />
-
     </Box>
   );
-
-
 }

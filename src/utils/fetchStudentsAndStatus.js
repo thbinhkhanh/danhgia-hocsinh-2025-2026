@@ -1,82 +1,44 @@
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 
-// Hàm tính điểm trung bình ĐGTX từ các tuần học
-const tinhDiemTrungBinhTheoKhoang = (statusByWeek, from, to) => {
-  const diemMap = { T: 3, H: 2, C: 1 };
-  let tong = 0;
-  let dem = 0;
+export const fetchStudentsAndStatus = async (arg1, arg2) => {
+  // 🟢 Hỗ trợ tương thích ngược: Xử lý linh hoạt cả 2 cách gọi (Truyền object hoặc truyền lẻ từng tham số)
+  let cls, selectedClass, config, selectedSubject, namHocKey, getDgtxMucDat, generateNhanXet, setStudents, setOriginalStudents, setStudentsForClass, studentData, setStudentData, forceReload;
 
-  const toShort = (statusStr) =>
-    statusStr === "Hoàn thành tốt" ? "T" :
-    statusStr === "Hoàn thành" ? "H" :
-    statusStr === "Chưa hoàn thành" ? "C" :
-    ["T", "H", "C"].includes(statusStr) ? statusStr : "";
-
-  for (let i = from; i <= to; i++) {
-    const weekId = `tuan_${i}`;
-    const raw = statusByWeek?.[weekId];
-
-    if (!raw || typeof raw !== "object") continue;
-
-    const hsShort = toShort(raw.hs || "");
-    const btShort = toShort(raw.gv || "");
-
-    const diemNX = hsShort ? diemMap[hsShort] : null;
-    const diemBT = btShort ? diemMap[btShort] : null;
-
-    if (diemNX !== null && diemBT !== null) {
-      tong += (diemNX + diemBT) / 2;
-      dem++;
-    } else if (diemNX !== null) {
-      tong += diemNX;
-      dem++;
-    } else if (diemBT !== null) {
-      tong += diemBT;
-      dem++;
-    }
+  if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
+    // Gọi theo dạng object (dùng khi bấm nút Làm mới với forceReload)
+    ({
+      cls,
+      selectedClass,
+      config,
+      selectedSubject,
+      namHocKey,
+      getDgtxMucDat,
+      generateNhanXet,
+      setStudents,
+      setOriginalStudents,
+      setStudentsForClass,
+      studentData = {},
+      setStudentData,
+      forceReload = false,
+    } = arg1);
+  } else {
+    // Gọi theo dạng truyền từng tham số lẻ (từ các component khác)
+    cls = arg1;
+    forceReload = arg2 || false;
   }
 
-  const diemTB = dem > 0 ? tong / dem : null;
-  return { diemTB };
-};
+  // 🟢 BẢO VỆ AN TOÀN: Ép kiểu chuỗi tuyệt đối cho tên lớp để chống lỗi .replace is not a function
+  let rawClass = cls || selectedClass || "";
+  if (typeof rawClass !== "string") {
+    rawClass = String(rawClass?.target?.value || rawClass?.name || "");
+  }
 
-const danhGiaXepLoaiDGTX = (statusByWeek, from, to) => {
-  const { diemTB } = tinhDiemTrungBinhTheoKhoang(statusByWeek, from, to);
-
-  if (diemTB === null) return "";
-  if (diemTB >= 2.5) return "T";
-  if (diemTB >= 1.5) return "H";
-  return "C";
-};
-
-const getWeekRangeBySemester = (hocKy) => {
-  const hocKyMap = {
-    "Giữa kỳ I": { from: 1, to: 9 },
-    "Cuối kỳ I": { from: 10, to: 18 },
-    "Giữa kỳ II": { from: 19, to: 27 },
-    "Cuối năm": { from: 28, to: 35 },
-  };
-  return hocKyMap[hocKy] || { from: 1, to: 35 };
-};
-
-export const fetchStudentsAndStatus = async ({
-  cls,
-  selectedClass,
-  config,
-  selectedSubject,
-  namHocKey,
-  getDgtxMucDat,
-  generateNhanXet,
-  setStudents,
-  setOriginalStudents,
-  setStudentsForClass,
-  studentData = {},       // ⚡ Thêm bộ nhớ cache từ Context
-  setStudentData,         // ⚡ Hàm cập nhật cache
-  forceReload = false,    // ⚡ Cờ ép buộc tải lại khi bấm nút Refresh
-}) => {
-  const currentClass = cls || selectedClass;
-  if (!currentClass) return;
+  const currentClass = rawClass.trim();
+  if (!currentClass) {
+    console.warn("⚠️ Tên lớp không hợp lệ hoặc bị trống.");
+    return;
+  }
 
   try {
     let termDoc;
@@ -87,32 +49,27 @@ export const fetchStudentsAndStatus = async ({
       default: termDoc = "CN";
     }
 
-    const classKey = currentClass.replace(".", "_");
+    const classKey = currentClass.replace(/\./g, "_"); // 👈 Tuyệt đối an toàn vì currentClass chắc chắn là string
     const subjectKey = selectedSubject === "Công nghệ" ? "CongNghe" : "TinHoc";
     const cacheKey = `${classKey}_${selectedSubject}_${termDoc}`;
 
-    // 🚀 1. KIỂM TRA CACHE: Nếu đã có và không phải ép tải lại thì dùng luôn lập tức!
-    if (!forceReload && studentData[cacheKey]?.length) {
+    // 🚀 1. KIỂM TRA CACHE: Nếu có cờ forceReload = true thì BỎ QUA CACHE, bắt buộc đọc mới từ Firestore
+    if (!forceReload && studentData && studentData[cacheKey]?.length) {
       const cachedList = studentData[cacheKey];
-      setStudents(cachedList);
+      if (setStudents) setStudents(cachedList);
       if (setOriginalStudents) setOriginalStudents(cachedList);
       if (setStudentsForClass) setStudentsForClass(termDoc, classKey, cachedList);
       return;
     }
 
-    const isGiuaKy = termDoc === "GKI" || termDoc === "GKII";
-    const mucDatFromContext = (maHS) =>
-      getDgtxMucDat ? getDgtxMucDat(namHocKey, classKey, subjectKey, termDoc, maHS) : "";
-
     const hsCollection = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
     const snap = await getDocs(hsCollection);
     
     if (snap.empty) {
-      setStudents([]);
+      if (setStudents) setStudents([]);
       return;
     }
 
-    const { from: weekFrom, to: weekTo } = getWeekRangeBySemester(config?.hocKy || "Giữa kỳ I");
     const studentList = [];
 
     snap.forEach((docSnap) => {
@@ -134,62 +91,24 @@ export const fetchStudentsAndStatus = async ({
       const mucDat_GKII = ktdkAll?.GKII?.mucDat || "";
       const mucDat_CN = ktdkAll?.CN?.mucDat || "";
 
+      // 🟢 Lấy dữ liệu trực tiếp của học kỳ hiện tại từ Firestore
       termData = subjectData.ktdk?.[termDoc] || {};
 
-      const statusByWeek = {};
-      const dgtxWeek = subjectData.dgtx || {};
-      Object.entries(dgtxWeek).forEach(([key, value]) => {
-        if (!key.startsWith("tuan_")) return;
-        const weekNum = Number(key.replace(/\D/g, ""));
-        if (weekNum >= weekFrom && weekNum <= weekTo) {
-          statusByWeek[key] = {
-            hs: value?.status || "",
-            gv: value?.TN_status || "",
-            TN_diem: value?.TN_diem ?? null,
-          };
-        }
-      });
-
-      const xepLoaiTuDong = danhGiaXepLoaiDGTX(statusByWeek, weekFrom, weekTo);
-
-      dgtx_mucdat = mucDatFromContext(maHS) || termData.dgtx_gv || termData.dgtx_mucdat || xepLoaiTuDong;
+      // 🟢 Đọc trực tiếp dgtx_mucdat và lyThuyet từ termData (không tính toán trung bình)
+      dgtx_mucdat = termData.dgtx_mucdat || termData.dgtx_gv || "";
+      lyThuyet = termData.lyThuyet != null ? Number(termData.lyThuyet) : null;
+      thucHanh = termData.thucHanh != null ? Number(termData.thucHanh) : null;
       nhanXet = termData.nhanXet || "";
 
-      if (selectedSubject === "Công nghệ") {
-        lyThuyet = termData.lyThuyet ?? null;
-        thucHanh = termData.thucHanh ?? null;
+      tongCong =
+        lyThuyet != null && !isNaN(lyThuyet) &&
+        thucHanh != null && !isNaN(thucHanh)
+          ? Math.round(lyThuyet + thucHanh)
+          : termData.tongCong != null && !isNaN(termData.tongCong)
+          ? Math.round(Number(termData.tongCong))
+          : null;
 
-        tongCong =
-          termData.tongCong != null && !isNaN(termData.tongCong)
-            ? Math.round(Number(termData.tongCong))
-            : lyThuyet != null && !isNaN(lyThuyet)
-            ? Math.round(Number(lyThuyet))
-            : null;
-
-        mucDat = termData.mucDat || "";
-      } else {
-        lyThuyet = termData.lyThuyet != null ? Number(termData.lyThuyet) : null;
-        thucHanh = termData.thucHanh != null ? Number(termData.thucHanh) : null;
-
-        tongCong =
-          lyThuyet != null && !isNaN(lyThuyet) &&
-          thucHanh != null && !isNaN(thucHanh)
-            ? Math.round(lyThuyet + thucHanh)
-            : termData.tongCong != null && !isNaN(termData.tongCong)
-            ? Math.round(Number(termData.tongCong))
-            : null;
-
-        mucDat =
-          tongCong == null || tongCong === ""
-            ? ""
-            : isGiuaKy
-            ? (dgtx_mucdat || "")
-            : tongCong >= 9
-            ? "T"
-            : tongCong >= 5
-            ? "H"
-            : "C";
-      }
+      mucDat = termData.mucDat || "";
 
       if (!nhanXet || nhanXet.trim() === "") {
         nhanXet = generateNhanXet
@@ -229,16 +148,16 @@ export const fetchStudentsAndStatus = async ({
 
     const finalList = studentList.map((s, idx) => ({ ...s, stt: idx + 1 }));
 
-    // 🚀 2. LƯU VÀO CACHE: Lưu lại kết quả vào state bộ nhớ chung để lần sau dùng lại
+    // 🚀 2. LƯU VÀO CACHE: Lưu lại kết quả vào state bộ nhớ chung
     if (setStudentData) {
       setStudentData((prev) => ({ ...prev, [cacheKey]: finalList }));
     }
 
-    setStudents(finalList);
+    if (setStudents) setStudents(finalList);
     if (setOriginalStudents) setOriginalStudents(finalList);
     if (setStudentsForClass) setStudentsForClass(termDoc, classKey, finalList);
   } catch (err) {
     console.error("❌ Lỗi khi lấy dữ liệu từ DATA:", err);
-    setStudents([]);
+    if (setStudents) setStudents([]);
   }
 };
