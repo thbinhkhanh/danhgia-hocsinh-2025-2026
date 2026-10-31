@@ -50,7 +50,7 @@ const tinhDiemTrungBinh = (
     }
   }
 
-  if (scores.length === 0) return null;
+  if (scores.length === 0) return null; 
 
   let scoresToAverage = [...scores];
   if (scoresToAverage.length > 2) {
