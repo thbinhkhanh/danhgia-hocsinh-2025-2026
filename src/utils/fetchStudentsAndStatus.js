@@ -92,21 +92,44 @@ export const fetchStudentsAndStatus = async (arg1, arg2) => {
       const mucDat_CN = ktdkAll?.CN?.mucDat || "";
 
       // 🟢 Lấy dữ liệu trực tiếp của học kỳ hiện tại từ Firestore
+      // Lấy dữ liệu trực tiếp của học kỳ hiện tại từ Firestore
       termData = subjectData.ktdk?.[termDoc] || {};
 
-      // 🟢 Đọc trực tiếp dgtx_mucdat và lyThuyet từ termData (không tính toán trung bình)
       dgtx_mucdat = termData.dgtx_mucdat || termData.dgtx_gv || "";
-      lyThuyet = termData.lyThuyet != null ? Number(termData.lyThuyet) : null;
-      thucHanh = termData.thucHanh != null ? Number(termData.thucHanh) : null;
+
+      lyThuyet =
+        termData.lyThuyet != null && termData.lyThuyet !== ""
+          ? Number(termData.lyThuyet)
+          : null;
+
+      // Công nghệ: thực hành là T/H/C.
+      // Tin học: thực hành là điểm số.
+      if (selectedSubject === "Công nghệ") {
+        thucHanh = termData.thucHanh ?? "";
+      } else {
+        thucHanh =
+          termData.thucHanh != null && termData.thucHanh !== ""
+            ? Number(termData.thucHanh)
+            : null;
+      }
+
       nhanXet = termData.nhanXet || "";
 
-      tongCong =
-        lyThuyet != null && !isNaN(lyThuyet) &&
-        thucHanh != null && !isNaN(thucHanh)
-          ? Math.round(lyThuyet + thucHanh)
-          : termData.tongCong != null && !isNaN(termData.tongCong)
-          ? Math.round(Number(termData.tongCong))
-          : null;
+      // Ưu tiên tongCong đã lưu trong Firestore.
+      // Chỉ tính tổng đối với Tin học khi chưa có tongCong.
+      if (termData.tongCong != null && termData.tongCong !== "") {
+        tongCong = Number(termData.tongCong);
+      } else if (
+        selectedSubject === "Tin học" &&
+        lyThuyet != null &&
+        thucHanh != null &&
+        !isNaN(lyThuyet) &&
+        !isNaN(thucHanh)
+      ) {
+        tongCong = Math.round(lyThuyet + thucHanh);
+      } else {
+        tongCong = null;
+      }
 
       mucDat = termData.mucDat || "";
 
