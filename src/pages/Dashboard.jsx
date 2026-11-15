@@ -11,8 +11,8 @@ import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import BugReportRoundedIcon from "@mui/icons-material/BugReportRounded";
 import LibraryBooksRoundedIcon from "@mui/icons-material/LibraryBooksRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
+import PrintRoundedIcon from "@mui/icons-material/PrintRounded"; // <-- Thêm Icon cho In phiếu
 
 function DashboardCard({ item, onClick }) {
   return (
@@ -170,7 +170,6 @@ export default function Dashboard({ isLoggedIn }) {
       icon: <AnalyticsRoundedIcon sx={{ fontSize: 28, color: "#2e7d32" }} />,
       color: "#2e7d32",
     },
-
     {
       label: "Đánh giá thường xuyên",
       description: "Tổng hợp và quản lý kết quả đánh giá thường xuyên của học sinh",
@@ -240,6 +239,13 @@ export default function Dashboard({ isLoggedIn }) {
       path: "/quan-tri",
       icon: <SettingsRoundedIcon sx={{ fontSize: 28, color: "#455a64" }} />,
       color: "#455a64",
+    },
+    {
+      label: "In phiếu đánh giá",
+      description: "In phiếu đánh giá giữa kỳ/cuối kỳ chuẩn khổ A4 nằm ngang",
+      path: "/in-phieu-danh-gia", // <-- Trỏ tới trang InPhieuDanhGia.jsx
+      icon: <PrintRoundedIcon sx={{ fontSize: 28, color: "#00897b" }} />,
+      color: "#00897b",
     },
   ];
 

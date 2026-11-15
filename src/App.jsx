@@ -39,8 +39,10 @@ import TracNghiemGV from "./pages/TracNghiemGV";
 import DeThi from "./pages/DeThi";
 import TracNghiemTest from "./pages/TracNghiem_Test";
 import TracNghiem_OnTap from "./pages/TracNghiem_OnTap"; // Thêm vào các import page
+import PhieuDanhGiaGiaoDuc from "./pages/PhieuDanhGiaGiaoDuc";
 import Dashboard from "./pages/Dashboard";
 import ChangePasswordDialog from "./dialog/ChangePasswordDialog";
+import BangTongHopGiaoDuc from "./pages/BangTongHopGiaoDuc";
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
@@ -502,6 +504,11 @@ function AppContent() {
             path="/xuatdanhgia"
             element={isLoggedIn ? <XuatDanhGia /> : <Navigate to="/login" replace />}
           />
+
+          <Route
+            path="/in-phieu-danh-gia"
+            element={isLoggedIn ? <PhieuDanhGiaGiaoDuc /> : <Navigate to="/login" replace />}
+          />
           <Route
             path="/ketqua"
             element={isLoggedIn ? <TongHopKQ /> : <Navigate to="/login" replace />}
@@ -525,6 +532,11 @@ function AppContent() {
           <Route
             path="/quan-tri"
             element={isLoggedIn ? <QuanTri /> : <Navigate to="/login" replace />}
+          />
+
+          <Route
+            path="/in-bang-tong-hop"
+            element={<BangTongHopGiaoDuc />}
           />
         </Routes>
       </Box>
