@@ -980,14 +980,26 @@ export default function BangTongHopGiaoDuc({
 
   // Lấy tên lớp từ tiêu đề bảng Excel
   const currentClass = useMemo(() => {
-    const title = String(worksheet?.A4?.v || "").trim();
+    const titleA4 = String(worksheet?.A4?.v || "").trim();
+    const titleA3 = String(worksheet?.A3?.v || "").trim();
 
-    const match = title.match(
-      /LỚP\s*:?\s*(\d{1,2}\.\d{1,2})/i
+    const regex = /LỚP\s*:?\s*(\d{1,2}[./]\d{1,2})/i;
+
+    const matchA4 = titleA4.match(regex);
+    const matchA3 = titleA3.match(regex);
+
+    return matchA4?.[1] || matchA3?.[1] || "";
+  }, [worksheet]);
+
+  // Kiểm tra trường học từ ô A2
+  const isBinhKhanhSchool = useMemo(() => {
+    const schoolName = normalizeText(
+      String(worksheet?.A2?.v || "").trim()
     );
 
-    return match ? match[1] : "";
+    return schoolName === normalizeText("TH BÌNH KHÁNH");
   }, [worksheet]);
+
   // Chuẩn hóa tên lớp để so sánh
   const normalizeClass = (value) => {
     return normalizeText(value)
@@ -1000,7 +1012,7 @@ export default function BangTongHopGiaoDuc({
     let cancelled = false;
 
     const loadPhanCongGVBM = async () => {
-      if (!currentClass) {
+      if (!isBinhKhanhSchool || !currentClass) {
         setPhanCongGVBM([]);
         return;
       }
@@ -1057,7 +1069,7 @@ export default function BangTongHopGiaoDuc({
     return () => {
       cancelled = true;
     };
-  }, [currentClass, phanCongReload]);
+  }, [currentClass, isBinhKhanhSchool, phanCongReload]);
 
   // ====================================================
   // TÌM KIẾM HỌC SINH
