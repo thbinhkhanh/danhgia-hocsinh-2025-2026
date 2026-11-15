@@ -1374,19 +1374,21 @@ return (
       ===================================================== */
 
       .student-excel-table {
-        width: max-content !important;
-        min-width: max-content !important;
-        max-width: none !important;
-        table-layout: auto !important;
-        border-collapse: separate !important;
-        border-spacing: 0 !important;
-        border-top: 1px solid #000 !important;
-        border-left: 1px solid #000 !important;
-        font-family: "Roboto", serif;
-        font-size: 13px;
-        color: #111827;
-        background: #fff;
-        box-sizing: border-box;
+          width: max-content !important;
+          min-width: max-content !important;
+          max-width: none !important;
+          table-layout: auto !important;
+          /* Đổi từ separate sang collapse để đồng bộ độ dày nét vẽ toàn bảng */
+          border-collapse: collapse !important;
+          border-spacing: 0 !important;
+          /* Gom khung ngoài của bảng chung một nét */
+          border: 1px solid #000 !important;
+          font-family: "Roboto", serif;
+          font-size: 13px;
+          color: #111827;
+          background: #fff;
+          box-sizing: border-box;
+          margin-top: 6px !important;
       }
 
       /* =====================================================
@@ -1395,27 +1397,20 @@ return (
 
       .student-excel-table th,
       .student-excel-table td {
-        border: 0 !important;
-        border-right: 1px solid #000 !important;
-        border-bottom: 1px solid #000 !important;
-        outline: none !important;
-        box-shadow: none !important;
-        padding: 2px 8px;
-        text-align: center;
-        vertical-align: middle;
-        min-width: 0;
-        max-width: none;
-        white-space: normal;
-        overflow-wrap: break-word;
-        line-height: 1.4;
-        box-sizing: border-box !important;
-        background-clip: padding-box !important;
-      }
-
-      .student-excel-table th,
-      .student-excel-table td {
-        border-top: 0 !important;
-        border-left: 0 !important;
+          /* Đồng bộ tất cả các ô đều có viền 1px solid #000 */
+          border: 1px solid #000 !important;
+          outline: none !important;
+          box-shadow: none !important;
+          padding: 2px 8px;
+          text-align: center;
+          vertical-align: middle;
+          min-width: 0;
+          max-width: none;
+          white-space: normal;
+          overflow-wrap: break-word;
+          line-height: 1.4;
+          box-sizing: border-box !important;
+          background-clip: padding-box !important;
       }
 
       /* =====================================================
@@ -1423,50 +1418,50 @@ return (
       ===================================================== */
 
       .student-excel-table thead th {
-        position: sticky;
-        top: 0;
-        z-index: 3;
-        background: #dbeafe;
-        color: #1e3a8a;
-        font-weight: 700;
-        text-transform: none;
-        text-align: center;
-        vertical-align: middle;
-        line-height: 1.35;
-        min-height: 40px;
-        padding: 7px 5px;
-        white-space: normal;
-        overflow-wrap: break-word;
+          position: sticky;
+          top: 0;
+          z-index: 3;
+          background: #dbeafe;
+          color: #1e3a8a;
+          font-weight: 700;
+          text-transform: none;
+          text-align: center;
+          vertical-align: middle;
+          line-height: 1.35;
+          min-height: 40px;
+          padding: 7px 5px;
+          white-space: normal;
+          overflow-wrap: break-word;
       }
 
       .student-excel-table thead tr:nth-child(1) th {
-        background: #dbeafe;
-        font-weight: 800;
+          background: #dbeafe;
+          font-weight: 800;
       }
 
       .student-excel-table thead tr:nth-child(n + 2) th {
-        font-weight: 400 !important;
+          font-weight: 400 !important;
       }
 
       .student-excel-table thead tr:nth-child(2) th {
-        background: #e8f1fc;
+          background: #e8f1fc;
       }
 
       .student-excel-table thead tr:nth-child(3) th {
-        background: #eff6ff;
+          background: #eff6ff;
       }
 
       .student-excel-table thead tr:nth-child(4) th {
-        background: #f1f5f9;
+          background: #f1f5f9;
       }
 
       .student-excel-table thead .col-stt,
       .student-excel-table thead .col-name {
-        background: #dbeafe;
+          background: #dbeafe;
       }
 
       .student-excel-table thead .header-empty {
-        background: #fff;
+          background: #fff;
       }
 
       /* =====================================================
@@ -1474,30 +1469,30 @@ return (
       ===================================================== */
 
       .student-excel-table thead th.rotate-header {
-        writing-mode: horizontal-tb !important;
-        transform: none !important;
-        width: 30px !important;
-        min-width: 30px !important;
-        max-width: 30px !important;
-        height: 100px !important;
-        min-height: 100px !important;
-        padding: 4px 2px !important;
-        text-align: center !important;
-        vertical-align: middle !important;
-        white-space: nowrap !important;
+          writing-mode: horizontal-tb !important;
+          transform: none !important;
+          width: 30px !important;
+          min-width: 30px !important;
+          max-width: 30px !important;
+          height: 100px !important;
+          min-height: 100px !important;
+          padding: 4px 2px !important;
+          text-align: center !important;
+          vertical-align: middle !important;
+          white-space: nowrap !important;
       }
 
       .student-excel-table thead th.rotate-header .rotated-header-text {
-        display: inline-block;
-        writing-mode: vertical-rl !important;
-        text-orientation: mixed !important;
-        transform: rotate(180deg) !important;
-        white-space: nowrap !important;
-        word-break: keep-all !important;
-        overflow-wrap: normal !important;
-        text-align: center;
-        vertical-align: middle;
-        line-height: 1.2;
+          display: inline-block;
+          writing-mode: vertical-rl !important;
+          text-orientation: mixed !important;
+          transform: rotate(180deg) !important;
+          white-space: nowrap !important;
+          word-break: keep-all !important;
+          overflow-wrap: normal !important;
+          text-align: center;
+          vertical-align: middle;
+          line-height: 1.2;
       }
 
       /* =====================================================
@@ -1506,16 +1501,16 @@ return (
 
       .student-excel-table .col-stt,
       .student-excel-table .cell-stt {
-        width: 1% !important;
-        min-width: 0 !important;
+          width: 1% !important;
+          min-width: 0 !important;
       }
 
       .student-excel-table .col-stt {
-        background: #e2e8f0;
+          background: #e2e8f0;
       }
 
       .student-excel-table .cell-stt {
-        font-weight: 400;
+          font-weight: 400;
       }
 
       /* =====================================================
@@ -1524,23 +1519,23 @@ return (
 
       .student-excel-table .col-name,
       .student-excel-table .cell-name {
-        width: 1% !important;
-        min-width: 0 !important;
-        max-width: none !important;
-        white-space: nowrap !important;
-        word-break: keep-all !important;
-        overflow-wrap: normal !important;
+          width: 1% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          white-space: nowrap !important;
+          word-break: keep-all !important;
+          overflow-wrap: normal !important;
       }
 
       .student-excel-table .col-name {
-        text-align: center;
-        background: #e2e8f0;
+          text-align: center;
+          background: #e2e8f0;
       }
 
       .student-excel-table .cell-name {
-        text-align: left !important;
-        font-weight: 400 !important;
-        color: #1e293b;
+          text-align: left !important;
+          font-weight: 400 !important;
+          color: #1e293b;
       }
 
       /* =====================================================
@@ -1549,23 +1544,23 @@ return (
 
       .student-excel-table .col-date,
       .student-excel-table .cell-date {
-        width: 90px !important;
-        min-width: 90px !important;
-        max-width: 90px !important;
-        box-sizing: border-box !important;
+          width: 90px !important;
+          min-width: 90px !important;
+          max-width: 90px !important;
+          box-sizing: border-box !important;
       }
 
       .student-excel-table thead th.col-date {
-        white-space: normal !important;
-        word-break: normal !important;
-        overflow-wrap: break-word !important;
-        line-height: 1.2 !important;
-        text-align: center !important;
+          white-space: normal !important;
+          word-break: normal !important;
+          overflow-wrap: break-word !important;
+          line-height: 1.2 !important;
+          text-align: center !important;
       }
 
       .student-excel-table tbody td.cell-date {
-        white-space: nowrap !important;
-        overflow: hidden !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
       }
 
       /* =====================================================
@@ -1573,15 +1568,15 @@ return (
       ===================================================== */
 
       .student-excel-table tbody td.cell-data {
-        min-width: 35px !important;
-        padding-left: 10px !important;
-        padding-right: 10px !important;
+          min-width: 35px !important;
+          padding-left: 10px !important;
+          padding-right: 10px !important;
       }
 
       .student-excel-table thead tr:first-child th:nth-child(n + 5) {
-        min-width: 35px !important;
-        padding-left: 10px !important;
-        padding-right: 10px !important;
+          min-width: 35px !important;
+          padding-left: 10px !important;
+          padding-right: 10px !important;
       }
 
       /* =====================================================
@@ -1594,25 +1589,25 @@ return (
       .student-excel-table .cell-stt,
       .student-excel-table .cell-name,
       .student-excel-table .cell-date {
-        font-weight: 400 !important;
+          font-weight: 400 !important;
       }
 
       .student-excel-table .cell-empty {
-        color: #94a3b8;
+          color: #94a3b8;
       }
 
       .student-excel-table tbody tr:nth-child(even) {
-        background: #f8fafc;
+          background: #f8fafc;
       }
 
       .student-excel-table tbody tr:hover {
-        background: #eff6ff;
+          background: #eff6ff;
       }
 
       .student-excel-table .cell-no-data {
-        padding: 24px;
-        color: #64748b;
-        text-align: center;
+          padding: 24px;
+          color: #64748b;
+          text-align: center;
       }
 
       /* =====================================================
