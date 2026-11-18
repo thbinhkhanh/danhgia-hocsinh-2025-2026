@@ -1,7 +1,14 @@
+
 /**
  * Xử lý đọc và kiểm tra file Excel upload
  */
-export const processExcelFile = async (event, XLSX, normalizeText, findHeaderRow, findFirstStudentRow) => {
+export const processExcelFile = async (
+  event,
+  XLSX,
+  normalizeText,
+  findHeaderRow,
+  findFirstStudentRow
+) => {
   const file = event.target.files?.[0];
 
   if (!file) {
@@ -29,10 +36,30 @@ export const processExcelFile = async (event, XLSX, normalizeText, findHeaderRow
     throw new Error("File Excel không có trang tính.");
   }
 
-  const selectedSheet =
-    workbook.SheetNames.find((name) =>
-      normalizeText(name).includes("bangtonghop")
-    ) || workbook.SheetNames[0];
+  // Tìm sheet theo 1 trong 2 điều kiện
+  const selectedSheet = workbook.SheetNames.find((name) => {
+    // Điều kiện 1: Tên sheet chính xác
+    if (name === "BangTongHopKetQuaGiaoDuc") {
+      return true;
+    }
+
+    // Điều kiện 2: Tiêu đề tại ô A3 hoặc A4
+    const ws = workbook.Sheets[name];
+
+    const titleA3 = String(ws?.A3?.v ?? "");
+    const titleA4 = String(ws?.A4?.v ?? "");
+
+    return (
+      titleA3.includes("BẢNG TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ GIÁO DỤC") ||
+      titleA4.includes("BẢNG TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ GIÁO DỤC")
+    );
+  });
+
+  if (!selectedSheet) {
+    throw new Error(
+      "File không hợp lệ! Không tìm thấy sheet tổng hợp kết quả đánh giá giáo dục."
+    );
+  }
 
   const ws = workbook.Sheets[selectedSheet];
 

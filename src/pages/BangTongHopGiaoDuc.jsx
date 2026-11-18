@@ -1082,39 +1082,55 @@ export default function BangTongHopGiaoDuc({
   // CHỌN VÀ ĐỌC FILE EXCEL
   // ====================================================
 
-  const handleUpload = async (event) => {
-    try {
-      setLoading(true);
+  
+const handleUpload = async (event) => {
+  try {
+    setLoading(true);
 
-      const result = await processExcelFile(
-        event, 
-        XLSX, 
-        normalizeText, 
-        (ws, range) => findHeaderRow(ws, range), 
-        (ws, range) => findFirstStudentRow(ws, range)
-      );
+    const result = await processExcelFile(
+      event,
+      XLSX,
+      normalizeText,
+      (ws, range) => findHeaderRow(ws, range),
+      (ws, range) => findFirstStudentRow(ws, range)
+    );
 
-      if (result.cancelled) return;
+    if (result.cancelled) return;
 
-      setWorksheet(result.ws);
-      setOriginalFile(result.file);
-      setSearchQuery("");
-
-    } catch (error) {
-      console.error("Lỗi đọc Excel:", error);
-
+    // Kiểm tra file hợp lệ
+    if (!result.success) {
       setSnackbar({
         open: true,
-        message: error.message || "Không thể đọc file Excel!",
-        severity: error.message.includes("Vui lòng chọn") ? "warning" : "error"
+        message: result.error || "File Excel không hợp lệ!",
+        severity: "error",
       });
-    } finally {
-      setLoading(false);
-      if (event.target) {
-        event.target.value = "";
-      }
+      return;
     }
-  };
+
+    // Chỉ cập nhật khi file hợp lệ
+    setWorksheet(result.ws);
+    setOriginalFile(result.file);
+    setSearchQuery("");
+
+  } catch (error) {
+    console.error("Lỗi đọc Excel:", error);
+
+    setSnackbar({
+      open: true,
+      message: error.message || "Không thể đọc file Excel!",
+      severity: error.message?.includes("Vui lòng chọn")
+        ? "warning"
+        : "error",
+    });
+  } finally {
+    setLoading(false);
+
+    if (event.target) {
+      event.target.value = "";
+    }
+  }
+};
+
 
   // ====================================================
   // TẢI FILE EXCEL GỐC

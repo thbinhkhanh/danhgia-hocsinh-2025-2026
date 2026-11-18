@@ -258,12 +258,53 @@ export default function PhieuDanhGiaGIaoDuc() {
   };
 
   // ================= ĐỌC THƯ MỤC EXCEL =================
+  
   const handleFolderUpload = async (e) => {
     const files = Array.from(e.target.files || []);
 
     if (files.length === 0) return;
 
     try {
+      // Chỉ kiểm tra file Excel đầu tiên
+      const firstFile = files.find(file =>
+        /\.(xlsx|xls)$/i.test(file.name)
+      );
+
+      if (!firstFile) {
+        setSnackbar({
+          open: true,
+          message: "⚠️ Không tìm thấy file Excel trong thư mục!",
+          severity: "warning"
+        });
+        return;
+      }
+
+      // Đọc file đầu tiên để kiểm tra A1
+      const buffer = await firstFile.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+
+      const cellA1 = cleanValue(
+        worksheet?.A1?.v ?? ""
+      );
+
+      // Kiểm tra nội dung A1
+      if (
+        !normalizeText(cellA1).includes(
+          normalizeText("PHIẾU ĐÁNH GIÁ HỌC TẬP")
+        )
+      ) {
+        setSnackbar({
+          open: true,
+          message: "❌ Dữ liệu không hợp lệ! Phải chọn thư mục chứa PHIẾU ĐÁNH GIÁ HỌC TẬP.",
+          severity: "error"
+        });
+        return;
+      }
+
+      // File hợp lệ: tiếp tục đọc toàn bộ thư mục
       const result = await extractStudentsFromExcelFiles({
         files,
         XLSX,
@@ -276,24 +317,19 @@ export default function PhieuDanhGiaGIaoDuc() {
         selectedClass
       });
 
-      // Không tìm thấy file Excel hợp lệ
       if (result.totalFiles === 0) {
         setSnackbar({
           open: true,
-          message:
-            "⚠️ Không tìm thấy file Excel hợp lệ trong thư mục!",
+          message: "⚠️ Không tìm thấy file Excel hợp lệ trong thư mục!",
           severity: "warning"
         });
-
         return;
       }
 
-      // Cập nhật học kỳ
       if (result.selectedTermLabel) {
         setSelectedTermLabel(result.selectedTermLabel);
       }
 
-      // Có dữ liệu học sinh
       if (result.students.length > 0) {
         setStudents(result.students);
         setSelectedStudentIndex(0);
@@ -303,19 +339,15 @@ export default function PhieuDanhGiaGIaoDuc() {
           message: `✅ Đã tải thành công ${result.students.length} học sinh!`,
           severity: "success"
         });
-
       } else {
         setSnackbar({
           open: true,
-          message:
-            "⚠️ Không trích xuất được dữ liệu học sinh từ thư mục!",
+          message: "⚠️ Không trích xuất được dữ liệu học sinh từ thư mục!",
           severity: "error"
         });
       }
 
     } catch (error) {
-      console.error("Lỗi tải thư mục Excel:", error);
-
       setSnackbar({
         open: true,
         message: "❌ Có lỗi xảy ra khi đọc dữ liệu Excel!",
@@ -323,10 +355,10 @@ export default function PhieuDanhGiaGIaoDuc() {
       });
 
     } finally {
-      // Cho phép chọn lại cùng thư mục
       e.target.value = "";
     }
   };
+
 
   // ================= MỞ HỘP THOẠI IN TOÀN BỘ =================
   const handleOpenPrintDialog = () => {
