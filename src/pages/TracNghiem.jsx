@@ -86,6 +86,7 @@ const [saving, setSaving] = useState(false);
 const { config } = useContext(ConfigContext);
 const isOnTap = config?.examType === "ontap";
 const [configData, setConfigData] = useState(null);
+const [lessonName, setLessonName] = useState("");
 const [hocKi, setHocKi] = useState("");
 const [monHoc, setMonHoc] = useState("");
 const [choXemDiem, setChoXemDiem] = useState(false);
@@ -161,112 +162,170 @@ if (!studentInfo.id || !studentInfo.name || !studentClass) {
   };
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        setLoading(true);
-        setProgress(0);
+  const fetchQuestions = async () => {
+    try {
+      setLoading(true);
+      setProgress(0);
 
-        // ===== CONFIG =====
-        const configSnap = await getDoc(doc(db, "CONFIG", "config"));
-        if (!configSnap.exists()) {
-          setSnackbar({
-            open: true,
-            message: "❌ Không tìm thấy config!",
-            severity: "error",
-          });
-          return;
-        }
+      console.group("🔍 KIỂM TRA QUÁ TRÌNH TẢI ĐỀ");
 
-        const configData = configSnap.data();
-        const namHoc = configData.namHoc;
-        setConfigData(configData);
-        const examType = configData.examType;
-        const isOnTap = examType === "ontap";
+      // ===== CONFIG =====
+      const configSnap = await getDoc(doc(db, "CONFIG", "config"));
 
-        const hocKiFromConfig = configData.hocKy || "";
-        const monHocFromConfig = configData.mon || "";
-        const timeLimitMinutes = configData.timeLimit ?? 0;
-
-        setTimeLimitMinutes(timeLimitMinutes);
-        setChoXemDiem(configData.choXemDiem ?? false);
-        setChoXemDapAn(configData.choXemDapAn ?? false);
-
-        setProgress(30);
-
-        // ===== CLASS =====
-        const classNumber = studentInfo.className.match(/\d+/)?.[0];
-        if (!classNumber) {
-          setSnackbar({
-            open: true,
-            message: "❌ Không xác định được lớp!",
-            severity: "error",
-          });
-          return;
-        }
-
-        const classLabel = `Lớp ${classNumber}`;
-
-        // ===== LẤY DOC ID  =====
-        const result = await getQuizDocId({
-          db,
-          configData,
-          namHoc,
-          classLabel,
-          hocKiFromConfig,
-          monHocFromConfig,
-          studentInfo,
-          setNotFoundMessage,
-          examType, 
+      if (!configSnap.exists()) {
+        console.error("❌ Không tìm thấy CONFIG/config!");
+        setSnackbar({
+          open: true,
+          message: "❌ Không tìm thấy config!",
+          severity: "error",
         });
-
-        if (!result) return;
-
-        const { docId, collectionName } = result;
-
-        // ===== LOAD ĐỀ =====
-        setTimeLeft(timeLimitMinutes * 60);
-
-        const docSnap = await getDoc(doc(db, collectionName, docId));
-        if (!docSnap.exists()) {
-          setSnackbar({
-            open: true,
-            message: "❌ Không tìm thấy đề!",
-            severity: "error",
-          });
-          return;
-        }
-
-        setProgress(60);
-
-        const data = docSnap.data();
-
-        setQuizClass(data.class || "");
-        setHocKi(data.semester || hocKiFromConfig);
-        setMonHoc(data.subject || monHocFromConfig);
-
-        window.currentHocKi = data.semester || hocKiFromConfig;
-        window.currentMonHoc = data.subject || monHocFromConfig;
-        
-        // ===== QUESTIONS =====
-        processQuestions({
-          data,
-          buildRuntimeQuestions,
-          setQuestions,
-          setStarted,
-          setProgress,
-          setAnswers,
-        });
-
-      } catch (err) {
-        console.error("❌ Lỗi khi load câu hỏi:", err);
-        setQuestions([]);
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
 
-    fetchQuestions();
-  }, []);
+      const configData = configSnap.data();
+
+      console.log("📌 CONFIG/config:", configData);
+      console.log("📌 kiemTraBaiCu:", configData.kiemTraBaiCu);
+      console.log("📌 examType gốc:", configData.examType);
+      console.log("📌 deTracNghiem:", configData.deTracNghiem);
+
+      const namHoc = configData.namHoc;
+      setConfigData(configData);
+
+      // ===== XÁC ĐỊNH LOẠI ĐỀ =====
+      const examType =
+        configData.kiemTraBaiCu === true
+          ? "kiemtrabaicu"
+          : configData.examType;
+
+      const isOnTap = examType === "ontap";
+
+      console.log("📌 examType sử dụng:", examType);
+      console.log("📌 isOnTap:", isOnTap);
+
+      const hocKiFromConfig = configData.hocKy || "";
+      const monHocFromConfig = configData.mon || "";
+      const timeLimitMinutes = configData.timeLimit ?? 0;
+
+      console.log("📌 Năm học:", namHoc);
+      console.log("📌 Học kỳ:", hocKiFromConfig);
+      console.log("📌 Môn học:", monHocFromConfig);
+      console.log("📌 Thời gian:", timeLimitMinutes);
+
+      setTimeLimitMinutes(timeLimitMinutes);
+      setChoXemDiem(configData.choXemDiem ?? false);
+      setChoXemDapAn(configData.choXemDapAn ?? false);
+
+      setProgress(30);
+
+      // ===== CLASS =====
+      console.log("📌 studentInfo:", studentInfo);
+
+      const classNumber = studentInfo.className.match(/\d+/)?.[0];
+
+      if (!classNumber) {
+        console.error("❌ Không xác định được lớp:", studentInfo.className);
+        setSnackbar({
+          open: true,
+          message: "❌ Không xác định được lớp!",
+          severity: "error",
+        });
+        return;
+      }
+
+      const classLabel = `Lớp ${classNumber}`;
+
+      console.log("📌 classLabel:", classLabel);
+
+      // ===== LẤY DOC ID =====
+      console.log("🔎 Bắt đầu gọi getQuizDocId...");
+
+      const result = await getQuizDocId({
+        db,
+        configData,
+        namHoc,
+        classLabel,
+        hocKiFromConfig,
+        monHocFromConfig,
+        studentInfo,
+        setNotFoundMessage,
+        examType,
+      });
+
+      console.log("📦 Kết quả getQuizDocId:", result);
+
+      if (!result) {
+        console.error("❌ getQuizDocId không trả về kết quả!");
+        return;
+      }
+
+      const { docId, collectionName } = result;
+
+      console.log("📌 Collection cần mở:", collectionName);
+      console.log("📌 Document ID cần mở:", docId);
+
+      // ===== LOAD ĐỀ =====
+      setTimeLeft(timeLimitMinutes * 60);
+
+      console.log(
+        "🔎 Đang truy vấn Firestore:",
+        `${collectionName}/${docId}`
+      );
+
+      const docSnap = await getDoc(doc(db, collectionName, docId));
+
+      console.log("📌 Document tồn tại:", docSnap.exists());
+
+      if (!docSnap.exists()) {
+        console.error(
+          "❌ Không tìm thấy đề:",
+          collectionName,
+          docId
+        );
+
+        setSnackbar({
+          open: true,
+          message: "❌ Không tìm thấy đề!",
+          severity: "error",
+        });
+        return;
+      }
+
+      setProgress(60);
+
+      const data = docSnap.data();
+
+      setQuizClass(data.class || "");
+      setHocKi(data.semester || hocKiFromConfig);
+      setMonHoc(data.subject || monHocFromConfig);
+      setLessonName(data.lessonName || "");
+
+      window.currentHocKi = data.semester || hocKiFromConfig;
+      window.currentMonHoc = data.subject || monHocFromConfig;
+
+      // ===== QUESTIONS =====
+      processQuestions({
+        data,
+        buildRuntimeQuestions,
+        setQuestions,
+        setStarted,
+        setProgress,
+        setAnswers,
+      });
+
+      console.log("✅ Hoàn tất tải đề!");
+
+    } catch (err) {
+      console.error("❌ Lỗi khi load câu hỏi:", err);
+      setQuestions([]);
+    } finally {
+      console.groupEnd();
+      setLoading(false);
+    }
+  };
+
+  fetchQuestions();
+}, []);
 
   // Hàm chuyển chữ đầu thành hoa
   const capitalizeName = (name = "") =>
@@ -587,9 +646,19 @@ return (
                 ml: "auto",
               }}
             >
-              {config?.examType === "ontap" &&
-              !config?.baiTapTuan &&
-              !config?.kiemTraDinhKi ? (
+              {config?.kiemTraBaiCu ? (
+                <>
+                  <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
+                    KIỂM TRA BÀI CŨ
+                  </Typography>
+
+                  <Typography sx={{ fontSize: 16, opacity: 0.9 }}>
+                    {lessonName}
+                  </Typography>
+                </>
+              ) : config?.examType === "ontap" &&
+                !config?.baiTapTuan &&
+                !config?.kiemTraDinhKi ? (
                 <>
                   <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
                     ÔN TẬP - {(hocKiDisplay || "HỌC KỲ").toUpperCase()}

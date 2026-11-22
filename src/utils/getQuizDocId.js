@@ -23,6 +23,36 @@ export const getQuizDocId = async ({
   const yearKey = namHoc
     ? namHoc.split("-").map(x => x.slice(-2)).join("-")
     : "";
+  
+  // ================= KIEM TRA BAI CU =================
+  if (configData.kiemTraBaiCu === true || examType === "kiemtrabaicu") {
+    const docId = configData.deTracNghiem;
+
+    console.log("🔍 KIỂM TRA BÀI CŨ");
+    console.log("📌 deTracNghiem:", docId);
+    console.log("📌 Collection:", "KIEMTRA_BAICU");
+
+    if (!docId) {
+      setNotFoundMessage("❌ Chưa cấu hình đề kiểm tra bài cũ");
+      return null;
+    }
+
+    const examRef = doc(db, "KIEMTRA_BAICU", docId);
+    const examSnap = await getDoc(examRef);
+
+    if (!examSnap.exists()) {
+      console.error("❌ Không tìm thấy đề:", docId);
+      setNotFoundMessage("❌ Không tìm thấy đề kiểm tra bài cũ");
+      return null;
+    }
+
+    console.log("✅ Đã tìm thấy đề kiểm tra bài cũ:", docId);
+
+    return {
+      docId,
+      collectionName: "KIEMTRA_BAICU",
+    };
+  }
 
   // ================= ON TAP OLD =================
   if (configData.onTap) {

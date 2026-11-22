@@ -386,6 +386,16 @@ for (let q of questions) {
         `ONTAP_${Date.now()}`;
     }
 
+    else if (examType === "phieuhoc") {
+      collectionName = "PHIEUHOCTAP";
+      docId = `quiz_${selectedClass}_${selectedSubject}_${weekValue}`;
+    }
+
+    else if (examType === "kiemtrabaicu") {
+      collectionName = "KIEMTRA_BAICU";
+      docId = `quiz_${selectedClass}_${selectedSubject}_${weekValue}`;
+    }
+
     // ===== KTĐK =====
     else if (examType === "ktdk") {
       collectionName = "NGANHANG_DE";
@@ -424,6 +434,11 @@ for (let q of questions) {
       examLetter,
       week: weekValue,
       examType,
+      ...(
+        ["phieuhoc", "kiemtrabaicu"].includes(examType) && {
+          lessonName: lessonName || "",
+        }
+      ),
       questions: questionsToSave,
     });
 

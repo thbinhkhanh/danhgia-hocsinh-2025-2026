@@ -122,10 +122,11 @@ export default function QuanTri() {
           lop: data.lop || "",
           tuan: data.tuan || 1,
           baiTapTuan: data.baiTapTuan || false,
+          phieuHocTap: data.phieuHocTap || false, 
+          kiemTraBaiCu: data.kiemTraBaiCu || false, 
           kiemTraDinhKi: data.kiemTraDinhKi || false,
           onTap: data.onTap || false, 
-
-          loaiKiemTra: data.loaiKiemTra || "kiemtra", // ✅ THÊM MỚI
+          loaiKiemTra: data.loaiKiemTra || "kiemtra", 
 
           choXemDiem: data.choXemDiem || false,
           choXemDapAn: data.choXemDapAn || false,
@@ -241,6 +242,8 @@ export default function QuanTri() {
       const namHoc = data.namHoc || "2025-2026";
       const deTracNghiem = data.deTracNghiem || "";
       const khoaHeThong = data.khoaHeThong ?? false;
+      const phieuHocTap = data.phieuHocTap || false; // ✅ BỔ SUNG MỚI
+      const kiemTraBaiCu = data.kiemTraBaiCu || false;
 
       // ✅ KHÔNG overwrite – MERGE config
       setConfig(prev => ({
@@ -252,6 +255,8 @@ export default function QuanTri() {
         namHoc, 
         deTracNghiem,
         khoaHeThong,
+        phieuHocTap,
+        kiemTraBaiCu,
       }));
 
       // local state
@@ -666,6 +671,10 @@ export default function QuanTri() {
               value={
                 config.danhGiaTuan
                   ? "danhGiaTuan"
+                  : config.phieuHocTap 
+                  ? "phieuHocTap"
+                  : config.kiemTraBaiCu // ✅ THÊM DÒNG NÀY
+                  ? "kiemTraBaiCu"
                   : config.baiTapTuan
                   ? "baiTapTuan"
                   : config.kiemTraDinhKi
@@ -674,50 +683,59 @@ export default function QuanTri() {
                   ? "onTap"
                   : ""
               }
-              onChange={(e) => {
+              onChange={async (e) => {
                 const v = e.target.value;
 
-                setConfig({
-                  danhGiaTuan:
-                    v === "danhGiaTuan",
-
-                  baiTapTuan:
-                    v === "baiTapTuan",
-
-                  kiemTraDinhKi:
-                    v === "kiemTraDinhKi",
-
+                const newConfig = {
+                  danhGiaTuan: v === "danhGiaTuan",
+                  phieuHocTap: v === "phieuHocTap",
+                  kiemTraBaiCu: v === "kiemTraBaiCu",
+                  baiTapTuan: v === "baiTapTuan",
+                  kiemTraDinhKi: v === "kiemTraDinhKi",
                   onTap: v === "onTap",
 
                   examType:
-                    v === "onTap"
-                      ? "ontap"
-                      : config.examType,
-                  
-                  // ===== field mới (chuẩn hoá tương lai) =====
+                    v === "danhGiaTuan" ? "danhgia" :
+                    v === "phieuHocTap" ? "phieuhoctap" :
+                    v === "kiemTraBaiCu" ? "kiemtrabaicu" :
+                    v === "baiTapTuan" ? "baitap" :
+                    v === "kiemTraDinhKi" ? "kiemtra" :
+                    v === "onTap" ? "ontap" : "",
+
                   loaiKiemTra:
-                    v === "danhGiaTuan"
-                      ? "danhgia"
-                      : v === "baiTapTuan"
-                      ? "baitap"
-                      : v === "kiemTraDinhKi"
-                      ? "kiemtra"
-                      : v === "onTap"
-                      ? "ontap"
-                      : "",
-                });
+                    v === "danhGiaTuan" ? "danhgia" :
+                    v === "phieuHocTap" ? "phieuhoctap" :
+                    v === "kiemTraBaiCu" ? "kiemtrabaicu" :
+                    v === "baiTapTuan" ? "baitap" :
+                    v === "kiemTraDinhKi" ? "kiemtra" :
+                    v === "onTap" ? "ontap" : "",
+                };
+
+                await updateFirestoreAndContext(null, newConfig);
               }}
             >
               <FormControlLabel
-                value="danhGiaTuan"
+                value="kiemTraBaiCu"
                 control={<Radio />}
-                label="Đánh giá tuần"
+                label="Kiểm tra bài cũ"
+              />
+
+              <FormControlLabel
+                value="phieuHocTap"
+                control={<Radio />}
+                label="Phiếu học tập"
               />
 
               <FormControlLabel
                 value="baiTapTuan"
                 control={<Radio />}
                 label="Bài tập tuần"
+              />
+
+              <FormControlLabel
+                value="danhGiaTuan"
+                control={<Radio />}
+                label="Đánh giá tuần"
               />
 
               <FormControlLabel

@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Dialog,
@@ -16,6 +17,7 @@ const StatusResultDialogGV = ({
   config,
   convertPercentToScore,
   deleteStudentScore,
+  onDeleteRequest,
 }) => {
   if (!studentForTracNghiem) return null;
 
@@ -25,13 +27,37 @@ const StatusResultDialogGV = ({
     .trim()
     .normalize("NFC");
 
+  // Nhận diện Phiếu học tập
+  const isPHT =
+    config?.phieuHocTap === true ||
+    config?.examType === "phieuhoc" ||
+    config?.loaiKiemTra === "phieuhoctap";
+
+  // Nhận diện Kiểm tra bài cũ
+  const isKiemTraBaiCu =
+    config?.kiemTraBaiCu === true ||
+    config?.examType === "kiemtrabaicu";
+
   const getScore = () => {
+    // Phiếu học tập: lấy điểm trực tiếp từ trường diem hoặc TN_diem
+    if (isPHT) {
+      return score.diem ?? score.TN_diem ?? null;
+    }
+
+    if (isKiemTraBaiCu) {
+      return score.TN_diem != null
+        ? convertPercentToScore(score.TN_diem)
+        : null;
+    }
+
+    // Bài tập tuần
     if (config?.baiTapTuan) {
       return score.TN_diem != null
         ? convertPercentToScore(score.TN_diem)
         : null;
     }
 
+    // Kiểm tra định kỳ
     if (config?.kiemTraDinhKi) {
       return score.lyThuyet ?? null;
     }
@@ -39,11 +65,27 @@ const StatusResultDialogGV = ({
     return null;
   };
 
-  const finalScore = getScore();
+  const rawScore = getScore();
+  const finalScore =
+    rawScore != null
+      ? Number(rawScore) > 10
+        ? Math.round((Number(rawScore) / 10) * 2) / 2
+        : Number(rawScore)
+      : null;
 
   const showDeleteButton =
+    // Phiếu học tập
+    (isPHT && (score.diem != null || score.TN_diem != null)) ||
+
+    // Kiểm tra bài cũ
+    (isKiemTraBaiCu && score.TN_diem != null) ||
+
+    // Bài tập tuần
     (config?.baiTapTuan && score.TN_diem != null) ||
+
+    // Kiểm tra định kỳ
     (config?.kiemTraDinhKi && score.lyThuyet != null);
+
 
   return (
     <Dialog
@@ -57,11 +99,8 @@ const StatusResultDialogGV = ({
           overflow: "hidden",
           background: "#f8fafc",
           boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
-
-          // ✅ FONT CHUẨN VIỆT NAM
           fontFamily:
             '"Segoe UI","Arial","Helvetica","Noto Sans","sans-serif"',
-
           textRendering: "optimizeLegibility",
           WebkitFontSmoothing: "antialiased",
           MozOsxFontSmoothing: "grayscale",
@@ -209,10 +248,11 @@ const StatusResultDialogGV = ({
         <Box sx={{ pb: 3, display: "flex", justifyContent: "center" }}>
           <Box
             onClick={() => {
-              deleteStudentScore(
+              onDeleteRequest(
                 studentForTracNghiem.maDinhDanh,
                 studentForTracNghiem.hoVaTen
               );
+
               setStudentForTracNghiem(null);
             }}
             sx={{

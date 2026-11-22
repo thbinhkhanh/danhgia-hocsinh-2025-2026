@@ -43,6 +43,8 @@ import PhieuDanhGiaGiaoDuc from "./pages/PhieuDanhGiaGiaoDuc";
 import Dashboard from "./pages/Dashboard";
 import ChangePasswordDialog from "./dialog/ChangePasswordDialog";
 import BangTongHopGiaoDuc from "./pages/BangTongHopGiaoDuc";
+import PhieuHocTap from "./pages/PhieuHocTap";
+import Tools from "./pages/Tools";
 
 // 🔹 Import context
 import { StudentProvider } from "./context/StudentContext";
@@ -67,6 +69,7 @@ import AppsIcon from "@mui/icons-material/Apps";
 import PersonIcon from "@mui/icons-material/Person";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LockResetIcon from "@mui/icons-material/LockReset";
+
 
 function AppContent() {
   const location = useLocation();
@@ -471,7 +474,10 @@ function AppContent() {
 
           {/* PUBLIC */}
           <Route path="/hocsinh" element={<HocSinh />} />
-          <Route path="/tracnghiem" element={<TracNghiem />} />
+          <Route 
+            path="/tracnghiem" 
+            element={config?.phieuHocTap ? <PhieuHocTap /> : <TracNghiem />} 
+          />
           <Route path="/tracnghiem-ontap" element={<TracNghiem_OnTap />} />
 
           {/* PRIVATE FUNCTIONS */}
@@ -538,6 +544,8 @@ function AppContent() {
             path="/in-bang-tong-hop"
             element={<BangTongHopGiaoDuc />}
           />
+
+          <Route path="/tools" element={<Tools />} />
         </Routes>
       </Box>
     </>

@@ -392,12 +392,14 @@ export default function HocSinh() {
   };
 
   const getMode = (config) => {
-  if (config.kiemTraDinhKi) return "ktdk";
-  if (config.baiTapTuan) return "btt";
-  if (config.danhGiaTuan) return "dgt";
-  if (config.onTap) return "ontap";  // 🔹 Nhánh mới
-  return "normal";
-};
+    if (config.kiemTraDinhKi) return "ktdk";
+    if (config.baiTapTuan) return "btt";
+    if (config.danhGiaTuan) return "dgt";
+    if (config.phieuHocTap) return "pht";
+    if (config.kiemTraBaiCu) return "ktbc";
+    if (config.onTap) return "ontap";
+    return "normal";
+  };
 
 // 🔹 Hàm cập nhật config + Firestore (giống GiaoVien)
 const updateConfig = async (field, value) => {
@@ -412,6 +414,33 @@ const updateConfig = async (field, value) => {
     );
   } catch (err) {
     console.error(`❌ Lỗi cập nhật ${field}:`, err);
+  }
+};
+
+const getPageTitle = () => {
+  const mode = getMode(config);
+
+  switch (mode) {
+    case "btt":
+      return `BÀI TẬP - TUẦN ${config?.tuan || ""}`;
+
+    case "dgt":
+      return `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`;
+
+    case "pht":
+      return `PHIẾU HỌC TẬP - TUẦN ${config?.tuan || ""}`;
+
+    case "ktbc":
+      return `KIỂM TRA BÀI CŨ - TUẦN ${config?.tuan || ""}`;
+
+    case "ontap":
+      return `ÔN TẬP - ${(config?.hocKy || "").toUpperCase()}`;
+
+    case "ktdk":
+      return `KTĐK - ${(config?.hocKy || "").toUpperCase()}`;
+
+    default:
+      return "ĐÁNH GIÁ HỌC SINH";
   }
 };
 
@@ -469,15 +498,7 @@ return (
               pb: 1,
             }}
           >
-            {
-              config?.loaiKiemTra === "baitap"
-                ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
-                : config?.loaiKiemTra === "danhgia"
-                ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
-                : config?.loaiKiemTra === "ontap"
-                ? `ÔN TẬP - ${config?.hocKy?.toUpperCase() || ""}`
-                : `KTĐK - ${(config?.hocKy || "").toUpperCase()}`
-            }
+            {getPageTitle()}
           </Typography>
         </Box>
 

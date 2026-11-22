@@ -24,46 +24,74 @@ const getSemesterKey = (semester) => {
 };
 
 // Tính điểm trung bình từ dữ liệu ĐGTX (loại bỏ tuần thấp nhất nếu > 2 tuần)
+
 const tinhDiemTrungBinh = (
-  dgtx,
+  studentData,
   weekFrom,
   weekTo,
   selectedSubject
 ) => {
+  const dgtx = studentData?.dgtx || {};
+  const ktbc = studentData?.ktbc || {};
+  const pht = studentData?.pht || {};
+
   const scores = [];
 
   for (let i = weekFrom; i <= weekTo; i++) {
-    const rawScore = dgtx?.[`tuan_${i}`]?.TN_diem;
+    const weekId = `tuan_${i}`;
 
-    if (
-      rawScore === undefined ||
-      rawScore === null ||
-      rawScore === ""
-    ) {
-      continue;
-    }
+    // Lấy điểm của 3 nhánh
+    const diemDGTX = dgtx?.[weekId]?.TN_diem;
+    const diemKTBC = ktbc?.[weekId]?.TN_diem;
+    const diemPHT = pht?.[weekId]?.diem;
 
-    const diem = Number(rawScore);
+    const diemTuan = [
+      diemDGTX,
+      diemKTBC,
+      diemPHT,
+    ]
+      .filter(
+        (value) =>
+          value !== undefined &&
+          value !== null &&
+          value !== "" &&
+          Number.isFinite(Number(value)) &&
+          Number(value) >= 0 &&
+          Number(value) <= 100
+      )
+      .map(Number);
 
-    if (Number.isFinite(diem) && diem >= 0 && diem <= 100) {
-      scores.push(diem);
+    // Trung bình các nhánh có dữ liệu trong tuần
+    if (diemTuan.length > 0) {
+      const diemTBTuan =
+        diemTuan.reduce((sum, diem) => sum + diem, 0) /
+        diemTuan.length;
+
+      scores.push(diemTBTuan);
     }
   }
 
-  if (scores.length === 0) return null; 
+  if (scores.length === 0) return null;
 
-  let scoresToAverage = [...scores];
+  // Giữ nguyên quy tắc cũ: trên 2 tuần thì bỏ tuần thấp nhất
+  const scoresToAverage = [...scores];
+
   if (scoresToAverage.length > 2) {
-    const minVal = Math.min(...scoresToAverage);
-    const minIndex = scoresToAverage.indexOf(minVal);
-    if (minIndex > -1) {
-      scoresToAverage.splice(minIndex, 1);
-    }
+    const minIndex = scoresToAverage.indexOf(
+      Math.min(...scoresToAverage)
+    );
+
+    scoresToAverage.splice(minIndex, 1);
   }
 
-  const tongDiem = scoresToAverage.reduce((acc, curr) => acc + curr, 0);
+  const tongDiem = scoresToAverage.reduce(
+    (sum, diem) => sum + diem,
+    0
+  );
+
   const diemTB100 = tongDiem / scoresToAverage.length;
 
+  // Giữ nguyên quy đổi thang điểm cũ
   const diemTB =
     selectedSubject === "Công nghệ"
       ? diemTB100 / 10
@@ -71,6 +99,7 @@ const tinhDiemTrungBinh = (
 
   return Math.round(diemTB * 2) / 2;
 };
+
 
 /**
  * Tính điểm ĐGTX và lưu vào Firestore bằng writeBatch (Chỉ áp dụng cho các học kỳ giữa kỳ).
@@ -149,17 +178,22 @@ export const tinhVaLuuDiemDGTX = async ({
 
   const errors = [];
 
+  
   for (const studentDoc of snapshot.docs) {
     const studentData = studentDoc.data();
-    const dgtx = studentData?.[subjectKey]?.dgtx;
 
-    if (!dgtx) {
+    // Lấy dữ liệu môn học gồm 3 nhánh
+    const monData = studentData?.[subjectKey] || {};
+
+    // Không có dữ liệu ở cả 3 nhánh thì bỏ qua
+    if (!monData.dgtx && !monData.ktbc && !monData.pht) {
       noScoreCount++;
       continue;
     }
 
+    // Tính trung bình ĐGTX + KTBC + PHT
     const diemTB = tinhDiemTrungBinh(
-      dgtx,
+      monData,
       from,
       to,
       selectedSubject

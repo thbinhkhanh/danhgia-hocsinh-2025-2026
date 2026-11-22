@@ -101,25 +101,32 @@ export default function TongHopDanhGia() {
 
       if (!raw || typeof raw !== "object") continue;
 
-      const hsShort = toShort(raw.hs || "");
-      const btShort = toShort(raw.gv || "");
+      // Lấy đánh giá của 4 nhánh
+      const danhGia = [
+        raw.hs,        // NX - Nhận xét
+        raw.gv,        // BT - Bài tập
+        raw.KTBC_diem, // KTBC - Kiểm tra bài cũ
+        raw.PHT_diem,  // PHT - Phiếu học tập
+      ];
 
-      const diemNX = hsShort ? diemMap[hsShort] : null;
-      const diemBT = btShort ? diemMap[btShort] : null;
+      // Quy đổi T/H/C thành điểm
+      const diemTuan = danhGia
+        .map((value) => {
+          const short = toShort(value || "");
+          return short ? diemMap[short] : null;
+        })
+        .filter((value) => value !== null);
 
-      if (diemNX !== null && diemBT !== null) {
-        tong += (diemNX + diemBT) / 2;
-        dem++;
-      } else if (diemNX !== null) {
-        tong += diemNX;
-        dem++;
-      } else if (diemBT !== null) {
-        tong += diemBT;
+      // Trung bình các nhánh có dữ liệu trong tuần
+      if (diemTuan.length > 0) {
+        tong += diemTuan.reduce((sum, diem) => sum + diem, 0) / diemTuan.length;
         dem++;
       }
     }
 
+    // Trung bình các tuần có dữ liệu
     const diemTB = dem > 0 ? tong / dem : null;
+
     return { diemTB };
   }
 
@@ -256,16 +263,55 @@ export default function TongHopDanhGia() {
 
         const statusByWeek = {};
         const dgtxWeek = monData.dgtx || {};
+        const phtWeek = monData.pht || {};
+        const ktbcWeek = monData.ktbc || {};
 
-        Object.entries(dgtxWeek).forEach(([key, value]) => {
+        // Gộp tuần từ cả 3 nhánh để không bỏ sót tuần chỉ có KTBC hoặc PHT
+        const allWeekKeys = new Set([
+          ...Object.keys(dgtxWeek),
+          ...Object.keys(phtWeek),
+          ...Object.keys(ktbcWeek),
+        ]);
+
+        allWeekKeys.forEach((key) => {
           if (!key.startsWith("tuan_")) return;
 
           const weekNum = Number(key.replace(/\D/g, ""));
+
           if (weekNum >= weekFrom && weekNum <= weekTo) {
+            const value = dgtxWeek[key] || {};
+
+            const phtDiem = phtWeek?.[key]?.diem;
+            const ktbcDiem = ktbcWeek?.[key]?.TN_diem;
+
             statusByWeek[key] = {
               hs: value?.status || "",
               gv: value?.TN_status || "",
               TN_diem: value?.TN_diem ?? null,
+
+              // Điểm Phiếu học tập
+              PHT_diem:
+                phtDiem === null ||
+                phtDiem === undefined ||
+                phtDiem === ""
+                  ? ""
+                  : Number(phtDiem) < 50
+                    ? "C"
+                    : Number(phtDiem) >= 80
+                      ? "T"
+                      : "H",
+
+              // Điểm Kiểm tra bài cũ
+              KTBC_diem:
+                ktbcDiem === null ||
+                ktbcDiem === undefined ||
+                ktbcDiem === ""
+                  ? ""
+                  : Number(ktbcDiem) < 50
+                    ? "C"
+                    : Number(ktbcDiem) >= 80
+                      ? "T"
+                      : "H",
             };
           }
         });
@@ -294,9 +340,13 @@ export default function TongHopDanhGia() {
         const weekCols = sortedWeekIds.reduce((acc, weekId) => {
           const weekNum = Number(weekId.replace(/\D/g, ""));
           const raw = s.statusByWeek[weekId] || {};
-          acc[`Tuan_${weekNum}_HS`] = raw.hs || "-";
-          acc[`Tuan_${weekNum}_GV`] = raw.gv || "-";
-          acc[`Tuan_${weekNum}_TN`] = raw.TN_diem ?? "-";
+
+          acc[`Tuan_${weekNum}_HS`] = raw.hs || "";
+          acc[`Tuan_${weekNum}_GV`] = raw.gv || "";
+          acc[`Tuan_${weekNum}_TN`] = raw.TN_diem ?? "";
+          acc[`Tuan_${weekNum}_PHT`] = raw.PHT_diem ?? "";
+          acc[`Tuan_${weekNum}_KTBC`] = raw.KTBC_diem ?? "";
+
           return acc;
         }, {});
 
@@ -383,17 +433,19 @@ export default function TongHopDanhGia() {
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#e3f2fd", pt: 3 }}>
       <Card
-        elevation={6}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          width: showWeeks ? "100%" : 600,
-          maxWidth: 1500,
-          mx: "auto",
-          position: "relative",
-          transition: "all 0.3s ease",
-        }}
-      >
+  elevation={6}
+  sx={{
+    p: 2,
+    borderRadius: 3,
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    mx: "auto",
+    position: "relative",
+    transition: "all 0.3s ease",
+    overflow: "visible",
+  }}
+>
         {/* 🔹 Nút chức năng */}
         <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
           <Tooltip title="Lưu Xếp loại" arrow>

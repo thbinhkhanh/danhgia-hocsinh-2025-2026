@@ -382,10 +382,102 @@ export const handleSubmitQuiz = async ({
             throw err;
           }
         });
-      }
+       // ================= PHIẾU HỌC TẬP =================
+      } else if (configData?.examType === "phieuhoc") {
+        const classKey = studentClass.replace(/\./g, "_");
 
-    // ❗ Nếu là bài tập tuần (DGTX)
-    else {
+        const monKey =
+          config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
+
+        const weekNumber = Number(selectedWeek);
+
+        if (!weekNumber) {
+          throw new Error(
+            "Không xác định được tuần học của phiếu học tập!"
+          );
+        }
+
+        const hsRef = doc(
+          db,
+          `DATA_PHT_${namHocKey}`,
+          classKey,
+          "HOCSINH",
+          studentId
+        );
+
+        const weekData = {
+          TN_diem: phanTram,
+          TN_status:
+            phanTram >= 75
+              ? "Hoàn thành tốt"
+              : phanTram >= 50
+              ? "Hoàn thành"
+              : "Chưa hoàn thành",
+          thoiGianLamBai: durationStr,
+          ngayLam: ngayKiemTra,
+        };
+
+        await setDoc(
+          hsRef,
+          {
+            [monKey]: {
+              pht: {
+                [`tuan_${weekNumber}`]: weekData,
+              },
+            },
+          },
+          { merge: true }
+        );
+
+            // ================= KIỂM TRA BÀI CŨ =================
+      } else if (configData?.examType === "kiemtrabaicu") {
+        const classKey = studentClass.replace(/\./g, "_");
+
+        const monKey =
+          config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
+
+        const weekNumber = Number(selectedWeek);
+
+        if (!weekNumber) {
+          throw new Error(
+            "Không xác định được tuần học của kiểm tra bài cũ!"
+          );
+        }
+
+        const hsRef = doc(
+          db,
+          `DATA_${namHocKey}`,
+          classKey,
+          "HOCSINH",
+          studentId
+        );
+
+        const weekData = {
+          TN_diem: phanTram,
+          TN_status:
+            phanTram >= 75
+              ? "Hoàn thành tốt"
+              : phanTram >= 50
+              ? "Hoàn thành"
+              : "Chưa hoàn thành",
+          thoiGianLamBai: durationStr,
+          ngayLam: ngayKiemTra,
+        };
+
+        await setDoc(
+          hsRef,
+          {
+            [monKey]: {
+              ktbc: {
+                [`tuan_${weekNumber}`]: weekData,
+              },
+            },
+          },
+          { merge: true }
+        );
+
+    // ================= BÀI TẬP TUẦN (DGTX) =================
+    } else {
       const classKey = (studentClass || "").replace(".", "_");
       const monKey = config?.mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 

@@ -15,6 +15,8 @@ export const ConfigProvider = ({ children }) => {
     kiemTraDinhKi: false,
     baiTapTuan: false,
     danhGiaTuan: false,
+    phieuHocTap: false, 
+    kiemTraBaiCu: false, // Kiểm tra bài cũ
     examType: "danhGiaTuan", 
     loaiKiemTra: "kiemtra", 
     giaoDien: "dang_nhap",

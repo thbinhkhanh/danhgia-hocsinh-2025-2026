@@ -394,6 +394,35 @@ export default function PhieuDanhGiaGIaoDuc() {
           border-bottom: 1px solid #000;
           padding-left: 3px;
         }
+
+        /* Cuộn ngang khu vực xem trước trên điện thoại */
+        .mobile-preview-scroll {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          touch-action: pan-x pan-y;
+        }
+
+        /* Giữ nguyên chiều rộng nội dung phiếu */
+        .mobile-preview-content {
+          min-width: 900px;
+        }
+
+        /* Chỉ áp dụng trên điện thoại */
+        @media (max-width: 768px) {
+          .mobile-preview-scroll {
+            margin-left: -12px;
+            margin-right: -12px;
+            width: calc(100% + 24px);
+            padding-bottom: 10px;
+          }
+
+          .mobile-preview-content {
+            min-width: 900px;
+          }
+        }
       `}</style>
 
       <Card
@@ -441,17 +470,18 @@ export default function PhieuDanhGiaGIaoDuc() {
                 : emptyFormData;
 
               return (
-                <Box
-                  component="div"
-                  className="w-full max-w-[285mm] mx-auto bg-white text-black p-[5mm] rounded-sm border border-slate-200"
-                  sx={{
-                    boxSizing: "border-box"
-                  }}
-                >
+                <Box className="mobile-preview-scroll">
                   <Box
                     component="div"
-                    className="excel-font w-full bg-white text-black text-[8.5pt] leading-[1.15]"
+                    className="mobile-preview-content w-full max-w-[285mm] mx-auto bg-white text-black p-[5mm] rounded-sm border border-slate-200"
+                    sx={{
+                      boxSizing: "border-box"
+                    }}
                   >
+                    <Box
+                      component="div"
+                      className="excel-font w-full bg-white text-black text-[8.5pt] leading-[1.15]"
+                    >
                     {/* THÔNG TIN HỌC SINH */}
                     <ThongTinHocSinh
                       formData={previewData}
@@ -469,6 +499,7 @@ export default function PhieuDanhGiaGIaoDuc() {
                       showPrincipalSignature={showPrincipalSignature}
                     />
                   </Box>
+                </Box>
                 </Box>
               );
             })()}

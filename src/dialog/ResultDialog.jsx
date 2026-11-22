@@ -37,6 +37,14 @@ const ResultDialog = ({
       return studentResult?.diem;
     }
 
+    // Kiểm tra bài cũ
+    if (
+      configData?.kiemTraBaiCu === true ||
+      configData?.examType === "kiemtrabaicu"
+    ) {
+      return convertPercentToScore(studentResult?.diemTN);
+    }
+
     return "";
   };
 

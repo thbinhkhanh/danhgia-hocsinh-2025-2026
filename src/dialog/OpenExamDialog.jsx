@@ -100,7 +100,10 @@ const isDocMatchType = (doc, type) => {
   if (type === "bt") return doc.collection === "BAITAP_TUAN";
   if (type === "ktdk") return doc.collection === "NGANHANG_DE";
   if (type === "luyentap") return doc.collection?.startsWith("TRACNGHIEM");
-  if (type === "ontap") return doc.collection === "DE_ONTAP"; // 👈 THÊM
+  if (type === "ontap") return doc.collection === "DE_ONTAP"; 
+  if (type === "phieuhoc") return doc.collection === "PHIEUHOCTAP";
+  if (type === "kiemtrabaicu") return doc.collection === "KIEMTRA_BAICU";
+
   return false;
 };
 
@@ -266,6 +269,14 @@ return (
                     },
                 }}
               >
+                <MenuItem value="kiemtrabaicu">
+                  Kiểm tra bài cũ
+                </MenuItem>
+                
+                <MenuItem value="phieuhoc">
+                  Phiếu học tập
+                </MenuItem>
+
                 <MenuItem value="bt">
                   Bài tập tuần
                 </MenuItem>
@@ -275,9 +286,9 @@ return (
                 </MenuItem>
 
                 <MenuItem value="luyentap">
-                  Luyện tập
+                  Luyện tập tin học
                 </MenuItem>
-                <MenuItem value="ontap">Ôn tập</MenuItem> 
+                <MenuItem value="ontap">Ôn tập</MenuItem>                 
               </Select>
             </FormControl>
 
@@ -517,6 +528,49 @@ return (
                   return doc.id;
                 case "ontap": // 👈 THÊM
                   return `Ôn tập - ${doc.id}`;
+                case "phieuhoc": {
+                  const name = doc.id.replace(/^quiz_/, "");
+                  const parts = name.split("_");
+
+                  const classPart = parts.find((p) => /^lớp\s*\d+/i.test(p)) || "";
+                  const classNumber = classPart.match(/\d+/)?.[0] || "";
+
+                  const subject = parts.find(
+                    (p) => !/^lớp\s*\d+/i.test(p) && !/^\d+$/.test(p)
+                  ) || "";
+
+                  const week = parts.find((p, index) =>
+                    index > parts.indexOf(subject) && /^\d+$/.test(p)
+                  ) || "";
+
+                  return `Phiếu học tập - ${subject} ${classNumber}${
+                    week ? ` - Tuần ${week}` : ""
+                  }`;
+                }
+
+                case "kiemtrabaicu": {
+                  const name = doc.id.replace(/^quiz_/, "");
+                  const parts = name.split("_");
+
+                  const classPart =
+                    parts.find((p) => /^lớp\s*\d+/i.test(p)) || "";
+
+                  const classNumber = classPart.match(/\d+/)?.[0] || "";
+
+                  const subject = parts.find(
+                    (p) => !/^lớp\s*\d+/i.test(p) && !/^\d+$/.test(p)
+                  ) || "";
+
+                  const week = parts.find(
+                    (p, index) =>
+                      index > parts.indexOf(subject) && /^\d+$/.test(p)
+                  ) || "";
+
+                  return `Kiểm tra bài cũ - ${subject} ${classNumber}${
+                    week ? ` - Tuần ${week}` : ""
+                  }`;
+                }
+
                 default:
                   return doc.id;
               }

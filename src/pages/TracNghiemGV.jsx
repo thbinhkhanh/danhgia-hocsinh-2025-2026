@@ -97,7 +97,9 @@ const [selectedDoc, setSelectedDoc] = useState(null);
 const [isEditingNewDoc, setIsEditingNewDoc] = useState(true);
 const [importData, setImportData] = useState([]);
 const [lessonInput, setLessonInput] = useState("");
-const [lessonName, setLessonName] = useState("");
+const [lessonName, setLessonName] = useState(
+  savedConfig.lessonName || ""
+);
 
 // ================= FILE =================
 const fileInputRef = React.useRef(null);
@@ -183,9 +185,26 @@ const hocKyMap = {
           collectionName = "DE_ONTAP";
         }
 
-        // 👇 THÊM DÒNG NÀY
-        if (examTypeFromConfig === "luyentap") {
-          setLessonName(data.deTracNghiem || "");
+        if (examTypeFromConfig === "phieuhoc") {
+          collectionName = "PHIEUHOCTAP";
+        }
+
+        // KIỂM TRA BÀI CŨ
+        if (examTypeFromConfig === "kiemtrabaicu") {
+          collectionName = "KIEMTRA_BAICU";
+        }
+
+        // Khôi phục tên bài học
+        if (
+          examTypeFromConfig === "luyentap" ||
+          examTypeFromConfig === "phieuhoc" ||
+          examTypeFromConfig === "kiemtrabaicu"
+        ) {
+          setLessonName(
+            data.lessonName ||
+            localStorage.getItem("lessonName") ||
+            ""
+          );
         } else {
           setLessonName("");
         }
@@ -206,9 +225,6 @@ const hocKyMap = {
     loadFromConfig();
   }, []);
 
-  
-
-
 // -----------------------
 // Load dữ liệu khi mount
 // -----------------------
@@ -219,6 +235,7 @@ useEffect(() => {
 
     if (cfg?.selectedClass) setSelectedClass(cfg.selectedClass);
     if (cfg?.selectedSubject) setSelectedSubject(cfg.selectedSubject);
+    if (cfg?.lessonName) setLessonName(cfg.lessonName);
 
     // ⭐ Thêm 3 dòng cần thiết
     //if (cfg?.semester) setSemester(cfg.semester);
@@ -278,8 +295,16 @@ useEffect(() => {
       examLetter,
       lessonName,
     };
+
     localStorage.setItem("teacherConfig", JSON.stringify(cfg));
-  }, [selectedClass, selectedSubject, semester, schoolYear, examLetter]);
+  }, [
+    selectedClass,
+    selectedSubject,
+    semester,
+    schoolYear,
+    examLetter,
+    lessonName,
+  ]);
 
 
   // -----------------------
@@ -428,9 +453,12 @@ useEffect(() => {
 
   const getCollectionByExamType = (type) => {
     if (type === "bt") return "BAITAP_TUAN";
+    if (type === "phieuhoc") return "PHIEUHOCTAP"; 
+    if (type === "kiemtrabaicu") return "KIEMTRA_BAICU";
     if (type === "ktdk") return "NGANHANG_DE";
     if (type === "luyentap") return "TRACNGHIEM";
-    if (type === "ontap") return "DE_ONTAP"; // 👈 THÊM MỚI
+    if (type === "ontap") return "DE_ONTAP"; 
+
     return "BAITAP_TUAN";
   };
 
@@ -511,6 +539,7 @@ useEffect(() => {
 
 
   // 🔹 Hàm mở đề được chọn
+  // 🔹 Hàm mở đề được chọn
   const handleOpenSelectedDoc = async () => {
     if (!selectedDoc) {
       setSnackbar({
@@ -524,17 +553,17 @@ useEffect(() => {
     setOpenDialog(false);
 
     try {
-      // 🔹 Xác định collection theo loại đề
+      // ===== XÁC ĐỊNH COLLECTION =====
       let collectionName = getCollectionByExamType(dialogExamType);
 
       if (dialogExamType === "luyentap") {
-        // 🔥 luyện tập: collection nằm sẵn trong docList
         const currentDoc = docList.find((d) => d.id === selectedDoc);
+
         if (!currentDoc?.collection) {
           throw new Error("Không xác định được collection của đề luyện tập");
         }
 
-        collectionName = currentDoc.collection; // TRACNGHIEM1..5
+        collectionName = currentDoc.collection;
 
         localStorage.setItem("deTracNghiemCollection", currentDoc.collection);
         localStorage.setItem("deTracNghiemId", selectedDoc);
@@ -554,62 +583,80 @@ useEffect(() => {
 
       const data = docSnap.data();
 
-      // 🔥 Lấy tên bài học cho luyện tập
-      if (dialogExamType === "luyentap") {
-        setLessonName(selectedDoc);
-      } else {
-        setLessonName("");
-      }
-
-      /* ================== TUẦN (chỉ BT) ================== */
-      const weekFromFile = data.week || 1;
-      setDeTuan(weekFromFile);
-      localStorage.setItem("deTuan", weekFromFile);
-
-      try {
-        const configRef = doc(db, "CONFIG", "config");
-        await setDoc(configRef, { deTuan: weekFromFile }, { merge: true });
-      } catch (err) {
-        console.error("❌ Lỗi ghi deTuan CONFIG:", err);
-      }
-
-      /* ================== LOẠI ĐỀ ================== */
+      // ===== XÁC ĐỊNH LOẠI ĐỀ =====
       let examTypeFromCollection = "bt";
-      if (collectionName === "NGANHANG_DE") examTypeFromCollection = "ktdk";
-      if (collectionName.startsWith("TRACNGHIEM")) examTypeFromCollection = "luyentap";
-      if (collectionName === "DE_ONTAP") examTypeFromCollection = "ontap"; // 👈 THÊM
+
+      if (collectionName === "NGANHANG_DE") {
+        examTypeFromCollection = "ktdk";
+      } else if (collectionName.startsWith("TRACNGHIEM")) {
+        examTypeFromCollection = "luyentap";
+      } else if (collectionName === "DE_ONTAP") {
+        examTypeFromCollection = "ontap";
+      } else if (collectionName === "PHIEUHOCTAP") {
+        examTypeFromCollection = "phieuhoc";
+      } else if (collectionName === "KIEMTRA_BAICU") {
+        examTypeFromCollection = "kiemtrabaicu";
+      }
 
       setDialogExamType(examTypeFromCollection);
       setExamType(examTypeFromCollection);
       localStorage.setItem("teacherExamType", examTypeFromCollection);
 
-      /* ================== CHUẨN HÓA CÂU HỎI ================== */
-      /*const fixedQuestions = (data.questions || []).map((q) => {
-        if (q.type === "image") {
-          return {
-            ...q,
-            options: Array.from({ length: 4 }, (_, i) => q.options?.[i] || ""),
-            correct: Array.isArray(q.correct) ? q.correct : [],
-          };
-        }
-        return q;
-      });*/
+      // ===== TÊN BÀI =====
+      if (examTypeFromCollection === "luyentap") {
+        setLessonName(selectedDoc);
+      } else if (
+        examTypeFromCollection === "phieuhoc" ||
+        examTypeFromCollection === "kiemtrabaicu"
+      ) {
+        setLessonName(
+          data.lessonName ||
+          data.title ||
+          data.tenBai ||
+          data.lesson ||
+          ""
+        );
+      } else {
+        setLessonName("");
+      }
 
+      // ===== TUẦN =====
+      const weekFromFile =
+        data.week ||
+        (
+          ["phieuhoc", "kiemtrabaicu"].includes(examTypeFromCollection)
+            ? Number(selectedDoc.match(/_(\d+)$/)?.[1]) || 1
+            : 1
+        );
+
+      setDeTuan(Number(weekFromFile));
+      localStorage.setItem("deTuan", weekFromFile);
+
+      try {
+        const configRef = doc(db, "CONFIG", "config");
+        await setDoc(
+          configRef,
+          { deTuan: Number(weekFromFile) },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error("❌ Lỗi ghi deTuan CONFIG:", err);
+      }
+
+      // ===== CHUẨN HÓA CÂU HỎI =====
       let rawQuestions = data.questions || [];
 
-      // CHỈ normalize khi mở từ dialog OpenExamDialog
-      // (đây là luồng Firestore mở đề)
       if (
-        dialogExamType === "bt" ||
-        dialogExamType === "ktdk" ||
-        dialogExamType === "luyentap"
+        examTypeFromCollection === "bt" ||
+        examTypeFromCollection === "ktdk" ||
+        examTypeFromCollection === "luyentap"
       ) {
         rawQuestions = normalizeFirestoreQuiz(rawQuestions);
       }
 
       const fixedQuestions = rawQuestions;
 
-      /* ================== SET STATE ================== */
+      // ===== CẬP NHẬT STATE =====
       setQuestions(fixedQuestions);
       setSelectedClass(data.class || "");
       setSelectedSubject(data.subject || "");
@@ -617,33 +664,45 @@ useEffect(() => {
       setSchoolYear(data.schoolYear || "");
       setExamLetter(data.examLetter || "");
 
-      /* ================== CONTEXT + STORAGE ================== */
-      updateQuizConfig({ deTracNghiem: selectedDoc });
+      // ===== CONTEXT + STORAGE =====
+      updateQuizConfig({
+        deTracNghiem: selectedDoc,
+        examType: examTypeFromCollection,
+        collection: collectionName,
+      });
+
       localStorage.setItem("deTracNghiemId", selectedDoc);
       localStorage.setItem("teacherQuiz", JSON.stringify(fixedQuestions));
 
       localStorage.setItem(
         "teacherConfig",
         JSON.stringify({
-          selectedClass: data.class,
-          selectedSubject: data.subject,
-          semester: data.semester,
-          schoolYear: data.schoolYear,
-          examLetter: data.examLetter,
+          selectedClass: data.class || "",
+          selectedSubject: data.subject || "",
+          semester: data.semester || "",
+          schoolYear: data.schoolYear || "",
+          examLetter: data.examLetter || "",
+          lessonName:
+            ["phieuhoc", "kiemtrabaicu"].includes(examTypeFromCollection)
+              ? data.lessonName || data.title || data.tenBai || data.lesson || ""
+              : "",
         })
       );
 
-      /* ================== CONFIG CHUNG ================== */
+      // ===== CONFIG CHUNG =====
       try {
         const configRef = doc(db, "CONFIG", "config");
+
         await setDoc(
           configRef,
           {
             deTracNghiem: selectedDoc,
             examType: examTypeFromCollection,
+            deTuan: Number(weekFromFile),
           },
           { merge: true }
         );
+
         setIsEditingNewDoc(false);
       } catch (err) {
         console.error("❌ Lỗi ghi CONFIG:", err);
@@ -651,6 +710,7 @@ useEffect(() => {
 
     } catch (err) {
       console.error(err);
+
       setSnackbar({
         open: true,
         message: `❌ Lỗi khi mở đề: ${err.message}`,
@@ -861,11 +921,18 @@ useEffect(() => {
 
 const isLT = examType === "luyentap";
 const isKTDK = examType === "ktdk";
+const isPhieuHoc = examType === "phieuhoc";
+const isKiemTraBaiCu = examType === "kiemtrabaicu";
 
 const getSx = (ltWidth) => {
-  if (isLT) return { flex: 1, minWidth: ltWidth };   // giữ nguyên LTTH
-  if (isKTDK) return { flex: 1, minWidth: 130 };     // 👈 giảm cho KTĐK
-  return { flex: 1, minWidth: 160 };                 // BT
+  if (isLT) return { flex: 1, minWidth: ltWidth };
+  if (isKTDK) return { flex: 1, minWidth: 130 };
+
+  if (isPhieuHoc || isKiemTraBaiCu) {
+    return { flex: 1, minWidth: ltWidth / 2 };
+  }
+
+  return { flex: 1, minWidth: 160 };
 };
 
 const handleExportWord = (fileName) => {
@@ -1139,7 +1206,11 @@ return (
             }}
           >
 
-            <FormControl size="small" sx={getSx(150)} variant="outlined">
+            <FormControl
+              size="small"
+              sx={(isPhieuHoc || isKiemTraBaiCu) ? { flex: 1, minWidth: 160 } : getSx(150)}
+              variant="outlined"
+            >
               <InputLabel id="exam-type-label">Loại đề</InputLabel>
               <Select
                 labelId="exam-type-label"
@@ -1148,14 +1219,20 @@ return (
                 label="Loại đề"
                 onChange={(e) => setExamType(e.target.value)}
               >
-                <MenuItem value="bt">Bài tập tuần</MenuItem>
-                <MenuItem value="luyentap">Luyện tập tin học</MenuItem>
+                <MenuItem value="kiemtrabaicu">Kiểm tra bài cũ</MenuItem>
+                <MenuItem value="phieuhoc">Phiếu học tập</MenuItem>
+                <MenuItem value="bt">Bài tập tuần</MenuItem>                                
                 <MenuItem value="ktdk">KTĐK</MenuItem>
                 <MenuItem value="ontap">Ôn tập</MenuItem>
+                <MenuItem value="luyentap">Luyện tập tin học</MenuItem>
               </Select>
             </FormControl>
 
-            <FormControl size="small" sx={getSx(120)} variant="outlined">
+            <FormControl
+              size="small"
+              sx={(isPhieuHoc || isKiemTraBaiCu) ? { flex: 1, minWidth: 80 } : getSx(120)}
+              variant="outlined"
+            >
               <InputLabel id="class-label">Lớp</InputLabel>
               <Select
                 labelId="class-label"
@@ -1182,26 +1259,49 @@ return (
                 InputProps={{ readOnly: true }}
               />
             ) : (
-              <FormControl size="small" sx={getSx(500)} variant="outlined">
-                <InputLabel id="subject-label">Môn học</InputLabel>
-                <Select
-                  labelId="subject-label"
-                  id="subject-select"
-                  value={selectedSubject || ""}
-                  label="Môn học"
-                  onChange={(e) => setSelectedSubject(e.target.value)}
+              <>
+                <FormControl
+                  size="small"
+                  sx={(isPhieuHoc || isKiemTraBaiCu) ? { flex: 1, minWidth: 120 } : getSx(500)}
+                  variant="outlined"
                 >
-                  {subjects?.map((mon) => (
-                    <MenuItem key={mon} value={mon}>
-                      {mon}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  <InputLabel id="subject-label">Môn học</InputLabel>
+                  <Select
+                    labelId="subject-label"
+                    id="subject-select"
+                    value={selectedSubject || ""}
+                    label="Môn học"
+                    onChange={(e) => setSelectedSubject(e.target.value)}
+                  >
+                    {subjects?.map((mon) => (
+                      <MenuItem key={mon} value={mon}>
+                        {mon}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {(examType === "phieuhoc" || isKiemTraBaiCu) && (
+                  <TextField
+                    size="small"
+                    label="Tên bài học"
+                    value={lessonName || ""}
+                    onChange={(e) => setLessonName(e.target.value)}
+                    sx={{
+                      flex: 1,
+                      minWidth: 400,
+                    }}
+                  />
+                )}
+              </>
             )}
 
-            {examType === "bt" && (
-              <FormControl size="small" sx={getSx(120)} variant="outlined">
+            {(examType === "bt" || examType === "phieuhoc" || isKiemTraBaiCu) && (
+              <FormControl
+                size="small"
+                sx={(isPhieuHoc || isKiemTraBaiCu) ? { flex: 1, minWidth: 100 } : getSx(120)}
+                variant="outlined"
+              >
                 <InputLabel id="week-label">Tuần</InputLabel>
                 <Select
                   labelId="week-label"

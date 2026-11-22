@@ -8,11 +8,6 @@ import {
   Paper,
   FormControl,
   InputLabel,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   IconButton,
   Stack,
   Chip,
@@ -34,9 +29,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import DanhGiaGVDialog from "../dialog/DanhGiaGVDialog";
 import StatusResultDialogGV from "../dialog/StatusResultDialogGV";
 import ConfirmDeleteCoreDialog from "../dialog/ConfirmDeleteCoreDialog";
-import GroupIcon from "@mui/icons-material/Group";
-import HistoryIcon from "@mui/icons-material/History";
-import GroupsIcon from "@mui/icons-material/Groups";
 
 export default function GiaoVien_Kahoot() {
   const navigate = useNavigate();
@@ -79,6 +71,8 @@ export default function GiaoVien_Kahoot() {
 
   const [doneStudent, setDoneStudent] = useState(null);
   const [openDoneDialog, setOpenDoneDialog] = useState(false);
+  const [openRandomDialog, setOpenRandomDialog] = useState(false);
+  const [openTimerDialog, setOpenTimerDialog] = useState(false);
 
   function PaperComponent(props) {
     if (isMobile) return <Paper {...props} />;
@@ -202,44 +196,103 @@ export default function GiaoVien_Kahoot() {
     return rounded;
   };
 
-  // Lắng nghe realtime trạng thái đánh giá
+  // Lắng nghe realtime trạng thái và điểm học sinh
   useEffect(() => {
-    const { lop, tuan, mon, kiemTraDinhKi, hocKy, baiTapTuan } = config;
-    if (!lop || (!tuan && !kiemTraDinhKi) || !mon) return;
+    const {
+      lop,
+      tuan,
+      mon,
+      kiemTraDinhKi,
+      hocKy,
+      baiTapTuan,
+      phieuHocTap,
+      kiemTraBaiCu,
+      examType,
+    } = config;
 
-    const classKey = lop.replace(".", "_");
-    const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
-    const classRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
+    // Nhận diện chế độ Kiểm tra bài cũ
+    const currentMode = getMode(config);
+    const isKiemTraBaiCu = currentMode === "kiemtrabaicu";
 
-    const unsubscribe = onSnapshot(classRef, snapshot => {
+    if (!lop || !mon) return;
+    if (
+      ["pht", "btt", "kiemtrabaicu", "dgt"].includes(currentMode) &&
+      !tuan
+    ) {
+      return;
+    }
+
+    if (currentMode === "ktdk" && !hocKy) {
+      return;
+    }
+
+    const classKey = lop.replace(/\./g, "_");
+
+    const subjectKey =
+      mon === "Công nghệ" ? "CongNghe" : "TinHoc";
+
+    const collectionName = `DATA_${namHocKey}`;
+
+    const classRef = collection(
+      db,
+      collectionName,
+      classKey,
+      "HOCSINH"
+    );
+
+    const unsubscribe = onSnapshot(classRef, (snapshot) => {
       const updatedStatus = {};
       const scores = {};
 
-      snapshot.forEach(docSnap => {
+      snapshot.forEach((docSnap) => {
         const studentId = docSnap.id;
         const studentInfo = docSnap.data();
 
         let status = "";
 
-        if (baiTapTuan) {
-          const TN_diem =
-            studentInfo?.[subjectKey]?.dgtx?.[`tuan_${tuan}`]?.TN_diem ?? null;
-
-          const TN_status =
-            studentInfo?.[subjectKey]?.dgtx?.[`tuan_${tuan}`]?.TN_status || "";
-
-          const thoiGianLamBai =
-            studentInfo?.[subjectKey]?.dgtx?.[`tuan_${tuan}`]?.thoiGianLamBai ?? null;
+        // 1. PHIẾU HỌC TẬP
+        if (currentMode === "pht") {
+          const phtData =
+            studentInfo?.[subjectKey]?.pht?.[`tuan_${tuan}`] || {};
 
           scores[studentId] = {
-            TN_diem,
-            TN_status,
-            thoiGianLamBai,
+            TN_diem: phtData.diem ?? null,
+            diem: phtData.diem ?? null,
+            thoiGianLamBai: phtData.thoiGianLamBai ?? null,
           };
         }
 
-        // ✅ SỬA Ở ĐÂY
-        else if (kiemTraDinhKi) {
+        // 2. BÀI TẬP TUẦN
+        else if (currentMode === "btt") {
+          const bttData =
+            studentInfo?.[subjectKey]?.dgtx?.[`tuan_${tuan}`] || {};
+
+          scores[studentId] = {
+            TN_diem: bttData.TN_diem ?? null,
+            TN_status: bttData.TN_status || "",
+            thoiGianLamBai: bttData.thoiGianLamBai ?? null,
+          };
+
+          status = bttData.TN_status || "";
+        }
+
+        // 3. KIỂM TRA BÀI CŨ
+        else if (currentMode === "kiemtrabaicu") {
+          const ktbcData =
+            studentInfo?.[subjectKey]?.ktbc?.[`tuan_${tuan}`] || {};
+
+          scores[studentId] = {
+            TN_diem: ktbcData.TN_diem ?? null,
+            TN_status: ktbcData.TN_status || "",
+            thoiGianLamBai: ktbcData.thoiGianLamBai ?? null,
+            ngayLam: ktbcData.ngayLam || "",
+          };
+
+          status = ktbcData.TN_status || "";
+        }
+
+        // 4. KIỂM TRA ĐỊNH KỲ
+        else if (currentMode === "ktdk") {
           const hocKyMap = {
             "Giữa kỳ I": "GKI",
             "Cuối kỳ I": "CKI",
@@ -259,9 +312,12 @@ export default function GiaoVien_Kahoot() {
           };
         }
 
+        // 5. ĐÁNH GIÁ THƯỜNG XUYÊN
         else {
-          status =
-            studentInfo?.[subjectKey]?.dgtx?.[`tuan_${tuan}`]?.status || "";
+          const dgtxData =
+            studentInfo?.[subjectKey]?.dgtx?.[`tuan_${tuan}`] || {};
+
+          status = dgtxData.status || "";
         }
 
         updatedStatus[studentId] = status;
@@ -272,7 +328,18 @@ export default function GiaoVien_Kahoot() {
     });
 
     return () => unsubscribe();
-  }, [config.lop, config.tuan, config.mon, config.kiemTraDinhKi, config.hocKy, config.baiTapTuan]);
+  }, [
+    config.lop,
+    config.tuan,
+    config.mon,
+    config.kiemTraDinhKi,
+    config.hocKy,
+    config.baiTapTuan,
+    config.phieuHocTap,
+    config.kiemTraBaiCu,
+    config.examType,
+    namHocKey,
+  ]);
 
   // hàm lưu status
   const saveStudentStatus = async (studentId, status) => {
@@ -422,16 +489,57 @@ const statusColors = {
   };
 
   const deleteStudentScore = async (studentId, hoVaTen) => {
-    const { lop, tuan, mon, baiTapTuan, kiemTraDinhKi, hocKy } = config;
+    const {
+      lop,
+      tuan,
+      mon,
+      baiTapTuan,
+      kiemTraDinhKi,
+      hocKy,
+    } = config;
+
     if (!lop || !mon) return;
 
-    const classKey = lop.replace(".", "_");
-    const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
-    const studentRef = doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId);
+    const classKey = lop.replace(/\./g, "_");
+    const subjectKey =
+      mon === "Công nghệ" ? "CongNghe" : "TinHoc";
+
+    const studentRef = doc(
+      db,
+      `DATA_${namHocKey}`,
+      classKey,
+      "HOCSINH",
+      studentId
+    );
 
     try {
-      if (baiTapTuan && tuan) {
-        // Xóa điểm tuần trong DATA
+      // 1. XÓA PHIẾU HỌC TẬP
+      if (
+        config.phieuHocTap === true ||
+        config.examType === "phieuhoc" ||
+        config.loaiKiemTra === "phieuhoctap"
+      ) {
+        if (!tuan) return;
+
+        await updateDoc(studentRef, {
+          [`${subjectKey}.pht.tuan_${tuan}`]: deleteField(),
+        });
+      }
+
+      // 2. XÓA KIỂM TRA BÀI CŨ
+      else if (
+        config.kiemTraBaiCu === true ||
+        config.examType === "kiemtrabaicu"
+      ) {
+        if (!tuan) return;
+
+        await updateDoc(studentRef, {
+          [`${subjectKey}.ktbc.tuan_${tuan}`]: deleteField(),
+        });
+      }
+
+      // 3. XÓA BÀI TẬP TUẦN
+      else if (baiTapTuan && tuan) {
         await updateDoc(studentRef, {
           [`${subjectKey}.dgtx.tuan_${tuan}.TN_diem`]: null,
           [`${subjectKey}.dgtx.tuan_${tuan}.TN_status`]: "",
@@ -439,23 +547,25 @@ const statusColors = {
         });
       }
 
-      if (kiemTraDinhKi && hocKy) {
+      // 4. XÓA KIỂM TRA ĐỊNH KỲ
+      else if (kiemTraDinhKi && hocKy) {
         const hocKyMap = {
           "Giữa kỳ I": "GKI",
           "Cuối kỳ I": "CKI",
           "Giữa kỳ II": "GKII",
           "Cuối năm": "CN",
         };
-        const hocKyCode = hocKyMap[hocKy];
 
-        // Chỉ đặt các điểm về null, giữ nguyên nhận xét
+        const hocKyCode = hocKyMap[hocKy];
+        if (!hocKyCode) return;
+
+        // Giữ nguyên nhận xét, chỉ xóa dữ liệu điểm và thời gian
         await updateDoc(studentRef, {
           [`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`]: null,
           [`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`]: null,
           [`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`]: null,
           [`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`]: null,
         });
-
       }
     } catch (err) {
       console.error("❌ Lỗi xóa dữ liệu trong DATA:", err);
@@ -463,89 +573,211 @@ const statusColors = {
   };
 
   // Hàm dùng chung
-  const getMode = (config) => {
-    if (config.kiemTraDinhKi) return "ktdk";
-    if (config.baiTapTuan) return "btt";
-    if (config.danhGiaTuan) return "dgt";
-    if (config.examType === "ontap") return "ontap";
+  const getMode = (config = {}) => {
+    // 1. PHIẾU HỌC TẬP
+    if (
+      config.phieuHocTap === true ||
+      config.examType === "phieuhoc" ||
+      config.loaiKiemTra === "phieuhoctap"
+    ) {
+      return "pht";
+    }
+
+    // 2. BÀI TẬP TUẦN
+    if (
+      config.baiTapTuan === true ||
+      config.baiTapTuan === "true"
+    ) {
+      return "btt";
+    }
+
+    // 3. KIỂM TRA BÀI CŨ
+    if (
+      config.kiemTraBaiCu === true ||
+      config.examType === "kiemtrabaicu"
+    ) {
+      return "kiemtrabaicu";
+    }
+
+    // 4. KIỂM TRA ĐỊNH KỲ
+    if (config.kiemTraDinhKi === true) {
+      return "ktdk";
+    }
+
+    // 5. ĐÁNH GIÁ THƯỜNG XUYÊN
+    if (config.danhGiaTuan === true) {
+      return "dgt";
+    }
+
+    // 6. ÔN TẬP
+    if (config.examType === "ontap" || config.onTap === true) {
+      return "ontap";
+    }
 
     return "normal";
+  };
+
+  const getDeleteMessage = (config, type, hoVaTen = "") => {
+    const mode = getMode(config);
+    const { lop, tuan, hocKy } = config || {};
+
+    const modeMessages = {
+      pht: `phiếu học tập tuần ${tuan}`,
+      btt: `bài tập tuần ${tuan}`,
+      dgt: `đánh giá thường xuyên tuần ${tuan}`,
+      ktdk: `điểm kiểm tra định kỳ ${hocKy || ""}`,
+      ontap: `kết quả ôn tập ${hocKy || ""}`,
+      kiemtrabaicu: "kết quả kiểm tra bài cũ",
+    };
+
+    const content = modeMessages[mode] || "dữ liệu";
+
+    if (type === "student") {
+      return `Bạn có chắc muốn xóa kết quả của ${hoVaTen}?`;
+    }
+
+    return `Bạn có chắc muốn xóa kết quả của lớp ${lop}?`;
   };
 
   const deleteClassScores = async (config) => {
     const { lop, tuan, mon, hocKy } = config;
     const mode = getMode(config);
+
     if (!lop || !mon) return;
 
-    const confirmMessages = {
-      dgt:  `Bạn có chắc muốn xóa đánh giá tuần của lớp ${lop}?`,
-      btt:  `Bạn có chắc muốn xóa bài tập tuần ${tuan} của lớp ${lop}?`,
-      ktdk:`Bạn có chắc muốn xóa điểm kiểm tra định kỳ của lớp ${lop}?`,
-    };
+    // Các chế độ theo tuần cần có tuần
+    if (
+      ["pht", "btt", "dgt", "kiemtrabaicu"].includes(mode) &&
+      !tuan
+    ) {
+      return;
+    }
 
-    const classKey = lop.replace(".", "_");
-    const subjectKey = mon === "Công nghệ" ? "CongNghe" : "TinHoc";
+    const classKey = lop.replace(/\./g, "_");
+    const subjectKey =
+      mon === "Công nghệ" ? "CongNghe" : "TinHoc";
 
-    // Lấy toàn bộ học sinh
-    const hsRef = collection(db, `DATA_${namHocKey}`, classKey, "HOCSINH");
-    const snapshot = await getDocs(hsRef);
+    try {
+      // Lấy toàn bộ học sinh trong lớp
+      const hsRef = collection(
+        db,
+        `DATA_${namHocKey}`,
+        classKey,
+        "HOCSINH"
+      );
 
-    snapshot.forEach(docSnap => {
-      const studentId = docSnap.id;
-      const studentData = docSnap.data();
-      const dgtxData = studentData?.[subjectKey]?.dgtx || {};
-      const updates = {};
+      const snapshot = await getDocs(hsRef);
 
-      if (mode === "dgt") {
-        // xóa status tuần
-        if (dgtxData[`tuan_${tuan}`]) {
-          updates[`${subjectKey}.dgtx.tuan_${tuan}.status`] = "";
+      // Xử lý xóa dữ liệu từng học sinh
+      const deletePromises = snapshot.docs.map(async (docSnap) => {
+        const studentData = docSnap.data();
+        const updates = {};
+
+        // 1. XÓA PHIẾU HỌC TẬP
+        if (mode === "pht") {
+          updates[`${subjectKey}.pht.tuan_${tuan}`] = deleteField();
         }
-      } 
-      else if (mode === "btt") {
-        // xóa điểm tuần, dùng TN_diem và TN_status
-        if (dgtxData[`tuan_${tuan}`]) {
-          updates[`${subjectKey}.dgtx.tuan_${tuan}.TN_diem`] = null;
-          updates[`${subjectKey}.dgtx.tuan_${tuan}.TN_status`] = "";
+        // 2. XÓA KIỂM TRA BÀI CŨ
+        else if (mode === "kiemtrabaicu") {
+          updates[`${subjectKey}.ktbc.tuan_${tuan}`] = deleteField();
         }
-      } 
-      else if (mode === "ktdk" && hocKy) {
-        const hocKyMap = {
-          "Giữa kỳ I": "GKI",
-          "Cuối kỳ I": "CKI",
-          "Giữa kỳ II": "GKII",
-          "Cuối năm": "CN",
-        };
-        const hocKyCode = hocKyMap[hocKy];
 
-        const ktdkData = studentData?.[subjectKey]?.ktdk?.[hocKyCode];
-        if (ktdkData) {
-          updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyet`] = null;
-          updates[`${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`] = null;
-          updates[`${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`] = null;
-          updates[`${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`] = null;
+        // 2. XÓA ĐÁNH GIÁ THƯỜNG XUYÊN
+        else if (mode === "dgt") {
+          const dgtxData =
+            studentData?.[subjectKey]?.dgtx || {};
+
+          if (dgtxData[`tuan_${tuan}`]) {
+            updates[
+              `${subjectKey}.dgtx.tuan_${tuan}.status`
+            ] = "";
+          }
         }
-      }
 
-      if (Object.keys(updates).length > 0) {
-        updateDoc(
-          doc(db, `DATA_${namHocKey}`, classKey, "HOCSINH", studentId),
-          updates
-        ).catch(() => {});
-      }
-    });
+        // 3. XÓA BÀI TẬP TUẦN
+        else if (mode === "btt") {
+          const dgtxData =
+            studentData?.[subjectKey]?.dgtx || {};
+
+          if (dgtxData[`tuan_${tuan}`]) {
+            updates[
+              `${subjectKey}.dgtx.tuan_${tuan}.TN_diem`
+            ] = null;
+
+            updates[
+              `${subjectKey}.dgtx.tuan_${tuan}.TN_status`
+            ] = "";
+
+            updates[
+              `${subjectKey}.dgtx.tuan_${tuan}.thoiGianLamBai`
+            ] = null;
+          }
+        }
+
+        // 4. XÓA KIỂM TRA ĐỊNH KỲ
+        else if (mode === "ktdk" && hocKy) {
+          const hocKyMap = {
+            "Giữa kỳ I": "GKI",
+            "Cuối kỳ I": "CKI",
+            "Giữa kỳ II": "GKII",
+            "Cuối năm": "CN",
+          };
+
+          const hocKyCode = hocKyMap[hocKy];
+
+          if (!hocKyCode) return;
+
+          const ktdkData =
+            studentData?.[subjectKey]?.ktdk?.[hocKyCode];
+
+          if (ktdkData) {
+            updates[
+              `${subjectKey}.ktdk.${hocKyCode}.lyThuyet`
+            ] = null;
+
+            updates[
+              `${subjectKey}.ktdk.${hocKyCode}.lyThuyetPhanTram`
+            ] = null;
+
+            updates[
+              `${subjectKey}.ktdk.${hocKyCode}.ngayKiemTra`
+            ] = null;
+
+            updates[
+              `${subjectKey}.ktdk.${hocKyCode}.thoiGianLamBai`
+            ] = null;
+          }
+        }
+
+        // Thực hiện cập nhật Firestore
+        if (Object.keys(updates).length > 0) {
+          await updateDoc(docSnap.ref, updates);
+        }
+      });
+
+      await Promise.all(deletePromises);
+
+      console.log(`✅ Đã xóa dữ liệu ${mode} của lớp ${lop}`);
+    } catch (err) {
+      console.error("❌ Lỗi xóa dữ liệu cả lớp:", err);
+    }
   };
 
   // reset dialog và trạng thái khi chuyển chế độ kiểm tra/bài tập tuần
   useEffect(() => {
-    // đóng các dialog hiện tại
     setStudentForDanhGia(null);
     setStudentForTracNghiem(null);
 
-    // reset trạng thái học sinh để tránh giữ dữ liệu cũ
     setStudentStatus({});
     setStudentScores({});
-  }, [config.kiemTraDinhKi, config.baiTapTuan]);
+  }, [
+    config.kiemTraDinhKi,
+    config.baiTapTuan,
+    config.danhGiaTuan,
+    config.phieuHocTap,
+    config.kiemTraBaiCu,
+    config.examType,
+  ]);
 ;
 
   const openDeleteStudentDialog = (studentId, hoVaTen) => {
@@ -553,16 +785,19 @@ const statusColors = {
       type: "student",
       studentId,
       hoVaTen,
+      config: { ...config },
     });
+
     setConfirmOpen(true);
   };
 
-  const openDeleteClassDialog = (config, mode) => {
+  const openDeleteClassDialog = (config) => {
     setConfirmData({
       type: "class",
-      config,
-      mode,
+      config: { ...config },
+      mode: getMode(config),
     });
+
     setConfirmOpen(true);
   };
 
@@ -605,6 +840,14 @@ const statusColors = {
   }, [config.lop]);
 
   const mode = getMode(config);
+  console.log("KIỂM TRA CẤU HÌNH KAHOOT:", {
+    baiTapTuan: config.baiTapTuan,
+    kiemTraBaiCu: config.kiemTraBaiCu,
+    phieuHocTap: config.phieuHocTap,
+    examType: config.examType,
+    tuan: config.tuan,
+    mode,
+  });
 
   return (
   <Box
@@ -670,15 +913,17 @@ const statusColors = {
           fontWeight="bold"
           sx={{ color: "#1976d2", pb: 1 }}
         >
-          {
-            config?.loaiKiemTra === "baitap"
-              ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
-              : config?.loaiKiemTra === "danhgia"
-              ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
-              : config?.loaiKiemTra === "ontap"
-              ? `ÔN TẬP - ${config?.hocKy?.toUpperCase() || ""}`
-              : `KẾT QUẢ KTĐK - ${(config?.hocKy || "").toUpperCase()}`
-            }
+          {mode === "pht"
+            ? `PHIẾU HỌC TẬP - TUẦN ${config?.tuan || ""}`
+            : mode === "kiemtrabaicu"
+            ? `KIỂM TRA BÀI CŨ - TUẦN ${config?.tuan || ""}`
+            : mode === "btt"
+            ? `BÀI TẬP - TUẦN ${config?.tuan || ""}`
+            : mode === "dgt"
+            ? `TỰ ĐÁNH GIÁ - TUẦN ${config?.tuan || ""}`
+            : mode === "ontap"
+            ? `ÔN TẬP - ${config?.hocKy?.toUpperCase() || ""}`
+            : `KẾT QUẢ KTĐK - ${(config?.hocKy || "").toUpperCase()}`}
         </Typography>
       </Box>
 
@@ -842,7 +1087,9 @@ const statusColors = {
 
                             if (
                               mode === "ktdk" ||
-                              mode === "btt"
+                              mode === "btt" ||
+                              mode === "pht" ||
+                              mode === "kiemtrabaicu"
                             ) {
                               setStudentForTracNghiem(student);
                             } else {
@@ -920,13 +1167,65 @@ const statusColors = {
                                   color,
                                 };
                               }
+                            } else if (mode === "pht") {
+                              const diem =
+                                studentScores[student.maDinhDanh]?.diem ??
+                                studentScores[student.maDinhDanh]?.TN_diem ??
+                                null;
+
+                              if (diem !== null && !Number.isNaN(Number(diem))) {
+                                const score = Number(diem);
+
+                                chipProps = {
+                                  label: convertPercentToScore(score),
+                                  color:
+                                    score >= 80
+                                      ? "primary"
+                                      : score >= 50
+                                      ? "secondary"
+                                      : "warning",
+                                };
+                              }
+
+                            } else if (mode === "kiemtrabaicu") {
+                              const diem =
+                                studentScores[student.maDinhDanh]?.TN_diem ?? null;
+
+                              if (diem !== null && !Number.isNaN(Number(diem))) {
+                                const score = Number(diem);
+
+                                chipProps = {
+                                  label: convertPercentToScore(score),
+                                  color:
+                                    score >= 80
+                                      ? "primary"
+                                      : score >= 50
+                                      ? "secondary"
+                                      : "warning",
+                                };
+                              }
+
+                            } else if (mode === "kiemtrabaicu") {
+                              const diem =
+                                studentScores[student.maDinhDanh]?.TN_diem ?? null;
+
+                              if (diem !== null && !Number.isNaN(Number(diem))) {
+                                const score = Number(diem);
+
+                                chipProps = {
+                                  label: convertPercentToScore(score),
+                                  color:
+                                    score >= 80
+                                      ? "primary"
+                                      : score >= 50
+                                      ? "secondary"
+                                      : "warning",
+                                };
+                              }
                             } else if (mode === "btt") {
-                              const m =
-                                (
-                                  studentScores[
-                                    student.maDinhDanh
-                                  ]?.TN_status || ""
-                                ).trim();
+                              const m = (
+                                studentScores[student.maDinhDanh]?.TN_status || ""
+                              ).trim();
 
                               chipProps =
                                 {
@@ -1008,7 +1307,7 @@ const statusColors = {
       )}
 
       {/* ================= DIALOG KẾT QUẢ ================= */}
-      <StatusResultDialogGV
+      {/*<StatusResultDialogGV
         studentForTracNghiem={
           doneStudent
             ? {
@@ -1022,7 +1321,7 @@ const statusColors = {
         config={config}
         convertPercentToScore={convertPercentToScore}
         deleteStudentScore={deleteStudentScore}
-      />
+      />*/}
 
       {/* ================= XẾP HẠNG KAHOOT ================= */}
       {showRanking && (
@@ -1885,6 +2184,7 @@ const statusColors = {
       handleStatusChange={handleStatusChange}
       PaperComponent={PaperComponent}
     />
+    
     {/* Dialog điểm trắc nghiệm */}
     <StatusResultDialogGV
       studentForTracNghiem={studentForTracNghiem}
@@ -1893,6 +2193,7 @@ const statusColors = {
       config={config}
       convertPercentToScore={convertPercentToScore}
       deleteStudentScore={deleteStudentScore}
+      onDeleteRequest={openDeleteStudentDialog}
     />
 
     <ConfirmDeleteCoreDialog
@@ -1900,12 +2201,15 @@ const statusColors = {
       onClose={handleCloseConfirm}
       onConfirm={handleConfirmDelete}
       message={
-        confirmData?.type === "student"
-          ? `Xóa học sinh ${confirmData?.hoVaTen || ""}?`
-          : `Xóa dữ liệu lớp ${confirmData?.config?.lop || ""}?`
+        confirmData
+          ? getDeleteMessage(
+              confirmData.config,
+              confirmData.type,
+              confirmData.hoVaTen
+            )
+          : ""
       }
     />
-
   </Box>
 );
 }

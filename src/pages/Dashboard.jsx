@@ -12,7 +12,8 @@ import BugReportRoundedIcon from "@mui/icons-material/BugReportRounded";
 import LibraryBooksRoundedIcon from "@mui/icons-material/LibraryBooksRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
-import PrintRoundedIcon from "@mui/icons-material/PrintRounded"; // <-- Thêm Icon cho In phiếu
+import PrintRoundedIcon from "@mui/icons-material/PrintRounded"; 
+import BuildRoundedIcon from "@mui/icons-material/BuildRounded";
 
 function DashboardCard({ item, onClick }) {
   return (
@@ -246,6 +247,13 @@ export default function Dashboard({ isLoggedIn }) {
       path: "/in-phieu-danh-gia", // <-- Trỏ tới trang InPhieuDanhGia.jsx
       icon: <PrintRoundedIcon sx={{ fontSize: 28, color: "#00897b" }} />,
       color: "#00897b",
+    },
+    {
+      label: "Công cụ hỗ trợ",
+      description: "Đồng hồ đếm ngược và bốc thăm chọn học sinh ngẫu nhiên",
+      path: "/tools",
+      icon: <BuildRoundedIcon sx={{ fontSize: 28, color: "#7b1fa2" }} />,
+      color: "#7b1fa2",
     },
   ];
 
