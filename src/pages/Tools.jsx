@@ -104,6 +104,7 @@ export default function Tools() {
   // LẤY DANH SÁCH HỌC SINH
   // =========================================
 
+  
   useEffect(() => {
     let isMounted = true;
 
@@ -117,10 +118,10 @@ export default function Tools() {
       setLoadingStudents(true);
 
       try {
-        // Ưu tiên dữ liệu trong Context
+        // 1. Ưu tiên dữ liệu trong Context nếu có học sinh
         const cachedStudents = studentData?.[selectedClass];
 
-        if (Array.isArray(cachedStudents)) {
+        if (Array.isArray(cachedStudents) && cachedStudents.length > 0) {
           if (isMounted) {
             setStudents(cachedStudents);
             setLoadingStudents(false);
@@ -128,7 +129,7 @@ export default function Tools() {
           return;
         }
 
-        // Lấy dữ liệu từ Firestore
+        // 2. Nếu Context chưa có dữ liệu, lấy từ Firestore
         const classKey = selectedClass.replace(/\./g, "_");
 
         const studentsRef = collection(
@@ -151,7 +152,7 @@ export default function Tools() {
           };
         });
 
-        // Sắp xếp theo tên học sinh
+        // 3. Sắp xếp theo tên học sinh
         studentList.sort((a, b) => {
           const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0] || "";
           const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0] || "";
@@ -159,7 +160,7 @@ export default function Tools() {
           return nameA.localeCompare(nameB, "vi");
         });
 
-        // Đánh số thứ tự
+        // 4. Đánh số thứ tự
         const formattedStudents = studentList.map((student, index) => ({
           ...student,
           stt: student.stt || index + 1,
@@ -168,6 +169,7 @@ export default function Tools() {
         if (isMounted) {
           setStudents(formattedStudents);
 
+          // 5. Lưu vào Context để tái sử dụng
           setStudentData((prev) => ({
             ...prev,
             [selectedClass]: formattedStudents,
@@ -192,6 +194,7 @@ export default function Tools() {
       isMounted = false;
     };
   }, [selectedClass, namHocKey, studentData, setStudentData]);
+
 
   // =========================================
   // DANH SÁCH CÁC NHÓM CÔNG CỤ
@@ -438,7 +441,7 @@ export default function Tools() {
                       <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
                         {loadingStudents
                           ? "Đang tải..."
-                          : `${students.length} học sinh`}
+                          : `${students.length} HS`}
                       </Typography>
                     </Box>
                   )}

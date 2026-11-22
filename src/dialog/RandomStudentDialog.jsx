@@ -729,23 +729,29 @@ const launchCelebration = () => {
 
           {/* CHIP SĨ SỐ */}
           <Chip
-            icon={
-              <GroupsIcon
-                sx={{ color: "#bae6fd !important", fontSize: 17 }}
-              />
-            }
-            label={`${eligibleStudents.length}/${students.length} học sinh`}
+            icon={<GroupsIcon />}
+            label={`${eligibleStudents.length}/${students.length} HS`}
             size="small"
             onClick={handleOpenStudentList}
             disabled={spinning}
             sx={{
               flexShrink: 0,
-              height: 28,
+              height: 32,
               color: "#fff",
               fontSize: 12,
               fontWeight: 800,
               bgcolor: "rgba(255,255,255,.11)",
               border: "1px solid rgba(255,255,255,.25)",
+
+              "& .MuiChip-icon": {
+                color: "#bae6fd",
+                fontSize: 24,
+                width: 24,
+                height: 24,
+                ml: 0.7,
+                mr: -0.2,
+              },
+
               "& .MuiChip-label": {
                 px: 0.7,
               },

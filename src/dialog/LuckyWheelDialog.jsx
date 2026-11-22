@@ -676,7 +676,7 @@ return (
       >
         <Chip
           icon={<GroupsIcon />}
-          label={`${eligibleStudents.length}/${students.length} học sinh`}
+          label={`${eligibleStudents.length}/${students.length} HS`}
           onClick={handleOpenStudentList}
           clickable
           disabled={spinning}
@@ -1263,7 +1263,4 @@ return (
     </DialogContent>
   </Dialog>
 );
-
-
-
 }
