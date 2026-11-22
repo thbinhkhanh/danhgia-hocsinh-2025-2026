@@ -365,15 +365,16 @@ export default function QuestionDrawDialog({
               zIndex: 1,
               display: "flex",
               alignItems: "center",
-              gap: 1.5,
-              pr: 6,
+              gap: { xs: 0.8, sm: 1.5 },
+              pr: { xs: 4, sm: 6 },
+              minWidth: 0,
             }}
           >
             {/* ICON */}
             <Box
               sx={{
-                width: 44,
-                height: 44,
+                width: { xs: 36, sm: 44 },
+                height: { xs: 36, sm: 44 },
                 flexShrink: 0,
                 display: "flex",
                 alignItems: "center",
@@ -387,18 +388,19 @@ export default function QuestionDrawDialog({
                 border: "1px solid rgba(255,255,255,.35)",
               }}
             >
-              <AutoAwesomeIcon sx={{ fontSize: 27 }} />
+              <AutoAwesomeIcon sx={{ fontSize: { xs: 22, sm: 27 } }} />
             </Box>
 
             {/* TIÊU ĐỀ */}
-            <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
               <Typography
                 sx={{
-                  fontSize: { xs: 16, sm: 21 },
+                  fontSize: { xs: 13, sm: 21 },
                   fontWeight: 900,
-                  letterSpacing: { xs: 0.2, sm: 0.6 },
+                  letterSpacing: { xs: 0, sm: 0.6 },
                   lineHeight: 1.25,
                   color: "#fff",
+                  whiteSpace: "nowrap",
                 }}
               >
                 BỐC THĂM CÂU HỎI
@@ -407,18 +409,16 @@ export default function QuestionDrawDialog({
               <Typography
                 sx={{
                   mt: 0.45,
-                  fontSize: { xs: 11, sm: 12 },
+                  fontSize: { xs: 9, sm: 12 },
                   fontWeight: 500,
                   color: "rgba(219,234,254,.85)",
                   lineHeight: 1.4,
+                  whiteSpace: "nowrap",
                 }}
               >
-                Lớp {grade || "—"} · Tin học · Tuần{" "}
-                {weekNumber || "—"}
+                Lớp {grade || "—"} · Tin học · Tuần {weekNumber || "—"}
               </Typography>
             </Box>
-
-            <Box sx={{ flex: 1 }} />
 
             {/* NÚT SOẠN CÂU HỎI */}
             <Button
@@ -429,13 +429,19 @@ export default function QuestionDrawDialog({
               sx={{
                 flexShrink: 0,
                 minWidth: 0,
-                px: 1.3,
-                py: 0.8,
+                px: { xs: 0.8, sm: 1.3 },
+                py: { xs: 0.6, sm: 0.8 },
                 borderRadius: 2,
                 color: "#fff",
-                fontSize: 11,
+                fontSize: { xs: 9, sm: 11 },
                 fontWeight: 800,
                 whiteSpace: "nowrap",
+                "& .MuiButton-startIcon": {
+                  mr: { xs: 0.4, sm: 0.8 },
+                  "& svg": {
+                    fontSize: { xs: 15, sm: 20 },
+                  },
+                },
                 bgcolor: "rgba(255,255,255,.12)",
                 border: "1px solid rgba(255,255,255,.28)",
                 "&:hover": {

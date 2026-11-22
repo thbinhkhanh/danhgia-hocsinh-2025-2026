@@ -674,14 +674,15 @@ const launchCelebration = () => {
             zIndex: 1,
             display: "flex",
             alignItems: "center",
-            gap: 1.5,
-            pr: 5,
+            gap: { xs: 0.8, sm: 1.5 },
+            pr: { xs: 4, sm: 5 },
+            minWidth: 0,
           }}
         >
           <Box
             sx={{
-              width: 44,
-              height: 44,
+              width: { xs: 36, sm: 44 },
+              height: { xs: 36, sm: 44 },
               flexShrink: 0,
               display: "flex",
               alignItems: "center",
@@ -695,17 +696,18 @@ const launchCelebration = () => {
               border: "1px solid rgba(255,255,255,.35)",
             }}
           >
-            <AutoAwesomeIcon sx={{ fontSize: 27 }} />
+            <AutoAwesomeIcon sx={{ fontSize: { xs: 22, sm: 27 } }} />
           </Box>
 
-          <Box sx={{ minWidth: 0 }}>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography
               sx={{
-                fontSize: { xs: 16, sm: 21 },
+                fontSize: { xs: 14, sm: 21 },
                 fontWeight: 900,
-                letterSpacing: { xs: 0.2, sm: 0.6 },
+                letterSpacing: { xs: 0, sm: 0.6 },
                 lineHeight: 1.25,
                 color: "#fff",
+                whiteSpace: "nowrap",
               }}
             >
               BỐC THĂM NGẪU NHIÊN
@@ -714,19 +716,18 @@ const launchCelebration = () => {
             <Typography
               sx={{
                 mt: 0.45,
-                fontSize: { xs: 11, sm: 12 },
+                fontSize: { xs: 10, sm: 12 },
                 fontWeight: 500,
                 color: "rgba(219,234,254,.85)",
                 lineHeight: 1.4,
+                whiteSpace: "nowrap",
               }}
             >
               Hôm nay ai sẽ được gọi tên?
             </Typography>
           </Box>
 
-          <Box sx={{ flex: 1 }} />
-
-          {/* CHIP SĨ SỐ - BẤM ĐỂ MỞ DANH SÁCH */}
+          {/* CHIP SĨ SỐ */}
           <Chip
             icon={
               <GroupsIcon
@@ -739,23 +740,14 @@ const launchCelebration = () => {
             disabled={spinning}
             sx={{
               flexShrink: 0,
-              height: 30,
+              height: 28,
               color: "#fff",
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 800,
               bgcolor: "rgba(255,255,255,.11)",
               border: "1px solid rgba(255,255,255,.25)",
-              cursor: spinning ? "default" : "pointer",
-              backdropFilter: "blur(8px)",
               "& .MuiChip-label": {
-                px: 1,
-              },
-              "&:hover": {
-                bgcolor: "rgba(255,255,255,.22)",
-              },
-              "&.Mui-disabled": {
-                opacity: 0.7,
-                color: "#fff",
+                px: 0.7,
               },
             }}
           />
