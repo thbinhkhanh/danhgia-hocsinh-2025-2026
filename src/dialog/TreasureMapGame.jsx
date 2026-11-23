@@ -12,6 +12,7 @@ import {
   Fade,
   TextField,
   LinearProgress,
+  Tooltip,
 } from "@mui/material";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
@@ -792,279 +793,337 @@ export default function TreasureMapGame({
       ? stages[inspectedStage]
       : currentStage;
 
-  return (
-    <>
-      <Dialog
-        open={open}
-        onClose={(event, reason) => {
-          // Không đóng khi bấm ra ngoài hoặc nhấn ESC
-          if (
-            reason === "backdropClick" ||
-            reason === "escapeKeyDown"
-          ) {
-            return;
-          }
+  
+return (
+  <>
+    <Dialog
+      open={open}
+      onClose={(event, reason) => {
+        // Không đóng khi bấm ra ngoài hoặc nhấn ESC
+        if (
+          reason === "backdropClick" ||
+          reason === "escapeKeyDown"
+        ) {
+          return;
+        }
 
-          handleClose();
-        }}
-        disableEscapeKeyDown
-        fullWidth
-        maxWidth="md"
-        TransitionComponent={Fade}
-        PaperProps={{
-          sx: {
-            borderRadius: 4,
+        handleClose();
+      }}
+      disableEscapeKeyDown
+      fullWidth
+      maxWidth="md"
+      TransitionComponent={Fade}
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          overflow: "hidden",
+          background: "#fff",
+          boxShadow: "0 25px 80px rgba(15,23,42,.25)",
+          position: "relative",
+
+          height: "94dvh",
+          maxHeight: "94dvh",
+
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
+    >
+      {/* PHÁO GIẤY CHÚC MỪNG KHI HOÀN THÀNH */}
+      {completed && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 20,
+            pointerEvents: "none",
             overflow: "hidden",
-            background: "#fff",
-            boxShadow: "0 25px 80px rgba(15,23,42,.25)",
-            position: "relative",
-          },
+            "@keyframes tmgConfettiFall": {
+              "0%": {
+                transform: "translateY(-20px) rotate(0deg)",
+                opacity: 1,
+              },
+              "100%": {
+                transform: "translateY(820px) rotate(720deg)",
+                opacity: 0.15,
+              },
+            },
+          }}
+        >
+          {confettiPieces.map((piece) => (
+            <Box
+              key={piece.id}
+              component="span"
+              sx={{
+                position: "absolute",
+                top: -18,
+                left: `${piece.left}%`,
+                width: `${piece.size}px`,
+                height: `${Math.max(5, piece.size * 0.6)}px`,
+                backgroundColor: piece.color,
+                borderRadius: "2px",
+                opacity: 0.95,
+                transform: `rotate(${piece.rotate}deg)`,
+                animation: `tmgConfettiFall ${piece.duration}s linear ${piece.delay}s infinite`,
+              }}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* HEADER */}
+      <Box
+        sx={{
+          position: "relative",
+          px: { xs: 2, sm: 3 },
+          py: { xs: 1.5, sm: 2 },
+          color: "#fff",
+          background: completed
+            ? "linear-gradient(115deg, #d97706 0%, #f59e0b 55%, #ea580c 100%)"
+            : theme.headerGradient,
+          overflow: "hidden",
+          flexShrink: 0,
         }}
       >
-        {/* PHÁO GIẤY CHÚC MỪNG KHI HOÀN THÀNH */}
-        {completed && (
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              zIndex: 20,
-              pointerEvents: "none",
-              overflow: "hidden",
-              "@keyframes tmgConfettiFall": {
-                "0%": {
-                  transform: "translateY(-20px) rotate(0deg)",
-                  opacity: 1,
-                },
-                "100%": {
-                  transform: "translateY(820px) rotate(720deg)",
-                  opacity: 0.15,
-                },
-              },
-            }}
-          >
-            {confettiPieces.map((piece) => (
-              <Box
-                key={piece.id}
-                component="span"
-                sx={{
-                  position: "absolute",
-                  top: -18,
-                  left: `${piece.left}%`,
-                  width: `${piece.size}px`,
-                  height: `${Math.max(5, piece.size * 0.6)}px`,
-                  backgroundColor: piece.color,
-                  borderRadius: "2px",
-                  opacity: 0.95,
-                  transform: `rotate(${piece.rotate}deg)`,
-                  animation: `tmgConfettiFall ${piece.duration}s linear ${piece.delay}s infinite`,
-                }}
-              />
-            ))}
-          </Box>
-        )}
+        <Box
+          sx={{
+            position: "absolute",
+            width: 240,
+            height: 240,
+            borderRadius: "50%",
+            right: -100,
+            top: -150,
+            background:
+              "radial-gradient(circle, rgba(56,189,248,.25), transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
 
-        {/* HEADER */}
+        <Box
+          sx={{
+            position: "absolute",
+            width: 180,
+            height: 180,
+            borderRadius: "50%",
+            left: "35%",
+            bottom: -155,
+            background:
+              "radial-gradient(circle, rgba(99,102,241,.2), transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <IconButton
+          onClick={handleClose}
+          size="small"
+          aria-label="Đóng"
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 14,
+            zIndex: 3,
+            color: "rgba(255,255,255,.9)",
+            bgcolor: "rgba(255,255,255,.10)",
+            border: "1px solid rgba(255,255,255,.16)",
+            "&:hover": {
+              bgcolor: "rgba(255,255,255,.2)",
+            },
+          }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+
         <Box
           sx={{
             position: "relative",
-            px: { xs: 2, sm: 3 },
-            py: { xs: 1.5, sm: 2 },
-            color: "#fff",
-            background: completed
-              ? "linear-gradient(115deg, #d97706 0%, #f59e0b 55%, #ea580c 100%)"
-              : theme.headerGradient,
-            overflow: "hidden",
-            flexShrink: 0,
+            zIndex: 1,
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "36px minmax(0, 1fr)",
+              sm: "44px minmax(0, 1fr) auto",
+            },
+            alignItems: "start",
+            columnGap: { xs: 0.8, sm: 1.5 },
+            rowGap: { xs: 0.8, sm: 0 },
+            pr: { xs: 4, sm: 5 },
+            minWidth: 0,
           }}
         >
           <Box
             sx={{
-              position: "absolute",
-              width: 240,
-              height: 240,
-              borderRadius: "50%",
-              right: -100,
-              top: -150,
-              background:
-                "radial-gradient(circle, rgba(56,189,248,.25), transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
-
-          <Box
-            sx={{
-              position: "absolute",
-              width: 180,
-              height: 180,
-              borderRadius: "50%",
-              left: "35%",
-              bottom: -155,
-              background:
-                "radial-gradient(circle, rgba(99,102,241,.2), transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
-
-          <IconButton
-            onClick={handleOpenConfig}
-            size="small"
-            aria-label="Cấu hình trò chơi"
-            sx={{
-              position: "absolute",
-              top: 12,
-              right: 58,
-              zIndex: 3,
-              color: "#fff",
-              bgcolor: "rgba(255,255,255,.10)",
-              border: "1px solid rgba(255,255,255,.2)",
-              "&:hover": {
-                bgcolor: "rgba(255,255,255,.2)",
-              },
-            }}
-          >
-            <SettingsIcon fontSize="small" />
-          </IconButton>
-
-          <IconButton
-            onClick={handleClose}
-            size="small"
-            aria-label="Đóng"
-            sx={{
-              position: "absolute",
-              top: 12,
-              right: 14,
-              zIndex: 3,
-              color: "rgba(255,255,255,.9)",
-              bgcolor: "rgba(255,255,255,.10)",
-              border: "1px solid rgba(255,255,255,.16)",
-              "&:hover": {
-                bgcolor: "rgba(255,255,255,.2)",
-              },
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-
-          <Box
-            sx={{
-              position: "relative",
-              zIndex: 1,
+              gridColumn: 1,
+              gridRow: 1,
+              width: { xs: 36, sm: 44 },
+              height: { xs: 36, sm: 44 },
+              flexShrink: 0,
               display: "flex",
               alignItems: "center",
-              gap: { xs: 0.8, sm: 1.5 },
-              pr: { xs: 4, sm: 5 },
-              minWidth: 0,
+              justifyContent: "center",
+              borderRadius: 2.5,
+              color: "#fff",
+              background:
+                "linear-gradient(145deg, #fbbf24 0%, #f59e0b 45%, #ea580c 100%)",
+              boxShadow:
+                "0 4px 14px rgba(245,158,11,.35), inset 0 1px 2px rgba(255,255,255,.4)",
+              border: "1px solid rgba(255,255,255,.35)",
             }}
           >
-            <Box
-              sx={{
-                width: { xs: 36, sm: 44 },
-                height: { xs: 36, sm: 44 },
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 2.5,
-                color: "#fff",
-                background:
-                  "linear-gradient(145deg, #fbbf24 0%, #f59e0b 45%, #ea580c 100%)",
-                boxShadow:
-                  "0 4px 14px rgba(245,158,11,.35), inset 0 1px 2px rgba(255,255,255,.4)",
-                border: "1px solid rgba(255,255,255,.35)",
-              }}
-            >
-              {completed ? (
-                <EmojiEventsIcon
-                  sx={{ fontSize: { xs: 22, sm: 27 } }}
-                />
-              ) : (
-                <ExploreIcon
-                  sx={{ fontSize: { xs: 22, sm: 27 } }}
-                />
-              )}
-            </Box>
-
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography
-                sx={{
-                  fontSize: { xs: 14, sm: 21 },
-                  fontWeight: 900,
-                  letterSpacing: { xs: 0, sm: 0.6 },
-                  lineHeight: 1.25,
-                  color: "#fff",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {completed
-                  ? "CHINH PHỤC KHO BÁU THÀNH CÔNG!"
-                  : `${theme.name.toUpperCase()} — ĐI TÌM KHO BÁU`}
-              </Typography>
-
-              <Typography
-                sx={{
-                  mt: 0.45,
-                  fontSize: { xs: 10, sm: 12 },
-                  fontWeight: 500,
-                  color: "rgba(219,234,254,.85)",
-                  lineHeight: 1.4,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {completed
-                  ? `Đã hoàn thành ${totalSteps}/${totalSteps} chặng hoạt động`
-                  : `Chặng ${stepIndex + 1}/${totalSteps}: ${currentStage?.landmark || ""}`}
-              </Typography>
-            </Box>
+            {completed ? (
+              <EmojiEventsIcon
+                sx={{ fontSize: { xs: 22, sm: 27 } }}
+              />
+            ) : (
+              <ExploreIcon
+                sx={{ fontSize: { xs: 22, sm: 27 } }}
+              />
+            )}
           </Box>
 
           <Box
             sx={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              width: "100%",
-              height: "2px",
-              background:
-                "linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent)",
-              opacity: 0.8,
+              gridColumn: 2,
+              gridRow: 1,
+              minWidth: 0,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: { xs: 14, sm: 21 },
+                fontWeight: 900,
+                letterSpacing: { xs: 0, sm: 0.6 },
+                lineHeight: 1.25,
+                color: "#fff",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {completed
+                ? "CHINH PHỤC KHO BÁU THÀNH CÔNG!"
+                : `${theme.name.toUpperCase()} — ĐI TÌM KHO BÁU`}
+            </Typography>
+
+            <Typography
+              sx={{
+                mt: 0.45,
+                fontSize: { xs: 10, sm: 12 },
+                fontWeight: 500,
+                color: "rgba(219,234,254,.85)",
+                lineHeight: 1.4,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {completed
+                ? `Đã hoàn thành ${totalSteps}/${totalSteps} chặng hoạt động`
+                : `Chặng ${stepIndex + 1}/${totalSteps}: ${currentStage?.landmark || ""}`}
+            </Typography>
+          </Box>
+
+          <Chip
+            label="Cấu hình trò chơi"
+            onClick={handleOpenConfig}
+            size="small"
+            sx={{
+              gridColumn: { xs: 2, sm: 3 },
+              gridRow: { xs: 2, sm: 1 },
+              justifySelf: "start",
+              height: 30,
+              color: "#fff",
+              bgcolor: "rgba(255,255,255,.10)",
+              border: "1px solid rgba(255,255,255,.2)",
+              fontWeight: 600,
+              fontSize: 12,
+              cursor: "pointer",
+              "&:hover": {
+                bgcolor: "rgba(255,255,255,.2)",
+              },
             }}
           />
         </Box>
 
-        {/* NỘI DUNG CHÍNH */}
-        <DialogContent
+        <Box
           sx={{
-            px: { xs: 1.5, sm: 3 },
-            py: { xs: 1, sm: 1.5 },
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            width: "100%",
+            height: "2px",
             background:
-              "linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)",
+              "linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent)",
+            opacity: 0.8,
+          }}
+        />
+      </Box>
+
+      {/* NỘI DUNG CHÍNH */}
+      <DialogContent
+        sx={{
+          px: { xs: 1.5, sm: 3 },
+          py: { xs: 1, sm: 1.5 },
+          background:
+            "linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)",
+
+          display: "flex",
+          flexDirection: "column",
+          gap: { xs: 1, sm: 1.5 },
+
+          flex: "1 1 0",
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
+        {/* VÙNG BẢN ĐỒ VÀ TIẾN ĐỘ */}
+        <Box
+          sx={{
+            flex: "0 0 auto",
+            width: "100%",
             display: "flex",
             flexDirection: "column",
-            gap: { xs: 1, sm: 1.5 },
+            alignItems: "center",
+            gap: 0.75,
           }}
         >
-          <TreasureMapIllustration
-            themeId={themeId}
-            stages={stages}
-            stepIndex={stepIndex}
-            completed={completed}
-            inspectedStage={inspectedStage}
-            onInspect={setInspectedStage}
-            explorerEmoji={theme.explorerEmoji}
-            goalEmoji={theme.goalEmoji}
-          />
+          {/* THU NHỎ BẢN ĐỒ */}
+          <Box
+            sx={{
+              width: {
+                xs: "100%",
+                sm: "85%",
+                md: "70%",
+              },
+              maxWidth: 800,
+              mx: "auto",
+              flexShrink: 0,
+
+              "& img": {
+                display: "block",
+                width: "100%",
+                height: "auto",
+                objectFit: "contain",
+              },
+            }}
+          >
+            <TreasureMapIllustration
+              themeId={themeId}
+              stages={stages}
+              stepIndex={stepIndex}
+              completed={completed}
+              inspectedStage={inspectedStage}
+              onInspect={setInspectedStage}
+              explorerEmoji={theme.explorerEmoji}
+              goalEmoji={theme.goalEmoji}
+            />
+          </Box>
 
           {/* TIẾN ĐỘ */}
-          <Box>
+          {/*<Box sx={{ width: "100%", flexShrink: 0 }}>
             <Box
               sx={{
                 display: "flex",
                 justifyContent: "space-between",
-                mb: 0.75,
+                mb: 0.5,
               }}
             >
               <Typography
@@ -1093,7 +1152,7 @@ export default function TreasureMapGame({
               variant="determinate"
               value={progressPct}
               sx={{
-                height: 9,
+                height: 8,
                 borderRadius: 999,
                 bgcolor: "#e2e8f0",
                 "& .MuiLinearProgress-bar": {
@@ -1104,8 +1163,19 @@ export default function TreasureMapGame({
                 },
               }}
             />
-          </Box>
+          </Box>*/}
+        </Box>
 
+        {/* VÙNG NỘI DUNG CHẶNG */}
+        <Box
+          sx={{
+            flex: "1 1 0",
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           {/* MÀN HÌNH HOÀN THÀNH HOẶC NỘI DUNG CHẶNG */}
           {completed ? (
             <Paper
@@ -1188,7 +1258,7 @@ export default function TreasureMapGame({
                       "linear-gradient(135deg, #f59e0b, #ea580c)",
                   }}
                 >
-                  Chơi lại
+                  Đặt lại
                 </Button>
 
                 <Button
@@ -1335,8 +1405,8 @@ export default function TreasureMapGame({
                 }}
               >
                 {stepIndex + 1 < totalSteps
-                  ? "Hoàn thành hoạt động & Sang chặng tiếp theo"
-                  : "Hoàn thành bước cuối & Mở rương kho báu"}
+                  ? "Sang chặng tiếp theo"
+                  : "Mở rương kho báu"}
               </Button>
             </Paper>
           ) : (
@@ -1518,22 +1588,24 @@ export default function TreasureMapGame({
               ) : null}
             </Paper>
           )}
-        </DialogContent>
-      </Dialog>
+        </Box>
+      </DialogContent>
+    </Dialog>
 
-      <TreasureMapConfigDialog
-        open={configOpen}
-        onClose={() => setConfigOpen(false)}
-        themeId={themeId}
-        stageCount={stageCount}
-        mode={mode}
-        questions={stages.map((stage) => ({
-          question: stage.question || "",
-          options: stage.options || ["", "", "", ""],
-          correctIndex: stage.correctIndex ?? 0,
-        }))}
-        onApply={handleApplyConfig}
-      />
-    </>
-  );
+    <TreasureMapConfigDialog
+      open={configOpen}
+      onClose={() => setConfigOpen(false)}
+      themeId={themeId}
+      stageCount={stageCount}
+      mode={mode}
+      questions={stages.map((stage) => ({
+        question: stage.question || "",
+        options: stage.options || ["", "", "", ""],
+        correctIndex: stage.correctIndex ?? 0,
+      }))}
+      onApply={handleApplyConfig}
+    />
+  </>
+);
+
 }

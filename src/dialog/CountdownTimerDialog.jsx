@@ -18,7 +18,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
-import TimerRoundedIcon from "@mui/icons-material/TimerRounded";
+import HourglassEmptyRoundedIcon from "@mui/icons-material/HourglassEmptyRounded";
 
 const PRESETS = [1, 2, 3, 5];
 
@@ -368,7 +368,7 @@ return (
             bgcolor: "rgba(255,255,255,.2)",
           }}
         >
-          <TimerRoundedIcon sx={{ fontSize: 28 }} />
+          <HourglassEmptyRoundedIcon sx={{ fontSize: 28 }} />
         </Box>
 
         <Box>

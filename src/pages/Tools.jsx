@@ -23,6 +23,8 @@ import RotateRightRoundedIcon from "@mui/icons-material/RotateRightRounded";
 import GraphicEqRoundedIcon from "@mui/icons-material/GraphicEqRounded";
 import QuizRoundedIcon from "@mui/icons-material/QuizRounded";
 import CasinoRoundedIcon from "@mui/icons-material/CasinoRounded";
+import HourglassEmptyRoundedIcon from "@mui/icons-material/HourglassEmptyRounded";
+import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
@@ -42,6 +44,9 @@ import DiceDialog from "../dialog/DiceDialog";
 import NoiseMeterDialog from "../dialog/NoiseMeterDialog";
 import QuestionDrawDialog from "../dialog/QuestionDrawDialog";
 import TreasureMapGame from "../dialog/TreasureMapGame";
+import QuickQuestionDialog from "../dialog/QuickQuestionDialog";
+import LearningLeaderboardDialog from "../dialog/LearningLeaderboardDialog";
+import KnowledgeArenaDialog from "../dialog/KnowledgeArenaDialog";
 
 export default function Tools() {
   const navigate = useNavigate();
@@ -75,6 +80,9 @@ export default function Tools() {
   const [openQuestionDialog, setOpenQuestionDialog] = useState(false);
   const [openStopwatchDialog, setOpenStopwatchDialog] = useState(false);
   const [openTreasureMap, setOpenTreasureMap] = useState(false);
+  const [openQuickQuestion, setOpenQuickQuestion] = useState(false);
+  const [openLeaderboard, setOpenLeaderboard] = useState(false);
+  const [openKnowledgeArena, setOpenKnowledgeArena] = useState(false);
 
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
@@ -91,7 +99,10 @@ export default function Tools() {
     openNoiseDialog ||
     openQuestionDialog ||
     openStopwatchDialog ||
-    openTreasureMap;
+    openTreasureMap ||
+    openQuickQuestion ||
+    openLeaderboard ||
+    openKnowledgeArena;
 
   // =========================================
   // TỰ ĐỘNG CHỌN LỚP MẶC ĐỊNH
@@ -225,16 +236,23 @@ export default function Tools() {
           iconBg: "#FEF3C7",
           action: () => setOpenWheelDialog(true),
           needStudents: true,
-        },
+        },         
+      ],
+    },
+
+    {
+      title: "TRÒ CHƠI HỌC TẬP",
+      color: "#7C3AED",
+      tools: [
         {
-          title: "Chia nhóm học sinh",
-          description: "Tự động chia học sinh thành các nhóm",
-          icon: <GroupsRoundedIcon />,
-          iconColor: "#0891B2",
-          iconBg: "#CFFAFE",
-          action: () => setOpenGroupDialog(true),
-          needStudents: true,
+          title: "Đi tìm kho báu",
+          description: "Tổ chức trò chơi khám phá và chinh phục kho báu kiến thức",
+          icon: <AutoAwesomeIcon />,
+          iconColor: "#7C3AED",
+          iconBg: "#EDE9FE",
+          action: () => setOpenTreasureMap(true),
         },
+
         {
           title: "Bốc thăm câu hỏi",
           description: "Nhập câu hỏi và chọn ngẫu nhiên",
@@ -242,9 +260,35 @@ export default function Tools() {
           iconColor: "#7C3AED",
           iconBg: "#EDE9FE",
           action: () => setOpenQuestionDialog(true),
+        },        
+        /*{
+          title: "Thẻ câu hỏi nhanh",
+          description: "Tạo thẻ, rút thăm câu hỏi và xem đáp án",
+          icon: <QuizRoundedIcon />,
+          iconColor: "#2563EB",
+          iconBg: "#DBEAFE",
+          action: () => setOpenQuickQuestion(true),
+        },*/
+        {
+          title: "Bảng thi đua học tập",
+          description: "Cộng điểm, trừ điểm và xếp hạng học sinh",
+          icon: <EmojiEventsRoundedIcon />,
+          iconColor: "#D97706",
+          iconBg: "#FEF3C7",
+          action: () => setOpenLeaderboard(true),
         },
+        {
+          title: "Đấu trường kiến thức",
+          description: "Thi trắc nghiệm, tính điểm và công bố kết quả",
+          icon: <SchoolRoundedIcon />,
+          iconColor: "#7C3AED",
+          iconBg: "#EDE9FE",
+          action: () => setOpenKnowledgeArena(true),
+        },
+
       ],
     },
+
     {
       title: "QUẢN LÝ HOẠT ĐỘNG",
       color: "#00897b",
@@ -252,7 +296,7 @@ export default function Tools() {
         {
           title: "Đồng hồ đếm ngược",
           description: "Thiết lập thời gian cho hoạt động",
-          icon: <TimerRoundedIcon />,
+          icon: <HourglassEmptyRoundedIcon />,
           iconColor: "#EA580C",
           iconBg: "#FFEDD5",
           action: () => setOpenTimerDialog(true),
@@ -266,14 +310,6 @@ export default function Tools() {
           action: () => setOpenStopwatchDialog(true),
         },
         {
-          title: "Đo âm lượng lớp học",
-          description: "Theo dõi mức độ âm thanh trong lớp",
-          icon: <GraphicEqRoundedIcon />,
-          iconColor: "#DB2777",
-          iconBg: "#FCE7F3",
-          action: () => setOpenNoiseDialog(true),
-        },
-        {
           title: "Xúc xắc ngẫu nhiên",
           description: "Tung xúc xắc để chọn số ngẫu nhiên",
           icon: <CasinoRoundedIcon />,
@@ -281,21 +317,23 @@ export default function Tools() {
           iconBg: "#E0E7FF",
           action: () => setOpenDiceDialog(true),
         },
-      ],
-    },
-
-    {
-      title: "TRÒ CHƠI HỌC TẬP",
-      color: "#7C3AED",
-      tools: [
-        {
-          title: "Bản đồ đi tìm kho báu",
-          description: "Tổ chức trò chơi khám phá và chinh phục kho báu kiến thức",
-          icon: <AutoAwesomeIcon />,
-          iconColor: "#7C3AED",
-          iconBg: "#EDE9FE",
-          action: () => setOpenTreasureMap(true),
-        },
+         {
+          title: "Chia nhóm học sinh",
+          description: "Tự động chia học sinh thành các nhóm",
+          icon: <GroupsRoundedIcon />,
+          iconColor: "#0891B2",
+          iconBg: "#CFFAFE",
+          action: () => setOpenGroupDialog(true),
+          needStudents: true,
+        }, 
+        /*{
+          title: "Đo âm lượng lớp học",
+          description: "Theo dõi mức độ âm thanh trong lớp",
+          icon: <GraphicEqRoundedIcon />,
+          iconColor: "#DB2777",
+          iconBg: "#FCE7F3",
+          action: () => setOpenNoiseDialog(true),
+        },*/    
       ],
     },
   ];
@@ -811,6 +849,22 @@ export default function Tools() {
       <TreasureMapGame
         open={openTreasureMap}
         onClose={() => setOpenTreasureMap(false)}
+      />
+
+      <QuickQuestionDialog
+        open={openQuickQuestion}
+        onClose={() => setOpenQuickQuestion(false)}
+      />
+
+      <LearningLeaderboardDialog
+        open={openLeaderboard}
+        onClose={() => setOpenLeaderboard(false)}
+        students={students}
+      />
+
+      <KnowledgeArenaDialog
+        open={openKnowledgeArena}
+        onClose={() => setOpenKnowledgeArena(false)}
       />
     </>
   );

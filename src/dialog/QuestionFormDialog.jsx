@@ -892,22 +892,34 @@ return (
                 saving
                 }
                 sx={{
-                mt: 2,
-                width: "25%",
-                py: 1.35,
-                borderRadius: 2.5,
-                fontWeight: 900,
-                fontSize: 13,
-                background: "linear-gradient(90deg,#2563eb,#0284c7)",
-                boxShadow: "0 6px 16px rgba(37,99,235,.22)",
-                "&:hover": {
-                    background: "linear-gradient(90deg,#1d4ed8,#0369a1)",
-                },
+                    mt: 2,
+                    width: { xs: "100%", sm: "25%" },
+                    py: 1.35,
+                    borderRadius: 2.5,
+                    fontWeight: 900,
+                    fontSize: 13,
+                    background: "linear-gradient(90deg,#2563eb,#0284c7)",
+                    boxShadow: "0 6px 16px rgba(37,99,235,.22)",
+                    "&:hover": {
+                        background: "linear-gradient(90deg,#1d4ed8,#0369a1)",
+                    },
+                    display:
+                        !questionInfo.grade ||
+                        questionInfo.subject !== "Tin học" ||
+                        !questionInfo.week ||
+                        !questionInfo.lesson ||
+                        !questionInfo.content.trim() ||
+                        drawing ||
+                        loadingLessons ||
+                        loadingQuestions ||
+                        saving
+                        ? "none"
+                        : "inline-flex",
                 }}
             >
                 {saving ? "ĐANG LƯU..." : "LƯU CÂU HỎI"}
             </Button>
-            </Box>
+        </Box>
       </DialogContent>
     </Dialog>
 

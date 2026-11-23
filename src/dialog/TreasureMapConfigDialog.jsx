@@ -414,6 +414,22 @@ export default function TreasureMapConfigDialog({
     draftStageCount,
   ]);
 
+  // Kiểm tra các form câu hỏi trong state có nội dung hay chưa
+  const hasDraftQuestionContent = draftQuestions.some((item) => {
+    const hasQuestion = Boolean(item.question?.trim());
+
+    const hasOptions = item.options?.some((option) =>
+      option?.trim()
+    );
+
+    return hasQuestion || hasOptions;
+  });
+
+  // HS trả lời chỉ được áp dụng khi Firestore đã có bộ câu hỏi
+  const canApplyConfig =
+    draftMode !== "quiz" ||
+    (hasExistingQuestions && !loadingQuestions);
+
   // --------------------------------------------------
   // THAY ĐỔI SỐ CHẶNG
   // --------------------------------------------------
@@ -1132,36 +1148,21 @@ return (
 
           <Box
             display="flex"
-            flexWrap="wrap"
-            gap={1}
+            flexDirection="column"
+            gap={0.6}
           >
-            <Chip
-              size="medium"
-              label={`${currentTheme.emoji} ${currentTheme.name}`}
-            />
+            <Typography fontSize={13} color="#334155">
+              <strong>Bản đồ:</strong> {currentTheme.emoji} {currentTheme.name}
+            </Typography>
 
-            <Chip
-              size="medium"
-              label={`${draftStageCount} chặng`}
-            />
+            <Typography fontSize={13} color="#334155">
+              <strong>Số chặng:</strong> {draftStageCount} chặng
+            </Typography>
 
-            <Chip
-              size="medium"
-              color="primary"
-              label={
-                draftMode === "quiz"
-                  ? "HS trả lời"
-                  : "GV điều khiển"
-              }
-            />
-
-            {draftMode === "quiz" && (
-              <Chip
-                size="medium"
-                color="info"
-                label={`${draftGrade} - ${draftSubject} - Tuần ${draftWeek}`}
-              />
-            )}
+            <Typography fontSize={13} color="#334155">
+              <strong>Chế độ:</strong>{" "}
+              {draftMode === "quiz" ? "HS trả lời" : "GV điều khiển"}
+            </Typography>
           </Box>
         </Paper>
       </DialogContent>
@@ -1192,7 +1193,11 @@ return (
                 <SaveRoundedIcon />
               )
             }
-            disabled={savingQuestions || loadingQuestions}
+            disabled={
+              savingQuestions ||
+              loadingQuestions ||
+              !hasDraftQuestionContent
+            }
             onClick={handleSaveQuestions}
             sx={{
               minWidth: { xs: 145, sm: 165 },
@@ -1225,7 +1230,11 @@ return (
           variant="contained"
           size="large"
           startIcon={<CheckCircleRoundedIcon />}
-          disabled={loadingQuestions || savingQuestions}
+          disabled={
+            loadingQuestions ||
+            savingQuestions ||
+            !canApplyConfig
+          }
           onClick={handleApply}
           sx={{
             minWidth: { xs: 125, sm: 190 },

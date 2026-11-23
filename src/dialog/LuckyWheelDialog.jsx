@@ -27,6 +27,7 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import ReplayIcon from "@mui/icons-material/Replay";
 import confetti from "canvas-confetti";
 import RotateRightRoundedIcon from "@mui/icons-material/RotateRightRounded";
+import { useConfig } from "../context/ConfigContext";
 
 const COLORS = [
   "#38BDF8",
@@ -75,6 +76,7 @@ export default function LuckyWheelDialog({
   const audioContextRef = useRef(null);
   const spinAudioRef = useRef(null);
   const [wheelRotation, setWheelRotation] = useState(0);
+  const { config } = useConfig();
 
   // =========================================
   // NHẬN DIỆN HỌC SINH
@@ -479,6 +481,7 @@ const handleRandom = () => {
   // Xáo trộn danh sách trước mỗi lượt quay
   const randomizedStudents = shuffleStudents(eligibleStudents);
 
+
   // Chọn học sinh trúng thưởng
   const selectedIndex = Math.floor(
     Math.random() * randomizedStudents.length
@@ -590,6 +593,7 @@ const wheelGradient = wheelStudents.length
   // =========================================
   
 
+
 return (
   <Dialog
     open={open}
@@ -632,10 +636,11 @@ return (
         flexShrink: 0,
       }}
     >
+      {/* TIÊU ĐỀ VÀ CHIP TRÊN ĐIỆN THOẠI */}
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           gap: 1.5,
           minWidth: 0,
         }}
@@ -644,6 +649,7 @@ return (
           sx={{
             fontSize: 29,
             flexShrink: 0,
+            mt: 0.3,
           }}
         />
 
@@ -662,6 +668,40 @@ return (
           <Typography fontSize={11} sx={{ opacity: 0.85 }}>
             Chọn ngẫu nhiên học sinh
           </Typography>
+
+          {/* CHIP SĨ SỐ - CHỈ HIỆN TRÊN ĐIỆN THOẠI */}
+          <Box
+            sx={{
+              display: { xs: "block", sm: "none" },
+              mt: 0.6,
+            }}
+          >
+            <Chip
+              icon={<GroupsIcon />}
+              label={`${eligibleStudents.length}/${students.length} HS`}
+              onClick={handleOpenStudentList}
+              clickable
+              disabled={spinning}
+              sx={{
+                height: 26,
+                fontSize: 11,
+                fontWeight: 800,
+                color: "#FFFFFF",
+                backgroundColor: "rgba(56,189,248,0.16)",
+                border: "1px solid rgba(125,211,252,0.4)",
+                "& .MuiChip-icon": {
+                  color: "#7DD3FC",
+                },
+                "&:hover": {
+                  backgroundColor: "rgba(56,189,248,0.28)",
+                },
+                "&.Mui-disabled": {
+                  color: "#FFFFFF",
+                  opacity: 0.7,
+                },
+              }}
+            />
+          </Box>
         </Box>
       </Box>
 
@@ -674,31 +714,34 @@ return (
           flexShrink: 0,
         }}
       >
-        <Chip
-          icon={<GroupsIcon />}
-          label={`${eligibleStudents.length}/${students.length} HS`}
-          onClick={handleOpenStudentList}
-          clickable
-          disabled={spinning}
-          sx={{
-            height: 30,
-            fontSize: 12,
-            fontWeight: 800,
-            color: "#FFFFFF",
-            backgroundColor: "rgba(56,189,248,0.16)",
-            border: "1px solid rgba(125,211,252,0.4)",
-            "& .MuiChip-icon": {
-              color: "#7DD3FC",
-            },
-            "&:hover": {
-              backgroundColor: "rgba(56,189,248,0.28)",
-            },
-            "&.Mui-disabled": {
+        {/* CHIP SĨ SỐ - CHỈ HIỆN TRÊN MÁY TÍNH */}
+        <Box sx={{ display: { xs: "none", sm: "block" } }}>
+          <Chip
+            icon={<GroupsIcon />}
+            label={`${eligibleStudents.length}/${students.length} HS`}
+            onClick={handleOpenStudentList}
+            clickable
+            disabled={spinning}
+            sx={{
+              height: 30,
+              fontSize: 12,
+              fontWeight: 800,
               color: "#FFFFFF",
-              opacity: 0.7,
-            },
-          }}
-        />
+              backgroundColor: "rgba(56,189,248,0.16)",
+              border: "1px solid rgba(125,211,252,0.4)",
+              "& .MuiChip-icon": {
+                color: "#7DD3FC",
+              },
+              "&:hover": {
+                backgroundColor: "rgba(56,189,248,0.28)",
+              },
+              "&.Mui-disabled": {
+                color: "#FFFFFF",
+                opacity: 0.7,
+              },
+            }}
+          />
+        </Box>
 
         <IconButton
           onClick={handleClose}
@@ -724,8 +767,8 @@ return (
           "linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%)",
 
         height: {
-          xs: winner ? 680 : 680,
-          sm: winner ? 700 : 700,
+          xs: 680,
+          sm: 700,
         },
         boxSizing: "border-box",
 
@@ -970,7 +1013,8 @@ return (
               {/* TÊN HỌC SINH */}
               {wheelStudents.map((student, index) => {
                 const segmentAngle = 360 / wheelStudents.length;
-                const angle = index * segmentAngle + segmentAngle / 2;
+                const angle =
+                  index * segmentAngle + segmentAngle / 2;
 
                 const fontSize =
                   wheelStudents.length > 30
@@ -1021,13 +1065,13 @@ return (
             </Box>
           </Box>
 
-          {/* TÂM VÒNG QUAY */}
+          {/* TÂM VÒNG QUAY - HIỂN THỊ TÊN LỚP */}
           <Box
             sx={{
               position: "absolute",
               zIndex: 4,
-              width: 54,
-              height: 54,
+              width: 66,
+              height: 66,
               borderRadius: "50%",
               background:
                 "linear-gradient(135deg, #FFFFFF, #DBEAFE)",
@@ -1036,14 +1080,25 @@ return (
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              p: 0.5,
+              boxSizing: "border-box",
             }}
           >
-            <RotateRightRoundedIcon
+            <Typography
               sx={{
-                fontSize: 27,
+                fontSize: {
+                  xs: 13,
+                  sm: 15,
+                },
+                fontWeight: 900,
                 color: "#1D4ED8",
+                textAlign: "center",
+                lineHeight: 1.1,
+                overflowWrap: "anywhere",
               }}
-            />
+            >
+              {`LỚP ${config?.lop || ""}`}
+            </Typography>
           </Box>
         </Box>
 
@@ -1152,7 +1207,7 @@ return (
                   </Typography>
 
                   <Chip
-                    label={`Số thứ tự: ${winner.stt ?? "—"}`}
+                    label={`STT: ${winner.stt ?? "—"}`}
                     size="small"
                     sx={{
                       mt: 0.8,
@@ -1198,7 +1253,7 @@ return (
           variant="contained"
           size="large"
           startIcon={
-           winner ? <ReplayIcon /> : <RotateRightRoundedIcon />
+            winner ? <ReplayIcon /> : <RotateRightRoundedIcon />
           }
           onClick={handleRandom}
           disabled={
@@ -1263,4 +1318,5 @@ return (
     </DialogContent>
   </Dialog>
 );
+
 }
