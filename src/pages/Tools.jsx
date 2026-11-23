@@ -41,6 +41,7 @@ import GroupStudentsDialog from "../dialog/GroupStudentsDialog";
 import DiceDialog from "../dialog/DiceDialog";
 import NoiseMeterDialog from "../dialog/NoiseMeterDialog";
 import QuestionDrawDialog from "../dialog/QuestionDrawDialog";
+import TreasureMapGame from "../dialog/TreasureMapGame";
 
 export default function Tools() {
   const navigate = useNavigate();
@@ -73,6 +74,7 @@ export default function Tools() {
   const [openNoiseDialog, setOpenNoiseDialog] = useState(false);
   const [openQuestionDialog, setOpenQuestionDialog] = useState(false);
   const [openStopwatchDialog, setOpenStopwatchDialog] = useState(false);
+  const [openTreasureMap, setOpenTreasureMap] = useState(false);
 
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
@@ -88,7 +90,8 @@ export default function Tools() {
     openWheelDialog ||
     openNoiseDialog ||
     openQuestionDialog ||
-    openStopwatchDialog;
+    openStopwatchDialog ||
+    openTreasureMap;
 
   // =========================================
   // TỰ ĐỘNG CHỌN LỚP MẶC ĐỊNH
@@ -277,6 +280,21 @@ export default function Tools() {
           iconColor: "#4F46E5",
           iconBg: "#E0E7FF",
           action: () => setOpenDiceDialog(true),
+        },
+      ],
+    },
+
+    {
+      title: "TRÒ CHƠI HỌC TẬP",
+      color: "#7C3AED",
+      tools: [
+        {
+          title: "Bản đồ đi tìm kho báu",
+          description: "Tổ chức trò chơi khám phá và chinh phục kho báu kiến thức",
+          icon: <AutoAwesomeIcon />,
+          iconColor: "#7C3AED",
+          iconBg: "#EDE9FE",
+          action: () => setOpenTreasureMap(true),
         },
       ],
     },
@@ -788,6 +806,11 @@ export default function Tools() {
       <StopwatchDialog
         open={openStopwatchDialog}
         onClose={() => setOpenStopwatchDialog(false)}
+      />
+
+      <TreasureMapGame
+        open={openTreasureMap}
+        onClose={() => setOpenTreasureMap(false)}
       />
     </>
   );
