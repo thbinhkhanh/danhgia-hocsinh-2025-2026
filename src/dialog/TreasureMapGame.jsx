@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
@@ -12,6 +13,9 @@ import {
   TextField,
   LinearProgress,
 } from "@mui/material";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
+
 import CloseIcon from "@mui/icons-material/Close";
 import ExploreIcon from "@mui/icons-material/Explore";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
@@ -22,6 +26,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import TreasureMapIllustration from "../components/TreasureMapIllustration";
 import TreasureMapConfigDialog from "../dialog/TreasureMapConfigDialog";
 import SettingsIcon from "@mui/icons-material/Settings";
+import { useConfig } from "../context/ConfigContext";
 
 const MAP_THEMES = {
   tropical: {
@@ -40,7 +45,8 @@ const MAP_THEMES = {
     landAccent: "#4ade80",
     pathColor: "#92400e",
     pathDash: "#fef08a",
-    headerGradient: "linear-gradient(115deg, #0f766e 0%, #173b82 55%, #0284c7 100%)",
+    headerGradient:
+      "linear-gradient(115deg, #0f766e 0%, #173b82 55%, #0284c7 100%)",
     decorEmojis: ["🌴", "🐚", "🌺", "⛵"],
     pathStyle: "wave",
     landmarks: [
@@ -80,7 +86,8 @@ const MAP_THEMES = {
     landAccent: "#dbeafe",
     pathColor: "#1d4ed8",
     pathDash: "#bae6fd",
-    headerGradient: "linear-gradient(115deg, #101b3c 0%, #1d4ed8 55%, #0284c7 100%)",
+    headerGradient:
+      "linear-gradient(115deg, #101b3c 0%, #1d4ed8 55%, #0284c7 100%)",
     decorEmojis: ["❄️", "☃️", "🧊", "🌲"],
     pathStyle: "zigzag",
     landmarks: [
@@ -120,7 +127,8 @@ const MAP_THEMES = {
     landAccent: "#facc15",
     pathColor: "#78350f",
     pathDash: "#fef9c3",
-    headerGradient: "linear-gradient(115deg, #78350f 0%, #b45309 55%, #d97706 100%)",
+    headerGradient:
+      "linear-gradient(115deg, #78350f 0%, #b45309 55%, #d97706 100%)",
     decorEmojis: ["🌵", "☀️", "🏛️", "✨"],
     pathStyle: "dunes",
     landmarks: [
@@ -160,7 +168,8 @@ const MAP_THEMES = {
     landAccent: "#fb923c",
     pathColor: "#7c2d12",
     pathDash: "#fde047",
-    headerGradient: "linear-gradient(115deg, #7f1d1d 0%, #c2410c 55%, #ea580c 100%)",
+    headerGradient:
+      "linear-gradient(115deg, #7f1d1d 0%, #c2410c 55%, #ea580c 100%)",
     decorEmojis: ["🌋", "🔥", "🪨", "⚡"],
     pathStyle: "loop",
     landmarks: [
@@ -188,49 +197,6 @@ const MAP_THEMES = {
 
 const THEME_KEYS = Object.keys(MAP_THEMES);
 
-const SAMPLE_QUIZZES = [
-  {
-    question: "25% của 200 bằng bao nhiêu?",
-    options: ["25", "40", "50", "75"],
-    correctIndex: 2,
-  },
-  {
-    question: "Số tiếp theo của dãy: 2, 6, 12, 20, ... là số nào?",
-    options: ["28", "30", "32", "36"],
-    correctIndex: 1,
-  },
-  {
-    question: "Hành tinh nào được mệnh danh là 'Hành tinh Đỏ'?",
-    options: ["Sao Kim", "Sao Hỏa", "Sao Mộc", "Sao Thổ"],
-    correctIndex: 1,
-  },
-  {
-    question: "Tổng các góc trong của một tam giác bằng bao nhiêu độ?",
-    options: ["90°", "180°", "270°", "360°"],
-    correctIndex: 1,
-  },
-  {
-    question: "Thủ đô của Nhật Bản là thành phố nào?",
-    options: ["Seoul", "Bangkok", "Tokyo", "Osaka"],
-    correctIndex: 2,
-  },
-  {
-    question: "Nước ở điều kiện tiêu chuẩn sôi ở nhiệt độ bao nhiêu độ C?",
-    options: ["90°C", "95°C", "100°C", "110°C"],
-    correctIndex: 2,
-  },
-  {
-    question: "Hình nào có 4 cạnh bằng nhau và 4 góc vuông?",
-    options: ["Hình chữ nhật", "Hình thoi", "Hình vuông", "Hình thang"],
-    correctIndex: 2,
-  },
-  {
-    question: "7 × 8 bằng bao nhiêu?",
-    options: ["54", "56", "58", "64"],
-    correctIndex: 1,
-  },
-];
-
 const CONFETTI_COLORS = [
   "#ef4444",
   "#f59e0b",
@@ -240,12 +206,18 @@ const CONFETTI_COLORS = [
   "#ec4899",
 ];
 
-function buildStages(themeId, count) {
+// Nhận câu hỏi từ Firestore thay vì SAMPLE_QUIZZES
+function buildStages(themeId, count, questions = []) {
   const theme = MAP_THEMES[themeId] || MAP_THEMES.tropical;
+
   return Array.from({ length: count }, (_, idx) => {
-    const quiz = SAMPLE_QUIZZES[idx % SAMPLE_QUIZZES.length];
-    const landmark = theme.landmarks[idx] || `Địa danh chặng ${idx + 1}`;
-    const reward = theme.rewards[idx] || `Phần thưởng chặng ${idx + 1}`;
+    const quiz = questions[idx] || null;
+
+    const landmark =
+      theme.landmarks[idx] || `Địa danh chặng ${idx + 1}`;
+
+    const reward =
+      theme.rewards[idx] || `Phần thưởng chặng ${idx + 1}`;
 
     return {
       id: idx + 1,
@@ -255,9 +227,11 @@ function buildStages(themeId, count) {
         idx === count - 1
           ? "Chặng cuối cùng! Hoàn thành để mở rương kho báu."
           : "Hoàn thành thử thách tại địa danh này để tiến bước tiếp.",
-      question: quiz.question,
-      options: quiz.options,
-      correctIndex: quiz.correctIndex,
+
+      question: quiz?.question || "",
+      options: quiz?.options || [],
+      correctIndex: quiz?.correctIndex ?? -1,
+
       reward,
     };
   });
@@ -271,6 +245,7 @@ function buildConfettiPieces(count = 64) {
     const size = 7 + (i % 6);
     const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
     const rotate = (i * 53) % 360;
+
     return { id: i, left, delay, duration, size, color, rotate };
   });
 }
@@ -279,24 +254,43 @@ export default function TreasureMapGame({
   open,
   onClose,
   initialStageCount = 4,
-  initialMode = "teacher", // "teacher" | "quiz"
+  initialMode = "teacher",
 }) {
+  const { config } = useConfig();
+
+  const selectedClass = config?.lop || "";
+  const subject = config?.mon || "Tin học";
+  const week = config?.tuan ?? 1;
   const [themeId, setThemeId] = useState("tropical");
+
   const [stageCount, setStageCount] = useState(
     Math.min(8, Math.max(3, initialStageCount))
   );
+
   const [mode, setMode] = useState(initialMode);
+
   const [stages, setStages] = useState(() =>
-    buildStages("tropical", Math.min(8, Math.max(3, initialStageCount)))
+    buildStages(
+      "tropical",
+      Math.min(8, Math.max(3, initialStageCount))
+    )
   );
+
   const [stepIndex, setStepIndex] = useState(0);
   const [completed, setCompleted] = useState(false);
-  const [feedback, setFeedback] = useState(null); // null | "wrong" | "correct"
+  const [feedback, setFeedback] = useState(null);
   const [wrongChoice, setWrongChoice] = useState(null);
   const [rewards, setRewards] = useState([]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [inspectedStage, setInspectedStage] = useState(null);
+
+  const [configOpen, setConfigOpen] = useState(false);
+
+  // Trạng thái tải câu hỏi từ Firestore
+  const [loadedQuestions, setLoadedQuestions] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [questionLoadError, setQuestionLoadError] = useState("");
 
   const audioCtxRef = useRef(null);
   const fanfarePlayedRef = useRef(false);
@@ -304,41 +298,87 @@ export default function TreasureMapGame({
   const theme = MAP_THEMES[themeId] || MAP_THEMES.tropical;
   const totalSteps = stages.length;
   const currentStage = stages[stepIndex] || stages[0];
-  const confettiPieces = useMemo(() => buildConfettiPieces(64), []);
-  const [configOpen, setConfigOpen] = useState(false);
+
+  const confettiPieces = useMemo(
+    () => buildConfettiPieces(64),
+    []
+  );
+
+  // Xác định lớp, tuần và document ID Firestore
+  const grade =
+    String(selectedClass).match(/\d+/)?.[0] || "";
+
+  const weekNumber =
+    String(week).match(/\d+/)?.[0] || "";
+
+  const className = grade ? `Lớp ${grade}` : "";
+
+  const documentId =
+    grade && subject && weekNumber
+      ? `quiz_${className}_${subject}_${weekNumber}`
+      : "";
 
   const getAudioContext = () => {
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext || window.webkitAudioContext;
+
       if (!AudioCtx) return null;
-      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+
+      if (
+        !audioCtxRef.current ||
+        audioCtxRef.current.state === "closed"
+      ) {
         audioCtxRef.current = new AudioCtx();
       }
+
       if (audioCtxRef.current.state === "suspended") {
         audioCtxRef.current.resume().catch(() => {});
       }
+
       return audioCtxRef.current;
     } catch {
       return null;
     }
   };
 
-  const playTone = (freq, endFreq, duration, type = "sine", peakGain = 0.22) => {
+  const playTone = (
+    freq,
+    endFreq,
+    duration,
+    type = "sine",
+    peakGain = 0.22
+  ) => {
     const ctx = getAudioContext();
     if (!ctx) return;
+
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+
     osc.type = type;
     osc.frequency.setValueAtTime(freq, now);
+
     if (endFreq && endFreq !== freq) {
-      osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+      osc.frequency.exponentialRampToValueAtTime(
+        endFreq,
+        now + duration
+      );
     }
+
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(peakGain, now + 0.025);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    gain.gain.exponentialRampToValueAtTime(
+      peakGain,
+      now + 0.025
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      now + duration
+    );
+
     osc.connect(gain);
     gain.connect(ctx.destination);
+
     osc.start(now);
     osc.stop(now + duration + 0.02);
   };
@@ -346,7 +386,11 @@ export default function TreasureMapGame({
   const playStepSound = () => {
     try {
       playTone(587.33, 880, 0.16, "triangle", 0.24);
-      setTimeout(() => playTone(880, 1046.5, 0.14, "sine", 0.18), 90);
+
+      setTimeout(
+        () => playTone(880, 1046.5, 0.14, "sine", 0.18),
+        90
+      );
     } catch {
       // Bỏ qua nếu trình duyệt chặn âm thanh
     }
@@ -362,10 +406,13 @@ export default function TreasureMapGame({
 
   const playVictorySound = () => {
     if (fanfarePlayedRef.current) return;
+
     fanfarePlayedRef.current = true;
+
     try {
       const ctx = getAudioContext();
       if (!ctx) return;
+
       const notes = [
         { f: 523.25, t: 0, d: 0.16 },
         { f: 659.25, t: 0.16, d: 0.16 },
@@ -374,17 +421,29 @@ export default function TreasureMapGame({
         { f: 783.99, t: 1.08, d: 0.15 },
         { f: 1046.5, t: 1.25, d: 0.65 },
       ];
+
       const now = ctx.currentTime;
+
       notes.forEach((n) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
+
         osc.type = "triangle";
         osc.frequency.setValueAtTime(n.f, now + n.t);
+
         gain.gain.setValueAtTime(0.001, now + n.t);
-        gain.gain.exponentialRampToValueAtTime(0.28, now + n.t + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
+        gain.gain.exponentialRampToValueAtTime(
+          0.28,
+          now + n.t + 0.03
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          now + n.t + n.d
+        );
+
         osc.connect(gain);
         gain.connect(ctx.destination);
+
         osc.start(now + n.t);
         osc.stop(now + n.t + n.d + 0.02);
       });
@@ -395,7 +454,10 @@ export default function TreasureMapGame({
 
   useEffect(() => {
     return () => {
-      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+      if (
+        audioCtxRef.current &&
+        audioCtxRef.current.state !== "closed"
+      ) {
         audioCtxRef.current.close().catch(() => {});
       }
     };
@@ -413,30 +475,180 @@ export default function TreasureMapGame({
     setRewards([]);
     setEditingTitle(false);
     setInspectedStage(null);
+
     fanfarePlayedRef.current = false;
+
     if (nextStages.length > 0) {
       setDraftTitle(nextStages[0].activityTitle);
     }
   };
 
+  // Tải câu hỏi từ Firestore khi chọn chế độ HS
+  useEffect(() => {
+    if (!open || mode !== "quiz") return;
+
+    let cancelled = false;
+
+    const fetchQuestions = async () => {
+      setLoadedQuestions([]);
+      setQuestionLoadError("");
+      setLoadingQuestions(true);
+
+      try {
+        if (!grade || !subject || !weekNumber) {
+          throw new Error(
+            "Không xác định được lớp, môn học hoặc tuần."
+          );
+        }
+
+        console.log(
+          "Đang tải câu hỏi từ Firestore:",
+          documentId
+        );
+
+        const gameRef = doc(db, "GAME", documentId);
+        const snapshot = await getDoc(gameRef);
+
+        if (cancelled) return;
+
+        if (!snapshot.exists()) {
+          throw new Error(
+            `Không tìm thấy bộ câu hỏi: ${subject} - Lớp ${grade} - Tuần ${weekNumber}`
+          );
+        }
+
+        const data = snapshot.data();
+
+        // Kiểm tra thông tin document
+        console.log("Dữ liệu GAME:", data);
+
+        // Đọc mảng questions từ Firestore
+        const questions = Array.isArray(data.questions)
+          ? data.questions
+              .map((item) => ({
+                question: String(item.question || "").trim(),
+
+                options: Array.isArray(item.options)
+                  ? item.options.map((option) =>
+                      String(option)
+                    )
+                  : [],
+
+                correctIndex: Number(item.correctIndex),
+              }))
+              .filter(
+                (item) =>
+                  item.question &&
+                  item.options.length >= 2 &&
+                  Number.isInteger(item.correctIndex) &&
+                  item.correctIndex >= 0 &&
+                  item.correctIndex < item.options.length
+              )
+          : [];
+
+        if (questions.length === 0) {
+          throw new Error(
+            "Không có câu hỏi hợp lệ trong document GAME."
+          );
+        }
+
+        if (cancelled) return;
+
+        // Số chặng lấy theo số câu hỏi thực tế,
+        // nhưng không vượt quá số chặng đã cấu hình.
+        const count = Math.min(
+          stageCount,
+          questions.length
+        );
+
+        const nextStages = buildStages(
+          themeId,
+          count,
+          questions
+        );
+
+        setLoadedQuestions(questions);
+        setStageCount(count);
+        setStages(nextStages);
+        resetProgress(nextStages);
+      } catch (error) {
+        console.error("Lỗi tải câu hỏi GAME:", error);
+
+        if (!cancelled) {
+          setQuestionLoadError(
+            error.message || "Không thể tải câu hỏi."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingQuestions(false);
+        }
+      }
+    };
+
+    fetchQuestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    mode,
+    documentId,
+    grade,
+    subject,
+    weekNumber,
+    themeId,
+    stageCount,
+  ]);
+
   const handleSelectTheme = (nextThemeId) => {
     setThemeId(nextThemeId);
-    const nextStages = buildStages(nextThemeId, stageCount);
+
+    const nextStages =
+      mode === "quiz"
+        ? buildStages(
+            nextThemeId,
+            Math.min(stageCount, loadedQuestions.length),
+            loadedQuestions
+          )
+        : buildStages(nextThemeId, stageCount);
+
     setStages(nextStages);
     resetProgress(nextStages);
   };
 
   const handleRandomTheme = () => {
-    const candidates = THEME_KEYS.filter((k) => k !== themeId);
+    const candidates = THEME_KEYS.filter(
+      (k) => k !== themeId
+    );
+
     const pick =
-      candidates[Math.floor(Math.random() * candidates.length)] || "tropical";
+      candidates[
+        Math.floor(Math.random() * candidates.length)
+      ] || "tropical";
+
     handleSelectTheme(pick);
   };
 
   const handleChangeStageCount = (nextCount) => {
-    const clamped = Math.min(8, Math.max(3, nextCount));
+    const clamped = Math.min(
+      8,
+      Math.max(3, nextCount)
+    );
+
     setStageCount(clamped);
-    const nextStages = buildStages(themeId, clamped);
+
+    const count =
+      mode === "quiz"
+        ? Math.min(clamped, loadedQuestions.length)
+        : clamped;
+
+    const nextStages =
+      mode === "quiz"
+        ? buildStages(themeId, count, loadedQuestions)
+        : buildStages(themeId, count);
+
     setStages(nextStages);
     resetProgress(nextStages);
   };
@@ -448,13 +660,18 @@ export default function TreasureMapGame({
 
   const advanceOrFinish = () => {
     const stageReward = currentStage.reward;
+
     setRewards((prev) =>
-      prev.includes(stageReward) ? prev : [...prev, stageReward]
+      prev.includes(stageReward)
+        ? prev
+        : [...prev, stageReward]
     );
 
     if (stepIndex + 1 < totalSteps) {
       const nextIdx = stepIndex + 1;
+
       playStepSound();
+
       setStepIndex(nextIdx);
       setFeedback(null);
       setWrongChoice(null);
@@ -475,16 +692,23 @@ export default function TreasureMapGame({
 
   const handleSelectQuizOption = (optIdx) => {
     if (feedback === "correct" || completed) return;
+
     if (optIdx === currentStage.correctIndex) {
       playStepSound();
+
       setFeedback("correct");
       setWrongChoice(null);
+
       const stageReward = currentStage.reward;
+
       setRewards((prev) =>
-        prev.includes(stageReward) ? prev : [...prev, stageReward]
+        prev.includes(stageReward)
+          ? prev
+          : [...prev, stageReward]
       );
     } else {
       playWrongSound();
+
       setFeedback("wrong");
       setWrongChoice(optIdx);
     }
@@ -492,13 +716,18 @@ export default function TreasureMapGame({
 
   const handleSaveTitle = (e) => {
     e.preventDefault();
+
     const trimmed = draftTitle.trim();
     if (!trimmed) return;
+
     setStages((prev) =>
       prev.map((st, i) =>
-        i === stepIndex ? { ...st, activityTitle: trimmed } : st
+        i === stepIndex
+          ? { ...st, activityTitle: trimmed }
+          : st
       )
     );
+
     setEditingTitle(false);
   };
 
@@ -506,28 +735,62 @@ export default function TreasureMapGame({
     setConfigOpen(true);
   };
 
-  const handleApplyConfig = ({ themeId, stageCount, mode }) => {
-    const nextStages = buildStages(themeId, stageCount);
+  const handleApplyConfig = ({
+    themeId,
+    stageCount,
+    mode,
+    questions,
+  }) => {
+    const nextCount = Math.min(
+      8,
+      Math.max(3, stageCount)
+    );
 
     setThemeId(themeId);
-    setStageCount(stageCount);
+    setStageCount(nextCount);
     setMode(mode);
-    setStages(nextStages);
 
-    resetProgress(nextStages);
+    // Chế độ GV giữ nguyên cách tạo chặng.
+    // Chế độ HS sẽ được nạp câu hỏi từ Firestore.
+    if (mode === "teacher") {
+      const nextStages = buildStages(
+        themeId,
+        nextCount
+      );
+
+      setStages(nextStages);
+      resetProgress(nextStages);
+    } else {
+      const nextStages = buildStages(
+        themeId,
+        nextCount,
+        []
+      );
+
+      setStages(nextStages);
+      setLoadedQuestions([]);
+      setQuestionLoadError("");
+      resetProgress(nextStages);
+    }
+
     setConfigOpen(false);
   };
 
   const progressPct = completed
     ? 100
     : Math.round(
-        ((stepIndex + (mode === "quiz" && feedback === "correct" ? 1 : 0)) /
+        ((stepIndex +
+          (mode === "quiz" && feedback === "correct"
+            ? 1
+            : 0)) /
           totalSteps) *
           100
       );
-  
+
   const activeStageForInfo =
-    inspectedStage !== null ? stages[inspectedStage] : currentStage;
+    inspectedStage !== null
+      ? stages[inspectedStage]
+      : currentStage;
 
   return (
     <>
@@ -535,7 +798,10 @@ export default function TreasureMapGame({
         open={open}
         onClose={(event, reason) => {
           // Không đóng khi bấm ra ngoài hoặc nhấn ESC
-          if (reason === "backdropClick" || reason === "escapeKeyDown") {
+          if (
+            reason === "backdropClick" ||
+            reason === "escapeKeyDown"
+          ) {
             return;
           }
 
@@ -565,8 +831,14 @@ export default function TreasureMapGame({
               pointerEvents: "none",
               overflow: "hidden",
               "@keyframes tmgConfettiFall": {
-                "0%": { transform: "translateY(-20px) rotate(0deg)", opacity: 1 },
-                "100%": { transform: "translateY(820px) rotate(720deg)", opacity: 0.15 },
+                "0%": {
+                  transform: "translateY(-20px) rotate(0deg)",
+                  opacity: 1,
+                },
+                "100%": {
+                  transform: "translateY(820px) rotate(720deg)",
+                  opacity: 0.15,
+                },
               },
             }}
           >
@@ -702,9 +974,13 @@ export default function TreasureMapGame({
               }}
             >
               {completed ? (
-                <EmojiEventsIcon sx={{ fontSize: { xs: 22, sm: 27 } }} />
+                <EmojiEventsIcon
+                  sx={{ fontSize: { xs: 22, sm: 27 } }}
+                />
               ) : (
-                <ExploreIcon sx={{ fontSize: { xs: 22, sm: 27 } }} />
+                <ExploreIcon
+                  sx={{ fontSize: { xs: 22, sm: 27 } }}
+                />
               )}
             </Box>
 
@@ -740,9 +1016,9 @@ export default function TreasureMapGame({
               >
                 {completed
                   ? `Đã hoàn thành ${totalSteps}/${totalSteps} chặng hoạt động`
-                  : `Chặng ${stepIndex + 1}/${totalSteps}: ${currentStage.landmark}`}
+                  : `Chặng ${stepIndex + 1}/${totalSteps}: ${currentStage?.landmark || ""}`}
               </Typography>
-            </Box>            
+            </Box>
           </Box>
 
           <Box
@@ -764,12 +1040,13 @@ export default function TreasureMapGame({
           sx={{
             px: { xs: 1.5, sm: 3 },
             py: { xs: 1, sm: 1.5 },
-            background: "linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)",
+            background:
+              "linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)",
             display: "flex",
             flexDirection: "column",
             gap: { xs: 1, sm: 1.5 },
           }}
-        >        
+        >
           <TreasureMapIllustration
             themeId={themeId}
             stages={stages}
@@ -783,14 +1060,35 @@ export default function TreasureMapGame({
 
           {/* TIẾN ĐỘ */}
           <Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.75 }}>
-              <Typography sx={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, color: "#64748b" }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                mb: 0.75,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: 1.2,
+                  color: "#64748b",
+                }}
+              >
                 TIẾN ĐỘ HÀNH TRÌNH
               </Typography>
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: "#2563eb" }}>
+
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: "#2563eb",
+                }}
+              >
                 {progressPct}%
               </Typography>
             </Box>
+
             <LinearProgress
               variant="determinate"
               value={progressPct}
@@ -817,22 +1115,49 @@ export default function TreasureMapGame({
                 borderRadius: 3,
                 textAlign: "center",
                 border: "2px solid #fbbf24",
-                background: "linear-gradient(135deg,#fffbeb,#fff7d6)",
+                background:
+                  "linear-gradient(135deg,#fffbeb,#fff7d6)",
               }}
             >
-              <EmojiEventsIcon sx={{ fontSize: 48, color: "#f59e0b" }} />
-              <Typography sx={{ mt: 0.5, fontSize: 20, fontWeight: 900, color: "#92400e" }}>
+              <EmojiEventsIcon
+                sx={{ fontSize: 48, color: "#f59e0b" }}
+              />
+
+              <Typography
+                sx={{
+                  mt: 0.5,
+                  fontSize: 20,
+                  fontWeight: 900,
+                  color: "#92400e",
+                }}
+              >
                 CHÚC MỪNG CẢ LỚP ĐÃ CHINH PHỤC KHO BÁU!
               </Typography>
-              <Typography sx={{ mt: 0.5, fontSize: 13.5, color: "#78350f" }}>
-                Hành trình trên <strong>{theme.name}</strong> đã hoàn tất{" "}
+
+              <Typography
+                sx={{
+                  mt: 0.5,
+                  fontSize: 13.5,
+                  color: "#78350f",
+                }}
+              >
+                Hành trình trên <strong>{theme.name}</strong> đã
+                hoàn tất{" "}
                 <strong>
                   {totalSteps}/{totalSteps} chặng
                 </strong>
                 .
               </Typography>
 
-              <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 1, mt: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: 1,
+                  mt: 2,
+                }}
+              >
                 {rewards.map((item) => (
                   <Chip
                     key={item}
@@ -859,11 +1184,13 @@ export default function TreasureMapGame({
                     textTransform: "none",
                     fontWeight: 800,
                     py: 1.2,
-                    background: "linear-gradient(135deg, #f59e0b, #ea580c)",
+                    background:
+                      "linear-gradient(135deg, #f59e0b, #ea580c)",
                   }}
                 >
-                  Chơi lại hành trình
+                  Chơi lại
                 </Button>
+
                 <Button
                   fullWidth
                   variant="outlined"
@@ -892,10 +1219,26 @@ export default function TreasureMapGame({
                 bgcolor: "#f8fafc",
               }}
             >
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1 }}>
-                <Typography sx={{ fontSize: 12, fontWeight: 900, color: "#0284c7", letterSpacing: 0.6 }}>
-                  📍 CHẶNG {stepIndex + 1}/{totalSteps} · {currentStage.landmark.toUpperCase()}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 900,
+                    color: "#0284c7",
+                    letterSpacing: 0.6,
+                  }}
+                >
+                  📍 CHẶNG {stepIndex + 1}/{totalSteps} ·{" "}
+                  {currentStage.landmark.toUpperCase()}
                 </Typography>
+
                 <Button
                   size="small"
                   variant="outlined"
@@ -904,13 +1247,25 @@ export default function TreasureMapGame({
                     setDraftTitle(currentStage.activityTitle);
                     setEditingTitle((prev) => !prev);
                   }}
-                  sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700, fontSize: 12, bgcolor: "#fff" }}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    bgcolor: "#fff",
+                  }}
                 >
                   {editingTitle ? "Hủy sửa" : "Sửa tên hoạt động"}
                 </Button>
               </Box>
 
-              <Typography sx={{ mt: 0.5, fontSize: 13, color: "#64748b" }}>
+              <Typography
+                sx={{
+                  mt: 0.5,
+                  fontSize: 13,
+                  color: "#64748b",
+                }}
+              >
                 {currentStage.clue}
               </Typography>
 
@@ -918,26 +1273,45 @@ export default function TreasureMapGame({
                 <Box
                   component="form"
                   onSubmit={handleSaveTitle}
-                  sx={{ display: "flex", gap: 1, mt: 1.5 }}
+                  sx={{
+                    display: "flex",
+                    gap: 1,
+                    mt: 1.5,
+                  }}
                 >
                   <TextField
                     size="small"
                     fullWidth
                     value={draftTitle}
-                    onChange={(e) => setDraftTitle(e.target.value)}
+                    onChange={(e) =>
+                      setDraftTitle(e.target.value)
+                    }
                     placeholder="Nhập tên hoạt động cho chặng này..."
                     autoFocus
                   />
+
                   <Button
                     type="submit"
                     variant="contained"
-                    sx={{ borderRadius: 2, textTransform: "none", fontWeight: 800, px: 2.5 }}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: "none",
+                      fontWeight: 800,
+                      px: 2.5,
+                    }}
                   >
                     Lưu
                   </Button>
                 </Box>
               ) : (
-                <Typography sx={{ mt: 1.25, fontSize: 17, fontWeight: 900, color: "#0f172a" }}>
+                <Typography
+                  sx={{
+                    mt: 1.25,
+                    fontSize: 17,
+                    fontWeight: 900,
+                    color: "#0f172a",
+                  }}
+                >
                   {currentStage.activityTitle}
                 </Typography>
               )}
@@ -954,8 +1328,10 @@ export default function TreasureMapGame({
                   textTransform: "none",
                   fontWeight: 800,
                   fontSize: 14,
-                  background: "linear-gradient(135deg, #16a34a, #059669)",
-                  boxShadow: "0 8px 18px rgba(22, 163, 74, 0.24)",
+                  background:
+                    "linear-gradient(135deg, #16a34a, #059669)",
+                  boxShadow:
+                    "0 8px 18px rgba(22, 163, 74, 0.24)",
                 }}
               >
                 {stepIndex + 1 < totalSteps
@@ -973,78 +1349,173 @@ export default function TreasureMapGame({
                 bgcolor: "#f8fafc",
               }}
             >
-              <Typography sx={{ fontSize: 12, fontWeight: 900, color: "#0284c7", letterSpacing: 0.6 }}>
-                📍 CHẶNG {stepIndex + 1}/{totalSteps} · {currentStage.landmark.toUpperCase()}
-              </Typography>
-              <Typography sx={{ mt: 0.5, fontSize: 13, color: "#64748b" }}>
-                {currentStage.clue}
-              </Typography>
-              <Typography sx={{ mt: 1.25, fontSize: 17, fontWeight: 900, color: "#0f172a" }}>
-                {currentStage.question}
-              </Typography>
-
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1.5 }}>
-                {currentStage.options.map((opt, idx) => {
-                  const isCorrectOpt = feedback === "correct" && idx === currentStage.correctIndex;
-                  const isWrongOpt = feedback === "wrong" && idx === wrongChoice;
-
-                  return (
-                    <Button
-                      key={opt}
-                      fullWidth
-                      variant="outlined"
-                      disabled={feedback === "correct"}
-                      onClick={() => handleSelectQuizOption(idx)}
-                      sx={{
-                        justifyContent: "flex-start",
-                        textAlign: "left",
-                        py: 1.3,
-                        px: 2,
-                        borderRadius: 2.5,
-                        textTransform: "none",
-                        fontWeight: 700,
-                        fontSize: 14,
-                        bgcolor: isCorrectOpt ? "#dcfce7" : isWrongOpt ? "#fee2e2" : "#fff",
-                        borderColor: isCorrectOpt ? "#22c55e" : isWrongOpt ? "#ef4444" : "#cbd5e1",
-                        color: isCorrectOpt ? "#166534" : isWrongOpt ? "#991b1b" : "#0f172a",
-                      }}
-                    >
-                      {String.fromCharCode(65 + idx)}. {opt}
-                    </Button>
-                  );
-                })}
-              </Box>
-
-              {feedback === "wrong" && (
-                <Typography sx={{ mt: 1.25, fontSize: 13, fontWeight: 800, color: "#dc2626" }}>
-                  Chưa chính xác! Hãy thử chọn lại đáp án khác nhé.
-                </Typography>
-              )}
-
-              {feedback === "correct" && (
-                <Box sx={{ mt: 1.5 }}>
-                  <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: "#15803d" }}>
-                    ✨ Chính xác! Bạn nhận được: {currentStage.reward}
-                  </Typography>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={advanceOrFinish}
+              {loadingQuestions ? (
+                <Box sx={{ py: 2, textAlign: "center" }}>
+                  <LinearProgress sx={{ mb: 1.5 }} />
+                  <Typography
                     sx={{
-                      mt: 1.5,
-                      py: 1.3,
-                      borderRadius: 2.5,
-                      textTransform: "none",
-                      fontWeight: 800,
-                      background: "linear-gradient(135deg, #16a34a, #059669)",
+                      fontSize: 13,
+                      color: "#64748b",
+                      fontWeight: 700,
                     }}
                   >
-                    {stepIndex + 1 < totalSteps
-                      ? "Đi tới chặng tiếp theo →"
-                      : "🎉 Mở rương kho báu (Hoàn thành)!"}
-                  </Button>
+                    Đang tải câu hỏi...
+                  </Typography>
                 </Box>
-              )}
+              ) : questionLoadError ? (
+                <Typography
+                  sx={{
+                    color: "#dc2626",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    textAlign: "center",
+                    py: 2,
+                  }}
+                >
+                  {questionLoadError}
+                </Typography>
+              ) : currentStage ? (
+                <>
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 900,
+                      color: "#0284c7",
+                      letterSpacing: 0.6,
+                    }}
+                  >
+                    📍 CHẶNG {stepIndex + 1}/{totalSteps} ·{" "}
+                    {currentStage.landmark.toUpperCase()}
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      mt: 0.5,
+                      fontSize: 13,
+                      color: "#64748b",
+                    }}
+                  >
+                    {currentStage.clue}
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      mt: 1.25,
+                      fontSize: 17,
+                      fontWeight: 900,
+                      color: "#0f172a",
+                    }}
+                  >
+                    {currentStage.question}
+                  </Typography>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1,
+                      mt: 1.5,
+                    }}
+                  >
+                    {currentStage.options.map((opt, idx) => {
+                      const isCorrectOpt =
+                        feedback === "correct" &&
+                        idx === currentStage.correctIndex;
+
+                      const isWrongOpt =
+                        feedback === "wrong" &&
+                        idx === wrongChoice;
+
+                      return (
+                        <Button
+                          key={`${idx}-${opt}`}
+                          fullWidth
+                          variant="outlined"
+                          disabled={feedback === "correct"}
+                          onClick={() =>
+                            handleSelectQuizOption(idx)
+                          }
+                          sx={{
+                            justifyContent: "flex-start",
+                            textAlign: "left",
+                            py: 1.3,
+                            px: 2,
+                            borderRadius: 2.5,
+                            textTransform: "none",
+                            fontWeight: 700,
+                            fontSize: 14,
+                            bgcolor: isCorrectOpt
+                              ? "#dcfce7"
+                              : isWrongOpt
+                                ? "#fee2e2"
+                                : "#fff",
+                            borderColor: isCorrectOpt
+                              ? "#22c55e"
+                              : isWrongOpt
+                                ? "#ef4444"
+                                : "#cbd5e1",
+                            color: isCorrectOpt
+                              ? "#166534"
+                              : isWrongOpt
+                                ? "#991b1b"
+                                : "#0f172a",
+                          }}
+                        >
+                          {String.fromCharCode(65 + idx)}. {opt}
+                        </Button>
+                      );
+                    })}
+                  </Box>
+
+                  {feedback === "wrong" && (
+                    <Typography
+                      sx={{
+                        mt: 1.25,
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: "#dc2626",
+                      }}
+                    >
+                      Chưa chính xác! Hãy thử chọn lại đáp án
+                      khác nhé.
+                    </Typography>
+                  )}
+
+                  {feedback === "correct" && (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Typography
+                        sx={{
+                          fontSize: 13.5,
+                          fontWeight: 800,
+                          color: "#15803d",
+                        }}
+                      >
+                        ✨ Chính xác! Bạn nhận được:{" "}
+                        {currentStage.reward}
+                      </Typography>
+
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={advanceOrFinish}
+                        sx={{
+                          mt: 1.5,
+                          py: 1.3,
+                          borderRadius: 2.5,
+                          textTransform: "none",
+                          fontWeight: 800,
+                          background:
+                            "linear-gradient(135deg, #16a34a, #059669)",
+                        }}
+                      >
+                        {stepIndex + 1 < totalSteps
+                          ? "Đi tới chặng tiếp theo →"
+                          : "🎉 Mở rương kho báu (Hoàn thành)!"}
+                      </Button>
+                    </Box>
+                  )}
+                </>
+              ) : null}
             </Paper>
           )}
         </DialogContent>
@@ -1056,6 +1527,11 @@ export default function TreasureMapGame({
         themeId={themeId}
         stageCount={stageCount}
         mode={mode}
+        questions={stages.map((stage) => ({
+          question: stage.question || "",
+          options: stage.options || ["", "", "", ""],
+          correctIndex: stage.correctIndex ?? 0,
+        }))}
         onApply={handleApplyConfig}
       />
     </>
