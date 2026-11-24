@@ -97,15 +97,18 @@ export default function DiceDialog({ open, onClose }) {
     6: "⚅",
   };
 
-  const handleClose = () => {
+  const handleClose = (event, reason) => {
+    // Không đóng khi bấm ra ngoài Dialog
+    if (reason === "backdropClick") return;
+
     if (rollRef.current) {
-      clearInterval(rollRef.current);
-      rollRef.current = null;
+        clearInterval(rollRef.current);
+        rollRef.current = null;
     }
 
     setRolling(false);
     onClose?.();
-  };
+    };
 
   return (
   <Dialog

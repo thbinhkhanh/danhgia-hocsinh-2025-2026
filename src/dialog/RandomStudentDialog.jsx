@@ -85,18 +85,27 @@ export default function RandomStudentDialog({
   // KHỞI TẠO DANH SÁCH HỌC SINH
   // =========================================
 
-  useEffect(() => {
-    if (open) {
-      const allIds = students.map((student, index) =>
-        getStudentId(student, index)
-      );
+  // =========================================
+  // KHỞI TẠO DANH SÁCH HỌC SINH
+  // =========================================
 
-      setSelectedStudentIds(allIds);
-      setSpinStudents([...students]);
-    } else {
+  useEffect(() => {
+    if (!open) {
       setStudentListAnchor(null);
+      return;
     }
-  }, [open]);
+
+    // Chờ danh sách học sinh được tải đầy đủ
+    if (!students || students.length === 0) return;
+
+    const allIds = students.map((student, index) =>
+      getStudentId(student, index)
+    );
+
+    // Tự động chọn tất cả học sinh
+    setSelectedStudentIds(allIds);
+    setSpinStudents([...students]);
+  }, [open, students]);
 
   // Danh sách học sinh được chọn
   const eligibleStudents = students.filter((student, index) =>
@@ -571,7 +580,9 @@ const launchCelebration = () => {
   // ĐÓNG DIALOG
   // =========================================
 
-  const handleClose = () => {
+  const handleClose = (event, reason) => {
+    if (reason === "backdropClick") return;
+
     if (spinningRef.current) return;
 
     stopSpinAudio();
@@ -587,7 +598,16 @@ const launchCelebration = () => {
 return (
   <Dialog
     open={open}
-    onClose={handleClose}
+    onClose={(event, reason) => {
+      if (
+        reason === "backdropClick" ||
+        reason === "escapeKeyDown"
+      ) {
+        return;
+      }
+      handleClose();
+    }}
+    disableEscapeKeyDown
     fullWidth
     maxWidth="md"
     TransitionComponent={Fade}
@@ -597,6 +617,11 @@ return (
         overflow: "hidden",
         background: "#fff",
         boxShadow: "0 25px 80px rgba(15,23,42,.25)",
+        position: "relative",
+        height: "94dvh",
+        maxHeight: "94dvh",
+        display: "flex",
+        flexDirection: "column",
       },
     }}
   >
@@ -713,7 +738,7 @@ return (
               whiteSpace: "nowrap",
             }}
           >
-            BỐC THĂM NGẪU NHIÊN
+            CHỌN HỌC SINH NGẪU NHIÊN
           </Typography>
 
           <Typography
@@ -1000,9 +1025,14 @@ return (
     <DialogContent
       sx={{
         px: { xs: 1.5, sm: 3 },
-        py: 3.5,
+        py: { xs: 1, sm: 1.5 },
         background:
           "linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)",
+        display: "flex",
+        flexDirection: "column",
+        gap: { xs: 1, sm: 1.5 },
+        flex: "1 1 0",
+        minHeight: 0,
         overflow: "hidden",
       }}
     >

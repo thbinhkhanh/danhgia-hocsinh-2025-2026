@@ -329,11 +329,19 @@ export default function CountdownTimerDialog({ open, onClose }) {
   // Vòng tròn xanh trong lúc đếm, đỏ khi kết thúc
   const progressColor = isFinished ? "#ef4444" : "#2563eb";
 
+  const handleClose = (event, reason) => {
+    // Không đóng khi bấm ra ngoài Dialog
+    if (reason === "backdropClick") return;
+
+    setRunning(false);
+    onClose?.();
+  };
+
   
 return (
   <Dialog
     open={open}
-    onClose={onClose}
+    onClose={handleClose}
     maxWidth="xs"
     fullWidth
     PaperProps={{
@@ -383,7 +391,7 @@ return (
       </Stack>
 
       <IconButton
-        onClick={onClose}
+        onClick={handleClose}
         sx={{
           color: "#ffffff",
           "&:hover": {

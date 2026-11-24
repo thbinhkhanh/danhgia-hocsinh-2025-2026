@@ -20,7 +20,6 @@ import SchoolRoundedIcon from "@mui/icons-material/SchoolRounded";
 import TimerRoundedIcon from "@mui/icons-material/TimerRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import RotateRightRoundedIcon from "@mui/icons-material/RotateRightRounded";
-import GraphicEqRoundedIcon from "@mui/icons-material/GraphicEqRounded";
 import QuizRoundedIcon from "@mui/icons-material/QuizRounded";
 import CasinoRoundedIcon from "@mui/icons-material/CasinoRounded";
 import HourglassEmptyRoundedIcon from "@mui/icons-material/HourglassEmptyRounded";
@@ -61,48 +60,189 @@ export default function Tools() {
   } = useSelectedClass();
 
   // =========================================
+  // XÁC ĐỊNH CÔNG CỤ ĐANG MỞ
+  // =========================================
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const activeToolId = searchParams.get("tool");
+
+  // =========================================
   // DANH SÁCH HỌC SINH
   // =========================================
 
   const [students, setStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-  // =========================================
-  // TRẠNG THÁI CÁC DIALOG
-  // =========================================
-
-  const [openTimerDialog, setOpenTimerDialog] = useState(false);
-  const [openRandomDialog, setOpenRandomDialog] = useState(false);
-  const [openGroupDialog, setOpenGroupDialog] = useState(false);
-  const [openDiceDialog, setOpenDiceDialog] = useState(false);
-  const [openWheelDialog, setOpenWheelDialog] = useState(false);
-  const [openNoiseDialog, setOpenNoiseDialog] = useState(false);
-  const [openQuestionDialog, setOpenQuestionDialog] = useState(false);
-  const [openStopwatchDialog, setOpenStopwatchDialog] = useState(false);
-  const [openTreasureMap, setOpenTreasureMap] = useState(false);
-  const [openQuickQuestion, setOpenQuickQuestion] = useState(false);
-  const [openLeaderboard, setOpenLeaderboard] = useState(false);
-  const [openKnowledgeArena, setOpenKnowledgeArena] = useState(false);
-
   const namHocKey = (config?.namHoc || "2025-2026").replace(/-/g, "_");
 
   // =========================================
-  // KIỂM TRA CÓ CÔNG CỤ ĐANG MỞ
+  // DANH SÁCH CÁC NHÓM CÔNG CỤ
   // =========================================
 
-  const isAnyToolOpen =
-    openTimerDialog ||
-    openRandomDialog ||
-    openGroupDialog ||
-    openDiceDialog ||
-    openWheelDialog ||
-    openNoiseDialog ||
-    openQuestionDialog ||
-    openStopwatchDialog ||
-    openTreasureMap ||
-    openQuickQuestion ||
-    openLeaderboard ||
-    openKnowledgeArena;
+  const toolGroups = [
+    {
+      title: "TỔ CHỨC LỚP HỌC",
+      color: "#1976d2",
+      tools: [
+        {
+          id: "random-student",
+          title: "Gọi tên ngẫu nhiên",
+          description: "Chọn ngẫu nhiên một học sinh trong lớp",
+          icon: <SchoolRoundedIcon />,
+          iconColor: "#2563EB",
+          iconBg: "#DBEAFE",
+          needStudents: true,
+        },
+        {
+          id: "lucky-wheel",
+          title: "Vòng quay may mắn",
+          description: "Quay vòng tròn để chọn học sinh",
+          icon: <RotateRightRoundedIcon />,
+          iconColor: "#D97706",
+          iconBg: "#FEF3C7",
+          needStudents: true,
+        },
+      ],
+    },
+
+    {
+      title: "TRÒ CHƠI HỌC TẬP",
+      color: "#7C3AED",
+      tools: [
+        {
+          id: "treasure-map",
+          title: "Đi tìm kho báu",
+          description:
+            "Tổ chức trò chơi khám phá và chinh phục kho báu kiến thức",
+          icon: <AutoAwesomeIcon />,
+          iconColor: "#7C3AED",
+          iconBg: "#EDE9FE",
+        },
+        {
+          id: "question-draw",
+          title: "Bốc thăm câu hỏi",
+          description: "Nhập câu hỏi và chọn ngẫu nhiên",
+          icon: <QuizRoundedIcon />,
+          iconColor: "#7C3AED",
+          iconBg: "#EDE9FE",
+        },
+        {
+          id: "leaderboard",
+          title: "Bảng thi đua học tập",
+          description: "Cộng điểm, trừ điểm và xếp hạng học sinh",
+          icon: <EmojiEventsRoundedIcon />,
+          iconColor: "#D97706",
+          iconBg: "#FEF3C7",
+        },
+        {
+          id: "knowledge-arena",
+          title: "Đấu trường kiến thức",
+          description: "Thi trắc nghiệm, tính điểm và công bố kết quả",
+          icon: <SchoolRoundedIcon />,
+          iconColor: "#7C3AED",
+          iconBg: "#EDE9FE",
+        },
+      ],
+    },
+
+    {
+      title: "QUẢN LÝ HOẠT ĐỘNG",
+      color: "#00897b",
+      tools: [
+        {
+          id: "countdown",
+          title: "Đồng hồ đếm ngược",
+          description: "Thiết lập thời gian cho hoạt động",
+          icon: <HourglassEmptyRoundedIcon />,
+          iconColor: "#EA580C",
+          iconBg: "#FFEDD5",
+        },
+        {
+          id: "stopwatch",
+          title: "Bấm giờ hoạt động",
+          description: "Theo dõi thời gian thực hiện nhiệm vụ",
+          icon: <TimerRoundedIcon />,
+          iconColor: "#0D9488",
+          iconBg: "#CCFBF1",
+        },
+        {
+          id: "dice",
+          title: "Xúc xắc ngẫu nhiên",
+          description: "Tung xúc xắc để chọn số ngẫu nhiên",
+          icon: <CasinoRoundedIcon />,
+          iconColor: "#4F46E5",
+          iconBg: "#E0E7FF",
+        },
+        {
+          id: "group-students",
+          title: "Chia nhóm học sinh",
+          description: "Tự động chia học sinh thành các nhóm",
+          icon: <GroupsRoundedIcon />,
+          iconColor: "#0891B2",
+          iconBg: "#CFFAFE",
+          needStudents: true,
+        },
+      ],
+    },
+  ];
+
+  // =========================================
+  // TÌM TÊN CÔNG CỤ
+  // =========================================
+
+  const allTools = toolGroups.flatMap((group) => group.tools);
+
+  const activeTool = allTools.find(
+    (tool) => tool.id === activeToolId
+  );
+
+  // =========================================
+  // ĐẶT TÊN TAB TRÌNH DUYỆT
+  // =========================================
+
+  useEffect(() => {
+    document.title = activeToolId
+      ? activeTool?.title || "Công cụ giảng dạy"
+      : "Công cụ hỗ trợ giảng dạy";
+  }, [activeToolId, activeTool]);
+
+  // =========================================
+  // MỞ CÔNG CỤ TRONG TAB MỚI
+  // =========================================
+
+  const openToolInNewTab = (toolId) => {
+    const url = new URL(window.location.href);
+
+    url.searchParams.set("tool", toolId);
+
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
+  };
+
+  // =========================================
+  // ĐÓNG CÔNG CỤ
+  // =========================================
+
+  const handleToolClose = () => {
+    // Đóng tab công cụ hiện tại
+    window.close();
+
+    // Nếu trình duyệt không cho phép đóng tab,
+    // chuyển về trang danh sách công cụ.
+    setTimeout(() => {
+      if (!window.closed) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("tool");
+
+        navigate(
+          {
+            pathname: url.pathname,
+            search: url.search,
+          },
+          { replace: true }
+        );
+      }
+    }, 100);
+  };
 
   // =========================================
   // TỰ ĐỘNG CHỌN LỚP MẶC ĐỊNH
@@ -118,7 +258,6 @@ export default function Tools() {
   // LẤY DANH SÁCH HỌC SINH
   // =========================================
 
-  
   useEffect(() => {
     let isMounted = true;
 
@@ -132,18 +271,22 @@ export default function Tools() {
       setLoadingStudents(true);
 
       try {
-        // 1. Ưu tiên dữ liệu trong Context nếu có học sinh
+        // 1. Ưu tiên dữ liệu trong Context
         const cachedStudents = studentData?.[selectedClass];
 
-        if (Array.isArray(cachedStudents) && cachedStudents.length > 0) {
+        if (
+          Array.isArray(cachedStudents) &&
+          cachedStudents.length > 0
+        ) {
           if (isMounted) {
             setStudents(cachedStudents);
             setLoadingStudents(false);
           }
+
           return;
         }
 
-        // 2. Nếu Context chưa có dữ liệu, lấy từ Firestore
+        // 2. Context chưa có dữ liệu thì lấy từ Firestore
         const classKey = selectedClass.replace(/\./g, "_");
 
         const studentsRef = collection(
@@ -168,22 +311,27 @@ export default function Tools() {
 
         // 3. Sắp xếp theo tên học sinh
         studentList.sort((a, b) => {
-          const nameA = a.hoVaTen.trim().split(" ").slice(-1)[0] || "";
-          const nameB = b.hoVaTen.trim().split(" ").slice(-1)[0] || "";
+          const nameA =
+            a.hoVaTen.trim().split(" ").slice(-1)[0] || "";
+
+          const nameB =
+            b.hoVaTen.trim().split(" ").slice(-1)[0] || "";
 
           return nameA.localeCompare(nameB, "vi");
         });
 
         // 4. Đánh số thứ tự
-        const formattedStudents = studentList.map((student, index) => ({
-          ...student,
-          stt: student.stt || index + 1,
-        }));
+        const formattedStudents = studentList.map(
+          (student, index) => ({
+            ...student,
+            stt: student.stt || index + 1,
+          })
+        );
 
         if (isMounted) {
           setStudents(formattedStudents);
 
-          // 5. Lưu vào Context để tái sử dụng
+          // 5. Lưu vào Context
           setStudentData((prev) => ({
             ...prev,
             [selectedClass]: formattedStudents,
@@ -207,665 +355,931 @@ export default function Tools() {
     return () => {
       isMounted = false;
     };
-  }, [selectedClass, namHocKey, studentData, setStudentData]);
-
-
-  // =========================================
-  // DANH SÁCH CÁC NHÓM CÔNG CỤ
-  // =========================================
-
-  const toolGroups = [
-    {
-      title: "TỔ CHỨC LỚP HỌC",
-      color: "#1976d2",
-      tools: [
-        {
-          title: "Gọi tên ngẫu nhiên",
-          description: "Chọn ngẫu nhiên một học sinh trong lớp",
-          icon: <SchoolRoundedIcon />,
-          iconColor: "#2563EB",
-          iconBg: "#DBEAFE",
-          action: () => setOpenRandomDialog(true),
-          needStudents: true,
-        },
-        {
-          title: "Vòng quay may mắn",
-          description: "Quay vòng tròn để chọn học sinh",
-          icon: <RotateRightRoundedIcon />,
-          iconColor: "#D97706",
-          iconBg: "#FEF3C7",
-          action: () => setOpenWheelDialog(true),
-          needStudents: true,
-        },         
-      ],
-    },
-
-    {
-      title: "TRÒ CHƠI HỌC TẬP",
-      color: "#7C3AED",
-      tools: [
-        {
-          title: "Đi tìm kho báu",
-          description: "Tổ chức trò chơi khám phá và chinh phục kho báu kiến thức",
-          icon: <AutoAwesomeIcon />,
-          iconColor: "#7C3AED",
-          iconBg: "#EDE9FE",
-          action: () => setOpenTreasureMap(true),
-        },
-
-        {
-          title: "Bốc thăm câu hỏi",
-          description: "Nhập câu hỏi và chọn ngẫu nhiên",
-          icon: <QuizRoundedIcon />,
-          iconColor: "#7C3AED",
-          iconBg: "#EDE9FE",
-          action: () => setOpenQuestionDialog(true),
-        },        
-        /*{
-          title: "Thẻ câu hỏi nhanh",
-          description: "Tạo thẻ, rút thăm câu hỏi và xem đáp án",
-          icon: <QuizRoundedIcon />,
-          iconColor: "#2563EB",
-          iconBg: "#DBEAFE",
-          action: () => setOpenQuickQuestion(true),
-        },*/
-        {
-          title: "Bảng thi đua học tập",
-          description: "Cộng điểm, trừ điểm và xếp hạng học sinh",
-          icon: <EmojiEventsRoundedIcon />,
-          iconColor: "#D97706",
-          iconBg: "#FEF3C7",
-          action: () => setOpenLeaderboard(true),
-        },
-        {
-          title: "Đấu trường kiến thức",
-          description: "Thi trắc nghiệm, tính điểm và công bố kết quả",
-          icon: <SchoolRoundedIcon />,
-          iconColor: "#7C3AED",
-          iconBg: "#EDE9FE",
-          action: () => setOpenKnowledgeArena(true),
-        },
-
-      ],
-    },
-
-    {
-      title: "QUẢN LÝ HOẠT ĐỘNG",
-      color: "#00897b",
-      tools: [
-        {
-          title: "Đồng hồ đếm ngược",
-          description: "Thiết lập thời gian cho hoạt động",
-          icon: <HourglassEmptyRoundedIcon />,
-          iconColor: "#EA580C",
-          iconBg: "#FFEDD5",
-          action: () => setOpenTimerDialog(true),
-        },
-        {
-          title: "Bấm giờ hoạt động",
-          description: "Theo dõi thời gian thực hiện nhiệm vụ",
-          icon: <TimerRoundedIcon />,
-          iconColor: "#0D9488",
-          iconBg: "#CCFBF1",
-          action: () => setOpenStopwatchDialog(true),
-        },
-        {
-          title: "Xúc xắc ngẫu nhiên",
-          description: "Tung xúc xắc để chọn số ngẫu nhiên",
-          icon: <CasinoRoundedIcon />,
-          iconColor: "#4F46E5",
-          iconBg: "#E0E7FF",
-          action: () => setOpenDiceDialog(true),
-        },
-         {
-          title: "Chia nhóm học sinh",
-          description: "Tự động chia học sinh thành các nhóm",
-          icon: <GroupsRoundedIcon />,
-          iconColor: "#0891B2",
-          iconBg: "#CFFAFE",
-          action: () => setOpenGroupDialog(true),
-          needStudents: true,
-        }, 
-        /*{
-          title: "Đo âm lượng lớp học",
-          description: "Theo dõi mức độ âm thanh trong lớp",
-          icon: <GraphicEqRoundedIcon />,
-          iconColor: "#DB2777",
-          iconBg: "#FCE7F3",
-          action: () => setOpenNoiseDialog(true),
-        },*/    
-      ],
-    },
-  ];
+  }, [
+    selectedClass,
+    namHocKey,
+    studentData,
+    setStudentData,
+  ]);
 
   // =========================================
-  // GIAO DIỆN CHÍNH
+  // HIỂN THỊ CÔNG CỤ
   // =========================================
 
-  return (
-    <>
-      {/* ===================================== */}
-      {/* TRANG TOOLS - ẨN KHI MỞ CÔNG CỤ */}
-      {/* ===================================== */}
+  const renderTool = (toolId) => {
+    switch (toolId) {
+      case "countdown":
+        return (
+          <CountdownTimerDialog
+            open={true}
+            onClose={handleToolClose}
+          />
+        );
 
-      {!isAnyToolOpen && (
+      case "random-student":
+        return (
+          <RandomStudentDialog
+            open={true}
+            onClose={handleToolClose}
+            students={students}
+          />
+        );
+
+      case "group-students":
+        return (
+          <GroupStudentsDialog
+            open={true}
+            onClose={handleToolClose}
+            students={students}
+          />
+        );
+
+      case "dice":
+        return (
+          <DiceDialog
+            open={true}
+            onClose={handleToolClose}
+          />
+        );
+
+      case "lucky-wheel":
+        return (
+          <LuckyWheelDialog
+            open={true}
+            onClose={handleToolClose}
+            students={students}
+          />
+        );
+
+      case "noise":
+        return (
+          <NoiseMeterDialog
+            open={true}
+            onClose={handleToolClose}
+          />
+        );
+
+      case "question-draw":
+        return (
+          <QuestionDrawDialog
+            open={true}
+            onClose={handleToolClose}
+            selectedClass={selectedClass}
+            week={config?.tuan}
+          />
+        );
+
+      case "stopwatch":
+        return (
+          <StopwatchDialog
+            open={true}
+            onClose={handleToolClose}
+          />
+        );
+
+      case "treasure-map":
+        return (
+          <TreasureMapGame
+            open={true}
+            onClose={handleToolClose}
+          />
+        );
+
+      case "quick-question":
+        return (
+          <QuickQuestionDialog
+            open={true}
+            onClose={handleToolClose}
+          />
+        );
+
+      case "leaderboard":
+        return (
+          <LearningLeaderboardDialog
+            open={true}
+            onClose={handleToolClose}
+            students={students}
+          />
+        );
+
+      case "knowledge-arena":
+        return (
+          <KnowledgeArenaDialog
+            open={true}
+            onClose={handleToolClose}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // =========================================
+  // TAB CÔNG CỤ RIÊNG
+  // =========================================
+
+  if (activeToolId) {
+    if (!activeTool) {
+      return (
         <Box
           sx={{
-            minHeight: "100%",
-            width: "100%",
-            maxWidth: "100%",
-            boxSizing: "border-box",
-            overflowX: "hidden",
-            p: { xs: 1.5, sm: 2.5 },
-            background: "#f5f7fb",
+            minHeight: "100vh",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            flexDirection: "column",
+            gap: 2,
           }}
         >
-          <Paper
-            elevation={0}
+          <Typography fontWeight={700}>
+            Không tìm thấy công cụ
+          </Typography>
+
+          <Typography color="text.secondary">
+            Công cụ này không tồn tại hoặc đã được thay đổi.
+          </Typography>
+
+          <Box
+            component="button"
+            onClick={handleToolClose}
             sx={{
-              maxWidth: 760,
-              mx: "auto",
-              borderRadius: 3,
-              overflow: "hidden",
-              border: "1px solid #e5eaf2",
-              background: "#fff",
+              border: 0,
+              borderRadius: 2,
+              px: 2.5,
+              py: 1,
+              color: "#fff",
+              background: "#1976d2",
+              cursor: "pointer",
             }}
           >
-            {/* HEADER */}
+            Quay lại
+          </Box>
+        </Box>
+      );
+    }
+
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          minHeight: "100vh",
+          height: "100vh",
+          overflow: "hidden",
+          position: "relative",
+          background: "#fff",
+        }}
+      >
+        {renderTool(activeToolId)}
+      </Box>
+    );
+  }
+
+  // =========================================
+  // GIAO DIỆN DANH SÁCH CÔNG CỤ
+  // =========================================
+
+  
+  // =========================================
+  // GIAO DIỆN DANH SÁCH CÔNG CỤ
+  // =========================================
+
+  const totalTools = toolGroups.reduce(
+    (total, group) => total + group.tools.length,
+    0
+  );
+
+  const availableTools = allTools.filter(
+    (tool) =>
+      !tool.needStudents ||
+      (selectedClass && students.length > 0 && !loadingStudents)
+  ).length;
+
+  return (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        width: "100%",
+        boxSizing: "border-box",
+        overflowX: "hidden",
+        p: { xs: 1.5, sm: 2.5, md: 3 },
+        background:
+          "radial-gradient(circle at 5% 0%, #dbeafe 0, transparent 28%), radial-gradient(circle at 95% 15%, #ede9fe 0, transparent 25%), #f4f7fc",
+      }}
+    >
+      <Box
+        sx={{
+          maxWidth: { xs: "100%", sm: 760, md: 820, lg: 860 },
+          mx: "auto",
+        }}
+      >
+        {/* ================= HEADER ================= */}
+        <Paper
+          elevation={0}
+          sx={{
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: { xs: 3, sm: 4 },
+            color: "#fff",
+            background:
+              "linear-gradient(120deg, #102b57 0%, #1555a5 52%, #287de0 100%)",
+            boxShadow: "0 12px 35px rgba(21, 78, 150, 0.20)",
+          }}
+        >
+          {/* HỌA TIẾT TRANG TRÍ */}
+          <Box
+            sx={{
+              position: "absolute",
+              width: 260,
+              height: 260,
+              borderRadius: "50%",
+              right: -75,
+              top: -145,
+              background: "rgba(255,255,255,0.09)",
+            }}
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              width: 190,
+              height: 190,
+              borderRadius: "50%",
+              right: 100,
+              bottom: -145,
+              background: "rgba(255,255,255,0.07)",
+            }}
+          />
+
+          <Box
+            sx={{
+              position: "relative",
+              zIndex: 1,
+              px: { xs: 2, sm: 3.5, md: 4 },
+              py: { xs: 2.5, sm: 3.5 },
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 2,
+            }}
+          >
             <Box
               sx={{
-                px: { xs: 2, sm: 3 },
-                py: 2.5,
-                background: "linear-gradient(135deg, #1565c0, #1976d2)",
-                color: "#fff",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                gap: 2,
+                gap: { xs: 1.5, sm: 2.2 },
+                minWidth: 0,
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "rgba(255,255,255,0.18)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <AutoAwesomeIcon sx={{ fontSize: 27 }} />
-                </Box>
-
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography
-                    sx={{
-                      fontSize: { xs: 18, sm: 21 },
-                      fontWeight: 800,
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    CÔNG CỤ HỖ TRỢ GIẢNG DẠY
-                  </Typography>
-
-                  <Typography
-                    sx={{
-                      fontSize: 12,
-                      opacity: 0.9,
-                      mt: 0.4,
-                    }}
-                  >
-                    Các tiện ích hỗ trợ tổ chức hoạt động học tập
-                  </Typography>
-                </Box>
+              <Box
+                sx={{
+                  width: { xs: 48, sm: 62 },
+                  height: { xs: 48, sm: 62 },
+                  flexShrink: 0,
+                  borderRadius: 3,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "rgba(255,255,255,0.16)",
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  boxShadow: "0 5px 18px rgba(0,0,0,0.12)",
+                  "& svg": {
+                    fontSize: { xs: 29, sm: 36 },
+                  },
+                }}
+              >
+                <AutoAwesomeIcon />
               </Box>
 
-              <Tooltip title="Đóng">
-                <IconButton
-                  onClick={() => navigate(-1)}
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
                   sx={{
-                    color: "#fff",
-                    background: "rgba(255,255,255,0.12)",
-                    flexShrink: 0,
-                    "&:hover": {
-                      background: "rgba(255,255,255,0.25)",
-                    },
+                    fontSize: { xs: 17, sm: 23, md: 26 },
+                    fontWeight: 900,
+                    letterSpacing: { xs: 0, sm: 0.4 },
+                    lineHeight: 1.3,
                   }}
                 >
-                  <CloseIcon />
-                </IconButton>
-              </Tooltip>
+                  CÔNG CỤ HỖ TRỢ GIẢNG DẠY
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 0.7,
+                    fontSize: { xs: 11.5, sm: 13 },
+                    color: "rgba(255,255,255,0.82)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Trợ thủ thông minh cho các hoạt động dạy và học
+                </Typography>
+              </Box>
             </Box>
 
-            {/* NỘI DUNG */}
-            <Box sx={{ p: { xs: 1.5, sm: 2.5 } }}>
-              {/* CHỌN LỚP */}
-              <Paper
-                elevation={0}
+            <Tooltip title="Đóng">
+              <IconButton
+                onClick={() => navigate(-1)}
                 sx={{
-                  p: { xs: 1.5, sm: 2 },
-                  mb: 2,
-                  border: "1px solid #e2e8f0",
+                  color: "#fff",
+                  width: 38,
+                  height: 38,
+                  flexShrink: 0,
                   borderRadius: 2.5,
-                  background: "linear-gradient(135deg, #f8fbff, #ffffff)",
+                  background: "rgba(255,255,255,0.13)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  "&:hover": {
+                    background: "rgba(255,255,255,0.25)",
+                  },
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {/* THỐNG KÊ NHANH */}
+          <Box
+            sx={{
+              position: "relative",
+              zIndex: 1,
+              px: { xs: 2, sm: 3.5, md: 4 },
+              pb: { xs: 2.5, sm: 3 },
+              display: "flex",
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
+            {[
+              {
+                icon: <AutoAwesomeIcon />,
+                value: totalTools,
+                label: "Công cụ",
+              },
+              {
+                icon: <GroupsRoundedIcon />,
+                value: students.length,
+                label: "Học sinh",
+              },
+              {
+                icon: <SchoolRoundedIcon />,
+                value: selectedClass ? `Lớp ${selectedClass}` : "Chưa chọn",
+                label: "Lớp học",
+              },
+            ].map((item, index) => (
+              <Box
+                key={index}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  px: 1.5,
+                  py: 0.9,
+                  borderRadius: 2.5,
+                  background: "rgba(255,255,255,0.13)",
+                  border: "1px solid rgba(255,255,255,0.13)",
                 }}
               >
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1.5,
-                    flexWrap: "wrap",
-                    mb: 1.2,
+                    color: "#bfdbfe",
+                    "& svg": { fontSize: 19 },
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <SchoolRoundedIcon
-                      sx={{ color: "#1976d2", fontSize: 21 }}
-                    />
-
-                    <Typography
-                      sx={{
-                        fontSize: 14,
-                        fontWeight: 800,
-                        color: "#26364a",
-                      }}
-                    >
-                      LỚP ĐANG SỬ DỤNG
-                    </Typography>
-                  </Box>
-
-                  {selectedClass && (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.7,
-                        px: 1.2,
-                        py: 0.55,
-                        borderRadius: 5,
-                        background: "#eaf3ff",
-                        color: "#1565c0",
-                      }}
-                    >
-                      <GroupsRoundedIcon sx={{ fontSize: 17 }} />
-
-                      <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
-                        {loadingStudents
-                          ? "Đang tải..."
-                          : `${students.length} HS`}
-                      </Typography>
-                    </Box>
-                  )}
+                  {item.icon}
                 </Box>
 
-                <FormControl fullWidth size="small">
-                  <InputLabel id="tools-class-label">
-                    Chọn lớp
-                  </InputLabel>
-
-                  <Select
-                    labelId="tools-class-label"
-                    value={selectedClass || ""}
-                    label="Chọn lớp"
-                    onChange={(event) =>
-                      setSelectedClass(event.target.value)
-                    }
+                <Box>
+                  <Typography
                     sx={{
-                      background: "#fff",
-                      borderRadius: 2,
-                      fontWeight: 700,
-                      color: "#1e3a5f",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#dbe5f1",
-                      },
+                      fontSize: 14,
+                      fontWeight: 900,
+                      lineHeight: 1.2,
                     }}
                   >
-                    {classes.map((className) => (
-                      <MenuItem key={className} value={className}>
-                        Lớp {className}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Paper>
+                    {item.value}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 10,
+                      color: "rgba(255,255,255,0.72)",
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
 
-              {/* ĐANG TẢI */}
-              {loadingStudents && (
+        {/* ================= CHỌN LỚP ================= */}
+        <Paper
+          elevation={0}
+          sx={{
+            mt: 2.5,
+            p: { xs: 2, sm: 2.5 },
+            borderRadius: 3,
+            border: "1px solid #e3eaf4",
+            background: "#fff",
+            boxShadow: "0 5px 20px rgba(30,64,110,0.045)",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1.5,
+              flexWrap: "wrap",
+              mb: 1.7,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 2.2,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#2563eb",
+                  background: "#eff6ff",
+                }}
+              >
+                <SchoolRoundedIcon />
+              </Box>
+
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: 14,
+                    fontWeight: 900,
+                    color: "#1e293b",
+                  }}
+                >
+                  LỚP HỌC ĐANG SỬ DỤNG
+                </Typography>
+                <Typography
+                  sx={{ fontSize: 11.5, color: "#94a3b8", mt: 0.2 }}
+                >
+                  Chọn lớp để sử dụng dữ liệu học sinh tương ứng
+                </Typography>
+              </Box>
+            </Box>
+
+            {selectedClass && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.7,
+                  px: 1.3,
+                  py: 0.7,
+                  borderRadius: 2,
+                  color: "#16704b",
+                  background: "#ecfdf5",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                {loadingStudents ? (
+                  <CircularProgress
+                    size={13}
+                    sx={{ color: "#16a34a" }}
+                  />
+                ) : (
+                  <GroupsRoundedIcon sx={{ fontSize: 17 }} />
+                )}
+
+                <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
+                  {loadingStudents
+                    ? "Đang tải dữ liệu"
+                    : `${students.length} học sinh`}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
+          <FormControl fullWidth size="small">
+            <InputLabel id="tools-class-label">Chọn lớp</InputLabel>
+
+            <Select
+              labelId="tools-class-label"
+              value={selectedClass || ""}
+              label="Chọn lớp"
+              onChange={(event) =>
+                setSelectedClass(event.target.value)
+              }
+              sx={{
+                borderRadius: 2.5,
+                background: "#f8fafc",
+                fontWeight: 800,
+                color: "#1e3a5f",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#dbe5f1",
+                },
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#3b82f6",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#2563eb",
+                },
+              }}
+            >
+              {classes.map((className) => (
+                <MenuItem key={className} value={className}>
+                  Lớp {className}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Paper>
+
+        {/* ================= TRẠNG THÁI DỮ LIỆU ================= */}
+        {loadingStudents && (
+          <Paper
+            elevation={0}
+            sx={{
+              mt: 2,
+              p: 2.5,
+              borderRadius: 3,
+              border: "1px solid #dbeafe",
+              background: "#eff6ff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1.5,
+            }}
+          >
+            <CircularProgress size={21} />
+            <Typography
+              sx={{ fontSize: 13, color: "#2563eb", fontWeight: 700 }}
+            >
+              Đang tải danh sách học sinh...
+            </Typography>
+          </Paper>
+        )}
+
+        {!selectedClass && !loadingStudents && (
+          <Paper
+            elevation={0}
+            sx={{
+              mt: 2,
+              p: 3,
+              textAlign: "center",
+              borderRadius: 3,
+              border: "1px dashed #cbd5e1",
+              background: "rgba(255,255,255,0.75)",
+            }}
+          >
+            <SchoolRoundedIcon
+              sx={{ fontSize: 42, color: "#94a3b8", mb: 0.7 }}
+            />
+            <Typography
+              sx={{ fontSize: 14, fontWeight: 800, color: "#475569" }}
+            >
+              Chưa có lớp được chọn
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: "#94a3b8", mt: 0.5 }}>
+              Hãy chọn lớp để bắt đầu sử dụng các công cụ.
+            </Typography>
+          </Paper>
+        )}
+
+        {selectedClass &&
+          !loadingStudents &&
+          students.length === 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                mt: 2,
+                p: 2.5,
+                textAlign: "center",
+                borderRadius: 3,
+                border: "1px solid #fed7aa",
+                background: "#fff7ed",
+              }}
+            >
+              <GroupsRoundedIcon
+                sx={{ fontSize: 36, color: "#ea580c", mb: 0.5 }}
+              />
+              <Typography
+                sx={{ fontSize: 14, fontWeight: 800, color: "#9a3412" }}
+              >
+                Lớp chưa có dữ liệu học sinh
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: "#c2410c", mt: 0.5 }}>
+                Vui lòng kiểm tra lại danh sách học sinh của lớp.
+              </Typography>
+            </Paper>
+          )}
+
+        {/* ================= DANH SÁCH CÔNG CỤ ================= */}
+        {!loadingStudents && (
+          <Box sx={{ mt: 3 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 1,
+                mb: 2,
+              }}
+            >
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: { xs: 16, sm: 18 },
+                    fontWeight: 900,
+                    color: "#172b4d",
+                  }}
+                >
+                  Khám phá công cụ
+                </Typography>
+                <Typography
+                  sx={{ fontSize: 12, color: "#8492a6", mt: 0.3 }}
+                >
+                  Chọn tiện ích phù hợp với hoạt động trên lớp
+                </Typography>
+              </Box>
+
+              <Box
+                sx={{
+                  px: 1.2,
+                  py: 0.65,
+                  borderRadius: 2,
+                  background: "#eef2ff",
+                  color: "#4f46e5",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {availableTools}/{totalTools} sẵn sàng
+              </Box>
+            </Box>
+
+            {toolGroups.map((group, groupIndex) => (
+              <Box key={group.title} sx={{ mb: 3.2 }}>
+                {/* TIÊU ĐỀ NHÓM */}
                 <Box
                   sx={{
                     display: "flex",
-                    justifyContent: "center",
                     alignItems: "center",
-                    gap: 1.5,
-                    py: 3,
+                    gap: 1.2,
+                    mb: 1.5,
                   }}
                 >
-                  <CircularProgress size={22} />
-
-                  <Typography sx={{ fontSize: 14, color: "#64748b" }}>
-                    Đang tải danh sách học sinh...
-                  </Typography>
-                </Box>
-              )}
-
-              {/* CHƯA CHỌN LỚP */}
-              {!selectedClass && !loadingStudents && (
-                <Box
-                  sx={{
-                    textAlign: "center",
-                    py: 3,
-                    color: "#94a3b8",
-                  }}
-                >
-                  <SchoolRoundedIcon
-                    sx={{
-                      fontSize: 42,
-                      mb: 0.5,
-                      opacity: 0.6,
-                    }}
-                  />
-
-                  <Typography fontWeight={600}>
-                    Chưa có lớp được chọn
-                  </Typography>
-
-                  <Typography sx={{ fontSize: 13, mt: 0.5 }}>
-                    Hãy chọn lớp để sử dụng các công cụ hỗ trợ giảng dạy.
-                  </Typography>
-                </Box>
-              )}
-
-              {/* KHÔNG CÓ HỌC SINH */}
-              {selectedClass &&
-                !loadingStudents &&
-                students.length === 0 && (
                   <Box
                     sx={{
-                      textAlign: "center",
-                      py: 2.5,
-                      color: "#94a3b8",
+                      width: 34,
+                      height: 34,
+                      borderRadius: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: group.color,
+                      background: `${group.color}13`,
+                      fontSize: 16,
+                      fontWeight: 900,
                     }}
                   >
-                    <Typography fontWeight={600}>
-                      Lớp chưa có dữ liệu học sinh
-                    </Typography>
-
-                    <Typography sx={{ fontSize: 13, mt: 0.5 }}>
-                      Vui lòng kiểm tra lại danh sách học sinh của lớp.
-                    </Typography>
+                    {String(groupIndex + 1).padStart(2, "0")}
                   </Box>
-                )}
 
-              {/* DANH SÁCH CÔNG CỤ */}
-              {!loadingStudents &&
-                toolGroups.map((group) => (
-                  <Box key={group.title} sx={{ mb: 2.5 }}>
-                    {/* TIÊU ĐỀ NHÓM */}
-                    <Box
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        mb: 1.2,
+                        fontSize: 13,
+                        fontWeight: 900,
+                        color: "#334155",
+                        letterSpacing: 0.35,
                       }}
                     >
-                      <Box
-                        sx={{
-                          width: 4,
-                          height: 18,
-                          borderRadius: 2,
-                          background: group.color,
-                        }}
-                      />
+                      {group.title}
+                    </Typography>
+                    <Box
+                      sx={{
+                        mt: 0.45,
+                        height: 2,
+                        width: 42,
+                        borderRadius: 5,
+                        background: group.color,
+                      }}
+                    />
+                  </Box>
 
-                      <Typography
+                  <Typography
+                    sx={{
+                      fontSize: 11,
+                      color: "#94a3b8",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {group.tools.length} công cụ
+                  </Typography>
+                </Box>
+
+                {/* CÁC THẺ CÔNG CỤ */}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      sm: "repeat(2, minmax(0, 1fr))",
+                    },
+                    gap: { xs: 1.2, sm: 1.5 },
+                    alignItems: "stretch",
+                  }}
+                >
+                  {group.tools.map((tool) => {
+                    const disabled =
+                      tool.needStudents &&
+                      (!selectedClass ||
+                        !students.length ||
+                        loadingStudents);
+
+                    return (
+                      <Paper
+                        key={tool.id}
+                        elevation={0}
+                        onClick={() => {
+                          if (!disabled) {
+                            openToolInNewTab(tool.id);
+                          }
+                        }}
                         sx={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: "#334155",
-                          letterSpacing: 0.3,
+                          position: "relative",
+                          minWidth: 0,
+                          minHeight: 112,
+                          boxSizing: "border-box",
+                          p: { xs: 1.6, sm: 1.9 },
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.6,
+                          overflow: "hidden",
+                          borderRadius: 3,
+                          border: "1px solid",
+                          borderColor: disabled
+                            ? "#e2e8f0"
+                            : "#e5eaf2",
+                          background: disabled ? "#f8fafc" : "#fff",
+                          cursor: disabled ? "not-allowed" : "pointer",
+                          opacity: disabled ? 0.55 : 1,
+                          transition: "all .22s ease",
+                          boxShadow: disabled
+                            ? "none"
+                            : "0 3px 12px rgba(30,64,110,0.045)",
+
+                          "&::before": {
+                            content: '""',
+                            position: "absolute",
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 3,
+                            background: disabled
+                              ? "#cbd5e1"
+                              : group.color,
+                            opacity: disabled ? 0.5 : 0.9,
+                          },
+
+                          "&:hover": disabled
+                            ? {}
+                            : {
+                                transform: "translateY(-3px)",
+                                borderColor: `${group.color}85`,
+                                boxShadow: `0 9px 24px ${group.color}20`,
+                                background: `linear-gradient(115deg, #fff, ${group.color}08)`,
+                                "& .tool-icon": {
+                                  transform: "scale(1.08) rotate(-4deg)",
+                                },
+                                "& .tool-arrow": {
+                                  transform: "translateX(3px)",
+                                  opacity: 1,
+                                },
+                              },
+
+                          "&:active": disabled
+                            ? {}
+                            : { transform: "scale(0.985)" },
                         }}
                       >
-                        {group.title}
-                      </Typography>
-                    </Box>
+                        {/* ICON */}
+                        <Box
+                          className="tool-icon"
+                          sx={{
+                            width: { xs: 50, sm: 56 },
+                            height: { xs: 50, sm: 56 },
+                            flexShrink: 0,
+                            borderRadius: 2.7,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: tool.iconColor,
+                            background: tool.iconBg,
+                            border: `1px solid ${tool.iconColor}20`,
+                            transition: "all .22s ease",
+                            "& svg": {
+                              fontSize: { xs: 27, sm: 30 },
+                            },
+                          }}
+                        >
+                          {tool.icon}
+                        </Box>
 
-                    {/* CÁC THẺ CÔNG CỤ */}
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: {
-                          xs: "1fr",
-                          sm: "repeat(2, minmax(0, 1fr))",
-                        },
-                        gap: 1.5,
-                        alignItems: "stretch",
-                      }}
-                    >
-                      {group.tools.map((tool) => {
-                        const disabled =
-                          tool.needStudents &&
-                          (!selectedClass ||
-                            !students.length ||
-                            loadingStudents);
-
-                        return (
-                          <Paper
-                            key={tool.title}
-                            elevation={0}
-                            onClick={() => {
-                              if (!disabled) {
-                                tool.action();
-                              }
-                            }}
+                        {/* NỘI DUNG */}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
                             sx={{
-                              minWidth: 0,
-                              minHeight: 92,
-                              boxSizing: "border-box",
-                              p: { xs: 1.5, sm: 1.8 },
-                              borderRadius: 2.5,
-
-                              border: "1px solid",
-                              borderColor: disabled
-                                ? "#e2e8f0"
-                                : `${group.color}55`,
-
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1.5,
-
-                              cursor: disabled ? "not-allowed" : "pointer",
-                              opacity: disabled ? 0.45 : 1,
-
-                              background: disabled
-                                ? "#f8fafc"
-                                : `linear-gradient(135deg, #ffffff 0%, ${group.color}0D 100%)`,
-
-                              boxShadow: disabled
-                                ? "none"
-                                : `0 3px 10px ${group.color}18`,
-
-                              transition: "all 0.22s ease",
-
-                              "&:hover": disabled
-                                ? {}
-                                : {
-                                    borderColor: group.color,
-                                    background: `linear-gradient(135deg, #ffffff 0%, ${group.color}20 100%)`,
-                                    transform: "translateY(-3px)",
-                                    boxShadow: `0 7px 18px ${group.color}30`,
-                                  },
-
-                              "&:active": disabled
-                                ? {}
-                                : {
-                                    transform: "scale(0.98)",
-                                  },
+                              fontSize: { xs: 13.5, sm: 14 },
+                              fontWeight: 900,
+                              color: disabled ? "#94a3b8" : "#1e293b",
+                              lineHeight: 1.4,
                             }}
                           >
-                            {/* ICON */}
-                            <Box
+                            {tool.title}
+                          </Typography>
+
+                          <Typography
+                            sx={{
+                              fontSize: 11.5,
+                              color: disabled ? "#a8b1bf" : "#8492a6",
+                              mt: 0.55,
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {tool.description}
+                          </Typography>
+
+                          {disabled && tool.needStudents && (
+                            <Typography
                               sx={{
-                                width: 52,
-                                height: 52,
-                                flexShrink: 0,
-                                borderRadius: 2.5,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-
-                                color: tool.iconColor,
-                                background: tool.iconBg,
-
-                                border: `1px solid ${tool.iconColor}25`,
-                                boxShadow: `0 3px 9px ${tool.iconColor}18`,
-
-                                transition: "all .22s ease",
-
-                                "& svg": {
-                                  fontSize: 29,
-                                },
-
-                                ".MuiPaper-root:hover &": disabled
-                                  ? {}
-                                  : {
-                                      transform: "scale(1.08) rotate(-4deg)",
-                                      boxShadow: `0 5px 13px ${tool.iconColor}30`,
-                                    },
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: "#b45309",
+                                mt: 0.6,
                               }}
                             >
-                              {tool.icon}
-                            </Box>
+                              Cần chọn lớp có danh sách học sinh
+                            </Typography>
+                          )}
+                        </Box>
 
-                            {/* NỘI DUNG */}
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography
-                                sx={{
-                                  fontSize: 14,
-                                  fontWeight: 800,
-                                  color: disabled ? "#94a3b8" : "#1e3a5f",
-                                  lineHeight: 1.4,
-                                }}
-                              >
-                                {tool.title}
-                              </Typography>
+                        {/* MŨI TÊN */}
+                        {!disabled && (
+                          <Box
+                            className="tool-arrow"
+                            sx={{
+                              width: 27,
+                              height: 27,
+                              flexShrink: 0,
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: group.color,
+                              background: `${group.color}12`,
+                              fontSize: 21,
+                              lineHeight: 1,
+                              opacity: 0.75,
+                              transition: "all .2s ease",
+                            }}
+                          >
+                            ›
+                          </Box>
+                        )}
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
 
-                              <Typography
-                                sx={{
-                                  fontSize: 12,
-                                  color: disabled ? "#a1aab8" : "#64748b",
-                                  mt: 0.5,
-                                  lineHeight: 1.45,
-                                }}
-                              >
-                                {tool.description}
-                              </Typography>
-                            </Box>
-
-                            {/* MŨI TÊN */}
-                            {!disabled && (
-                              <Box
-                                sx={{
-                                  color: group.color,
-                                  fontSize: 20,
-                                  fontWeight: 800,
-                                  flexShrink: 0,
-                                  opacity: 0.8,
-                                  transition: "transform 0.2s ease",
-                                  ".MuiPaper-root:hover &": {
-                                    transform: "translateX(3px)",
-                                  },
-                                }}
-                              >
-                                ›
-                              </Box>
-                            )}
-                          </Paper>
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                ))}
-            </Box>
-          </Paper>
+        {/* FOOTER */}
+        <Box
+          sx={{
+            mt: 1,
+            py: 2,
+            textAlign: "center",
+            borderTop: "1px solid #e2e8f0",
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 11,
+              color: "#94a3b8",
+              fontWeight: 600,
+            }}
+          >
+            CÔNG CỤ HỖ TRỢ GIẢNG DẠY · DẠY HỌC SÁNG TẠO VÀ HIỆU QUẢ
+          </Typography>
         </Box>
-      )}
-
-      {/* ===================================== */}
-      {/* CÁC DIALOG CÔNG CỤ */}
-      {/* Luôn đặt ngoài điều kiện ẩn trang */}
-      {/* ===================================== */}
-
-      <CountdownTimerDialog
-        open={openTimerDialog}
-        onClose={() => setOpenTimerDialog(false)}
-      />
-
-      <RandomStudentDialog
-        open={openRandomDialog}
-        onClose={() => setOpenRandomDialog(false)}
-        students={students}
-      />
-
-      <GroupStudentsDialog
-        open={openGroupDialog}
-        onClose={() => setOpenGroupDialog(false)}
-        students={students}
-      />
-
-      <DiceDialog
-        open={openDiceDialog}
-        onClose={() => setOpenDiceDialog(false)}
-      />
-
-      <LuckyWheelDialog
-        open={openWheelDialog}
-        onClose={() => setOpenWheelDialog(false)}
-        students={students}
-      />
-
-      <NoiseMeterDialog
-        open={openNoiseDialog}
-        onClose={() => setOpenNoiseDialog(false)}
-      />
-
-      <QuestionDrawDialog
-        open={openQuestionDialog}
-        onClose={() => setOpenQuestionDialog(false)}
-        selectedClass={selectedClass}
-        week={config?.tuan}
-      />
-
-      <StopwatchDialog
-        open={openStopwatchDialog}
-        onClose={() => setOpenStopwatchDialog(false)}
-      />
-
-      <TreasureMapGame
-        open={openTreasureMap}
-        onClose={() => setOpenTreasureMap(false)}
-      />
-
-      <QuickQuestionDialog
-        open={openQuickQuestion}
-        onClose={() => setOpenQuickQuestion(false)}
-      />
-
-      <LearningLeaderboardDialog
-        open={openLeaderboard}
-        onClose={() => setOpenLeaderboard(false)}
-        students={students}
-      />
-
-      <KnowledgeArenaDialog
-        open={openKnowledgeArena}
-        onClose={() => setOpenKnowledgeArena(false)}
-      />
-    </>
+      </Box>
+    </Box>
   );
 }
+

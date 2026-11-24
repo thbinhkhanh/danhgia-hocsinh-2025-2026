@@ -167,7 +167,10 @@ export default function KnowledgeArenaDialog({ open, onClose }) {
   };
 
   /* ĐÓNG */
-  const handleClose = () => {
+  const handleClose = (event, reason) => {
+    // Không đóng khi bấm ra ngoài Dialog
+    if (reason === "backdropClick") return;
+
     setPhase("setup");
     setCurrentIndex(0);
     setSeconds(duration);
@@ -178,31 +181,39 @@ export default function KnowledgeArenaDialog({ open, onClose }) {
     setConfigOpen(false);
     setEditorOpen(false);
     onClose?.();
-  };
+    };
 
   return (
     <>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={(event, reason) => {
+            if (
+            reason === "backdropClick" ||
+            reason === "escapeKeyDown"
+            ) {
+            return;
+            }
+            handleClose();
+        }}
+        disableEscapeKeyDown
         fullWidth
         maxWidth="md"
-        scroll="paper"
         TransitionComponent={Fade}
         PaperProps={{
-          sx: {
+            sx: {
             width: "100%",
-            height: "min(760px, 92vh)",
-            maxHeight: "92vh",
+            height: "94dvh",
+            maxHeight: "94dvh",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
             borderRadius: 3,
             bgcolor: "#fff",
             boxShadow: "0 25px 80px rgba(15,23,42,.25)",
-          },
+            },
         }}
-      >
+        >
         {/* HEADER CỐ ĐỊNH */}
         <DialogHeader
           title="ĐẤU TRƯỜNG KIẾN THỨC"
@@ -250,7 +261,7 @@ export default function KnowledgeArenaDialog({ open, onClose }) {
         <DialogContent
             sx={{
                 p: { xs: 1.5, sm: 2 },
-                flex: 1,
+                flex: "1 1 0",
                 minHeight: 0,
                 overflow: "hidden",
                 bgcolor: "#f8fbff",

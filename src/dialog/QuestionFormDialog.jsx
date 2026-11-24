@@ -382,22 +382,23 @@ return (
         open={open}
         onClose={onClose}
         fullWidth
-        maxWidth={false}
+        maxWidth="md"
         TransitionComponent={Fade}
         PaperProps={{
             sx: {
-            width: "95vw",
-            maxWidth: 800,
-            minHeight: "80vh",
-            maxHeight: "92vh",
+            width: "100%",
+            maxWidth: 900,
+            height: "94dvh",
+            maxHeight: "94dvh",
             borderRadius: 4,
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
             background: "#F8FAFC",
+            boxShadow: "0 25px 80px rgba(15,23,42,.25)",
             },
         }}
-        >
+    >
       {/* HEADER */}
       <Box
         sx={{

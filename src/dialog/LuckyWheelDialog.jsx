@@ -89,18 +89,27 @@ export default function LuckyWheelDialog({
   // KHỞI TẠO DANH SÁCH HỌC SINH
   // =========================================
 
-  useEffect(() => {
-    if (open) {
-      const allIds = students.map((student, index) =>
-        getStudentId(student, index)
-      );
+  // =========================================
+  // KHỞI TẠO - MẶC ĐỊNH CHỌN TẤT CẢ HỌC SINH
+  // =========================================
 
-      setSelectedStudentIds(allIds);
-      setSpinStudents([...students]);
-    } else {
+  useEffect(() => {
+    if (!open) {
       setStudentListAnchor(null);
+      return;
     }
-  }, [open]);
+
+    const allIds = students.map((student, index) =>
+      getStudentId(student, index)
+    );
+
+    setSelectedStudentIds(allIds);
+    setSpinStudents([...students]);
+
+    setWinner(null);
+    setHasPicked(false);
+    setShowCelebration(false);
+  }, [open, students]);
 
   // Danh sách học sinh được chọn
   const eligibleStudents = students.filter((student, index) =>
@@ -557,7 +566,10 @@ const handleRandom = () => {
   // ĐÓNG DIALOG
   // =========================================
 
-  const handleClose = () => {
+  const handleClose = (event, reason) => {
+    // Không đóng Dialog khi bấm ra ngoài
+    if (reason === "backdropClick") return;
+
     if (spinningRef.current) return;
 
     stopSpinAudio();

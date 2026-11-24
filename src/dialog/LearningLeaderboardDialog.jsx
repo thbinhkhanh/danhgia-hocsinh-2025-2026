@@ -375,10 +375,13 @@ export default function LearningLeaderboardDialog({
   // =====================================================
   // ĐÓNG DIALOG
   // =====================================================
-  const handleClose = () => {
+  const handleClose = (event, reason) => {
+    // Không đóng khi bấm ra ngoài Dialog
+    if (reason === "backdropClick") return;
+
     setNewName("");
     onClose?.();
-  };
+    };
 
   // =====================================================
   // XẾP HẠNG HUY CHƯƠNG
@@ -424,23 +427,34 @@ export default function LearningLeaderboardDialog({
   // =====================================================
   return (
     <Dialog
-      open={open}
-      onClose={handleClose}
-      fullWidth
-      maxWidth="md"
-      TransitionComponent={Fade}
-      PaperProps={{
-        sx: {
-          borderRadius: 4,
-          overflow: "hidden",
-          background: "#fff",
-          boxShadow: "0 25px 80px rgba(15,23,42,.25)",
-          maxHeight: "92vh",
-          display: "flex",
-          flexDirection: "column",
-        },
-      }}
-    >
+        open={open}
+        onClose={(event, reason) => {
+            if (
+            reason === "backdropClick" ||
+            reason === "escapeKeyDown"
+            ) {
+            return;
+            }
+            handleClose();
+        }}
+        disableEscapeKeyDown
+        fullWidth
+        maxWidth="md"
+        TransitionComponent={Fade}
+        PaperProps={{
+            sx: {
+            borderRadius: 4,
+            overflow: "hidden",
+            background: "#fff",
+            boxShadow: "0 25px 80px rgba(15,23,42,.25)",
+            position: "relative",
+            height: "94dvh",
+            maxHeight: "94dvh",
+            display: "flex",
+            flexDirection: "column",
+            },
+        }}
+        >
       {/* HEADER */}
       <Box
         sx={{
@@ -591,15 +605,17 @@ export default function LearningLeaderboardDialog({
       {/* NỘI DUNG */}
       <DialogContent
         sx={{
-          px: { xs: 1.5, sm: 3 },
-          py: { xs: 2, sm: 2.5 },
-          background:
+            px: { xs: 1.5, sm: 3 },
+            py: { xs: 1, sm: 1.5 },
+            background:
             "linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)",
-          overflowY: "auto",
-          flex: 1,
-          minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            flex: "1 1 0",
+            minHeight: 0,
+            overflow: "hidden",
         }}
-      >
+        >
         {!selectedClass && (
           <Paper
             elevation={0}

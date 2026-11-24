@@ -107,22 +107,42 @@ export default function GroupStudentsDialog({
     }
   }, [open, maxGroups]);
 
+  const handleClose = (event, reason) => {
+    // Không đóng khi bấm ra ngoài Dialog
+    if (reason === "backdropClick") return;
+
+    onClose?.();
+    };
+
   
 return (
   <Dialog
     open={open}
-    onClose={onClose}
+    onClose={(event, reason) => {
+        if (
+        reason === "backdropClick" ||
+        reason === "escapeKeyDown"
+        ) {
+        return;
+        }
+        handleClose();
+    }}
+    disableEscapeKeyDown
     fullWidth
-    maxWidth="sm"
+    maxWidth="md"
     TransitionComponent={Fade}
     PaperProps={{
-      sx: {
+        sx: {
         borderRadius: 4,
         overflow: "hidden",
-        maxWidth: 650,
-        background: "#F8FAFC",
-        boxShadow: "0 24px 70px rgba(15, 23, 42, 0.2)",
-      },
+        background: "#fff",
+        boxShadow: "0 25px 80px rgba(15,23,42,.25)",
+        position: "relative",
+        height: "94dvh",
+        maxHeight: "94dvh",
+        display: "flex",
+        flexDirection: "column",
+        },
     }}
   >
     {/* HEADER */}
@@ -171,7 +191,7 @@ return (
       </Box>
 
       <IconButton
-        onClick={onClose}
+        onClick={handleClose}
         sx={{
           color: "#fff",
           bgcolor: "rgba(56,189,248,0.16)",
@@ -185,10 +205,18 @@ return (
     </Box>
 
     <DialogContent
-      sx={{
-        p: { xs: 2, sm: 2.5 },
-        background: "#F8FAFC",
-      }}
+        sx={{
+            px: { xs: 1.5, sm: 3 },
+            py: { xs: 1, sm: 1.5 },
+            background: "linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)",
+            display: "flex",
+            flexDirection: "column",
+            gap: { xs: 1, sm: 1.5 },
+            flex: "1 1 0",
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+        }}
     >
       {/* THÔNG TIN SĨ SỐ */}
       <Grid container spacing={1.5} sx={{ mb: 2.5 }}>

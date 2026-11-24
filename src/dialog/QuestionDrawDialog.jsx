@@ -271,7 +271,10 @@ export default function QuestionDrawDialog({
   // ĐÓNG DIALOG
   // =====================================================
 
-  const handleClose = () => {
+  const handleClose = (event, reason) => {
+    // Không đóng khi bấm ra ngoài Dialog
+    if (reason === "backdropClick") return;
+
     if (drawingRef.current) return;
 
     setOpenQuestionForm(false);
@@ -282,17 +285,34 @@ export default function QuestionDrawDialog({
     <>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={(event, reason) => {
+          // Không đóng khi bấm ra ngoài hoặc nhấn ESC
+          if (
+            reason === "backdropClick" ||
+            reason === "escapeKeyDown"
+          ) {
+            return;
+          }
+
+          handleClose();
+        }}
+        disableEscapeKeyDown
         fullWidth
-        maxWidth="sm"
+        maxWidth="md"
         TransitionComponent={Fade}
         PaperProps={{
           sx: {
             borderRadius: 4,
             overflow: "hidden",
-            maxWidth: 650,
             background: "#fff",
             boxShadow: "0 25px 80px rgba(15,23,42,.25)",
+            position: "relative",
+
+            height: "94dvh",
+            maxHeight: "94dvh",
+
+            display: "flex",
+            flexDirection: "column",
           },
         }}
       >
@@ -471,10 +491,17 @@ export default function QuestionDrawDialog({
         <DialogContent
           sx={{
             px: { xs: 1.5, sm: 3 },
-            py: 2.5,
+            py: { xs: 1, sm: 1.5 },
             background:
               "linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)",
-            overflowY: "auto",
+
+            display: "flex",
+            flexDirection: "column",
+            gap: { xs: 1, sm: 1.5 },
+
+            flex: "1 1 0",
+            minHeight: 0,
+            overflow: "hidden",
           }}
         >
           {/* THỐNG KÊ */}
